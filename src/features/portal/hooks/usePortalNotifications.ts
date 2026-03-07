@@ -114,5 +114,5 @@ export function usePortalNotifications(userId: string | null) {
     }
   }
 
-  return { notifications, unreadCount, markAllRead }
+  return { notifications, unreadCount, markAllRead, dbUnreadCount: rawMessages?.length ?? 0 }
 }

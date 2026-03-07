@@ -20,6 +20,7 @@ import { PortalTokenRoutePage } from '@/app/routes/portal/$token'
 import { JoinInvitationRoutePage } from '@/app/routes/join.$token'
 import { DocumentationRoutePage } from '@/app/routes/documentation'
 import { ColorDemoRoutePage } from '@/app/routes/color-demo'
+import { PortalInboxRoutePage } from '@/app/routes/portal-inbox'
 
 const rootRoute = createRootRoute({ component: RootDocument })
 
@@ -45,6 +46,7 @@ const billingRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 
 const teamRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'team', component: TeamRoutePage })
 const onboardingRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'onboarding', component: OnboardingRoutePage })
 const documentationRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'documentation', component: DocumentationRoutePage })
+const portalInboxRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'portal-inbox', component: PortalInboxRoutePage })
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -63,6 +65,7 @@ const routeTree = rootRoute.addChildren([
     onboardingRoute,
     settingsRoute,
     documentationRoute,
+    portalInboxRoute,
   ]),
 ])
 

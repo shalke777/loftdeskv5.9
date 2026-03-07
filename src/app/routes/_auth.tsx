@@ -7,6 +7,7 @@ import {
   FolderKanban,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   Receipt,
   Settings,
   Shield,
@@ -19,9 +20,8 @@ import { AuthScreen } from '@/features/auth/components/AuthScreen'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { APP_NAME } from '@/shared/lib/constants'
 import { InstallAppButton } from '@/shared/ui/InstallAppButton/InstallAppButton'
-import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
 import { usePortalNotifications } from '@/features/portal/hooks/usePortalNotifications'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type MainNavItem = {
   type?: 'route'
@@ -59,10 +59,20 @@ export function AuthLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const canUsePortal = useFeatureAccess('portal')
   const canUseKsef = useFeatureAccess('ksef')
-  const { data: portalTokens } = usePortalTokens(companyId ?? '')
-  const firstPortalUrl = canUsePortal ? (portalTokens ?? []).find((t) => t.active)?.url ?? null : null
-  const { notifications, unreadCount, markAllRead } = usePortalNotifications(user?.id ?? null)
+  const { notifications, unreadCount, markAllRead, dbUnreadCount } = usePortalNotifications(user?.id ?? null)
   const [showNotifications, setShowNotifications] = useState(false)
+  const notifRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showNotifications) return
+    const handle = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false)
+      }
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [showNotifications])
 
   if (loading) return <div className="page-loading">Ładowanie sesji...</div>
   if (!user) return <AuthScreen />
@@ -70,7 +80,6 @@ export function AuthLayout() {
   const featureFlags = { ksef: canUseKsef } as const
   const visibleMainNav = mainNavItems.filter((item) => !item.feature || featureFlags[item.feature])
   const visibleMobileNav = mobileNav.filter((item) => !item.feature || featureFlags[item.feature])
-  const isPortalActive = pathname.startsWith('/portal/')
 
   return (
     <div className="app-shell">
@@ -95,11 +104,18 @@ export function AuthLayout() {
 			  </Link>
 			)
 		  })}
-		  {firstPortalUrl ? (
-			<a href={firstPortalUrl} target="_blank" rel="noreferrer" className={isPortalActive ? 'sidebar__link sidebar__link--active' : 'sidebar__link'}>
-			  <ExternalLink size={18} />
-			  <span>Portal</span>
-			</a>
+		  {canUsePortal ? (
+			<Link to="/portal-inbox" className={pathname.startsWith('/portal-inbox') ? 'sidebar__link sidebar__link--active' : 'sidebar__link'}>
+			  <MessageSquare size={18} />
+			  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+				Portal
+				{dbUnreadCount > 0 && (
+				  <span style={{ background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 20, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
+					{dbUnreadCount > 99 ? '99+' : dbUnreadCount}
+				  </span>
+				)}
+			  </span>
+			</Link>
 		  ) : null}
 		</nav>
 
@@ -121,7 +137,7 @@ export function AuthLayout() {
           </div>
           <div className="shell-topbar__right">
             <span className="shell-pill">Plan: {user.plan}</span>
-            <div style={{ position: 'relative' }}>
+            <div ref={notifRef} style={{ position: 'relative' }}>
               <Button variant="ghost" size="sm" onClick={() => { setShowNotifications((v) => !v); if (!showNotifications) markAllRead() }} icon={<Bell size={18} />}>
                 {unreadCount > 0 && (
                   <span style={{
@@ -155,12 +171,17 @@ export function AuthLayout() {
                         background: n.read ? '#fff' : '#f0f9ff',
                         fontSize: 13,
                       }}>
-                        <div style={{ fontWeight: 500, color: n.type === 'accepted' ? '#16a34a' : n.type === 'rejected' ? '#dc2626' : '#1d4ed8' }}>
-                          {n.type === 'accepted' ? '✅ Akceptacja' : n.type === 'rejected' ? '❌ Odrzucenie' : '💬 Wiadomość'}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 600, fontSize: 12, color: n.type === 'accepted' ? '#16a34a' : n.type === 'rejected' ? '#dc2626' : '#1d4ed8' }}>
+                            {n.type === 'accepted' ? '✅ Akceptacja' : n.type === 'rejected' ? '❌ Odrzucenie' : '💬 Wiadomość'}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#9ca3af' }}>
+                            {new Date(n.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                          </span>
                         </div>
-                        <div style={{ marginTop: 2, color: '#374151' }}>{n.text}</div>
-                        <div style={{ marginTop: 4, color: '#9ca3af', fontSize: 11 }}>
-                          {new Date(n.created_at).toLocaleString('pl-PL')}
+                        <div style={{ marginTop: 3, fontWeight: 500, fontSize: 12, color: '#374151' }}>{n.clientName}</div>
+                        <div style={{ marginTop: 2, fontSize: 12, color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {n.text.replace(/\[img:data:image\/[^\]]{0,20}[^\]]*\]/g, '[zdjęcie]')}
                         </div>
                       </div>
                     ))
@@ -168,7 +189,6 @@ export function AuthLayout() {
                 </div>
               )}
             </div>
-            {firstPortalUrl ? <a href={firstPortalUrl} target="_blank" rel="noreferrer"><Button variant="secondary" size="sm">Portal klienta</Button></a> : null}
             <InstallAppButton compact />
           </div>
         </header>
@@ -184,11 +204,11 @@ export function AuthLayout() {
               </Link>
             )
           })}
-          {firstPortalUrl ? (
-            <a href={firstPortalUrl} target="_blank" rel="noreferrer" className={isPortalActive ? 'mobile-nav__link mobile-nav__link--active' : 'mobile-nav__link'}>
-              <ExternalLink size={18} />
+          {canUsePortal ? (
+            <Link to="/portal-inbox" className={pathname.startsWith('/portal-inbox') ? 'mobile-nav__link mobile-nav__link--active' : 'mobile-nav__link'}>
+              <MessageSquare size={18} />
               <span>Portal</span>
-            </a>
+            </Link>
           ) : null}
         </nav>
       </section>
