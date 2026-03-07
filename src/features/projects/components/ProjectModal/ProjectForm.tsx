@@ -6,11 +6,9 @@ import type { CreateProjectInput, Project } from '@/entities/project/model'
 import { useClients } from '@/features/clients/hooks/useClients'
 
 export function ProjectForm({ companyId, onSubmit, initialProject }: { companyId: string; onSubmit: (input: CreateProjectInput) => Promise<void>; initialProject?: Project | null }) {
-  const [name, setName] = useState('Nowa realizacja')
-  const [address, setAddress] = useState('Kraków')
-  const [budget, setBudget] = useState('50000')
-  const [costs, setCosts] = useState('0')
-  const [notes, setNotes] = useState('Projekt startowy w LoftDesk')
+  const [name, setName] = useState('')
+  const [address, setAddress] = useState('')
+  const [notes, setNotes] = useState('')
   const [clientId, setClientId] = useState('')
   const [status, setStatus] = useState<Project['status']>('offer')
   const [startDate, setStartDate] = useState('')
@@ -19,11 +17,9 @@ export function ProjectForm({ companyId, onSubmit, initialProject }: { companyId
   const clientOptions = useMemo(() => clients.map((client) => ({ value: client.id, label: client.name })), [clients])
 
   useEffect(() => {
-    setName(initialProject?.name || 'Nowa realizacja')
-    setAddress(initialProject?.address || 'Kraków')
-    setBudget(String(initialProject?.budget ?? 50000))
-    setCosts(String(initialProject?.costs ?? 0))
-    setNotes(initialProject?.notes || 'Projekt startowy w LoftDesk')
+    setName(initialProject?.name || '')
+    setAddress(initialProject?.address || '')
+    setNotes(initialProject?.notes || '')
     setClientId(initialProject?.client_id || '')
     setStatus(initialProject?.status || 'offer')
     setStartDate(initialProject?.start_date || '')
@@ -36,12 +32,10 @@ export function ProjectForm({ companyId, onSubmit, initialProject }: { companyId
       <Select label="Klient" value={clientId} onChange={(e) => setClientId(e.target.value)} options={clientOptions} placeholder="Bez przypisania" />
       <Select label="Status" value={status} onChange={(e) => setStatus((e.target.value || 'offer') as Project['status'])} options={[{ value: 'offer', label: 'W ofercie' }, { value: 'active', label: 'Aktywny' }, { value: 'done', label: 'Zakończony' }, { value: 'cancelled', label: 'Anulowany' }]} />
       <Input label="Adres" value={address} onChange={(e) => setAddress(e.target.value)} />
-      <Input label="Budżet" type="number" value={budget} onChange={(e) => setBudget(e.target.value)} />
-      <Input label="Koszty" type="number" value={costs} onChange={(e) => setCosts(e.target.value)} />
       <Input label="Start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
       <Input label="Koniec" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
       <Input label="Notatki" value={notes} onChange={(e) => setNotes(e.target.value)} />
-      <div className="actions-row" style={{ gridColumn: '1 / -1' }}><Button onClick={() => onSubmit({ company_id: companyId, client_id: clientId || null, name, status, start_date: startDate || null, end_date: endDate || null, address, budget: Number(budget), costs: Number(costs), notes })}>{initialProject ? 'Zapisz zmiany' : 'Zapisz projekt'}</Button></div>
+      <div className="actions-row" style={{ gridColumn: '1 / -1' }}><Button onClick={() => onSubmit({ company_id: companyId, client_id: clientId || null, name, status, start_date: startDate || null, end_date: endDate || null, address, budget: 0, costs: 0, notes })}>{initialProject ? 'Zapisz zmiany' : 'Zapisz projekt'}</Button></div>
     </div>
   )
 }

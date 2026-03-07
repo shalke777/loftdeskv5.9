@@ -148,7 +148,11 @@ export const portalApi = {
     const table = supabase.from('client_portal_tokens').select('id, token, cost_estimate_id, client_name, active, expires_at, cost_estimates(number, name)').order('created_at', { ascending: false })
     const query = scope.mode === 'multi-tenant' ? table.eq('company_id', scope.companyId) : table.eq('user_id', scope.userId)
     const { data, error } = await query
-    if (error) throw error
+    if (error) {
+      // Table may not exist yet — return empty list gracefully
+      if (error.code === '42P01' || error.message?.includes('relation') || String((error as any).status ?? '').startsWith('4')) return []
+      throw error
+    }
     return (data ?? []).map((item: any) => ({
       id: item.id,
       token: item.token,
