@@ -19,6 +19,7 @@ import { OnboardingRoutePage } from '@/app/routes/onboarding'
 import { PortalTokenRoutePage } from '@/app/routes/portal/$token'
 import { JoinInvitationRoutePage } from '@/app/routes/join.$token'
 import { DocumentationRoutePage } from '@/app/routes/documentation'
+import { ColorDemoRoutePage } from '@/app/routes/color-demo'
 
 const rootRoute = createRootRoute({ component: RootDocument })
 
@@ -29,6 +30,7 @@ const publicLayoutRoute = createRoute({ getParentRoute: () => rootRoute, id: '_p
 const landingRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: '/', component: LandingRoutePage })
 const portalRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'portal/$token', component: PortalTokenRoutePage })
 const joinRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'join/$token', component: JoinInvitationRoutePage })
+const colorDemoRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'color-demo', component: ColorDemoRoutePage })
 
 const dashboardRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'dashboard', component: DashboardRoutePage })
 const clientsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'clients', component: ClientsRoutePage })
@@ -46,7 +48,7 @@ const documentationRoute = createRoute({ getParentRoute: () => authLayoutRoute, 
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  publicLayoutRoute.addChildren([landingRoute, portalRoute, joinRoute]),
+  publicLayoutRoute.addChildren([landingRoute, portalRoute, joinRoute, colorDemoRoute]),
   authLayoutRoute.addChildren([
     dashboardRoute,
     clientsRoute,

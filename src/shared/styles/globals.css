@@ -3,36 +3,50 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
 :root {
-  /* LoftDesk Premium Warm Palette */
-  --color-bg: #f8f6f3;
-  --color-surface: #fffdfa;
-  --color-surface-soft: #f3ede7;
-  --color-card: #fffdfa; /* delikatny beż, ciepłe tło kart */
-  --color-primary: #3d2c1e;
-  --color-primary-light: #6d5640;
-  --color-primary-dark: #8d735b;
-  --color-brand: #4b5e3c; /* zgniła zieleń */
-  --color-brand-2: #2d3a1a; /* ciemniejszy odcień */
-  --color-brand-light: #f8f6f3; /* delikatny beż do podświetleń i tła logo */
-  --color-brand-border: #b7c9a3; /* pastelowa zieleń do borderów */
-  --color-action: #4b5e3c;
-  --color-action-hover: #38482b;
-  --color-success: #3ca97a;
-  --color-success-soft: #eaf7f0;
-  --color-warning: #e6a100;
-  --color-warning-soft: #fff7e6;
-  --color-error: #e14d4d;
-  --color-error-soft: #ffeaea;
-  --color-text-primary: #3d2c1e;
-  --color-text-secondary: #7c6f5f;
-  --color-text-inverse: #fff;
-  --color-border: #e3ded7;
-  --color-border-light: #f3ede7;
-  --color-border-dark: #d1c3b2;
-  --shadow-sm: 0 2px 8px rgba(61,44,30,0.04);
-  --shadow-md: 0 4px 16px rgba(61,44,30,0.08);
-  --shadow-lg: 0 8px 32px rgba(61,44,30,0.12);
-  --ring-brand: 0 0 0 2px #b3c7fa;
+  /* LoftDesk Premium — Psychology-Based Warm Forest Palette */
+  --color-bg: #F5F0E8;
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #EAE4D6;
+  --color-card: #FFFFFF;
+  --color-primary: #1E1D18;
+  --color-primary-light: #4A473A;
+  --color-primary-dark: #1A2E1A;
+  --color-brand: #1A5C32;
+  --color-brand-2: #13442A;
+  --color-brand-light: #E8F0EB;
+  --color-brand-border: #A3C4A9;
+  --color-action: #1A5C32;
+  --color-action-hover: #145228;
+  --color-accent: #B8742A;
+  --color-accent-hover: #9A6022;
+  --color-accent-soft: #F5EDE0;
+  --color-success: #2E8B57;
+  --color-success-soft: #E8F5EE;
+  --color-warning: #D4890A;
+  --color-warning-soft: #FFF5E0;
+  --color-error: #A83228;
+  --color-error-soft: #FBEAE8;
+  --color-text-primary: #1E1D18;
+  --color-text-secondary: #6B6555;
+  --color-text-inverse: #FAFAF7;
+  --color-border: #D5CEBC;
+  --color-border-light: #E8E2D4;
+  --color-border-dark: #B8AE9A;
+  --color-muted: #F0EBE1;
+  --color-muted-foreground: #8A8474;
+  --color-sidebar-bg: #1A2E1A;
+  --color-sidebar-text: #E8F0EB;
+  --color-sidebar-active: rgba(58,168,90,0.18);
+  --color-sidebar-border: #2A4A2A;
+  --color-chart-1: #1A5C32;
+  --color-chart-2: #B8742A;
+  --color-chart-3: #2E8B57;
+  --color-chart-4: #6B8F4A;
+  --color-chart-5: #D4890A;
+  --shadow-sm: 0 2px 8px rgba(30,29,24,0.04);
+  --shadow-md: 0 4px 16px rgba(30,29,24,0.07);
+  --shadow-lg: 0 8px 32px rgba(30,29,24,0.11);
+  --ring-brand: 0 0 0 2px rgba(26,92,50,0.25);
   --font-body: 'Inter', 'SF Pro', 'Roboto', 'Segoe UI', Arial, sans-serif;
   --font-heading: 'Inter', 'SF Pro', 'Roboto', 'Segoe UI', Arial, sans-serif;
 }
@@ -98,15 +112,15 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 280px minmax(0, 1fr); }
 .sidebar {
   position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 14px; padding: 20px 16px;
-  background: var(--color-primary-dark); color: var(--color-text-inverse); border-right: 1px solid var(--color-border-dark);
+  background: var(--color-sidebar-bg); color: var(--color-sidebar-text); border-right: 1px solid var(--color-sidebar-border);
 }
 .sidebar__brand, .sidebar__company {
-  border-radius: 18px; border: 1px solid var(--color-border-dark); background: var(--color-primary-dark);
+  border-radius: 18px; border: 1px solid var(--color-sidebar-border); background: var(--color-sidebar-bg);
 }
 .sidebar__brand { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
 .sidebar__brand-mark {
   width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center;
-  background: #d32f2f; color: var(--color-text-inverse); font-weight: 800;
+  background: var(--color-brand); color: var(--color-text-inverse); font-weight: 800;
 }
 .sidebar__brand strong { display: block; font-size: 18px; }
 .sidebar__brand span { color: rgba(255,255,255,.70); font-size: 12px; }
@@ -121,7 +135,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   color: var(--color-brand); background: var(--color-brand-light); box-shadow: inset 0 0 0 1px var(--color-brand-border), 0 8px 24px rgba(0,0,0,.06);
 }
 .auth-shell { background: #f8fafc; }
-.sidebar__footer { margin-top: auto; display: grid; gap: 10px; }
+.sidebar__footer { margin-top: auto; display: grid; gap: 10px; background: var(--color-sidebar-bg); }
 .shell-main { display: flex; flex-direction: column; min-width: 0; }
 .shell-topbar {
   position: sticky; top: 0; z-index: 6; display: flex; align-items: center; justify-content: space-between; gap: 16px;
@@ -260,7 +274,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .doc-preview__xml { min-height: 68vh; margin: 0; padding: 16px; background: var(--color-primary-dark); color: var(--color-bg); border-radius: 16px; overflow: auto; }
 
 .dashboard-hero { display: grid; grid-template-columns: 1.25fr .75fr; gap: 18px; margin-bottom: 18px; }
-.highlight-card { position: relative; overflow: hidden; background: var(--color-primary-dark); color: var(--color-text-inverse); border: 1px solid rgba(255,255,255,.08); }
+.highlight-card { position: relative; overflow: hidden; background: var(--color-sidebar-bg); color: var(--color-text-inverse); border: 1px solid var(--color-sidebar-border); }
 /* usunięto granatowe tło, patrz wyżej */
 
 .highlight-card p, .highlight-card .field__label { color: rgba(255,255,255,.82); }
@@ -347,7 +361,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 
 .sidebar__nav, .sidebar__secondary { min-height: 0; overflow: visible; padding-right: 0; scrollbar-width: none; }
-.sidebar__footer { position: sticky; bottom: 0; background: var(--color-primary-dark); padding-top: 10px; }
+.sidebar__footer { position: sticky; bottom: 0; background: var(--color-sidebar-bg); padding-top: 10px; }
 .modal-backdrop { overflow: auto; align-items: start; }
 .modal { max-height: calc(100vh - 24px); display: flex; flex-direction: column; }
 .modal__body { overflow: auto; max-height: calc(100vh - 120px); }
