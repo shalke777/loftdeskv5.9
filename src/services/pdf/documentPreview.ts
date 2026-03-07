@@ -118,9 +118,10 @@ function pageShell(title: string, subtitle: string, content: string) {
 }
 
 function footer(company?: CompanyMeta) {
-  const phone = company?.phone || '+48 501 633 917'
-  const email = company?.email || 'biuro@loftdesk.pl'
-  return `<div class="footer"><span>${escapeHtml(phone)}</span><span>|</span><span>${escapeHtml(email)}</span></div>`
+  const phone = company?.phone || ''
+  const email = company?.email || ''
+  if (!phone && !email) return ''
+  return `<div class="footer">${phone ? `<span>${escapeHtml(phone)}</span>` : ''}${phone && email ? '<span>|</span>' : ''}${email ? `<span>${escapeHtml(email)}</span>` : ''}</div>`
 }
 
 function partyBox(title: string, party?: Party, fallbackName?: string) {
@@ -137,13 +138,13 @@ function partyBox(title: string, party?: Party, fallbackName?: string) {
 
 function defaultCompany(company?: CompanyMeta): CompanyMeta {
   return {
-    name: company?.name || 'LOFTBAU',
-    address: company?.address || 'Dane firmy do uzupełnienia w ustawieniach',
+    name: company?.name || 'Uzupełnij nazwę firmy',
+    address: company?.address || 'Uzupełnij adres w ustawieniach',
     postalCity: company?.postalCity || '',
     nip: company?.nip || '',
-    email: company?.email || 'biuro@loftdesk.pl',
-    phone: company?.phone || '+48 501 633 917',
-    bankAccount: company?.bankAccount || 'PL00000000000000000000000000',
+    email: company?.email || '',
+    phone: company?.phone || '',
+    bankAccount: company?.bankAccount || '',
   }
 }
 

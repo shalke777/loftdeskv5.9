@@ -19,13 +19,51 @@ export const invoicesApi = {
     const scope = await getDataScope(input.company_id)
     const payload = withScope(scope, { number: `FV/${new Date().getFullYear()}/${Date.now().toString().slice(-4)}`, client_id: input.client_id, project_id: input.project_id, contract_id: input.contract_id ?? null, status: input.status, invoice_type: input.invoice_type ?? 'standard', issue_date: input.issue_date, sale_date: input.sale_date ?? null, issue_place: input.issue_place ?? null, due_date: input.due_date, payment_method: input.payment_method ?? 'transfer', bank_account: input.bank_account ?? null, tranche_id: input.tranche_id ?? null, advance_total: input.advance_total ?? null, ksef_status: 'ksef_pending', ksef_ref: null, notes: input.notes ?? null })
     const { data: invoice, error } = await supabase.from('invoices').insert(payload).select('*').single(); if (error) throw error
-    const totals = calcInvoiceTotals(input.items)
-    return { id: invoice.id, company_id: invoice.company_id ?? input.company_id, client_id: invoice.client_id, project_id: invoice.project_id, contract_id: invoice.contract_id ?? null, number: invoice.number, invoice_type: invoice.invoice_type ?? 'standard', status: invoice.status, issue_date: invoice.issue_date, sale_date: invoice.sale_date ?? null, issue_place: invoice.issue_place ?? null, due_date: invoice.due_date, payment_method: invoice.payment_method ?? 'transfer', bank_account: invoice.bank_account ?? null, tranche_id: invoice.tranche_id ?? null, advance_total: invoice.advance_total ?? null, total_net: totals.totalNet, total_gross: totals.totalGross, ksef_status: invoice.ksef_status, ksef_ref: invoice.ksef_ref, notes: input.notes ?? '', created_at: invoice.created_at, items: input.items }
+    const items = input.items ?? []
+    if (items.length > 0) {
+      const itemRows = items.map((item, index) => ({ invoice_id: invoice.id, company_id: invoice.company_id, description: item.description ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index, tranche_label: item.tranche_label ?? '' }))
+      const { error: itemsError } = await supabase.from('invoice_items').insert(itemRows)
+      if (itemsError) throw itemsError
+    }
+    const totals = calcInvoiceTotals(items)
+    return { id: invoice.id, company_id: invoice.company_id ?? input.company_id, client_id: invoice.client_id, project_id: invoice.project_id, contract_id: invoice.contract_id ?? null, number: invoice.number, invoice_type: invoice.invoice_type ?? 'standard', status: invoice.status, issue_date: invoice.issue_date, sale_date: invoice.sale_date ?? null, issue_place: invoice.issue_place ?? null, due_date: invoice.due_date, payment_method: invoice.payment_method ?? 'transfer', bank_account: invoice.bank_account ?? null, tranche_id: invoice.tranche_id ?? null, advance_total: invoice.advance_total ?? null, total_net: totals.totalNet, total_gross: totals.totalGross, ksef_status: invoice.ksef_status, ksef_ref: invoice.ksef_ref, notes: input.notes ?? '', created_at: invoice.created_at, items }
   },
-  async update(id: string, input: Partial<Invoice>, companyId?: string) { if (isDemoMode || !supabase) return Promise.resolve(demoDb.invoices.update(id, input)); const scope = await getDataScope(companyId); const payload: any = { ...input }; delete payload.items; const query = applyScope(supabase.from('invoices').update(payload).eq('id', id).select('*').single(), scope); const { data, error } = await query; if (error) throw error; return data },
+  async update(id: string, input: Partial<Invoice>, companyId?: string) {
+    if (isDemoMode || !supabase) return Promise.resolve(demoDb.invoices.update(id, input))
+    const scope = await getDataScope(companyId)
+    const items = input.items
+    const payload: any = { ...input }
+    delete payload.items
+    const { data, error } = await supabase.from('invoices').update(payload).eq('id', id).select('*').single()
+    if (error) throw error
+    if (items) {
+      await supabase.from('invoice_items').delete().eq('invoice_id', id)
+      if (items.length > 0) {
+        const itemRows = items.map((item, index) => ({ invoice_id: id, company_id: data.company_id, description: item.description ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index, tranche_label: item.tranche_label ?? '' }))
+        const { error: itemsError } = await supabase.from('invoice_items').insert(itemRows)
+        if (itemsError) throw itemsError
+      }
+    }
+    return data
+  },
   async delete(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.invoices.delete(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('invoices').delete().eq('id', id), scope); const { error } = await query; if (error) throw error },
   async markPaid(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.invoices.markPaid(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('invoices').update({ status: 'paid' }).eq('id', id), scope); const { error } = await query; if (error) throw error },
   async sendToKsef(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.invoices.sendToKsef(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('invoices').update({ ksef_status: 'ksef_pending', ksef_ref: null }).eq('id', id), scope); const { error } = await query; if (error) throw error },
-  async createFromEstimate(companyId: string, estimateId: string) { if (isDemoMode || !supabase) return Promise.resolve(demoDb.invoices.createFromEstimate(companyId, estimateId)); throw new Error('Workflow estimate → faktura w trybie Supabase wymaga mapowania pozycji do invoice_items.') },
-  async createFromProject(companyId: string, config: { projectId: string; vatRate?: number; tranches?: Array<{ id: string; label: string; amount: number; due_date: string }> }) { if (isDemoMode || !supabase) return Promise.resolve(demoDb.invoices.createFromProject(companyId, config)); throw new Error('Workflow project → faktura wymaga mapowania pozycji.') },
+  async createFromEstimate(companyId: string, estimateId: string) {
+    if (isDemoMode || !supabase) return Promise.resolve(demoDb.invoices.createFromEstimate(companyId, estimateId))
+    const { data: estimate, error: estErr } = await supabase.from('cost_estimates').select('*, items:cost_estimate_items(*)').eq('id', estimateId).single()
+    if (estErr || !estimate) throw estErr ?? new Error('Nie znaleziono kosztorysu')
+    const invoiceItems = (estimate.items ?? []).map((item: any, i: number) => ({ description: item.name || item.description || '', unit: item.unit || 'szt', quantity: Number(item.quantity), unit_price: Number(item.unit_price), vat_rate: Number(item.vat_rate ?? 23), sort_order: i }))
+    return invoicesApi.create({ company_id: companyId, client_id: estimate.client_id, project_id: estimate.project_id ?? null, status: 'unpaid', issue_date: new Date().toISOString().slice(0, 10), due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10), items: invoiceItems })
+  },
+  async createFromProject(companyId: string, config: { projectId: string; vatRate?: number; tranches?: Array<{ id: string; label: string; amount: number; due_date: string }> }) {
+    if (isDemoMode || !supabase) return Promise.resolve(demoDb.invoices.createFromProject(companyId, config))
+    const { data: project, error: projErr } = await supabase.from('projects').select('*').eq('id', config.projectId).single()
+    if (projErr || !project) throw projErr ?? new Error('Nie znaleziono projektu')
+    const vatRate = config.vatRate ?? 23
+    const items = config.tranches?.length
+      ? config.tranches.map((t, i) => ({ description: t.label, unit: 'usł' as const, quantity: 1, unit_price: t.amount, vat_rate: vatRate, sort_order: i, tranche_label: t.label }))
+      : [{ description: `Realizacja projektu: ${project.name}`, unit: 'usł' as const, quantity: 1, unit_price: Number(project.budget ?? 0), vat_rate: vatRate, sort_order: 0, tranche_label: '' }]
+    return invoicesApi.create({ company_id: companyId, client_id: project.client_id, project_id: config.projectId, status: 'unpaid', issue_date: new Date().toISOString().slice(0, 10), due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10), items })
+  },
 }

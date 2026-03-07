@@ -189,6 +189,32 @@ export const demoDb = {
   companyProfileUpdate(companyId: string, input: Partial<Pick<DemoUser, 'company_name' | 'ksef_env' | 'ksef_nip' | 'ksef_token'>>) { const state = read(); state.users = state.users.map((item) => item.company_id === companyId ? { ...item, ...input } : item); writeState(state); return state.users.find((item) => item.company_id === companyId) ?? null },
   companyPlanUpdate(companyId: string, plan: DemoUser['plan']) { const state = read(); state.users = state.users.map((item) => item.company_id === companyId ? { ...item, plan } : item); writeState(state); return state.users.find((item) => item.company_id === companyId) ?? null },
   companies() { const state = read(); return Array.from(new Set(state.users.map((item) => item.company_id))).map((companyId) => { const owner = state.users.find((item) => item.company_id === companyId); return { company_id: companyId, company_name: owner?.company_name ?? companyId, plan: owner?.plan ?? 'free', members: state.users.filter((item) => item.company_id === companyId).length, clients: state.clients.filter((item) => item.company_id === companyId).length, projects: state.projects.filter((item) => item.company_id === companyId).length, estimates: state.estimates.filter((item) => item.company_id === companyId).length, invoices: state.invoices.filter((item) => item.company_id === companyId).length, pending_invitations: state.invitations.filter((item) => item.company_id === companyId && item.status === 'pending').length, portal_links: state.portalTokens.filter((item) => item.company_id === companyId && item.active).length, ksefReady: Boolean(owner?.ksef_token) } }) },
+  onboardingSummary(companyId: string) {
+    const state = read()
+    const user = state.users.find((u) => u.company_id === companyId)
+    if (!user) return null
+    const clients = state.clients.filter((c) => c.company_id === companyId)
+    const estimates = state.estimates.filter((e) => e.company_id === companyId)
+    const invoices = state.invoices.filter((i) => i.company_id === companyId)
+    const projects = state.projects.filter((p) => p.company_id === companyId)
+    const contracts = state.contracts.filter((c) => c.company_id === companyId)
+    const team = state.users.filter((u) => u.company_id === companyId)
+    const checks = {
+      companyProfile: Boolean(user.company_name),
+      nip: Boolean(user.ksef_nip),
+      team: team.length > 1,
+      firstClient: clients.length > 0,
+      firstEstimate: estimates.length > 0,
+      firstInvoice: invoices.length > 0,
+      projects: projects.length > 0,
+      contracts: contracts.length > 0,
+      portal: state.portalTokens.some((t) => t.company_id === companyId && t.active),
+      ksef: Boolean(user.ksef_token),
+    }
+    const total = Object.keys(checks).length
+    const done = Object.values(checks).filter(Boolean).length
+    return { companyName: user.company_name, plan: user.plan as 'free' | 'pro' | 'business' | 'admin', role: user.role, progress: Math.round((done / total) * 100), done, total, checks, counts: { team: team.length, clients: clients.length, estimates: estimates.length, invoices: invoices.length, projects: projects.length, contracts: contracts.length } }
+  },
   clients: {
     list(companyId: string) { return read().clients.filter((item) => item.company_id === companyId) },
     get(id: string) { return read().clients.find((item) => item.id === id) ?? null },

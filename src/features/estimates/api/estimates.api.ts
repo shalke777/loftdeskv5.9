@@ -21,17 +21,36 @@ export const estimatesApi = {
     const payload = withScope(scope, { number: `KE/${new Date().getFullYear()}/${Date.now().toString().slice(-4)}`, name: input.name, client_id: input.client_id, project_id: null, status: input.status ?? 'draft', total_net: totals.net, total_gross: totals.gross, notes: input.notes ?? null, valid_until: input.valid_until ?? null })
     const { data, error } = await supabase.from('cost_estimates').insert(payload).select('*').single()
     if (error) throw error
+    if (items.length > 0) {
+      const itemRows = items.map((item, index) => ({ estimate_id: data.id, company_id: data.company_id, name: item.name ?? item.description ?? '', description: item.description ?? item.name ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index }))
+      const { error: itemsError } = await supabase.from('cost_estimate_items').insert(itemRows)
+      if (itemsError) throw itemsError
+    }
     return { id: data.id, company_id: data.company_id ?? input.company_id, client_id: data.client_id, number: data.number, name: data.name, status: data.status, total_net: totals.net, total_gross: totals.gross, notes: data.notes ?? '', valid_until: data.valid_until ?? null, created_at: data.created_at, items }
   },
   async update(id: string, input: Partial<Estimate>, companyId?: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.estimates.update(id, input))
     const scope = await getDataScope(companyId)
+    const items = input.items
     const payload: any = { ...input }
     delete payload.items
-    const query = applyScope(supabase.from('cost_estimates').update(payload).eq('id', id).select('*, items:cost_estimate_items(*)').single(), scope)
-    const { data, error } = await query
+    if (items) {
+      const totals = calcTotals(items)
+      payload.total_net = totals.net
+      payload.total_gross = totals.gross
+    }
+    const { data, error } = await supabase.from('cost_estimates').update(payload).eq('id', id).select('*').single()
     if (error) throw error
-    return data
+    if (items) {
+      await supabase.from('cost_estimate_items').delete().eq('estimate_id', id)
+      if (items.length > 0) {
+        const itemRows = items.map((item, index) => ({ estimate_id: id, company_id: data.company_id, name: item.name ?? item.description ?? '', description: item.description ?? item.name ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index }))
+        const { error: itemsError } = await supabase.from('cost_estimate_items').insert(itemRows)
+        if (itemsError) throw itemsError
+      }
+    }
+    const { data: refreshed } = await supabase.from('cost_estimates').select('*, items:cost_estimate_items(*)').eq('id', id).single()
+    return refreshed ?? data
   },
   async delete(id: string, companyId?: string) {
     if (isDemoMode || !supabase) { demoDb.estimates.delete(id); return Promise.resolve() }

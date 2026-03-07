@@ -13,11 +13,11 @@ import { settingsApi } from '@/features/settings/api/settings.api'
 export function RegisterForm() {
   const { registerDemoCompany } = useAuth()
   const toast = useToast()
-  const [email, setEmail] = useState('nowa@firma.pl')
-  const [companyName, setCompanyName] = useState('Nowa Firma')
-  const [fullName, setFullName] = useState('Nowy Właściciel')
+  const [email, setEmail] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [fullName, setFullName] = useState('')
   const [nip, setNip] = useState('')
-  const [password, setPassword] = useState('password123')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
   const finalizeInviteIfNeeded = async () => {

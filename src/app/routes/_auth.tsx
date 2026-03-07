@@ -100,10 +100,6 @@ export function AuthLayout() {
 
         <div className="sidebar__footer">
           <InstallAppButton compact />
-          <Link to="/" className={pathname === '/' ? 'sidebar__link sidebar__link--active' : 'sidebar__link'} style={{marginBottom: 8}}>
-            <LayoutDashboard size={18} />
-            <span>Landing</span>
-          </Link>
           <Button variant="ghost" onClick={async () => { await signOut(); window.location.assign('/login') }} icon={<LogOut size={16} />}>
             Wyloguj
           </Button>

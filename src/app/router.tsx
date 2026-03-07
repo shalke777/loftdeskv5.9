@@ -16,12 +16,8 @@ import { SettingsRoutePage } from '@/app/routes/settings'
 import { TeamRoutePage } from '@/app/routes/team'
 import { BillingRoutePage } from '@/app/routes/billing'
 import { OnboardingRoutePage } from '@/app/routes/onboarding'
-import { AdminRoutePage } from '@/app/routes/admin'
 import { PortalTokenRoutePage } from '@/app/routes/portal/$token'
-import { ReleaseRoutePage } from '@/app/routes/release'
 import { JoinInvitationRoutePage } from '@/app/routes/join.$token'
-import { HealthRoutePage } from '@/app/routes/health'
-import { GoLiveRoutePage } from '@/app/routes/go-live'
 import { DocumentationRoutePage } from '@/app/routes/documentation'
 
 const rootRoute = createRootRoute({ component: RootDocument })
@@ -46,10 +42,6 @@ const settingsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path:
 const billingRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'billing', component: BillingRoutePage })
 const teamRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'team', component: TeamRoutePage })
 const onboardingRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'onboarding', component: OnboardingRoutePage })
-const adminRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'admin', component: AdminRoutePage })
-const releaseRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'release', component: ReleaseRoutePage })
-const healthRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'health', component: HealthRoutePage })
-const goLiveRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'go-live', component: GoLiveRoutePage })
 const documentationRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'documentation', component: DocumentationRoutePage })
 
 const routeTree = rootRoute.addChildren([
@@ -69,10 +61,6 @@ const routeTree = rootRoute.addChildren([
     onboardingRoute,
     settingsRoute,
     documentationRoute,
-    adminRoute,
-    releaseRoute,
-    healthRoute,
-    goLiveRoute,
   ]),
 ])
 
