@@ -8,6 +8,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'public',
+      filename: 'sw.js',
+      injectManifest: {
+        injectionPoint: undefined
+      },
       includeAssets: ['icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'],
       manifest: {
         name: 'LoftDesk',
