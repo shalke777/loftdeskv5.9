@@ -107,7 +107,7 @@ export function BillingPage() {
       </Card>
 
       <div className="grid-3">
-        {Object.values(PLAN_DEFS).map((plan) => (
+        {Object.values(PLAN_DEFS).filter((plan) => plan.id !== 'admin').map((plan) => (
           <Card key={plan.id}>
             <div className="toolbar" style={{ marginBottom: 8 }}>
               <div>

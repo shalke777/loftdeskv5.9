@@ -89,6 +89,7 @@ export const billingApi = {
   },
 
   async changePlan(companyId: string, plan: BillingPlan) {
+    if (plan === 'admin') throw new Error('Plan admin może być przypisany wyłącznie przez administratora systemu.')
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.companyPlanUpdate(companyId, plan))
     const scope = await getDataScope(companyId)
     if (scope.mode === 'multi-tenant') {
