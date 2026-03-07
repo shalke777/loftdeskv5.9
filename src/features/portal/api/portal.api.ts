@@ -82,12 +82,17 @@ function buildPortalUrl(token: string) {
   return `/portal/${token}`
 }
 
-/** Netlify function base path */
-const fnBase = '/.netlify/functions'
+/** Call a Supabase SECURITY DEFINER RPC function (works with anon key, no Netlify needed) */
+async function portalRpc(fn: string, params: Record<string, unknown>) {
+  if (!supabase) throw new Error('Supabase nie jest skonfigurowany')
+  const { data, error } = await (supabase as any).rpc(fn, params)
+  if (error) throw new Error(error.message ?? `Błąd funkcji ${fn}`)
+  return data as Record<string, unknown>
+}
 
 export const portalApi = {
   async get(token: string): Promise<PortalPayload> {
-    if (isDemoMode) {
+    if (isDemoMode || !supabase) {
       const payload = demoDb.portal.get(token)
       if (!payload) throw new Error('Portal token not found')
       const approvals = documentationStore.decisions.listForClient(payload.estimate.company_id, payload.estimate.client_id, undefined).map((item) => ({ id: item.id, title: item.title, description: item.description || '', status: item.status, type: item.decision_type }))
@@ -120,28 +125,39 @@ export const portalApi = {
         items: payload.estimate.items,
       }
     }
-    // Supabase mode — call Netlify function (no auth needed for portal)
-    const res = await fetch(`${fnBase}/portal-get?token=${encodeURIComponent(token)}`)
-    if (res.status === 410) throw new Error('expired')
-    if (!res.ok) throw new Error('Portal token not found')
-    const data = await res.json()
+    // Supabase mode — SECURITY DEFINER function (works with anon key, no Netlify env vars needed)
+    const data = await portalRpc('portal_get_by_token', { p_token: token })
+    if (data?.error === 'not_found') throw new Error('Portal token not found')
+    if (data?.error === 'expired') {
+      return {
+        token, tokenId: '', expiresAt: new Date().toISOString(),
+        expired: true, active: false,
+        estimateId: '', estimateNumber: '', estimateName: '',
+        estimateStatus: 'sent' as const, customerName: 'Klient',
+        totalGross: 0, contractorName: 'LoftDesk', contractorEmail: '',
+        messages: [], approvals: [], protocols: [], standards: [],
+      }
+    }
+    const tok = (data?.token ?? {}) as any
+    const est = (data?.estimate ?? {}) as any
+    const contractor = (data?.contractor ?? {}) as any
     return {
       token,
-      tokenId: data.token.id,
-      expiresAt: data.token.expires_at,
+      tokenId: tok.id ?? '',
+      expiresAt: tok.expires_at ?? '',
       expired: false,
       active: true,
-      estimateId: data.estimate?.id ?? '',
-      estimateNumber: data.estimate?.number ?? '',
-      estimateName: data.estimate?.name ?? '',
-      estimateStatus: data.estimate?.status ?? 'sent',
-      customerName: data.token.client_name ?? 'Klient',
-      totalGross: Number(data.estimate?.total_gross ?? 0),
-      contractorName: data.contractor?.company ?? data.contractor?.full_name ?? 'LoftDesk',
-      contractorEmail: data.contractor?.email ?? '',
-      messages: (data.messages ?? []).map((m: any) => ({
+      estimateId: est.id ?? '',
+      estimateNumber: est.number ?? '',
+      estimateName: est.name ?? '',
+      estimateStatus: est.status ?? 'sent',
+      customerName: tok.client_name ?? 'Klient',
+      totalGross: Number(est.total_gross ?? 0),
+      contractorName: contractor.company ?? contractor.full_name ?? 'LoftDesk',
+      contractorEmail: contractor.email ?? '',
+      messages: ((data?.messages ?? []) as any[]).map((m) => ({
         id: m.id,
-        author: m.sender === 'company' ? 'company' as const : 'client' as const,
+        author: (m.sender === 'company' ? 'company' : 'client') as 'client' | 'company',
         text: m.content,
         created_at: m.created_at,
         read: Boolean(m.read),
@@ -149,7 +165,7 @@ export const portalApi = {
       approvals: [],
       protocols: [],
       standards: [],
-      items: (data.estimate?.items ?? []).map((it: any) => ({
+      items: ((est.items ?? []) as any[]).map((it) => ({
         id: it.id,
         name: it.name ?? it.description ?? '',
         description: it.description,
@@ -158,40 +174,28 @@ export const portalApi = {
         unit_price: Number(it.unit_price ?? 0),
         vat_rate: Number(it.vat_rate ?? 23),
       })),
+      notes: est.notes ?? undefined,
+      validUntil: est.valid_until ?? null,
     }
   },
   async sendMessage(token: string, message: string) {
     if (!message.trim()) throw new Error('Wiadomość nie może być pusta')
-    if (isDemoMode) {
+    if (isDemoMode || !supabase) {
       const saved = demoDb.portal.sendMessage(token, message.trim())
       return { token, message: saved.content, ok: true }
     }
-    const res = await fetch(`${fnBase}/portal-message?token=${encodeURIComponent(token)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: message.trim(), sender: 'client' }),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'unknown' }))
-      throw new Error(err.error ?? 'Nie udało się wysłać wiadomości')
-    }
+    const data = await portalRpc('portal_send_message', { p_token: token, p_content: message.trim(), p_sender: 'client' })
+    if (data?.error) throw new Error(String(data.error))
     return { token, message: message.trim(), ok: true }
   },
   async sendCompanyMessage(token: string, message: string) {
     if (!message.trim()) throw new Error('Wiadomość nie może być pusta')
-    if (isDemoMode) {
+    if (isDemoMode || !supabase) {
       const saved = demoDb.portal.sendMessage(token, message.trim())
       return { token, message: saved.content, ok: true }
     }
-    const res = await fetch(`${fnBase}/portal-message?token=${encodeURIComponent(token)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: message.trim(), sender: 'company' }),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'unknown' }))
-      throw new Error(err.error ?? 'Nie udało się wysłać wiadomości')
-    }
+    const data = await portalRpc('portal_send_message', { p_token: token, p_content: message.trim(), p_sender: 'company' })
+    if (data?.error) throw new Error(String(data.error))
     return { token, message: message.trim(), ok: true }
   },
   async saveClientName(token: string, clientName: string) {
@@ -200,19 +204,12 @@ export const portalApi = {
     return { ok: true }
   },
   async decide(token: string, decision: 'accepted' | 'rejected') {
-    if (isDemoMode) {
+    if (isDemoMode || !supabase) {
       demoDb.portal.decide(token, decision)
       return { ok: true, status: decision }
     }
-    const res = await fetch(`${fnBase}/portal-decide?token=${encodeURIComponent(token)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ decision }),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'unknown' }))
-      throw new Error(err.error ?? 'Nie udało się zapisać decyzji')
-    }
+    const data = await portalRpc('portal_decide', { p_token: token, p_decision: decision })
+    if (data?.error) throw new Error(String(data.error))
     return { ok: true, status: decision }
   },
 
