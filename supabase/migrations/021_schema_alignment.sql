@@ -46,3 +46,7 @@ alter table contracts add column if not exists tranches jsonb not null default '
 -- ── indexes ──
 create index if not exists idx_invoices_contract on invoices(contract_id);
 create index if not exists idx_contracts_estimate on contracts(estimate_id);
+
+-- ── grant execute on bootstrap function to authenticated role ──
+grant execute on function public.bootstrap_my_company(text, text) to authenticated;
+grant execute on function public.bootstrap_my_company(text, text) to anon;

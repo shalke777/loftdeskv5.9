@@ -29,15 +29,19 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
     .maybeSingle()
 
   if (!memberRow) {
-    const { data: companyId } = await supabase.rpc('bootstrap_my_company')
-    if (companyId) {
-      const res = await supabase
-        .from('company_members')
-        .select('company_id, role, companies(name, plan)')
-        .eq('user_id', authUser.id)
-        .limit(1)
-        .maybeSingle()
-      memberRow = res.data
+    try {
+      const { data: companyId } = await supabase.rpc('bootstrap_my_company', { company_name: '', company_nip: '' })
+      if (companyId) {
+        const res = await supabase
+          .from('company_members')
+          .select('company_id, role, companies(name, plan)')
+          .eq('user_id', authUser.id)
+          .limit(1)
+          .maybeSingle()
+        memberRow = res.data
+      }
+    } catch {
+      // bootstrap may fail if function not yet granted — fall through to profile path
     }
   }
 
