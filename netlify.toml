@@ -3,6 +3,9 @@
   publish = "dist"
   functions = "netlify/functions"
 
+[build.processing]
+  skip_processing = true
+
 [[redirects]]
   from = "/api/portal/*"
   to = "/.netlify/functions/:splat"
