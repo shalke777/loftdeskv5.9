@@ -9,19 +9,21 @@ import { useContracts } from '@/features/contracts/hooks/useContracts'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
 import { buildInvoicePreview, buildInvoiceXml } from '@/services/pdf/documentPreview'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 
 export function InvoiceDetail({ invoice, onMarkPaid, onSendToKsef, onEdit, canMarkPaid = true, canSendToKsef = true }: { invoice: Invoice | null; onMarkPaid: (id: string) => void; onSendToKsef: (id: string) => void; onEdit?: (invoice: Invoice) => void; canMarkPaid?: boolean; canSendToKsef?: boolean }) {
   const [previewOpen, setPreviewOpen] = useState(false)
   const { data: clients = [] } = useClients()
   const { data: contracts = [] } = useContracts()
   const { user } = useAuth()
+  const profileMeta = useCompanyMeta()
   if (!invoice) return null
 
   const client = clients.find((item) => item.id === invoice.client_id)
   const contract = contracts.find((item) => item.id === invoice.contract_id)
   const clientMeta = client ? { name: client.name, address: client.address, postalCity: `${client.postal_code || ''} ${client.city || ''}`.trim(), nip: client.nip, email: client.email, phone: client.phone } : undefined
   const contractMeta = contract ? { contractNumber: contract.number, contractLocation: (contract as any).location || '' } : undefined
-  const companyMeta = { name: user?.companyName, email: user?.email }
+  const companyMeta = { name: profileMeta.name || user?.companyName, nip: profileMeta.nip, address: profileMeta.address, postalCity: profileMeta.postalCity, email: profileMeta.email || user?.email, phone: profileMeta.phone, bankAccount: profileMeta.bankAccount }
 
   const tabs = useMemo(
     () => ([

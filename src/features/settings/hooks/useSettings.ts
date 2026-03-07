@@ -39,7 +39,7 @@ export function useUpdateCompanyProfile() {
   const toast = useToast()
   const { refreshSession } = useAuth()
   return useMutation({
-    mutationFn: (input: { company_name: string; ksef_env: 'test' | 'prod'; ksef_nip: string; ksef_token: string }) => settingsApi.updateProfile(companyId, input),
+    mutationFn: (input: { company_name: string; nip?: string; address?: string; postal_code?: string; city?: string; iban?: string; phone?: string; email?: string; ksef_env: 'test' | 'prod'; ksef_nip: string; ksef_token: string }) => settingsApi.updateProfile(companyId, input),
     onSuccess: async () => {
       qc.invalidateQueries({ queryKey: settingsKeys.profile(companyId) })
       await refreshSession()

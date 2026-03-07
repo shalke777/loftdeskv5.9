@@ -16,15 +16,38 @@ export const settingsApi = {
     if (error) throw error
     return data
   },
-  async updateProfile(companyId: string, input: { company_name: string; ksef_env: 'test' | 'prod'; ksef_nip: string; ksef_token: string }) {
+  async updateProfile(companyId: string, input: { company_name: string; nip?: string; address?: string; postal_code?: string; city?: string; iban?: string; phone?: string; email?: string; ksef_env: 'test' | 'prod'; ksef_nip: string; ksef_token: string }) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.companyProfileUpdate(companyId, input))
     const scope = await getDataScope(companyId)
     if (scope.mode === 'multi-tenant') {
-      const { data, error } = await supabase.from('companies').update({ name: input.company_name, ksef_env: input.ksef_env, ksef_nip: input.ksef_nip || null, ksef_token: input.ksef_token || null }).eq('id', scope.companyId).select('*').single()
+      const { data, error } = await supabase.from('companies').update({
+        name: input.company_name,
+        nip: input.nip || null,
+        address: input.address || null,
+        postal_code: input.postal_code || null,
+        city: input.city || null,
+        iban: input.iban || null,
+        phone: input.phone || null,
+        email: input.email || null,
+        ksef_env: input.ksef_env,
+        ksef_nip: input.ksef_nip || null,
+        ksef_token: input.ksef_token || null,
+      }).eq('id', scope.companyId).select('*').single()
       if (error) throw error
       return data
     }
-    const { data, error } = await supabase.from('profiles').update({ company: input.company_name, ksef_env: input.ksef_env, ksef_nip: input.ksef_nip, ksef_token: input.ksef_token }).eq('id', scope.userId).select('*').single()
+    const { data, error } = await supabase.from('profiles').update({
+      company: input.company_name,
+      nip: input.nip || null,
+      address: input.address || null,
+      postal_code: input.postal_code || null,
+      city: input.city || null,
+      iban: input.iban || null,
+      phone: input.phone || null,
+      ksef_env: input.ksef_env,
+      ksef_nip: input.ksef_nip || null,
+      ksef_token: input.ksef_token || null,
+    }).eq('id', scope.userId).select('*').single()
     if (error) throw error
     return data
   },

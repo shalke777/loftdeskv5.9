@@ -8,6 +8,7 @@ import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPrevie
 import { buildEstimatePreview } from '@/services/pdf/documentPreview'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { PortalLinksCard } from '@/features/portal/components/PortalLinksCard'
 import { useCreateProjectFromEstimate } from '@/features/projects/hooks/useProjects'
 
@@ -17,9 +18,10 @@ export function EstimateCard({ estimate, onDelete, onCreateContract, onEdit }: {
   const [previewOpen, setPreviewOpen] = useState(false)
   const { data: clients = [] } = useClients()
   const { user } = useAuth()
+  const companyMeta = useCompanyMeta()
   const client = clients.find((item) => item.id === estimate.client_id)
   const estimateToProject = useCreateProjectFromEstimate()
-  const tabs = useMemo(() => [{ key: 'pdf', label: 'Podgląd PDF', type: 'html' as const, content: buildEstimatePreview(estimate, client ? { name: client.name, address: client.address, postalCity: `${client.postal_code || ''} ${client.city || ''}`.trim(), nip: client.nip, email: client.email, phone: client.phone } : undefined, { name: user?.companyName, email: user?.email }) }], [client, estimate, user?.companyName, user?.email])
+  const tabs = useMemo(() => [{ key: 'pdf', label: 'Podgląd PDF', type: 'html' as const, content: buildEstimatePreview(estimate, client ? { name: client.name, address: client.address, postalCity: `${client.postal_code || ''} ${client.city || ''}`.trim(), nip: client.nip, email: client.email, phone: client.phone } : undefined, { name: companyMeta.name || user?.companyName, nip: companyMeta.nip, address: companyMeta.address, postalCity: companyMeta.postalCity, email: companyMeta.email || user?.email, phone: companyMeta.phone, bankAccount: companyMeta.bankAccount }) }], [client, companyMeta, estimate, user?.companyName, user?.email])
   return (
     <>
       <Card>

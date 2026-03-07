@@ -40,8 +40,6 @@ export function SettingsPage() {
   const toast = useToast()
   const { profile } = useSettings()
   const canUseKsef = useFeatureAccess('ksef')
-  const canUsePortal = useFeatureAccess('portal')
-  const portalLinks = user ? demoDb.portal.listForCompany(user.companyId).length : 0
   const importRef = useRef<HTMLInputElement | null>(null)
 
   async function exportBackup() {
@@ -63,36 +61,33 @@ export function SettingsPage() {
       <div className="grid-2">
         <Card>
           <h3>Konto i firma</h3>
-          <p>Użytkownik: {user?.fullName}</p>
-          <p>E-mail: {user?.email}</p>
-          <p>Rola: {user?.role}</p>
-          <p>Firma: {user?.companyName}</p>
-          <p>Plan: {user?.plan ? PLAN_DEFS[user.plan].name : '—'}</p>
-          <div className="actions-row"><Button variant="ghost" onClick={async () => { await signOut(); navigate({ to: '/login' as any }) }}>Wyloguj</Button></div>
-        </Card>
-
-        <Card>
-          <h3>Portal klienta i dokumenty</h3>
-          <p>Portal klienta: {canUsePortal ? `aktywny (${portalLinks} linki)` : 'zablokowany planem / rolą'}</p>
-          <p>Podglądy i pobieranie dokumentów są dostępne w wycenach, umowach, fakturach oraz odbiorach.</p>
+          <div style={{ display: 'grid', gap: 6, fontSize: 14, marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6b7280', minWidth: 80 }}>Użytkownik</span><strong>{user?.fullName || '—'}</strong></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6b7280', minWidth: 80 }}>E-mail</span><span>{user?.email || '—'}</span></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6b7280', minWidth: 80 }}>Rola</span><span>{user?.role || '—'}</span></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6b7280', minWidth: 80 }}>Firma</span><span>{user?.companyName || '—'}</span></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6b7280', minWidth: 80 }}>Plan</span><span>{user?.plan ? PLAN_DEFS[user.plan].name : '—'}</span></div>
+          </div>
+          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
+            Dane wykonawcy (NIP, adres, IBAN) uzupełnij w karcie poniżej — będą automatycznie wciągane do dokumentów PDF i KSeF.
+          </p>
           <div className="actions-row">
-            <Button variant="secondary" onClick={() => navigate({ to: '/estimates' })}>Wyceny</Button>
-            <Button variant="secondary" onClick={() => navigate({ to: '/contracts' })}>Umowy</Button>
-            <Button variant="secondary" onClick={() => navigate({ to: '/invoices' })}>Faktury PDF/XML</Button>
-            {canUsePortal ? <a href="/portal/demo-token" target="_blank" rel="noreferrer"><Button variant="ghost">Portal demo</Button></a> : null}
+            <Button variant="ghost" onClick={async () => { await signOut(); navigate({ to: '/login' as any }) }}>Wyloguj</Button>
           </div>
         </Card>
 
-        <CompanyProfileCard />
-
         <Card>
           <h3>KSeF</h3>
-          <p>Środowisko: {(profile as any)?.ksef_env ?? 'test'}</p>
-          <p>NIP do KSeF: {(profile as any)?.ksef_nip ?? 'brak'}</p>
-          <p>Token: {(profile as any)?.ksef_token ? 'ustawiony' : 'brak'}</p>
-          <p>{canUseKsef ? 'Moduł jest aktywny w Twoim planie.' : 'Plan Free blokuje pełną integrację KSeF.'}</p>
+          <div style={{ display: 'grid', gap: 6, fontSize: 14, marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6b7280', minWidth: 120 }}>Środowisko</span><span>{(profile as any)?.ksef_env ?? 'test'}</span></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6b7280', minWidth: 120 }}>NIP do KSeF</span><span>{(profile as any)?.ksef_nip ?? 'brak — ustaw w danych wykonawcy'}</span></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6b7280', minWidth: 120 }}>Token</span><span>{(profile as any)?.ksef_token ? '✅ ustawiony' : '❌ brak — ustaw poniżej'}</span></div>
+          </div>
+          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>{canUseKsef ? 'Moduł aktywny w Twoim planie.' : 'Plan Free blokuje pełną integrację KSeF.'}</p>
           <div className="actions-row"><Button variant="secondary" onClick={() => navigate({ to: '/ksef' })}>Przejdź do KSeF</Button></div>
         </Card>
+
+        <CompanyProfileCard />
 
         <WorkspaceReadinessCard />
         <WorkspaceLimitsCard />

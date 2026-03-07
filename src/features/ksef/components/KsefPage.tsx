@@ -26,7 +26,7 @@ export function KsefPage() {
   const { history, refresh: refreshHistory, clear: clearHistory } = useKsefHistory()
   const upo = useKsefUpo()
 
-  const [nipInput, setNipInput] = useState<string>((profile as Record<string, unknown>)?.ksef_nip as string || '')
+  const [nipInput, setNipInput] = useState<string>((profile as Record<string, unknown>)?.ksef_nip as string || (profile as Record<string, unknown>)?.nip as string || '')
   const [tokenInput, setTokenInput] = useState<string>((profile as Record<string, unknown>)?.ksef_token as string || '')
   const [envInput, setEnvInput] = useState<'test' | 'prod'>((profile as Record<string, unknown>)?.ksef_env === 'prod' ? 'prod' : 'test')
 
@@ -148,7 +148,7 @@ export function KsefPage() {
                 </Button>
               </div>
               <p style={{ marginTop: 10, fontSize: 12, color: '#a0aec0', lineHeight: 1.5 }}>
-                Prod/Test wymaga uruchomienia funkcji Netlify (<code>netlify dev</code>).<br />
+                Środowisko testowe: ksef-test.mf.gov.pl<br />
                 Tryb demo pozwala przetestować interfejs bez połączenia z MF.
               </p>
             </form>
