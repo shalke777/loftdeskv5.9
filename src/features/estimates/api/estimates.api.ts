@@ -3,6 +3,7 @@ import { calcTotals } from '@/features/estimates/lib/estimate.calculations'
 import { demoDb } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { applyScope, getDataScope, withScope } from '@/shared/lib/dataScope'
+import { projectDocumentsApi } from '@/features/projects/api/projectDocuments.api'
 
 export const estimatesApi = {
   async list(companyId: string): Promise<Estimate[]> {
@@ -18,7 +19,7 @@ export const estimatesApi = {
     const items = input.items ?? []
     const totals = calcTotals(items)
     const scope = await getDataScope(input.company_id)
-    const payload = withScope(scope, { number: `KE/${new Date().getFullYear()}/${Date.now().toString().slice(-4)}`, name: input.name, client_id: input.client_id, project_id: null, status: input.status ?? 'draft', total_net: totals.net, total_gross: totals.gross, notes: input.notes ?? null, valid_until: input.valid_until ?? null })
+    const payload = withScope(scope, { number: `KE/${new Date().getFullYear()}/${Date.now().toString().slice(-4)}`, name: input.name, client_id: input.client_id, project_id: input.project_id ?? null, status: input.status ?? 'draft', total_net: totals.net, total_gross: totals.gross, notes: input.notes ?? null, valid_until: input.valid_until ?? null })
     const { data, error } = await supabase.from('cost_estimates').insert(payload).select('*').single()
     if (error) throw error
     if (items.length > 0) {
@@ -26,6 +27,7 @@ export const estimatesApi = {
       const { error: itemsError } = await supabase.from('cost_estimate_items').insert(itemRows)
       if (itemsError) throw itemsError
     }
+    if (input.project_id) { try { await projectDocumentsApi.link(input.company_id, input.project_id, 'estimate', data.id, { manual: true }) } catch {} }
     return { id: data.id, company_id: data.company_id ?? input.company_id, client_id: data.client_id, number: data.number, name: data.name, status: data.status, total_net: totals.net, total_gross: totals.gross, notes: data.notes ?? '', valid_until: data.valid_until ?? null, created_at: data.created_at, items }
   },
   async update(id: string, input: Partial<Estimate>, companyId?: string) {

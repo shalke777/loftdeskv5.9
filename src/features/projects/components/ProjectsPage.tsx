@@ -12,7 +12,6 @@ import { KanbanBoard } from '@/features/projects/components/KanbanBoard'
 import type { Project } from '@/entities/project/model'
 import { ProjectDetail } from '@/features/projects/components/ProjectDetail'
 import { useCan } from '@/features/auth/hooks/usePermissions'
-import { AssignmentQueueBanner } from '@/features/projects/components/AssignmentQueueBanner'
 import { ProjectInvoiceModal } from '@/features/projects/components/ProjectInvoiceModal'
 import type { InvoiceFromProjectConfig } from '@/features/projects/components/ProjectInvoiceModal'
 
@@ -45,7 +44,6 @@ export function ProjectsPage() {
   return (
     <div>
       <div className="toolbar"><PageHeader title="Projekty" subtitle="Harmonogram realizacji, budżet, koszty, statusy i fakturowanie projektów." /><div className="toolbar__actions">{canCreate ? <Button onClick={() => { setEditing(null); setOpen(true) }}>Nowy projekt</Button> : null}</div></div>
-      <AssignmentQueueBanner />
       <div className="grid-4" style={{ marginBottom: 16 }}><div className="card"><h3>Aktywne</h3><p>{summary.active}</p></div><div className="card"><h3>W ofercie</h3><p>{summary.offer}</p></div><div className="card"><h3>Zakończone</h3><p>{summary.done}</p></div></div>
       {selected ? <ProjectDetail project={selected} onEdit={(item) => { setEditing(item); setOpen(true) }} onCreateInvoice={handleCreateInvoice} /> : null}
       {isLoading ? <Spinner /> : null}

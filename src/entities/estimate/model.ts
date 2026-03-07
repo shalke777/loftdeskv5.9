@@ -29,4 +29,4 @@ export const EstimateSchema = z.object({
 
 export type Estimate = z.infer<typeof EstimateSchema>
 export type EstimateItem = z.infer<typeof EstimateItemSchema>
-export type CreateEstimateInput = Pick<Estimate, 'name' | 'client_id' | 'notes' | 'status' | 'valid_until'> & { company_id: string; items?: EstimateItem[] }
+export type CreateEstimateInput = Pick<Estimate, 'name' | 'client_id' | 'notes' | 'status' | 'valid_until'> & { company_id: string; project_id?: string | null; items?: EstimateItem[] }

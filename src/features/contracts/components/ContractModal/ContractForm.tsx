@@ -6,6 +6,7 @@ import { Select } from '@/shared/ui/Select/Select'
 import type { Contract, ContractTranche, CreateContractInput, CustomParagraph } from '@/entities/contract/model'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useEstimates } from '@/features/estimates/hooks/useEstimates'
+import { useProjects } from '@/features/projects/hooks/useProjects'
 import { formatCurrency } from '@/shared/lib/formatters'
 
 const TRANCHE_COUNT_OPTIONS = [
@@ -49,9 +50,12 @@ export function ContractForm({ companyId, onSubmit, initialContract }: { company
   const [endDate, setEndDate] = useState(initialContract?.end_date || '')
   const [location, setLocation] = useState(initialContract?.location || '')
   const [notes, setNotes] = useState(initialContract?.notes || '')
+  const [projectId, setProjectId] = useState(initialContract?.project_id || '')
 
   const { data: estimates = [] } = useEstimates()
   const { data: clients = [] } = useClients()
+  const { data: projects = [] } = useProjects()
+  const projectOptions = projects.map((p) => ({ value: p.id, label: `${p.number} · ${p.name}` }))
 
   const selectedEstimate = estimates.find((e) => e.id === estimateId) ?? null
   const selectedClient = clients.find((c) => c.id === selectedEstimate?.client_id) ?? null
@@ -75,6 +79,7 @@ export function ContractForm({ companyId, onSubmit, initialContract }: { company
       setEndDate(initialContract.end_date || '')
       setLocation(initialContract.location || '')
       setNotes(initialContract.notes || '')
+      setProjectId(initialContract.project_id || '')
       setTranches(initialContract.tranches || [])
       setCustomParagraphs(initialContract.custom_paragraphs || [])
     }
@@ -119,7 +124,7 @@ export function ContractForm({ companyId, onSubmit, initialContract }: { company
       company_id: companyId,
       estimate_id: estimateId || null,
       client_id: selectedEstimate?.client_id || initialContract?.client_id || null,
-      project_id: null,
+      project_id: projectId || null,
       status: initialContract?.status || 'unsigned',
       sign_date: signDate,
       start_date: startDate || null,
@@ -166,6 +171,7 @@ export function ContractForm({ companyId, onSubmit, initialContract }: { company
         <div className="grid-2">
           <Input label="Data podpisu" type="date" value={signDate} onChange={(e) => setSignDate(e.target.value)} />
           <Input label="Adres inwestycji / miejsce realizacji" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="np. ul. Kwiatowa 3, Warszawa" />
+          <Select label="Projekt" value={projectId} onChange={(e) => setProjectId(e.target.value)} options={projectOptions} placeholder="Bez projektu" />
           <Input label="Termin rozpoczęcia robót" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           <Input label="Termin zakończenia robót" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
         </div>

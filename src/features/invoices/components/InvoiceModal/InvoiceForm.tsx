@@ -5,6 +5,7 @@ import { Select } from '@/shared/ui/Select/Select'
 import type { CreateInvoiceInput, Invoice, InvoiceItem } from '@/entities/invoice/model'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useContracts } from '@/features/contracts/hooks/useContracts'
+import { useProjects } from '@/features/projects/hooks/useProjects'
 import { calcInvoiceTotals } from '@/features/invoices/lib/invoice.calculations'
 import { formatCurrency } from '@/shared/lib/formatters'
 
@@ -36,11 +37,14 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
   const [advanceTotal, setAdvanceTotal] = useState('0')
   const [items, setItems] = useState<InvoiceItem[]>([])
   const [notes, setNotes] = useState('')
+  const [projectId, setProjectId] = useState('')
 
   const { data: clients = [] } = useClients()
   const { data: contracts = [] } = useContracts()
+  const { data: projects = [] } = useProjects()
   const clientOptions = useMemo(() => clients.map((c) => ({ value: c.id, label: c.name })), [clients])
   const contractOptions = useMemo(() => contracts.map((c) => ({ value: c.id, label: `${c.number} · ${formatCurrency(c.value)}` })), [contracts])
+  const projectOptions = useMemo(() => projects.map((p) => ({ value: p.id, label: `${p.number} · ${p.name}` })), [projects])
   const selectedContract = useMemo(() => contracts.find((c) => c.id === contractId) ?? null, [contracts, contractId])
   const trancheOptions = useMemo(() => (selectedContract?.tranches ?? []).map((t) => ({ value: t.id, label: `${t.label} · ${formatCurrency(t.amount)}` })), [selectedContract])
   const totals = useMemo(() => calcInvoiceTotals(items), [items])
@@ -58,6 +62,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
     setSelectedTrancheId('')
     setAdvanceTotal(String(initialInvoice?.advance_total ?? 0))
     setItems(initialInvoice?.items?.length ? initialInvoice.items : [{ id: crypto.randomUUID(), description: 'Usługa', unit: 'kpl', quantity: 1, unit_price: 0, vat_rate: 23, sort_order: 1, tranche_label: '' }])
+    setProjectId(initialInvoice?.project_id || '')
     setNotes(initialInvoice?.notes || '')
   }, [initialInvoice])
 
@@ -102,6 +107,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
         <Select label="Rodzaj faktury" value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)} options={INVOICE_TYPE_OPTIONS} />
         <Select label="Umowa" value={contractId} onChange={(e) => setContractId(e.target.value)} options={contractOptions} placeholder="Bez umowy" />
         {selectedContract?.tranches?.length ? <Select label="Transza / płatność z umowy" value={selectedTrancheId} onChange={(e) => applyTranche(e.target.value)} options={trancheOptions} placeholder="Wybierz transzę" /> : null}
+        <Select label="Projekt" value={projectId} onChange={(e) => setProjectId(e.target.value)} options={projectOptions} placeholder="Bez projektu" />
         <Select label="Klient (nabywca)" value={clientId} onChange={(e) => setClientId(e.target.value)} options={clientOptions} placeholder="Bez przypisania" />
         <Input label="Data wystawienia" type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
         <Input label="Data sprzedaży / wykonania usługi" type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} />
@@ -146,7 +152,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
         <Button onClick={() => onSubmit({
           company_id: companyId,
           client_id: clientId || null,
-          project_id: null,
+          project_id: projectId || null,
           contract_id: contractId || null,
           status: 'unpaid',
           invoice_type: invoiceType as Invoice['invoice_type'],
