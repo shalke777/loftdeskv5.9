@@ -5,6 +5,7 @@ export function usePortalData(token: string) {
   return useQuery({
     queryKey: ['portal', token],
     queryFn: () => portalApi.get(token),
+    refetchInterval: 10000,
   })
 }
 

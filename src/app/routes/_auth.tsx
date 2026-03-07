@@ -1,4 +1,5 @@
 import {
+  Bell,
   Calculator,
   CreditCard,
   ExternalLink,
@@ -19,6 +20,8 @@ import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { APP_NAME } from '@/shared/lib/constants'
 import { InstallAppButton } from '@/shared/ui/InstallAppButton/InstallAppButton'
 import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
+import { usePortalNotifications } from '@/features/portal/hooks/usePortalNotifications'
+import { useState } from 'react'
 
 type MainNavItem = {
   type?: 'route'
@@ -58,6 +61,8 @@ export function AuthLayout() {
   const canUseKsef = useFeatureAccess('ksef')
   const { data: portalTokens } = usePortalTokens(companyId ?? '')
   const firstPortalUrl = canUsePortal ? (portalTokens ?? []).find((t) => t.active)?.url ?? null : null
+  const { notifications, unreadCount, markAllRead } = usePortalNotifications(user?.id ?? null)
+  const [showNotifications, setShowNotifications] = useState(false)
 
   if (loading) return <div className="page-loading">Ładowanie sesji...</div>
   if (!user) return <AuthScreen />
@@ -116,6 +121,53 @@ export function AuthLayout() {
           </div>
           <div className="shell-topbar__right">
             <span className="shell-pill">Plan: {user.plan}</span>
+            <div style={{ position: 'relative' }}>
+              <Button variant="ghost" size="sm" onClick={() => { setShowNotifications((v) => !v); if (!showNotifications) markAllRead() }} icon={<Bell size={18} />}>
+                {unreadCount > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 2, right: 2,
+                    background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700,
+                    borderRadius: '50%', minWidth: 18, height: 18,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 4px', lineHeight: 1,
+                  }}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </Button>
+              {showNotifications && (
+                <div style={{
+                  position: 'absolute', top: '100%', right: 0, zIndex: 999,
+                  background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.12)', width: 340, maxHeight: 400, overflow: 'auto',
+                }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', fontWeight: 600, fontSize: 14 }}>
+                    Powiadomienia z portalu
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: '20px 16px', color: '#9ca3af', fontSize: 13, textAlign: 'center' }}>
+                      Brak powiadomień
+                    </div>
+                  ) : (
+                    notifications.slice(0, 20).map((n) => (
+                      <div key={n.id} style={{
+                        padding: '10px 16px', borderBottom: '1px solid #f9fafb',
+                        background: n.read ? '#fff' : '#f0f9ff',
+                        fontSize: 13,
+                      }}>
+                        <div style={{ fontWeight: 500, color: n.type === 'accepted' ? '#16a34a' : n.type === 'rejected' ? '#dc2626' : '#1d4ed8' }}>
+                          {n.type === 'accepted' ? '✅ Akceptacja' : n.type === 'rejected' ? '❌ Odrzucenie' : '💬 Wiadomość'}
+                        </div>
+                        <div style={{ marginTop: 2, color: '#374151' }}>{n.text}</div>
+                        <div style={{ marginTop: 4, color: '#9ca3af', fontSize: 11 }}>
+                          {new Date(n.created_at).toLocaleString('pl-PL')}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
             {firstPortalUrl ? <a href={firstPortalUrl} target="_blank" rel="noreferrer"><Button variant="secondary" size="sm">Portal klienta</Button></a> : null}
             <InstallAppButton compact />
           </div>
