@@ -5,10 +5,10 @@ security definer
 as $$
 declare
   invite_row public.company_invitations%rowtype;
-  current_user uuid;
+  cur_user uuid;
 begin
-  current_user := auth.uid();
-  if current_user is null then
+  cur_user := auth.uid();
+  if cur_user is null then
     raise exception 'AUTH_REQUIRED';
   end if;
 
@@ -24,7 +24,7 @@ begin
   end if;
 
   insert into public.company_members(company_id, user_id, role)
-  values (invite_row.company_id, current_user, invite_row.role)
+  values (invite_row.company_id, cur_user, invite_row.role)
   on conflict (company_id, user_id) do update set role = excluded.role;
 
   update public.company_invitations

@@ -1,29 +1,33 @@
 -- LoftDesk v4.7 seed / backfill helper
 -- This script is safe for local development.
 
-insert into public.companies (id, owner_user_id, name, nip, plan)
-select
-  gen_random_uuid(),
-  p.id,
-  coalesce(nullif(p.company, ''), nullif(p.full_name, ''), split_part(p.email, '@', 1)),
-  nullif(p.nip, ''),
-  coalesce(p.plan, 'free')
-from public.profiles p
-where not exists (
-  select 1
-  from public.company_members cm
-  where cm.user_id = p.id
-);
+-- Krok 1: Utwórz firmy z profili użytkowników (jeśli jeszcze nie mają)
+do $$
+declare
+  p record;
+  new_company_id uuid;
+begin
+  for p in
+    select id, email, full_name, company, nip, plan
+    from public.profiles
+    where not exists (
+      select 1 from public.company_members cm where cm.user_id = profiles.id
+    )
+  loop
+    new_company_id := gen_random_uuid();
 
-insert into public.company_members (company_id, user_id, role)
-select c.id, c.owner_user_id, 'owner'
-from public.companies c
-where c.owner_user_id is not null
-  and not exists (
-    select 1
-    from public.company_members cm
-    where cm.company_id = c.id and cm.user_id = c.owner_user_id
-  );
+    insert into public.companies (id, name, nip, plan)
+    values (
+      new_company_id,
+      coalesce(nullif(p.company, ''), nullif(p.full_name, ''), split_part(p.email, '@', 1)),
+      nullif(p.nip, ''),
+      coalesce(p.plan, 'free')
+    );
+
+    insert into public.company_members (company_id, user_id, role)
+    values (new_company_id, p.id, 'owner');
+  end loop;
+end $$;
 
 update public.clients cl
 set company_id = cm.company_id
