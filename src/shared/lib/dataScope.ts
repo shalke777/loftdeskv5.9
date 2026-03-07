@@ -55,15 +55,14 @@ export async function getDataScope(companyIdHint?: string): Promise<DataScope> {
 }
 
 export function applyScope(query: any, scope: DataScope) {
-  return scope.mode === 'multi-tenant'
-    ? query.eq('company_id', scope.companyId)
-    : query.eq('user_id', scope.userId)
+  if (scope.mode === 'multi-tenant') {
+    return query.eq('company_id', scope.companyId)
+  }
+  return query.eq('user_id', scope.userId)
 }
 
 export function withScope<T extends Record<string, unknown>>(scope: DataScope, payload: T) {
-  return scope.mode === 'multi-tenant'
-    ? compact({ ...payload, company_id: scope.companyId })
-    : compact({ ...payload, user_id: scope.userId })
+  return compact({ ...payload, company_id: scope.companyId, user_id: scope.userId })
 }
 
 export function compact<T extends Record<string, unknown>>(payload: T) {
