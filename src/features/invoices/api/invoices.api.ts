@@ -21,7 +21,7 @@ export const invoicesApi = {
     const { data: invoice, error } = await supabase.from('invoices').insert(payload).select('*').single(); if (error) throw error
     const items = input.items ?? []
     if (items.length > 0) {
-      const itemRows = items.map((item, index) => ({ invoice_id: invoice.id, company_id: invoice.company_id, description: item.description ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index, tranche_label: item.tranche_label ?? '' }))
+      const itemRows = items.map((item, index) => ({ invoice_id: invoice.id, description: item.description ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index, tranche_label: item.tranche_label ?? '' }))
       const { error: itemsError } = await supabase.from('invoice_items').insert(itemRows)
       if (itemsError) throw itemsError
     }
@@ -39,7 +39,7 @@ export const invoicesApi = {
     if (items) {
       await supabase.from('invoice_items').delete().eq('invoice_id', id)
       if (items.length > 0) {
-        const itemRows = items.map((item, index) => ({ invoice_id: id, company_id: data.company_id, description: item.description ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index, tranche_label: item.tranche_label ?? '' }))
+        const itemRows = items.map((item, index) => ({ invoice_id: id, description: item.description ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index, tranche_label: item.tranche_label ?? '' }))
         const { error: itemsError } = await supabase.from('invoice_items').insert(itemRows)
         if (itemsError) throw itemsError
       }

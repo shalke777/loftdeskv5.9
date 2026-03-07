@@ -22,7 +22,7 @@ export const estimatesApi = {
     const { data, error } = await supabase.from('cost_estimates').insert(payload).select('*').single()
     if (error) throw error
     if (items.length > 0) {
-      const itemRows = items.map((item, index) => ({ estimate_id: data.id, company_id: data.company_id, name: item.name ?? item.description ?? '', description: item.description ?? item.name ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index }))
+      const itemRows = items.map((item, index) => ({ cost_estimate_id: data.id, name: item.name ?? item.description ?? '', description: item.description ?? item.name ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index }))
       const { error: itemsError } = await supabase.from('cost_estimate_items').insert(itemRows)
       if (itemsError) throw itemsError
     }
@@ -42,9 +42,9 @@ export const estimatesApi = {
     const { data, error } = await supabase.from('cost_estimates').update(payload).eq('id', id).select('*').single()
     if (error) throw error
     if (items) {
-      await supabase.from('cost_estimate_items').delete().eq('estimate_id', id)
+      await supabase.from('cost_estimate_items').delete().eq('cost_estimate_id', id)
       if (items.length > 0) {
-        const itemRows = items.map((item, index) => ({ estimate_id: id, company_id: data.company_id, name: item.name ?? item.description ?? '', description: item.description ?? item.name ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index }))
+        const itemRows = items.map((item, index) => ({ cost_estimate_id: id, name: item.name ?? item.description ?? '', description: item.description ?? item.name ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index }))
         const { error: itemsError } = await supabase.from('cost_estimate_items').insert(itemRows)
         if (itemsError) throw itemsError
       }

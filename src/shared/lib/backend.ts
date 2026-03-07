@@ -21,12 +21,25 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   const authUser = authData.user
   if (!authUser) return { user: null }
 
-  const { data: memberRow } = await supabase
+  let { data: memberRow } = await supabase
     .from('company_members')
     .select('company_id, role, companies(name, plan)')
     .eq('user_id', authUser.id)
     .limit(1)
     .maybeSingle()
+
+  if (!memberRow) {
+    const { data: companyId } = await supabase.rpc('bootstrap_my_company')
+    if (companyId) {
+      const res = await supabase
+        .from('company_members')
+        .select('company_id, role, companies(name, plan)')
+        .eq('user_id', authUser.id)
+        .limit(1)
+        .maybeSingle()
+      memberRow = res.data
+    }
+  }
 
   if (memberRow) {
     const companies = Array.isArray(memberRow.companies) ? memberRow.companies[0] : memberRow.companies
