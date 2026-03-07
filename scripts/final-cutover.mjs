@@ -1,0 +1,6 @@
+console.log('LoftDesk v5.2 final cutover runbook')
+console.log('1) snapshot danych')
+console.log('2) migracje SQL 001-016')
+console.log('3) env + deploy-ready + go-live')
+console.log('4) portal / invites / billing / settings smoke')
+console.log('5) post-cutover verify + post-release audit')

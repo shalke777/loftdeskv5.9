@@ -1,0 +1,92 @@
+import type { ProjectCompleteness as ProjectCompletenessType } from '@/entities/project/model'
+
+const CHECKS: { key: keyof ProjectCompletenessType; label: string }[] = [
+  { key: 'has_client',   label: 'Klient' },
+  { key: 'has_estimate', label: 'Wycena' },
+  { key: 'has_contract', label: 'Umowa' },
+  { key: 'has_invoice',  label: 'Faktura' },
+  { key: 'has_protocol', label: 'Protokół' },
+  { key: 'has_note',     label: 'Notatka' },
+]
+
+interface Props {
+  score: number
+  flags?: ProjectCompletenessType | null
+  compact?: boolean
+}
+
+export function ProjectCompleteness({ score, flags, compact = false }: Props) {
+  const color = score >= 80 ? '#38a169' : score >= 50 ? '#d69e2e' : '#e53e3e'
+
+  if (compact) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div
+          style={{
+            width: 60,
+            height: 6,
+            background: '#e2e8f0',
+            borderRadius: 3,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              width: `${score}%`,
+              height: '100%',
+              background: color,
+              borderRadius: 3,
+              transition: 'width .3s',
+            }}
+          />
+        </div>
+        <span style={{ fontSize: 11, color, fontWeight: 600 }}>{score}%</span>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <div
+          style={{
+            flex: 1,
+            height: 8,
+            background: '#e2e8f0',
+            borderRadius: 4,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              width: `${score}%`,
+              height: '100%',
+              background: color,
+              borderRadius: 4,
+              transition: 'width .3s',
+            }}
+          />
+        </div>
+        <span style={{ fontSize: 14, fontWeight: 700, minWidth: 40, color }}>{score}%</span>
+      </div>
+      {flags && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {CHECKS.map(({ key, label }) => (
+            <span
+              key={key}
+              style={{
+                fontSize: 11,
+                padding: '2px 8px',
+                borderRadius: 12,
+                background: flags[key] ? '#c6f6d5' : '#fed7d7',
+                color: flags[key] ? '#276749' : '#9b2c2c',
+              }}
+            >
+              {flags[key] ? '✓' : '✗'} {label}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

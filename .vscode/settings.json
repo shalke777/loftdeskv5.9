@@ -1,0 +1,4 @@
+{
+    "githubPullRequests.experimental.notificationsMarkPullRequests": "markAsDone",
+    "githubPullRequests.experimental.useQuickChat": true
+}
