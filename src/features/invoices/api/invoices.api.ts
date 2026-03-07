@@ -65,7 +65,7 @@ export const invoicesApi = {
     const vatRate = config.vatRate ?? 23
     const items = config.tranches?.length
       ? config.tranches.map((t, i) => ({ description: t.label, unit: 'usł' as const, quantity: 1, unit_price: t.amount, vat_rate: vatRate, sort_order: i, tranche_label: t.label }))
-      : [{ description: `Realizacja projektu: ${project.name}`, unit: 'usł' as const, quantity: 1, unit_price: Number(project.budget ?? 0), vat_rate: vatRate, sort_order: 0, tranche_label: '' }]
+      : [{ description: `Realizacja projektu: ${project.name}`, unit: 'usł' as const, quantity: 1, unit_price: 0, vat_rate: vatRate, sort_order: 0, tranche_label: '' }]
     return invoicesApi.create({ company_id: companyId, client_id: project.client_id, project_id: config.projectId, status: 'unpaid', issue_date: new Date().toISOString().slice(0, 10), due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10), items })
   },
 }

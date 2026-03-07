@@ -296,8 +296,6 @@ export const autoLinkService = {
         start_date: null,
         end_date: null,
         address: input.address ?? '',
-        budget: null,
-        costs: 0,
         notes: undefined,
       })
       autoLinkService._demoPatchProjectId(input, newProj.id)

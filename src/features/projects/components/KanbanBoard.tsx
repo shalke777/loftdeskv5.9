@@ -14,7 +14,6 @@ export function KanbanBoard({ projects }: { projects: Project[] }) {
               <div key={project.id} className="portal-message">
                 <strong>{project.number}</strong>
                 <div>{project.name}</div>
-                <div className="field__label">Budżet: {project.budget.toLocaleString('pl-PL')} zł</div>
               </div>
             ))}
             {!projects.some((project) => project.status === status) ? <div className="field__label">Brak projektów</div> : null}

@@ -35,7 +35,7 @@ export function ProjectForm({ companyId, onSubmit, initialProject }: { companyId
       <Input label="Start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
       <Input label="Koniec" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
       <Input label="Notatki" value={notes} onChange={(e) => setNotes(e.target.value)} />
-      <div className="actions-row" style={{ gridColumn: '1 / -1' }}><Button onClick={() => onSubmit({ company_id: companyId, client_id: clientId || null, name, status, start_date: startDate || null, end_date: endDate || null, address, budget: 0, costs: 0, notes })}>{initialProject ? 'Zapisz zmiany' : 'Zapisz projekt'}</Button></div>
+      <div className="actions-row" style={{ gridColumn: '1 / -1' }}><Button onClick={() => onSubmit({ company_id: companyId, client_id: clientId || null, name, status, start_date: startDate || null, end_date: endDate || null, address, notes })}>{initialProject ? 'Zapisz zmiany' : 'Zapisz projekt'}</Button></div>
     </div>
   )
 }

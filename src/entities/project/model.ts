@@ -20,8 +20,6 @@ export const ProjectSchema = z.object({
   end_date: z.string().nullable(),
   address: z.string().optional(),
   investment_address: z.string().nullable().optional(),
-  budget: z.number().nonnegative().nullable(),
-  costs: z.number().nonnegative().nullable().optional(),
   notes: z.string().optional(),
   completeness_score: z.number().optional(),
   completeness_flags: ProjectCompletenessSchema.nullable().optional(),
@@ -72,4 +70,4 @@ export type ProjectCompleteness = z.infer<typeof ProjectCompletenessSchema>
 export type ProjectDocument = z.infer<typeof ProjectDocumentSchema>
 export type ProjectTimelineEntry = z.infer<typeof ProjectTimelineEntrySchema>
 export type AssignmentQueueItem = z.infer<typeof AssignmentQueueItemSchema>
-export type CreateProjectInput = Pick<Project, 'client_id' | 'name' | 'status' | 'start_date' | 'end_date' | 'address' | 'budget' | 'costs' | 'notes'> & { company_id: string; investment_address?: string | null }
+export type CreateProjectInput = Pick<Project, 'client_id' | 'name' | 'status' | 'start_date' | 'end_date' | 'address' | 'notes'> & { company_id: string; investment_address?: string | null }
