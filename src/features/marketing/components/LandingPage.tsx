@@ -232,7 +232,7 @@ export function LandingPage() {
             </div>
             <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Pro</p>
             <div style={{ marginBottom: 24 }}>
-              <span style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.04em', color: 'white' }}>99 zl</span>
+              <span style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.04em', color: 'white' }}>119 zł</span>
               <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', marginLeft: 4 }}>/mies</span>
             </div>
             <div style={{ display: 'grid', gap: 12, flex: 1, marginBottom: 28 }}>
