@@ -12,10 +12,10 @@ import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
 
 const quickActions = [
-  { icon: Users,        title: 'Dodaj kontrahenta', text: 'Uzupełnij bazę inwestorów i wykonawców.',    href: '/clients',   bg: 'var(--color-info-soft)',    border: '#93c5fd', iconBg: '#dbeafe', iconColor: 'var(--color-info)' },
-  { icon: FileText,     title: 'Nowa wycena',        text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates', bg: 'var(--color-warning-soft)', border: '#fcd34d', iconBg: '#fef3c7', iconColor: 'var(--color-warning)' },
-  { icon: Receipt,      title: 'Nowa faktura',       text: 'Wystaw dokument i przygotuj XML do KSeF.',   href: '/invoices',  bg: 'var(--color-success-soft)', border: '#86efac', iconBg: '#dcfce7', iconColor: 'var(--color-success)' },
-  { icon: FolderKanban, title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',     href: '/projects',  bg: 'var(--color-brand-light)',  border: 'var(--color-brand-border)', iconBg: '#fee2e2', iconColor: 'var(--color-brand)' },
+  { icon: Users,        title: 'Dodaj kontrahenta', text: 'Uzupełnij bazę inwestorów i wykonawców.',    href: '/clients',   qaBg: '#eaf1ff', qaBorder: '#93c5fd', qaIconBg: '#dbeafe', qaIconColor: '#1d4ed8' },
+  { icon: FileText,     title: 'Nowa wycena',        text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates', qaBg: '#fff4df', qaBorder: '#fcd34d', qaIconBg: '#fef3c7', qaIconColor: '#b45309' },
+  { icon: Receipt,      title: 'Nowa faktura',       text: 'Wystaw dokument i przygotuj XML do KSeF.',   href: '/invoices',  qaBg: '#e8f7ee', qaBorder: '#86efac', qaIconBg: '#dcfce7', qaIconColor: '#15803d' },
+  { icon: FolderKanban, title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',     href: '/projects',  qaBg: '#fff1f1', qaBorder: '#fecaca', qaIconBg: '#fee2e2', qaIconColor: '#dc2626' },
 ]
 
 export function DashboardPage() {
@@ -63,11 +63,11 @@ export function DashboardPage() {
                 <button
                   key={action.title}
                   className="quick-action"
-                  style={{ background: action.bg, borderColor: action.border }}
+                  style={{ '--qa-bg': action.qaBg, '--qa-border': action.qaBorder, '--qa-icon-bg': action.qaIconBg, '--qa-icon-color': action.qaIconColor } as React.CSSProperties}
                   onClick={() => navigate({ to: action.href as any })}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                    <div className="quick-action__icon" style={{ background: action.iconBg, color: action.iconColor }}><Icon size={18} /></div>
+                    <div className="quick-action__icon"><Icon size={18} /></div>
                     <strong>{action.title}</strong>
                   </div>
                   <div className="field__label">{action.text}</div>
