@@ -5,12 +5,11 @@ import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Button } from '@/shared/ui/Button/Button'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
-import { useBillingSummary, useChangePlan } from '@/features/billing/hooks/useBilling'
+import { useBillingSummary } from '@/features/billing/hooks/useBilling'
+import { useToast } from '@/shared/hooks/useToast'
 import { useCan } from '@/features/auth/hooks/usePermissions'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { AccessNotice } from '@/shared/ui/AccessNotice/AccessNotice'
-import { useAuth } from '@/features/auth/hooks/useAuth'
-import { demoDb } from '@/shared/lib/demoDb'
 
 function renderLimit(limit: number | '∞', used: number) {
   return typeof limit === 'number' ? `${used} / ${limit}` : `${used} / bez limitu`
@@ -22,8 +21,7 @@ export function BillingPage() {
   const navigate = useNavigate()
   const canManagePlan = useCan('billing.changePlan')
   const summary = useBillingSummary()
-  const changePlan = useChangePlan()
-  const { user } = useAuth()
+  const toast = useToast()
 
   if (summary.isLoading) return <Spinner />
 
@@ -99,8 +97,12 @@ export function BillingPage() {
                 <Button
                   variant={data.currentPlan === plan.id ? 'ghost' : 'primary'}
                   disabled={data.currentPlan === plan.id}
-                  loading={changePlan.isPending && changePlan.variables === plan.id}
-                  onClick={() => changePlan.mutate(plan.id)}
+                  loading={false}
+                  onClick={() => {
+                    if (data.currentPlan !== plan.id) {
+                      toast.info('Zmiana planu', 'Płatności online będą dostępne wkrótce. Skontaktuj się z LoftDesk aby zmienić plan.')
+                    }
+                  }}
                 >
                   {data.currentPlan === plan.id ? 'Plan aktywny' : `Przejdź na ${plan.name}`}
                 </Button>

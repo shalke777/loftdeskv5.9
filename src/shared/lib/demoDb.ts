@@ -177,7 +177,8 @@ export const demoDb = {
     byEmail(email: string) { return read().users.find((item) => item.email.toLowerCase() === email.toLowerCase()) ?? null },
     createCompanyOwner(input: string | { email?: string; companyName?: string; fullName?: string; password?: string; nip?: string }) {
       const state = read(); const raw = typeof input === 'string' ? { email: input } : (input ?? {}); const safe = (raw.email || '').trim().toLowerCase() || `owner-${Math.random().toString(36).slice(2)}@loftdesk.pl`; const companySlugBase = (raw.companyName || safe.split('@')[0] || 'nowa-firma').toLowerCase(); const companySlug = companySlugBase.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'nowa-firma'; const companyName = (raw.companyName || titleize(companySlug)).trim() || 'Nowa Firma'; const fullName = (raw.fullName || titleize(safe.split('@')[0] || 'właściciel')).trim() || 'Nowy Właściciel';
-      const record: DemoUser = { id: generateId(), email: safe, password: raw.password || 'password123', full_name: fullName, company_id: `cmp-${companySlug}`, company_name: companyName, role: 'owner', plan: 'free', ksef_env: 'test', ksef_nip: raw.nip || null, ksef_token: null }
+      const uniqueSuffix = generateId().split('-')[0]
+      const record: DemoUser = { id: generateId(), email: safe, password: raw.password || 'password123', full_name: fullName, company_id: `cmp-${companySlug}-${uniqueSuffix}`, company_name: companyName, role: 'owner', plan: 'free', ksef_env: 'test', ksef_nip: raw.nip || null, ksef_token: null }
       state.users.push(record); writeState(state); return record
     },
   },
