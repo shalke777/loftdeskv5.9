@@ -28,6 +28,7 @@ export const authApi = {
       email: input.email,
       password: input.password,
       options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           full_name: input.fullName,
           company: input.companyName,

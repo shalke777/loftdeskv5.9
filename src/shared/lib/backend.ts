@@ -8,8 +8,6 @@ export interface ResolvedSession {
 
 function roleFromLegacyPlan(plan?: string | null): DemoRole {
   if (plan === 'admin') return 'admin'
-  if (plan === 'business') return 'manager'
-  if (plan === 'pro') return 'owner'
   return 'owner'
 }
 

@@ -21,6 +21,7 @@ import { JoinInvitationRoutePage } from '@/app/routes/join.$token'
 import { DocumentationRoutePage } from '@/app/routes/documentation'
 import { ColorDemoRoutePage } from '@/app/routes/color-demo'
 import { PortalInboxRoutePage } from '@/app/routes/portal-inbox'
+import { AuthCallbackRoutePage } from '@/app/routes/auth-callback'
 
 const rootRoute = createRootRoute({ component: RootDocument })
 
@@ -32,6 +33,7 @@ const landingRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path
 const portalRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'portal/$token', component: PortalTokenRoutePage })
 const joinRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'join/$token', component: JoinInvitationRoutePage })
 const colorDemoRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'color-demo', component: ColorDemoRoutePage })
+const authCallbackRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'auth/callback', component: AuthCallbackRoutePage })
 
 const dashboardRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'dashboard', component: DashboardRoutePage })
 const clientsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'clients', component: ClientsRoutePage })
@@ -50,7 +52,7 @@ const portalInboxRoute = createRoute({ getParentRoute: () => authLayoutRoute, pa
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  publicLayoutRoute.addChildren([landingRoute, portalRoute, joinRoute, colorDemoRoute]),
+  publicLayoutRoute.addChildren([landingRoute, portalRoute, joinRoute, colorDemoRoute, authCallbackRoute]),
   authLayoutRoute.addChildren([
     dashboardRoute,
     clientsRoute,

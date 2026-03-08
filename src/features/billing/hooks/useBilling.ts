@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { billingApi, type BillingPlan } from '@/features/billing/api/billing.api'
 import { useCompanyId, useAuth } from '@/features/auth'
 import { useToast } from '@/shared/hooks/useToast'
+import { getStripe, hasStripeConfig } from '@/shared/lib/stripe'
 
 export function useBillingSummary() {
   const companyId = useCompanyId()
@@ -24,10 +25,48 @@ export function useChangePlan() {
       queryClient.invalidateQueries({ queryKey: ['dashboard', companyId] })
       queryClient.invalidateQueries({ queryKey: ['settings', 'profile', companyId] })
       await refreshSession()
-      toast.success('Plan zapisany', 'Zmiana planu została zapisana.')
+      toast.success('Plan zapisany', 'Zmiana planu zostala zapisana.')
     },
     onError: (error: unknown) => {
-      toast.error('Nie udało się zmienić planu', error instanceof Error ? error.message : 'Spróbuj ponownie.')
+      toast.error('Nie udalo sie zmienic planu', error instanceof Error ? error.message : 'Sprobuj ponownie.')
+    },
+  })
+}
+
+export function useStripeCheckout() {
+  const companyId = useCompanyId()
+  const { user } = useAuth()
+  const toast = useToast()
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!hasStripeConfig()) throw new Error('Stripe nie jest skonfigurowany.')
+      const { url } = await billingApi.createCheckoutSession(companyId, user?.email ?? '')
+      if (url) {
+        window.location.assign(url)
+      } else {
+        const stripe = await getStripe()
+        if (!stripe) throw new Error('Nie mozna zaladowac Stripe.')
+        throw new Error('Brak URL sesji checkout.')
+      }
+    },
+    onError: (error: unknown) => {
+      toast.error('Blad platnosci', error instanceof Error ? error.message : 'Sprobuj ponownie.')
+    },
+  })
+}
+
+export function useStripePortal() {
+  const { user } = useAuth()
+  const toast = useToast()
+
+  return useMutation({
+    mutationFn: async () => {
+      const { url } = await billingApi.openCustomerPortal(user?.email ?? '')
+      if (url) window.location.assign(url)
+    },
+    onError: (error: unknown) => {
+      toast.error('Blad portalu platnosci', error instanceof Error ? error.message : 'Sprobuj ponownie.')
     },
   })
 }

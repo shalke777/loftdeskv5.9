@@ -1,4 +1,5 @@
 import type { SessionUser } from '@/app/providers'
+import { isDemoMode } from '@/shared/lib/supabase'
 
 export type AppPlan = SessionUser['plan']
 export type AppRole = SessionUser['role']
@@ -50,15 +51,15 @@ export function canAccessFeature(user: SessionUser | null | undefined, feature: 
   if (!user) return false
   switch (feature) {
     case 'billing':
-      return hasRole(user.role, ['owner', 'admin'])
+      return hasRole(user.role, ['owner', 'admin', 'manager', 'accountant'])
     case 'admin':
       return user.role === 'admin'
     case 'ksef':
-      return hasPlan(user.plan, 'pro') && hasRole(user.role, ['owner', 'admin', 'manager', 'accountant'])
+      return (isDemoMode || hasPlan(user.plan, 'pro')) && hasRole(user.role, ['owner', 'admin', 'manager', 'accountant'])
     case 'team':
-      return hasPlan(user.plan, 'business') && hasRole(user.role, ['owner', 'admin'])
+      return (isDemoMode || hasPlan(user.plan, 'business')) && hasRole(user.role, ['owner', 'admin'])
     case 'portal':
-      return hasPlan(user.plan, 'pro') && hasRole(user.role, ['owner', 'admin', 'manager'])
+      return (isDemoMode || hasPlan(user.plan, 'pro')) && hasRole(user.role, ['owner', 'admin', 'manager'])
     case 'release':
       return hasRole(user.role, ['owner', 'admin'])
     default:

@@ -101,4 +101,41 @@ export const billingApi = {
     if (error) throw error
     return data
   },
+
+  async createCheckoutSession(companyId: string, email: string): Promise<{ url: string }> {
+    const priceId = import.meta.env.VITE_STRIPE_BUSINESS_PRICE_ID
+    if (!priceId) throw new Error('Stripe price ID not configured (VITE_STRIPE_BUSINESS_PRICE_ID)')
+    const res = await fetch('/api/stripe/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        priceId,
+        companyId,
+        email,
+        successUrl: `${window.location.origin}/billing?checkout=success`,
+        cancelUrl: `${window.location.origin}/billing?checkout=cancel`,
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(err.error || `Stripe error: ${res.status}`)
+    }
+    return res.json()
+  },
+
+  async openCustomerPortal(email: string): Promise<{ url: string }> {
+    const res = await fetch('/api/stripe/portal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        returnUrl: `${window.location.origin}/billing`,
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(err.error || `Stripe portal error: ${res.status}`)
+    }
+    return res.json()
+  },
 }
