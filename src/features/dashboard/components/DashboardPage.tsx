@@ -36,7 +36,7 @@ export function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Tablica" subtitle={`Pulpit operacyjny ${data.companyName} · plan ${PLAN_DEFS[data.plan].name}`} />
+      <PageHeader title={data.companyName} subtitle={`Plan: ${PLAN_DEFS[data.plan].name}`} />
 
       <section className="dashboard-hero">
         <Card className="highlight-card">
