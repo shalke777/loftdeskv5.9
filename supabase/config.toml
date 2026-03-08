@@ -26,3 +26,28 @@ site_url = "env(SITE_URL)"
 additional_redirect_urls = ["http://localhost:5173", "http://127.0.0.1:5173", "https://loftdesk.pl", "https://app.loftdesk.pl", "https://*.netlify.app"]
 jwt_expiry = 3600
 enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+[auth.email.template.confirmation]
+subject = "Potwierdź swój adres e-mail – LoftDesk"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Resetowanie hasła – LoftDesk"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.invite]
+subject = "Zaproszenie do LoftDesk"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.magic_link]
+subject = "Link do logowania – LoftDesk"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.email_change]
+subject = "Potwierdzenie zmiany adresu e-mail – LoftDesk"
+content_path = "./supabase/templates/email_change.html"
