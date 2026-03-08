@@ -4,6 +4,7 @@
  * Auth flow: AuthorisationChallenge → encrypt token with KSeF RSA pub key → InitToken
  */
 const crypto = require('crypto')
+const { ksefFetch } = require('./ksef-http')
 
 const BASE = {
   test: 'https://ksef-test.mf.gov.pl/api',
@@ -11,7 +12,7 @@ const BASE = {
 }
 
 async function getKsefPublicKey(base) {
-  const res = await fetch(`${base}/common/Public/certificate`, {
+  const res = await ksefFetch(`${base}/common/Public/certificate`, {
     headers: { accept: 'text/plain' },
   })
   if (!res.ok) throw new Error(`Nie można pobrać certyfikatu KSeF: HTTP ${res.status}`)
@@ -57,12 +58,12 @@ exports.handler = async (event) => {
       }
 
       // Step 1: get challenge
-      const challengeRes = await fetch(`${base}/online/Session/AuthorisationChallenge`, {
+      const challengeRes = await ksefFetch(`${base}/online/Session/AuthorisationChallenge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', accept: 'application/json' },
         body: JSON.stringify({ contextIdentifier: { type: 'onip', identifier: nip } }),
       })
-      const challengeData = await challengeRes.json()
+      const challengeData = challengeRes.json()
       if (!challengeRes.ok) {
         return {
           statusCode: challengeRes.status,
@@ -76,7 +77,7 @@ exports.handler = async (event) => {
       const encryptedToken = encryptTokenRsa(token, publicKeyPem)
 
       // Step 3: InitToken
-      const initRes = await fetch(`${base}/online/Session/InitToken`, {
+      const initRes = await ksefFetch(`${base}/online/Session/InitToken`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', accept: 'application/json' },
         body: JSON.stringify({
@@ -87,7 +88,7 @@ exports.handler = async (event) => {
           },
         }),
       })
-      const sessionData = await initRes.json()
+      const sessionData = initRes.json()
       if (!initRes.ok) {
         return {
           statusCode: initRes.status,
@@ -116,7 +117,7 @@ exports.handler = async (event) => {
       if (!sessionToken) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'missing_session_token' }) }
       }
-      await fetch(`${base}/online/Session/Terminate`, {
+      await ksefFetch(`${base}/online/Session/Terminate`, {
         method: 'GET',
         headers: { accept: 'application/json', SessionToken: sessionToken },
       })

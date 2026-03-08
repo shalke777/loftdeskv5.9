@@ -3,6 +3,7 @@
  * Proxy for fetching UPO (Urzędowe Poświadczenie Odbioru) for a sent invoice.
  * KSeF endpoint: GET /api/online/Invoice/{ksefReferenceNumber}/UPO
  */
+const { ksefFetch } = require('./ksef-http')
 const BASE = {
   test: 'https://ksef-test.mf.gov.pl/api',
   prod: 'https://ksef.mf.gov.pl/api',
@@ -31,7 +32,7 @@ exports.handler = async (event) => {
   const base = BASE[env] || BASE.test
 
   try {
-    const res = await fetch(
+    const res = await ksefFetch(
       `${base}/online/Invoice/${encodeURIComponent(ksefRef)}/UPO`,
       {
         method: 'GET',
@@ -42,7 +43,8 @@ exports.handler = async (event) => {
       },
     )
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
+      let err = {}
+      try { err = res.json() } catch {}
       return {
         statusCode: res.status,
         headers,
@@ -53,7 +55,7 @@ exports.handler = async (event) => {
         }),
       }
     }
-    const result = await res.json()
+    const result = res.json()
     return { statusCode: 200, headers, body: JSON.stringify(result) }
   } catch (e) {
     const detail = e.message || 'upstream_error'

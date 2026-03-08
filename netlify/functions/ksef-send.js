@@ -2,6 +2,7 @@
  * Netlify function: ksef-send
  * Proxy for sending FA(2) invoice XML to KSeF /online/Invoice/Send
  */
+const { ksefFetch } = require('./ksef-http')
 const BASE = {
   test: 'https://ksef-test.mf.gov.pl/api',
   prod: 'https://ksef.mf.gov.pl/api',
@@ -30,7 +31,7 @@ exports.handler = async (event) => {
   const base = BASE[env] || BASE.test
 
   try {
-    const res = await fetch(`${base}/online/Invoice/Send`, {
+    const res = await ksefFetch(`${base}/online/Invoice/Send`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/octet-stream',
@@ -39,7 +40,7 @@ exports.handler = async (event) => {
       },
       body: Buffer.from(xmlPayload, 'utf8'),
     })
-    const result = await res.json()
+    const result = res.json()
     if (!res.ok) {
       return {
         statusCode: res.status,
