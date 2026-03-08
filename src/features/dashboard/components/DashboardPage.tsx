@@ -12,10 +12,10 @@ import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
 
 const quickActions = [
-  { icon: Users,         title: 'Dodaj kontrahenta', text: 'Uzupełnij bazę inwestorów i wykonawców.',   href: '/clients',   bg: '#fff7ed', border: '#fed7aa', iconBg: '#fef3c7', iconColor: '#d97706' },
-  { icon: FileText,      title: 'Nowa wycena',        text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates', bg: '#eff6ff', border: '#bfdbfe', iconBg: '#dbeafe', iconColor: '#2563eb' },
-  { icon: Receipt,       title: 'Nowa faktura',       text: 'Wystaw dokument i przygotuj XML do KSeF.',  href: '/invoices',  bg: '#f0fdf4', border: '#bbf7d0', iconBg: '#dcfce7', iconColor: '#16a34a' },
-  { icon: FolderKanban,  title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',    href: '/projects',  bg: '#f5f3ff', border: '#ddd6fe', iconBg: '#ede9fe', iconColor: '#7c3aed' },
+  { icon: Users,        title: 'Dodaj kontrahenta', text: 'Uzupełnij bazę inwestorów i wykonawców.',    href: '/clients',   bg: 'var(--color-info-soft)',    border: '#93c5fd', iconBg: '#dbeafe', iconColor: 'var(--color-info)' },
+  { icon: FileText,     title: 'Nowa wycena',        text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates', bg: 'var(--color-warning-soft)', border: '#fcd34d', iconBg: '#fef3c7', iconColor: 'var(--color-warning)' },
+  { icon: Receipt,      title: 'Nowa faktura',       text: 'Wystaw dokument i przygotuj XML do KSeF.',   href: '/invoices',  bg: 'var(--color-success-soft)', border: '#86efac', iconBg: '#dcfce7', iconColor: 'var(--color-success)' },
+  { icon: FolderKanban, title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',     href: '/projects',  bg: 'var(--color-brand-light)',  border: 'var(--color-brand-border)', iconBg: '#fee2e2', iconColor: 'var(--color-brand)' },
 ]
 
 export function DashboardPage() {
