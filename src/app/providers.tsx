@@ -79,6 +79,9 @@ function AuthProvider({ children }: { children: ReactNode }) {
       const resolved = await resolveSupabaseSession()
       setUser(resolved.user)
       setStoredUser(resolved.user)
+    } catch {
+      setUser(null)
+      setStoredUser(null)
     } finally {
       setLoading(false)
     }

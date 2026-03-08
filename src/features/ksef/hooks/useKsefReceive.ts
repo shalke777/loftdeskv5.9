@@ -8,14 +8,21 @@ export function useKsefReceive() {
   const [newCount, setNewCount] = useState<number | null>(null)
 
   const receive = useCallback(
-    async (accessToken: string, env: KsefEnv = 'test') => {
+    async (accessToken: string, env: KsefEnv = 'test', isDemo = false) => {
       setLoading(true)
       setError(null)
       const before = ksefService.getReceived().length
       try {
-        const all = await ksefService.receiveDocuments(accessToken, env)
-        setNewCount(all.length - before)
-        setDocs(all)
+        if (isDemo) {
+          // Demo mode — no real API call, just return stored docs
+          const stored = ksefService.getReceived()
+          setNewCount(0)
+          setDocs(stored)
+        } else {
+          const all = await ksefService.receiveDocuments(accessToken, env)
+          setNewCount(all.length - before)
+          setDocs(all)
+        }
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : String(e))
       } finally {

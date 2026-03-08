@@ -15,7 +15,10 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   if (!supabase) return { user: null }
 
   const { data: authData, error: authError } = await supabase.auth.getUser()
-  if (authError) throw authError
+  if (authError) {
+    // No session → treat as logged-out (don't throw)
+    return { user: null }
+  }
   const authUser = authData.user
   if (!authUser) return { user: null }
 

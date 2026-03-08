@@ -36,7 +36,12 @@ export const authApi = {
         },
       },
     })
-    if (error) throw error
+    if (error) {
+      if (error.status === 429 || error.message?.includes('429')) {
+        throw new Error('Zbyt wiele prób rejestracji. Odczekaj chwilę i spróbuj ponownie.')
+      }
+      throw error
+    }
     return data
   },
 }

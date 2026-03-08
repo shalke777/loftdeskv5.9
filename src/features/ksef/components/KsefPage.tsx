@@ -72,7 +72,7 @@ export function KsefPage() {
 
   async function handleReceive() {
     if (!session) return
-    await receive(session.accessToken, session.env)
+    await receive(session.accessToken, session.env, session.isDemo)
     refreshHistory()
   }
 
