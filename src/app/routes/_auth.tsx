@@ -136,7 +136,9 @@ export function AuthLayout() {
             </div>
           </div>
           <div className="shell-topbar__right">
-            <span className="shell-pill">Plan: {user.plan}</span>
+            <Link to="/billing" className="shell-pill" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+              {user.plan === 'free' ? '⭐ Przejdź na Business' : `Plan: ${user.plan}`}
+            </Link>
             <div ref={notifRef} style={{ position: 'relative' }}>
               <Button variant="ghost" size="sm" onClick={() => { setShowNotifications((v) => !v); if (!showNotifications) markAllRead() }} icon={<Bell size={18} />}>
                 {unreadCount > 0 && (
