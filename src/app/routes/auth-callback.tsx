@@ -14,50 +14,91 @@ export function AuthCallbackRoutePage() {
       return
     }
 
-    // Supabase redirects with hash fragment (#access_token=...&refresh_token=...)
-    // The JS client auto-detects this and fires onAuthStateChange.
-    // We listen for that event instead of calling getSession() immediately.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        setStatus('success')
-        setMessage('E-mail potwierdzony. Przekierowanie do aplikacji...')
-        window.setTimeout(() => window.location.assign('/dashboard'), 1500)
-      }
-      if (event === 'SIGNED_OUT') {
-        setStatus('error')
-        setMessage('Nie udało się potwierdzić sesji. Spróbuj zalogować się ręcznie.')
-      }
-    })
+    let handled = false
+    const succeed = (msg: string, target = '/dashboard') => {
+      if (handled) return
+      handled = true
+      setStatus('success')
+      setMessage(msg)
+      window.setTimeout(() => window.location.assign(target), 1500)
+    }
+    const fail = (msg: string) => {
+      if (handled) return
+      handled = true
+      setStatus('error')
+      setMessage(msg)
+    }
 
-    // Fallback: if no event fires within 5s, try getSession manually
-    const timeout = window.setTimeout(async () => {
-      try {
-        const { data, error } = await supabase!.auth.getSession()
-        if (error) {
-          setStatus('error')
-          setMessage(translateError(error))
+    const params = new URLSearchParams(window.location.search)
+
+    // 1. URL error params (Supabase can redirect with ?error=)
+    const urlError = params.get('error_description') || params.get('error')
+    if (urlError) {
+      fail(translateError(urlError))
+      return
+    }
+
+    async function resolve() {
+      const sb = supabase!
+      const code = params.get('code')
+
+      // 2. PKCE code exchange (Supabase v2 email verification redirects with ?code=)
+      if (code) {
+        // Give detectSessionInUrl a moment to process it first
+        await new Promise((r) => window.setTimeout(r, 600))
+        const { data: existing } = await sb.auth.getSession()
+        if (existing.session) {
+          succeed('E-mail potwierdzony. Przekierowanie do aplikacji...')
           return
         }
-        if (data.session) {
-          setStatus('success')
-          setMessage('E-mail potwierdzony. Przekierowanie do aplikacji...')
-          window.setTimeout(() => window.location.assign('/dashboard'), 1500)
+        // detectSessionInUrl didn't handle it — exchange manually
+        const { error } = await sb.auth.exchangeCodeForSession(code)
+        if (error) {
+          // Code may be invalid/expired — check if session exists anyway
+          const { data: retry } = await sb.auth.getSession()
+          if (retry.session) {
+            succeed('E-mail potwierdzony. Przekierowanie do aplikacji...')
+          } else {
+            fail(translateError(error, 'Link wygasł lub jest nieprawidłowy. Spróbuj zalogować się ręcznie.'))
+          }
         } else {
-          // No session and no event — redirect to login
-          setStatus('success')
-          setMessage('Konto potwierdzone. Przekierowanie do logowania...')
-          window.setTimeout(() => window.location.assign('/login'), 1500)
+          succeed('E-mail potwierdzony. Przekierowanie do aplikacji...')
         }
-      } catch (err) {
-        setStatus('error')
-        setMessage(translateError(err, 'Nieznany błąd'))
+        return
       }
-    }, 4000)
 
-    return () => {
-      subscription.unsubscribe()
-      window.clearTimeout(timeout)
+      // 3. Hash fragment flow (#access_token=...) — detectSessionInUrl handles this
+      //    Wait for processing, then check session
+      await new Promise((r) => window.setTimeout(r, 800))
+      const { data, error } = await sb.auth.getSession()
+      if (error) {
+        fail(translateError(error))
+        return
+      }
+      if (data.session) {
+        succeed('E-mail potwierdzony. Przekierowanie do aplikacji...')
+        return
+      }
+
+      // 4. Still no session — listen for auth state change (backup)
+      const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
+        if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
+          subscription.unsubscribe()
+          succeed('E-mail potwierdzony. Przekierowanie do aplikacji...')
+        }
+      })
+
+      // 5. Final fallback after 5 more seconds
+      window.setTimeout(() => {
+        subscription.unsubscribe()
+        if (!handled) {
+          // Account was confirmed but session isn't available (e.g. different device)
+          succeed('Konto potwierdzone. Możesz się teraz zalogować.', '/login')
+        }
+      }, 5000)
     }
+
+    void resolve()
   }, [])
 
   return (
@@ -81,8 +122,8 @@ export function AuthCallbackRoutePage() {
           <>
             <div style={{ fontSize: 48, marginBottom: 12, color: '#dc2626' }}>&#10007;</div>
             <h2 style={{ marginBottom: 8, color: '#dc2626' }}>Błąd weryfikacji</h2>
-            <p>{message}</p>
-            <a href="/login" style={{ display: 'inline-block', marginTop: 16, color: '#1A5C32' }}>
+            <p style={{ marginBottom: 16 }}>{message}</p>
+            <a href="/login" style={{ display: 'inline-block', marginTop: 8, color: '#1A5C32', fontWeight: 600 }}>
               Przejdź do logowania
             </a>
           </>
