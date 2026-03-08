@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/shared/ui/Card/Card'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Badge } from '@/shared/ui/Badge/Badge'
@@ -26,9 +26,18 @@ export function KsefPage() {
   const { history, refresh: refreshHistory, clear: clearHistory } = useKsefHistory()
   const upo = useKsefUpo()
 
-  const [nipInput, setNipInput] = useState<string>((profile as Record<string, unknown>)?.ksef_nip as string || (profile as Record<string, unknown>)?.nip as string || '')
-  const [tokenInput, setTokenInput] = useState<string>((profile as Record<string, unknown>)?.ksef_token as string || '')
-  const [envInput, setEnvInput] = useState<'test' | 'prod'>((profile as Record<string, unknown>)?.ksef_env === 'prod' ? 'prod' : 'test')
+  const [nipInput, setNipInput] = useState<string>('')
+  const [tokenInput, setTokenInput] = useState<string>('')
+  const [envInput, setEnvInput] = useState<'test' | 'prod'>('test')
+
+  // Pre-fill inputs once profile loads (profile is undefined on first render)
+  useEffect(() => {
+    if (!profile) return
+    const p = profile as Record<string, unknown>
+    if (!nipInput) setNipInput((p.ksef_nip as string) || (p.nip as string) || '')
+    if (!tokenInput) setTokenInput((p.ksef_token as string) || '')
+    setEnvInput((p.ksef_env as string) === 'prod' ? 'prod' : 'test')
+  }, [profile]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!enabled) {
     return (
@@ -91,17 +100,44 @@ export function KsefPage() {
                   ⚠️ Tryb demo — dane nie są wysyłane do MF.
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 16px', fontSize: 14, marginBottom: 16 }}>
-                <span style={{ color: '#718096' }}>Środowisko</span>
-                <span><Badge variant={session.env === 'prod' ? 'danger' : 'warning'}>{session.env}</Badge></span>
-                <span style={{ color: '#718096' }}>NIP</span>
-                <strong>{session.nip}</strong>
-                <span style={{ color: '#718096' }}>Aktywna od</span>
-                <span>{new Date(session.startedAt).toLocaleString('pl-PL')}</span>
-                <span style={{ color: '#718096' }}>Token</span>
-                <code style={{ fontSize: 11, color: '#888' }}>{session.token.slice(0, 20)}…</code>
+
+              {/* Status banner */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: session.isDemo ? '#fffbeb' : '#f0fdf4', border: `1px solid ${session.isDemo ? '#fbbf24' : '#86efac'}`, borderRadius: 10, marginBottom: 16 }}>
+                <span style={{ fontSize: 20 }}>{session.isDemo ? '🔵' : '🟢'}</span>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>
+                    Sesja {session.isDemo ? 'demo' : 'aktywna'}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#718096' }}>
+                    Uruchomiona: {new Date(session.startedAt).toLocaleString('pl-PL')}
+                  </div>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                  <Badge variant={session.env === 'prod' ? 'danger' : 'warning'}>
+                    {session.env === 'prod' ? 'PRODUKCJA' : 'TEST'}
+                  </Badge>
+                </div>
               </div>
-              <Button variant="secondary" onClick={closeSession} loading={sessionLoading}>Zamknij sesję</Button>
+
+              {/* Session details */}
+              <div style={{ background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr' }}>
+                  <div style={{ padding: '10px 14px', fontSize: 12, color: '#718096', fontWeight: 500, background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>NIP</div>
+                  <div style={{ padding: '10px 14px', fontSize: 14, fontWeight: 600, borderBottom: '1px solid #e2e8f0' }}>{session.nip}</div>
+                  <div style={{ padding: '10px 14px', fontSize: 12, color: '#718096', fontWeight: 500, background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>Serwer</div>
+                  <div style={{ padding: '10px 14px', fontSize: 13, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>
+                    {session.env === 'prod' ? 'ksef.mf.gov.pl' : 'ksef-test.mf.gov.pl'}
+                  </div>
+                  <div style={{ padding: '10px 14px', fontSize: 12, color: '#718096', fontWeight: 500, background: '#f1f5f9' }}>Token sesji</div>
+                  <div style={{ padding: '10px 14px' }}>
+                    <code style={{ fontSize: 11, color: '#64748b', background: '#e2e8f0', padding: '2px 6px', borderRadius: 4 }}>
+                      {session.token.slice(0, 28)}…
+                    </code>
+                  </div>
+                </div>
+              </div>
+
+              <Button variant="secondary" onClick={closeSession} loading={sessionLoading}>Zakończ sesję</Button>
             </div>
           ) : (
             <form onSubmit={handleInitSession}>
@@ -137,7 +173,9 @@ export function KsefPage() {
                 </select>
               </div>
               {sessionError && (
-                <p style={{ color: '#c0392b', fontSize: 13, marginBottom: 10 }}>Błąd: {sessionError}</p>
+                <div style={{ padding: '10px 14px', background: '#fff5f5', border: '1px solid #fc8181', borderRadius: 8, fontSize: 13, color: '#c0392b', marginBottom: 12 }}>
+                  <strong>Błąd:</strong> {sessionError}
+                </div>
               )}
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                 <Button type="submit" loading={sessionLoading} disabled={!nipInput || !tokenInput}>
@@ -147,10 +185,10 @@ export function KsefPage() {
                   Tryb demo
                 </Button>
               </div>
-              <p style={{ marginTop: 10, fontSize: 12, color: '#a0aec0', lineHeight: 1.5 }}>
-                Środowisko testowe: ksef-test.mf.gov.pl<br />
-                Tryb demo pozwala przetestować interfejs bez połączenia z MF.
-              </p>
+              <div style={{ marginTop: 12, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12, color: '#718096', lineHeight: 1.6 }}>
+                💡 NIP i token uzupełnisz w <strong>Ustawienia → Dane wykonawcy → KSeF</strong>.<br />
+                Tryb demo działa bez połączenia z MF.
+              </div>
             </form>
           )}
         </Card>

@@ -3,6 +3,7 @@
  * Proxy for receiving invoice documents from KSeF /online/Query/Invoice/Sync
  * Returns documents issued in the last 30 days.
  */
+const fetch = require('node-fetch')
 const BASE = {
   test: 'https://ksef-test.mf.gov.pl/api',
   prod: 'https://ksef.mf.gov.pl/api',
@@ -78,10 +79,10 @@ exports.handler = async (event) => {
       body: JSON.stringify({ documents, total: result.numberOfElements || documents.length }),
     }
   } catch (e) {
-    return {
-      statusCode: 502,
-      headers,
-      body: JSON.stringify({ error: e.message || 'upstream_error' }),
-    }
+    const detail = e.message || 'upstream_error'
+    const friendly = detail.includes('fetch') || detail.includes('ECONNREFUSED') || detail.includes('ENOTFOUND')
+      ? `Nie można połączyć się z serwerem KSeF (${detail}). Serwer MF może być chwilowo niedostępny.`
+      : detail
+    return { statusCode: 502, headers, body: JSON.stringify({ error: friendly, detail }) }
   }
 }

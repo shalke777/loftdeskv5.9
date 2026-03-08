@@ -173,13 +173,29 @@ ${advanceSection}
 }
 
 async function callProxy(path: string, body: unknown): Promise<Record<string, unknown>> {
-  const res = await fetch(`/.netlify/functions/${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+  let res: Response
+  try {
+    res = await fetch(`/.netlify/functions/${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch (networkErr) {
+    // Browser-level network failure (no Netlify functions server or network unavailable)
+    throw new Error(
+      'Brak połączenia z serwerem funkcji KSeF. Upewnij się, że aplikacja działa na Netlify lub użyj Trybu demo.',
+    )
+  }
+  // Try to parse JSON — if response is HTML (e.g. Vite 404 page) fall back to statusText
+  const data: Record<string, unknown> = await res.json().catch(() => {
+    if (res.status === 404) throw new Error('Funkcja Netlify niedostępna (404). Użyj Trybu demo.')
+    return { error: res.statusText }
   })
-  const data: Record<string, unknown> = await res.json().catch(() => ({ error: res.statusText }))
-  if (!res.ok) throw new Error((data.error as string) || `HTTP ${res.status}`)
+  if (!res.ok) {
+    // Prefer error field, then detail, then HTTP status
+    const msg = (data.error as string) || (data.detail as string) || `HTTP ${res.status}`
+    throw new Error(msg)
+  }
   return data
 }
 

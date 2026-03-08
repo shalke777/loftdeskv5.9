@@ -4,6 +4,7 @@
  * Auth flow: AuthorisationChallenge → encrypt token with KSeF RSA pub key → InitToken
  */
 const crypto = require('crypto')
+const fetch = require('node-fetch')
 
 const BASE = {
   test: 'https://ksef-test.mf.gov.pl/api',
@@ -125,6 +126,10 @@ exports.handler = async (event) => {
 
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'unknown_action' }) }
   } catch (e) {
-    return { statusCode: 502, headers, body: JSON.stringify({ error: e.message || 'upstream_error' }) }
+    const detail = e.message || 'upstream_error'
+    const friendly = detail.includes('fetch') || detail.includes('ECONNREFUSED') || detail.includes('ENOTFOUND')
+      ? `Nie można połączyć się z serwerem KSeF (${detail}). Serwer MF może być chwilowo niedostępny. Użyj trybu demo do testów.`
+      : detail
+    return { statusCode: 502, headers, body: JSON.stringify({ error: friendly, detail }) }
   }
 }

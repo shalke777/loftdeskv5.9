@@ -2,6 +2,7 @@
  * Netlify function: ksef-send
  * Proxy for sending FA(2) invoice XML to KSeF /online/Invoice/Send
  */
+const fetch = require('node-fetch')
 const BASE = {
   test: 'https://ksef-test.mf.gov.pl/api',
   prod: 'https://ksef.mf.gov.pl/api',
@@ -57,6 +58,10 @@ exports.handler = async (event) => {
       body: JSON.stringify({ ksefRef: result.elementReferenceNumber, invoiceNumber }),
     }
   } catch (e) {
-    return { statusCode: 502, headers, body: JSON.stringify({ error: e.message || 'upstream_error' }) }
+    const detail = e.message || 'upstream_error'
+    const friendly = detail.includes('fetch') || detail.includes('ECONNREFUSED') || detail.includes('ENOTFOUND')
+      ? `Nie można połączyć się z serwerem KSeF (${detail}). Serwer MF może być chwilowo niedostępny.`
+      : detail
+    return { statusCode: 502, headers, body: JSON.stringify({ error: friendly, detail }) }
   }
 }
