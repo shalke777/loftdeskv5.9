@@ -280,9 +280,18 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .highlight-card p, .highlight-card .field__label { color: rgba(255,255,255,.82); }
 .quick-actions-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.quick-action { padding: 16px; border-radius: 18px; border: 1px solid var(--color-border-light); background: var(--color-surface); transition: transform .18s ease, box-shadow .18s ease; text-align: left; }
+.quick-action { padding: 16px; border-radius: 18px; border: 1px solid var(--color-border-light); background: var(--color-surface); transition: transform .18s ease, box-shadow .18s ease; text-align: left; cursor: pointer; width: 100%; }
 .quick-action:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
-.quick-action__icon { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: var(--color-brand-light); color: var(--color-brand); }
+.quick-action__icon { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: var(--color-brand-light); color: var(--color-brand); flex-shrink: 0; }
+/* per-tile colors */
+.quick-actions-grid .quick-action:nth-child(1) { background-color: #eaf1ff !important; border-color: #93c5fd !important; }
+.quick-actions-grid .quick-action:nth-child(2) { background-color: #fff4df !important; border-color: #fcd34d !important; }
+.quick-actions-grid .quick-action:nth-child(3) { background-color: #e8f7ee !important; border-color: #86efac !important; }
+.quick-actions-grid .quick-action:nth-child(4) { background-color: #fff1f1 !important; border-color: #fecaca !important; }
+.quick-actions-grid .quick-action:nth-child(1) .quick-action__icon { background-color: #dbeafe !important; color: #1d4ed8 !important; }
+.quick-actions-grid .quick-action:nth-child(2) .quick-action__icon { background-color: #fef3c7 !important; color: #b45309 !important; }
+.quick-actions-grid .quick-action:nth-child(3) .quick-action__icon { background-color: #dcfce7 !important; color: #15803d !important; }
+.quick-actions-grid .quick-action:nth-child(4) .quick-action__icon { background-color: #fee2e2 !important; color: #dc2626 !important; }
 
 .portal-page { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
 .portal-chat { display: grid; gap: 12px; }
