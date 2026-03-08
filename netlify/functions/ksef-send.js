@@ -1,13 +1,14 @@
 /**
  * Netlify function: ksef-send
- * KSeF MF API — send a single invoice in an active online session.
+ * KSeF MF API v2 — send a single invoice in an active online session.
  *
- * The invoice XML is sent as base64-encoded plaintext (or AES-encrypted for prod).
- * SHA-256 hash of the invoice XML is included in the payload.
+ * The invoice XML is AES-256-CBC encrypted with the session's symmetric key.
+ * SHA-256 hashes of both plain and encrypted content are included in the payload.
  *
- * Endpoint: POST /online/Invoice/Send
+ * Endpoint: POST /sessions/online/{referenceNumber}/invoices
+ * Auth: Bearer JWT token
  *
- * Input:  { sessionToken, xmlPayload (UTF-8 string), invoiceNumber, env }
+ * Input:  { sessionToken (JWT), xmlPayload (UTF-8), invoiceNumber, referenceNumber, symmetricKey, iv, env }
  * Output: { ksefRef, invoiceNumber }
  */
 const crypto = require('crypto')
@@ -15,15 +16,15 @@ const { ksefFetch } = require('./ksef-http')
 const { mockApi } = require('./ksef-mock')
 
 const BASE = {
-  demo: 'https://ksef-demo.mf.gov.pl/api',
-  test: 'https://ksef-test.mf.gov.pl/api',
-  prod: 'https://ksef.mf.gov.pl/api',
+  demo: 'https://api-demo.ksef.mf.gov.pl/v2',
+  test: 'https://api-test.ksef.mf.gov.pl/v2',
+  prod: 'https://api.ksef.mf.gov.pl/v2',
 }
 
 exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Content-Type': 'application/json',
   }
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' }
@@ -35,9 +36,12 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'invalid_json' }) }
   }
 
-  const { sessionToken, xmlPayload, invoiceNumber, env = 'test' } = body
-  if (!sessionToken || !xmlPayload) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Brak tokena sesji lub treści faktury XML.' }) }
+  const { sessionToken, xmlPayload, invoiceNumber, referenceNumber, symmetricKey, iv, env = 'test' } = body
+  if (!sessionToken || !xmlPayload || !referenceNumber) {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Brak tokena sesji, numeru referencyjnego sesji lub treści faktury XML.' }) }
+  }
+  if (!symmetricKey || !iv) {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Brak klucza szyfrującego (symmetricKey/iv). Otwórz nową sesję KSeF.' }) }
   }
 
   const base = BASE[env] || BASE.test
@@ -45,30 +49,36 @@ exports.handler = async (event) => {
   try {
     const xmlBuf = Buffer.from(xmlPayload, 'utf8')
 
-    // SHA-256 of the invoice XML
+    // SHA-256 of the plain invoice XML
     const invoiceHash = crypto.createHash('sha256').update(xmlBuf).digest('base64')
+    const invoiceSize = xmlBuf.length
+
+    // AES-256-CBC encrypt the invoice
+    const keyBuf = Buffer.from(symmetricKey, 'base64')
+    const ivBuf = Buffer.from(iv, 'base64')
+    const cipher = crypto.createCipheriv('aes-256-cbc', keyBuf, ivBuf)
+    const encrypted = Buffer.concat([cipher.update(xmlBuf), cipher.final()])
+
+    // SHA-256 of the encrypted content
+    const encryptedInvoiceHash = crypto.createHash('sha256').update(encrypted).digest('base64')
+    const encryptedInvoiceSize = encrypted.length
+    const encryptedInvoiceContent = encrypted.toString('base64')
 
     const res = await ksefFetch(
-      `${base}/online/Invoice/Send`,
+      `${base}/sessions/online/${encodeURIComponent(referenceNumber)}/invoices`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          SessionToken: sessionToken,
+          Authorization: `Bearer ${sessionToken}`,
         },
         body: JSON.stringify({
-          invoiceHash: {
-            hashSHA: {
-              algorithm: 'SHA-256',
-              encoding: 'Base64',
-              value: invoiceHash,
-            },
-            fileSize: xmlBuf.length,
-          },
-          invoicePayload: {
-            type: 'plain',
-            invoiceBody: xmlBuf.toString('base64'),
-          },
+          invoiceHash,
+          invoiceSize,
+          encryptedInvoiceHash,
+          encryptedInvoiceSize,
+          encryptedInvoiceContent,
+          offlineMode: false,
         }),
       },
     )
@@ -80,8 +90,8 @@ exports.handler = async (event) => {
         headers,
         body: JSON.stringify({
           error:
+            result.exception?.exceptionDescription ||
             result.exception?.exceptionDetailList?.[0]?.exceptionDescription ||
-            result.exception?.exceptionDetailList?.[0]?.exceptionCode ||
             result.message ||
             'Nie udało się wysłać faktury do KSeF.',
           details: result,
@@ -93,7 +103,7 @@ exports.handler = async (event) => {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        ksefRef: result.elementReferenceNumber || result.referenceNumber || '',
+        ksefRef: result.referenceNumber || '',
         invoiceNumber,
       }),
     }

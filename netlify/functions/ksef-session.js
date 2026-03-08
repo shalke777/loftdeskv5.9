@@ -1,21 +1,25 @@
 /**
  * Netlify function: ksef-session
- * KSeF MF API — token-based auth + interactive session management.
+ * KSeF MF API v2 — token-based auth + interactive session management.
  *
  * INIT flow (action: 'init'):
- *   1. POST /online/Session/AuthorisationChallenge → get challenge + timestamp
- *   2. Encrypt `token|timestamp` with MF RSA public key (if available)
- *   3. POST /online/Session/InitToken → open session, get sessionToken + referenceNumber
- *   4. Poll GET /online/Session/Status/{ref} → wait until processingCode === 315
- *  Returns: { sessionToken, referenceNumber }
+ *   1. GET  /security/public-key-certificates → fetch MF encryption keys
+ *   2. POST /auth/challenge → get challenge + timestampMs
+ *   3. RSA-OAEP encrypt token|timestampMs with KsefTokenEncryption key
+ *   4. POST /auth/ksef-token → get JWT Bearer token + authRef
+ *   5. Poll GET /auth/{authRef} → wait until status.code === 200
+ *   6. Generate AES-256 key + IV, RSA-OAEP encrypt key with SymmetricKeyEncryption key
+ *   7. POST /sessions/online → open interactive session, get sessionRef
+ *  Returns: { sessionToken (JWT), referenceNumber (sessionRef), symmetricKey, iv, validUntil }
  *
  * CLOSE flow (action: 'close'):
- *   POST /online/Session/Terminate
+ *   POST /sessions/online/{referenceNumber}/close → close interactive session
+ *   DELETE /auth/sessions/current → invalidate auth session
  *
- * Environments:
- *   demo: https://ksef-demo.mf.gov.pl/api
- *   test: https://ksef-test.mf.gov.pl/api
- *   prod: https://ksef.mf.gov.pl/api
+ * Environments (v2):
+ *   demo: https://api-demo.ksef.mf.gov.pl/v2
+ *   test: https://api-test.ksef.mf.gov.pl/v2
+ *   prod: https://api.ksef.mf.gov.pl/v2
  */
 const crypto = require('crypto')
 const { ksefFetch } = require('./ksef-http')
@@ -23,35 +27,83 @@ const { checkKsefAvailability } = require('./ksef-schedule')
 const { mockApi } = require('./ksef-mock')
 
 const BASE = {
-  demo: 'https://ksef-demo.mf.gov.pl/api',
-  test: 'https://ksef-test.mf.gov.pl/api',
-  prod: 'https://ksef.mf.gov.pl/api',
+  demo: 'https://api-demo.ksef.mf.gov.pl/v2',
+  test: 'https://api-test.ksef.mf.gov.pl/v2',
+  prod: 'https://api.ksef.mf.gov.pl/v2',
 }
 
 /**
- * Poll session init status until processingCode !== 310 (in progress).
- * 315 = session active. Waits up to ~15s (30 × 500ms).
+ * Fetch MF public keys for encryption from /security/public-key-certificates.
+ * Returns array of { certificate, validFrom, validTo, usage[] }.
  */
-async function pollSessionStatus(base, referenceNumber) {
+async function fetchPublicKeys(base) {
+  const res = await ksefFetch(`${base}/security/public-key-certificates`, { method: 'GET' })
+  if (!res.ok) throw new Error('Nie udało się pobrać kluczy publicznych MF z KSeF.')
+  const keys = res.json()
+  if (!Array.isArray(keys) || keys.length === 0) throw new Error('Brak kluczy publicznych KSeF.')
+  return keys
+}
+
+/**
+ * Find a currently-valid key by usage type ('KsefTokenEncryption' | 'SymmetricKeyEncryption').
+ */
+function findKey(keys, usage) {
+  const now = new Date()
+  return keys.find(
+    (k) => k.usage && k.usage.includes(usage) && new Date(k.validFrom) <= now && new Date(k.validTo) >= now,
+  )
+}
+
+/**
+ * RSA-OAEP (SHA-256) encrypt data with a DER-encoded SPKI public key (base64).
+ */
+function rsaOaepEncrypt(data, derKeyBase64) {
+  const publicKey = crypto.createPublicKey({
+    key: Buffer.from(derKeyBase64, 'base64'),
+    format: 'der',
+    type: 'spki',
+  })
+  return crypto.publicEncrypt(
+    { key: publicKey, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+    Buffer.isBuffer(data) ? data : Buffer.from(data, 'utf8'),
+  )
+}
+
+/**
+ * Poll auth status until code 200 (success) or ≥400 (failure).
+ * Waits up to ~15s (30 × 500ms).
+ */
+async function pollAuthStatus(base, referenceNumber, bearerToken) {
   for (let i = 0; i < 30; i++) {
     await new Promise((r) => setTimeout(r, 500))
-    const res = await ksefFetch(`${base}/online/Session/Status/${encodeURIComponent(referenceNumber)}`, {
+    const res = await ksefFetch(`${base}/auth/${encodeURIComponent(referenceNumber)}`, {
       method: 'GET',
+      headers: { Authorization: `Bearer ${bearerToken}` },
     })
     if (!res.ok) continue
     const data = res.json()
-    // processingCode 310 = in progress, 315 = session active
-    if (data.processingCode === 315 || (data.processingCode && data.processingCode !== 310)) {
-      return data
+    if (data.status?.code === 200) return data
+    if (data.status?.code >= 400) {
+      const details = (data.status?.details || []).join('; ')
+      throw new Error(data.status?.description + (details ? ` (${details})` : '') || 'Uwierzytelnienie zakończone niepowodzeniem.')
     }
   }
-  throw new Error('Timeout oczekiwania na sesję KSeF (15s). Spróbuj ponownie.')
+  throw new Error('Timeout oczekiwania na uwierzytelnienie KSeF (15s). Spróbuj ponownie.')
+}
+
+/**
+ * Extract a user-friendly error message from v2 exception response.
+ */
+function extractError(data, fallback) {
+  return data.exception?.exceptionDescription
+    || data.exception?.exceptionDetailList?.[0]?.exceptionDescription
+    || data.title || data.message || fallback
 }
 
 exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Content-Type': 'application/json',
   }
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' }
@@ -67,22 +119,23 @@ exports.handler = async (event) => {
   const base = BASE[env] || BASE.test
 
   try {
-    // ── Init: token-based authorisation ─────────────────────────────
+    // ── Init: v2 two-phase auth + session open ─────────────────────
     if (action === 'init') {
       if (!nip || !token) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'Brak NIP lub tokena autoryzacyjnego.' }) }
       }
 
-      // 1. Get authorisation challenge
-      const challengeRes = await ksefFetch(`${base}/online/Session/AuthorisationChallenge`, {
+      // 1. Fetch MF public keys
+      const keys = await fetchPublicKeys(base)
+      const tokenEncKey = findKey(keys, 'KsefTokenEncryption')
+      const symEncKey = findKey(keys, 'SymmetricKeyEncryption')
+      if (!tokenEncKey) throw new Error('Nie znaleziono aktualnego klucza KsefTokenEncryption w KSeF.')
+      if (!symEncKey) throw new Error('Nie znaleziono aktualnego klucza SymmetricKeyEncryption w KSeF.')
+
+      // 2. Get authorisation challenge (POST, no body)
+      const challengeRes = await ksefFetch(`${base}/auth/challenge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contextIdentifier: {
-            type: 'onip',
-            identifier: nip,
-          },
-        }),
       })
       const challengeData = challengeRes.json()
       if (!challengeRes.ok) {
@@ -90,69 +143,78 @@ exports.handler = async (event) => {
           statusCode: challengeRes.status,
           headers,
           body: JSON.stringify({
-            error: challengeData.exception?.exceptionDetailList?.[0]?.exceptionDescription
-              || challengeData.message || 'Nie udało się pobrać challenge z KSeF.',
+            error: extractError(challengeData, 'Nie udało się pobrać challenge z KSeF.'),
             details: challengeData,
           }),
         }
       }
 
       const challenge = challengeData.challenge
-      const timestamp = challengeData.timestamp
+      const timestampMs = challengeData.timestampMs
 
-      // 2. Encrypt token|timestamp with base64 (demo/test accept plaintext token)
-      const encryptedToken = Buffer.from(`${token}|${timestamp}`).toString('base64')
+      // 3. RSA-OAEP encrypt token|timestampMs with KsefTokenEncryption key
+      const tokenPayload = `${token}|${timestampMs}`
+      const encryptedToken = rsaOaepEncrypt(tokenPayload, tokenEncKey.certificate).toString('base64')
 
-      // 3. Init session with token
-      const initRes = await ksefFetch(`${base}/online/Session/InitToken`, {
+      // 4. Authenticate with KSeF token
+      const authRes = await ksefFetch(`${base}/auth/ksef-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          context: {
-            challenge,
-            identifier: {
-              type: 'onip',
-              identifier: nip,
-            },
-            documentType: {
-              service: 'KSeF',
-              formCode: {
-                systemCode: 'FA (2)',
-                schemaVersion: '1-0E',
-                targetNamespace: 'http://crd.gov.pl/wzor/2023/06/29/12648/',
-                value: 'FA',
-              },
-            },
-            token: encryptedToken,
-          },
+          challenge,
+          contextIdentifier: { type: 'Nip', value: nip },
+          encryptedToken,
         }),
       })
-      const initData = initRes.json()
-      if (!initRes.ok) {
+      const authData = authRes.json()
+      if (!authRes.ok) {
         return {
-          statusCode: initRes.status,
+          statusCode: authRes.status,
           headers,
           body: JSON.stringify({
-            error: initData.exception?.exceptionDetailList?.[0]?.exceptionDescription
-              || initData.message || 'Nie udało się zainicjować sesji KSeF.',
-            details: initData,
+            error: extractError(authData, 'Nie udało się uwierzytelnić w KSeF.'),
+            details: authData,
           }),
         }
       }
 
-      const refNumber = initData.referenceNumber
-      const sessToken = initData.sessionToken?.token || initData.sessionToken
+      const authRef = authData.referenceNumber
+      const jwt = authData.authenticationToken?.token
+      if (!jwt) throw new Error('KSeF nie zwrócił tokenu uwierzytelnienia (JWT).')
 
-      // 4. Poll session status until active (if no immediate token returned)
-      if (refNumber && !sessToken) {
-        const status = await pollSessionStatus(base, refNumber)
+      // 5. Poll auth status until authentication succeeds
+      await pollAuthStatus(base, authRef, jwt)
+
+      // 6. Generate AES-256 key + IV for invoice encryption
+      const aesKey = crypto.randomBytes(32)
+      const iv = crypto.randomBytes(16)
+
+      // 7. RSA-OAEP encrypt AES key with SymmetricKeyEncryption key
+      const encryptedAesKey = rsaOaepEncrypt(aesKey, symEncKey.certificate).toString('base64')
+
+      // 8. Open online interactive session
+      const sessionRes = await ksefFetch(`${base}/sessions/online`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          formCode: { systemCode: 'FA (3)', schemaVersion: '1-0E', value: 'FA' },
+          encryption: {
+            encryptedSymmetricKey: encryptedAesKey,
+            initializationVector: iv.toString('base64'),
+          },
+        }),
+      })
+      const sessionData = sessionRes.json()
+      if (!sessionRes.ok) {
         return {
-          statusCode: 200,
+          statusCode: sessionRes.status,
           headers,
           body: JSON.stringify({
-            sessionToken: status.sessionToken?.token || status.sessionToken || refNumber,
-            referenceNumber: refNumber,
-            processingCode: status.processingCode,
+            error: extractError(sessionData, 'Nie udało się otworzyć sesji interaktywnej KSeF.'),
+            details: sessionData,
           }),
         }
       }
@@ -161,8 +223,11 @@ exports.handler = async (event) => {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-          sessionToken: sessToken || refNumber,
-          referenceNumber: refNumber,
+          sessionToken: jwt,
+          referenceNumber: sessionData.referenceNumber,
+          symmetricKey: aesKey.toString('base64'),
+          iv: iv.toString('base64'),
+          validUntil: sessionData.validUntil || authData.authenticationToken?.validUntil,
         }),
       }
     }
@@ -172,12 +237,17 @@ exports.handler = async (event) => {
       if (!sessionToken) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'Brak tokena sesji.' }) }
       }
-      await ksefFetch(`${base}/online/Session/Terminate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          SessionToken: sessionToken,
-        },
+      // Close the online interactive session (if referenceNumber provided)
+      if (referenceNumber) {
+        await ksefFetch(`${base}/sessions/online/${encodeURIComponent(referenceNumber)}/close`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${sessionToken}` },
+        })
+      }
+      // Invalidate the auth session
+      await ksefFetch(`${base}/auth/sessions/current`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${sessionToken}` },
       })
       return { statusCode: 200, headers, body: JSON.stringify({ closed: true }) }
     }

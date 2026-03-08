@@ -1,11 +1,11 @@
 /**
  * Netlify function: ksef-upo
- * KSeF MF API — fetch invoice status and UPO data.
+ * KSeF MF API v2 — fetch invoice status and UPO data from a session.
  *
- * Endpoint: GET /common/Invoice/{KsefReferenceNumber}/status
- * Returns invoice status including UPO details.
+ * Endpoint: GET /sessions/{referenceNumber}/invoices (list with UPO URLs)
+ * Auth: Bearer JWT token
  *
- * Input:  { ksefRef, sessionToken, env }
+ * Input:  { ksefRef, sessionToken (JWT), referenceNumber (session ref), env }
  * Output: { ksefReferenceNumber, invoiceReferenceNumber, acquisitionTimestamp,
  *           hashSHA, upoDownloadUrl?, statusCode, statusDescription }
  */
@@ -13,15 +13,15 @@ const { ksefFetch } = require('./ksef-http')
 const { mockApi } = require('./ksef-mock')
 
 const BASE = {
-  demo: 'https://ksef-demo.mf.gov.pl/api',
-  test: 'https://ksef-test.mf.gov.pl/api',
-  prod: 'https://ksef.mf.gov.pl/api',
+  demo: 'https://api-demo.ksef.mf.gov.pl/v2',
+  test: 'https://api-test.ksef.mf.gov.pl/v2',
+  prod: 'https://api.ksef.mf.gov.pl/v2',
 }
 
 exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Content-Type': 'application/json',
   }
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' }
@@ -33,22 +33,21 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'invalid_json' }) }
   }
 
-  const { ksefRef, sessionToken, accessToken, env = 'test' } = body
+  const { ksefRef, sessionToken, accessToken, referenceNumber, env = 'test' } = body
   const token = sessionToken || accessToken
-  if (!ksefRef || !token) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Brak numeru referencyjnego lub tokena sesji.' }) }
+  if (!ksefRef || !token || !referenceNumber) {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Brak numeru referencyjnego faktury, tokena sesji lub numeru referencyjnego sesji.' }) }
   }
 
-  // Clean the ksefRef — if legacy format "sessionRef|invoiceRef", use invoiceRef part
-  const refToQuery = ksefRef.includes('|') ? ksefRef.split('|')[1] : ksefRef
   const base = BASE[env] || BASE.test
 
   try {
+    // Get session invoices list to find UPO info for the specific invoice
     const res = await ksefFetch(
-      `${base}/common/Invoice/${encodeURIComponent(refToQuery)}/status`,
+      `${base}/sessions/${encodeURIComponent(referenceNumber)}/invoices?pageSize=1000`,
       {
         method: 'GET',
-        headers: { SessionToken: token },
+        headers: { Authorization: `Bearer ${token}` },
       },
     )
     const data = res.json()
@@ -57,9 +56,23 @@ exports.handler = async (event) => {
         statusCode: res.status,
         headers,
         body: JSON.stringify({
-          error: data.exception?.exceptionDetailList?.[0]?.exceptionDescription || data.title || data.message || 'Nie udało się pobrać UPO z KSeF.',
+          error: data.exception?.exceptionDescription || data.title || data.message || 'Nie udało się pobrać UPO z KSeF.',
           details: data,
         }),
+      }
+    }
+
+    // Find the specific invoice by ksefNumber or invoice referenceNumber
+    const invoices = data.invoices || []
+    const invoice = invoices.find(
+      (inv) => inv.ksefNumber === ksefRef || inv.referenceNumber === ksefRef,
+    )
+
+    if (!invoice) {
+      return {
+        statusCode: 404,
+        headers,
+        body: JSON.stringify({ error: `Nie znaleziono faktury ${ksefRef} w sesji ${referenceNumber}.` }),
       }
     }
 
@@ -67,13 +80,13 @@ exports.handler = async (event) => {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        ksefReferenceNumber: data.ksefNumber || refToQuery,
-        invoiceReferenceNumber: data.invoiceNumber || refToQuery,
-        acquisitionTimestamp: data.acquisitionDate || data.invoicingDate || null,
-        hashSHA: data.invoiceHash || null,
-        upoDownloadUrl: data.upoDownloadUrl || null,
-        statusCode: data.status?.code ?? null,
-        statusDescription: data.status?.description || null,
+        ksefReferenceNumber: invoice.ksefNumber || ksefRef,
+        invoiceReferenceNumber: invoice.invoiceNumber || ksefRef,
+        acquisitionTimestamp: invoice.acquisitionDate || invoice.invoicingDate || null,
+        hashSHA: invoice.invoiceHash || null,
+        upoDownloadUrl: invoice.upoDownloadUrl || null,
+        statusCode: invoice.status?.code ?? null,
+        statusDescription: invoice.status?.description || null,
       }),
     }
   } catch (e) {
@@ -82,7 +95,7 @@ exports.handler = async (event) => {
 
     if (isConnectionError && env !== 'prod') {
       console.warn(`[ksef-upo] Connection failed (${env}), falling back to mock:`, detail)
-      const mock = mockApi.fetchUpo(refToQuery || ksefRef);
+      const mock = mockApi.fetchUpo(ksefRef);
       return { statusCode: 200, headers, body: JSON.stringify(mock.body) };
     }
 

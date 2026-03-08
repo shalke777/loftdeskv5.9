@@ -14,6 +14,7 @@ export function useKsefUpo() {
       accessToken: string,
       env: KsefEnv = 'test',
       isDemo = false,
+      referenceNumber?: string,
     ) => {
       setLoading(true)
       setError(null)
@@ -30,7 +31,7 @@ export function useKsefUpo() {
             isDemo: true,
           }
         } else {
-          const raw = await ksefService.fetchUpo(ksefRef, accessToken, env)
+          const raw = await ksefService.fetchUpo(ksefRef, accessToken, env, referenceNumber)
           upoData = {
             ksefReferenceNumber:
               (raw.ksefReferenceNumber as string) || ksefRef,
@@ -39,8 +40,7 @@ export function useKsefUpo() {
             acquisitionTimestamp:
               (raw.acquisitionTimestamp as string) || new Date().toISOString(),
             hashSHA:
-              (raw.fileSignatureList as Array<{ hashSHA?: { value?: string } }>)?.[0]
-                ?.hashSHA?.value || '—',
+              (raw.hashSHA as string) || '—',
           }
         }
         setUpoHtml(ksefService.buildUpoHtml(upoData))

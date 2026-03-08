@@ -140,7 +140,7 @@ export function validateNip(nip: string): boolean {
 }
 
 /**
- * Build official FA_VAT(2) XML per Ministry of Finance KSeF schema
+ * Build official FA_VAT(3) XML per Ministry of Finance KSeF v2 schema
  * xmlns: http://crd.gov.pl/wzor/2023/06/29/12648/
  */
 export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuyer = {}): string {
@@ -203,8 +203,8 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
   return `<?xml version="1.0" encoding="UTF-8"?>
 <fa:Faktura xmlns:fa="http://crd.gov.pl/wzor/2023/06/29/12648/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <fa:Naglowek>
-    <fa:KodFormularza kodSystemowy="FA (2)" wersjaSchemy="1-0E">FA</fa:KodFormularza>
-    <fa:WariantFormularza>2</fa:WariantFormularza>
+    <fa:KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</fa:KodFormularza>
+    <fa:WariantFormularza>3</fa:WariantFormularza>
     <fa:DataWytworzeniaFa>${now}</fa:DataWytworzeniaFa>
     <fa:SystemInfo>LoftDesk v5.9</fa:SystemInfo>
   </fa:Naglowek>
@@ -381,6 +381,9 @@ export const ksefService = {
       sessionToken: token,
       xmlPayload,
       invoiceNumber: invoice.number,
+      referenceNumber: session.sessionRef || '',
+      symmetricKey: session.symmetricKey || '',
+      iv: session.iv || '',
       env,
     })
     return { ksefRef: result.ksefRef as string, invoiceNumber: invoice.number }
@@ -444,8 +447,9 @@ export const ksefService = {
     ksefRef: string,
     sessionToken: string,
     env: KsefEnv = 'test',
+    referenceNumber?: string,
   ): Promise<Record<string, unknown>> {
-    const result = await callProxy('ksef-upo', { ksefRef, sessionToken, env })
+    const result = await callProxy('ksef-upo', { ksefRef, sessionToken, referenceNumber: referenceNumber || '', env })
     return result
   },
 
