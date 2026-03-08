@@ -12,10 +12,10 @@ import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
 
 const quickActions = [
-  { icon: Users,        title: 'Dodaj kontrahenta', text: 'Uzupełnij bazę inwestorów i wykonawców.',    href: '/clients',   qaBg: '#eaf1ff', qaBorder: '#93c5fd', qaIconBg: '#dbeafe', qaIconColor: '#1d4ed8' },
-  { icon: FileText,     title: 'Nowa wycena',        text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates', qaBg: '#fff4df', qaBorder: '#fcd34d', qaIconBg: '#fef3c7', qaIconColor: '#b45309' },
-  { icon: Receipt,      title: 'Nowa faktura',       text: 'Wystaw dokument i przygotuj XML do KSeF.',   href: '/invoices',  qaBg: '#e8f7ee', qaBorder: '#86efac', qaIconBg: '#dcfce7', qaIconColor: '#15803d' },
-  { icon: FolderKanban, title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',     href: '/projects',  qaBg: '#fff1f1', qaBorder: '#fecaca', qaIconBg: '#fee2e2', qaIconColor: '#dc2626' },
+  { icon: Users,        title: 'Dodaj kontrahenta', text: 'Uzupełnij bazę inwestorów i wykonawców.',    href: '/clients',   bg: '#eaf1ff', border: '#93c5fd', iconBg: '#dbeafe', iconColor: '#1d4ed8' },
+  { icon: FileText,     title: 'Nowa wycena',        text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates', bg: '#fff4df', border: '#fcd34d', iconBg: '#fef3c7', iconColor: '#b45309' },
+  { icon: Receipt,      title: 'Nowa faktura',       text: 'Wystaw dokument i przygotuj XML do KSeF.',   href: '/invoices',  bg: '#e8f7ee', border: '#86efac', iconBg: '#dcfce7', iconColor: '#15803d' },
+  { icon: FolderKanban, title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',     href: '/projects',  bg: '#fff1f1', border: '#fecaca', iconBg: '#fee2e2', iconColor: '#dc2626' },
 ]
 
 export function DashboardPage() {
@@ -63,11 +63,11 @@ export function DashboardPage() {
                 <button
                   key={action.title}
                   className="quick-action"
-                  style={{ '--qa-bg': action.qaBg, '--qa-border': action.qaBorder, '--qa-icon-bg': action.qaIconBg, '--qa-icon-color': action.qaIconColor } as React.CSSProperties}
+                  style={{ backgroundColor: action.bg, borderColor: action.border }}
                   onClick={() => navigate({ to: action.href as any })}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                    <div className="quick-action__icon"><Icon size={18} /></div>
+                    <div className="quick-action__icon" style={{ backgroundColor: action.iconBg, color: action.iconColor }}><Icon size={18} /></div>
                     <strong>{action.title}</strong>
                   </div>
                   <div className="field__label">{action.text}</div>
