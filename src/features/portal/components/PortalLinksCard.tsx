@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Share2 } from 'lucide-react'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -9,6 +9,22 @@ import { STATUS_META } from '@/shared/lib/constants'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Input } from '@/shared/ui/Input/Input'
 import { useToast } from '@/shared/hooks/useToast'
+
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+  // Fallback for mobile browsers without clipboard API
+  const el = document.createElement('textarea')
+  el.value = text
+  el.style.cssText = 'position:fixed;top:0;left:0;opacity:0'
+  document.body.appendChild(el)
+  el.focus()
+  el.select()
+  document.execCommand('copy')
+  document.body.removeChild(el)
+}
 
 export function PortalLinksCard({ estimate }: { estimate: Estimate }) {
   const { user } = useAuth()
@@ -47,9 +63,10 @@ export function PortalLinksCard({ estimate }: { estimate: Estimate }) {
                 clientName: clientName || 'Klient',
               })
               const fullUrl = typeof window !== 'undefined' ? `${window.location.origin}${created.url}` : created.url
-              await navigator.clipboard?.writeText(fullUrl)
-              toast.success('Link portalu wygenerowany', 'Adres został skopiowany do schowka.')
               setClientName('')
+              // Copy silently — never let clipboard failure mask the success
+              try { await copyText(fullUrl) } catch { /* clipboard unavailable — shows URL in list */ }
+              toast.success('Link portalu wygenerowany', 'Adres skopiowany do schowka (jeśli dostępny).')
             } catch (err) {
               toast.error('Błąd generowania linku', err instanceof Error ? err.message : String(err))
             }
@@ -89,7 +106,12 @@ export function PortalLinksCard({ estimate }: { estimate: Estimate }) {
               <div style={{ display: 'grid', gap: 6 }}>
                 <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{fullUrl}</code>
                 <div className="actions-row">
-                  <Button variant="secondary" onClick={async () => { await navigator.clipboard?.writeText(fullUrl); toast.info('Skopiowano link portalu') }}>Kopiuj link</Button>
+                  <Button variant="secondary" onClick={async () => { try { await copyText(fullUrl) } catch { /* ignore */ } toast.info('Skopiowano link portalu') }}>Kopiuj link</Button>
+                  {typeof navigator !== 'undefined' && 'share' in navigator ? (
+                    <Button variant="secondary" icon={<Share2 size={16} />} onClick={() => navigator.share({ title: `Kosztorys ${estimate.number}`, url: fullUrl }).catch(() => {})}>
+                      Wyślij
+                    </Button>
+                  ) : null}
                   <a href={fullUrl} target="_blank" rel="noreferrer"><Button variant="secondary" icon={<ExternalLink size={16} />}>Otwórz link</Button></a>
                   {item.active ? (
                     <Button variant="ghost" loading={deactivateToken.isPending && deactivateToken.variables === item.id} onClick={() => deactivateToken.mutate(item.id)}>

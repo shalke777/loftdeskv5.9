@@ -12,10 +12,10 @@ import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
 
 const quickActions = [
-  { icon: Users, title: 'Dodaj kontrahenta', text: 'Uzupełnij bazę inwestorów i wykonawców.', href: '/clients' },
-  { icon: FileText, title: 'Nowa wycena', text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates' },
-  { icon: Receipt, title: 'Nowa faktura', text: 'Wystaw dokument i przygotuj XML do KSeF.', href: '/invoices' },
-  { icon: FolderKanban, title: 'Otwórz projekty', text: 'Przenieś wygraną ofertę do realizacji.', href: '/projects' },
+  { icon: Users,         title: 'Dodaj kontrahenta', text: 'Uzupełnij bazę inwestorów i wykonawców.',   href: '/clients',   bg: '#fff7ed', border: '#fed7aa', iconBg: '#fef3c7', iconColor: '#d97706' },
+  { icon: FileText,      title: 'Nowa wycena',        text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates', bg: '#eff6ff', border: '#bfdbfe', iconBg: '#dbeafe', iconColor: '#2563eb' },
+  { icon: Receipt,       title: 'Nowa faktura',       text: 'Wystaw dokument i przygotuj XML do KSeF.',  href: '/invoices',  bg: '#f0fdf4', border: '#bbf7d0', iconBg: '#dcfce7', iconColor: '#16a34a' },
+  { icon: FolderKanban,  title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',    href: '/projects',  bg: '#f5f3ff', border: '#ddd6fe', iconBg: '#ede9fe', iconColor: '#7c3aed' },
 ]
 
 export function DashboardPage() {
@@ -60,9 +60,14 @@ export function DashboardPage() {
             {quickActions.map((action) => {
               const Icon = action.icon
               return (
-                <button key={action.title} className="quick-action" onClick={() => navigate({ to: action.href as any })}>
+                <button
+                  key={action.title}
+                  className="quick-action"
+                  style={{ background: action.bg, borderColor: action.border }}
+                  onClick={() => navigate({ to: action.href as any })}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                    <div className="quick-action__icon"><Icon size={18} /></div>
+                    <div className="quick-action__icon" style={{ background: action.iconBg, color: action.iconColor }}><Icon size={18} /></div>
                     <strong>{action.title}</strong>
                   </div>
                   <div className="field__label">{action.text}</div>
