@@ -19,6 +19,8 @@
  */
 const crypto = require('crypto')
 const { ksefFetch } = require('./ksef-http')
+const { checkKsefAvailability } = require('./ksef-schedule')
+const { mockApi } = require('./ksef-mock')
 
 const BASE = {
   demo: 'https://ksef-demo.mf.gov.pl/api',
@@ -180,10 +182,31 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ closed: true }) }
     }
 
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Nieznana akcja. Użyj "init" lub "close".' }) }
+    // ── Check availability ─────────────────────────────────────────
+    if (action === 'check-availability') {
+      const availability = checkKsefAvailability(env);
+      return { statusCode: 200, headers, body: JSON.stringify(availability) };
+    }
+
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Nieznana akcja. Użyj "init", "close" lub "check-availability".' }) }
   } catch (e) {
     const detail = e.message || 'upstream_error'
-    const friendly = /ECONNREFUSED|ENOTFOUND|Timeout|nie można|socket hang up|ECONNRESET/i.test(detail)
+    const isConnectionError = /ECONNREFUSED|ENOTFOUND|Timeout|nie można|socket hang up|ECONNRESET|503|502/i.test(detail)
+
+    // Auto-fallback to mock when KSeF is unreachable (non-prod only)
+    if (isConnectionError && env !== 'prod') {
+      console.warn(`[ksef-session] Connection failed (${env}), falling back to mock:`, detail)
+      if (action === 'init') {
+        const mock = mockApi.initSession(nip);
+        return { statusCode: mock.statusCode, headers, body: JSON.stringify(mock.body) };
+      }
+      if (action === 'close') {
+        const mock = mockApi.closeSession(referenceNumber);
+        return { statusCode: mock.statusCode, headers, body: JSON.stringify(mock.body) };
+      }
+    }
+
+    const friendly = isConnectionError
       ? `Nie można połączyć się z serwerem KSeF (${env}). ${detail}`
       : detail
     return { statusCode: 502, headers, body: JSON.stringify({ error: friendly, detail }) }

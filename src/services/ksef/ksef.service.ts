@@ -2,6 +2,72 @@ import type { Invoice } from '@/entities/invoice/model'
 
 export type KsefEnv = 'demo' | 'test' | 'prod'
 
+// ── Polish public holidays (2024-2030) ────────────────────
+const FIXED_HOLIDAYS = [
+  '01-01', '01-06', '05-01', '05-03', '08-15', '11-01', '11-11', '12-25', '12-26',
+]
+const EASTER_SUNDAYS: Record<number, string> = {
+  2024: '03-31', 2025: '04-20', 2026: '04-05', 2027: '03-28',
+  2028: '04-16', 2029: '04-01', 2030: '04-21',
+}
+function addDaysMmDd(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() + days)
+  return (d.getUTCMonth() + 1).toString().padStart(2, '0') + '-' + d.getUTCDate().toString().padStart(2, '0')
+}
+function getMovableHolidays(year: number): string[] {
+  const easter = EASTER_SUNDAYS[year]
+  if (!easter) return []
+  const full = `${year}-${easter}`
+  return [addDaysMmDd(full, 1), addDaysMmDd(full, 49), addDaysMmDd(full, 60)]
+}
+function isPolishHoliday(date: Date): boolean {
+  const mmdd = (date.getMonth() + 1).toString().padStart(2, '0') + '-' + date.getDate().toString().padStart(2, '0')
+  if (FIXED_HOLIDAYS.includes(mmdd)) return true
+  return getMovableHolidays(date.getFullYear()).includes(mmdd)
+}
+
+export interface KsefAvailability {
+  available: boolean
+  reason?: string
+  nextAvailable?: string
+}
+
+/**
+ * Check if KSeF test/demo environment is available right now.
+ * Production is assumed 24/7.
+ */
+export function checkKsefAvailability(env: KsefEnv): KsefAvailability {
+  if (env === 'prod') return { available: true }
+
+  const now = new Date()
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Warsaw',
+    weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  })
+  const parts = Object.fromEntries(fmt.formatToParts(now).map((p) => [p.type, p.value]))
+  const hour = parseInt(parts.hour, 10)
+  const minute = parseInt(parts.minute, 10)
+  const weekday = parts.weekday
+  const warsawDate = new Date(`${parts.year}-${parts.month}-${parts.day}T12:00:00`)
+
+  if (weekday === 'Sat' || weekday === 'Sun') {
+    return { available: false, reason: 'Środowisko KSeF jest wyłączone w weekendy.', nextAvailable: 'poniedziałek 8:00' }
+  }
+  if (isPolishHoliday(warsawDate)) {
+    return { available: false, reason: 'Środowisko KSeF jest wyłączone w święta państwowe.', nextAvailable: 'następny dzień roboczy 8:00' }
+  }
+  if (hour < 8) {
+    return { available: false, reason: `KSeF dostępny od 8:00 (teraz ${hour}:${String(minute).padStart(2, '0')}).`, nextAvailable: 'dziś o 8:00' }
+  }
+  if (hour >= 18) {
+    const next = weekday === 'Fri' ? 'poniedziałek 8:00' : 'jutro o 8:00'
+    return { available: false, reason: `KSeF zamknięty po 18:00 (teraz ${hour}:${String(minute).padStart(2, '0')}).`, nextAvailable: next }
+  }
+  return { available: true }
+}
+
 export interface KsefHistoryEntry {
   id: string
   invoiceId: string
@@ -286,6 +352,9 @@ export interface KsefSessionData {
 }
 
 export const ksefService = {
+  // ── Availability ────────────────────────────────────────
+  checkAvailability: checkKsefAvailability,
+
   // ── Session ────────────────────────────────────────────
   /**
    * Authenticate + open online session (v2 flow).

@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/shared/ui/Card/Card'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Button } from '@/shared/ui/Button/Button'
 import { Input } from '@/shared/ui/Input/Input'
 import { Select } from '@/shared/ui/Select/Select'
+import { Modal } from '@/shared/ui/Modal/Modal'
+import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { useNavigate } from '@tanstack/react-router'
 import { useSettings } from '@/features/settings/hooks/useSettings'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
@@ -12,11 +14,206 @@ import { AccessNotice } from '@/shared/ui/AccessNotice/AccessNotice'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
 import { useKsefSession } from '@/features/ksef/hooks/useKsefSession'
-import { useKsefQueue } from '@/features/ksef/hooks/useKsefQueue'
+import { useKsefQueue, type QueueItemResult } from '@/features/ksef/hooks/useKsefQueue'
 import { useKsefReceive } from '@/features/ksef/hooks/useKsefReceive'
 import { useKsefHistory } from '@/features/ksef/hooks/useKsefHistory'
 import { useKsefUpo } from '@/features/ksef/hooks/useKsefUpo'
+import { checkKsefAvailability, type KsefAvailability, type KsefEnv } from '@/services/ksef/ksef.service'
 
+// ── Status Badge Component ─────────────────────────────────
+function KsefStatusBadge({ status, isMock }: { status: string | null; isMock?: boolean }) {
+  const configs: Record<string, { variant: 'success' | 'danger' | 'warning' | 'default'; label: string; icon: string }> = {
+    ksef_sent:    { variant: 'success', label: 'Wysłano',   icon: '✅' },
+    ksef_pending: { variant: 'warning', label: 'Oczekuje',  icon: '⏳' },
+    ksef_error:   { variant: 'danger',  label: 'Błąd',      icon: '❌' },
+    ksef_queued:  { variant: 'default', label: 'W kolejce',  icon: '📋' },
+  }
+  const cfg = configs[status ?? ''] ?? configs.ksef_pending
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <Badge variant={cfg.variant}>{`${cfg.icon} ${cfg.label}`}</Badge>
+      {isMock && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700 }}>[MOCK]</span>}
+    </span>
+  )
+}
+
+// ── Availability Indicator ─────────────────────────────────
+function AvailabilityBanner({ env }: { env: KsefEnv }) {
+  const [avail, setAvail] = useState<KsefAvailability>({ available: true })
+
+  useEffect(() => {
+    setAvail(checkKsefAvailability(env))
+    const interval = setInterval(() => setAvail(checkKsefAvailability(env)), 60_000)
+    return () => clearInterval(interval)
+  }, [env])
+
+  if (env === 'prod') return null
+  if (avail.available) {
+    return (
+      <div style={{ padding: '10px 16px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, marginBottom: 16, fontSize: 13 }}>
+        🟢 <strong>KSeF online</strong> — środowisko {env} jest dostępne (pon-pt 8:00-18:00).
+      </div>
+    )
+  }
+  return (
+    <div style={{ padding: '12px 16px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 10, marginBottom: 16, fontSize: 13 }}>
+      <div style={{ fontWeight: 600 }}>⚠️ KSeF offline — {avail.reason}</div>
+      <div style={{ marginTop: 4, color: '#92400e' }}>
+        Następna dostępność: <strong>{avail.nextAvailable}</strong>
+        &nbsp;·&nbsp;Mock API symuluje odpowiedzi gdy KSeF jest niedostępny.
+      </div>
+    </div>
+  )
+}
+
+// ── Send Modal Component ─────────────────────────────────
+type SendModalStep = 'confirm' | 'sending' | 'success' | 'error'
+
+interface SendModalProps {
+  open: boolean
+  onClose: () => void
+  pendingCount: number
+  availability: KsefAvailability
+  isDemo: boolean
+  processing: boolean
+  onSend: () => Promise<void>
+  result: { sent: number; errors: number; total: number; items: QueueItemResult[] } | null
+  onShowUpo: (ksefRef: string, invoiceNumber: string) => void
+}
+
+function KsefSendModal({ open, onClose, pendingCount, availability, isDemo, processing, onSend, result, onShowUpo }: SendModalProps) {
+  const [step, setStep] = useState<SendModalStep>('confirm')
+
+  useEffect(() => {
+    if (open) setStep('confirm')
+  }, [open])
+
+  useEffect(() => {
+    if (processing) setStep('sending')
+    else if (result && result.total > 0) {
+      setStep(result.errors > 0 && result.sent === 0 ? 'error' : 'success')
+    }
+  }, [processing, result])
+
+  if (!open) return null
+
+  const handleSend = async () => {
+    setStep('sending')
+    await onSend()
+  }
+
+  return (
+    <Modal open={open} onClose={step === 'sending' ? () => {} : onClose} title="Wysyłka faktur do KSeF">
+      {step === 'confirm' && (
+        <div>
+          {!availability.available && !isDemo && (
+            <div style={{ padding: '14px 16px', background: '#fef3c7', border: '2px solid #f59e0b', borderRadius: 8, marginBottom: 16 }}>
+              <strong>⚠️ KSeF jest niedostępny</strong>
+              <p style={{ margin: '6px 0 0', fontSize: 13 }}>
+                {availability.reason}<br />
+                Faktury zostaną wysłane przez mock API (symulacja).
+              </p>
+            </div>
+          )}
+
+          {isDemo && (
+            <div style={{ padding: '14px 16px', background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: 8, marginBottom: 16 }}>
+              <strong>🔵 Tryb demo</strong>
+              <p style={{ margin: '6px 0 0', fontSize: 13 }}>
+                Dane nie będą wysłane do Ministerstwa Finansów — symulacja lokalna.
+              </p>
+            </div>
+          )}
+
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 15 }}>
+              <strong>{pendingCount}</strong> {pendingCount === 1 ? 'faktura oczekuje' : 'faktur oczekuje'} na wysyłkę do KSeF.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Button onClick={handleSend}>
+              {availability.available || isDemo ? `Wyślij ${pendingCount} faktur` : 'Wyślij (mock API)'}
+            </Button>
+            <Button variant="secondary" onClick={onClose}>Anuluj</Button>
+          </div>
+        </div>
+      )}
+
+      {step === 'sending' && (
+        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <Spinner />
+          <p style={{ marginTop: 16, fontSize: 14, color: '#6b7280' }}>
+            Wysyłam faktury do KSeF…<br />
+            <span style={{ fontSize: 12 }}>Nie zamykaj okna.</span>
+          </p>
+        </div>
+      )}
+
+      {step === 'success' && result && (
+        <div>
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <span style={{ fontSize: 48 }}>✅</span>
+            <h3 style={{ marginTop: 8 }}>Wysyłka zakończona</h3>
+            <p style={{ fontSize: 14, color: '#6b7280' }}>
+              {result.sent} wysłanych, {result.errors} błędów z {result.total}
+            </p>
+          </div>
+
+          {result.items.filter((i) => i.status === 'sent' && i.ksefRef).length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <h4 style={{ fontSize: 13, marginBottom: 8 }}>Wysłane faktury:</h4>
+              {result.items.filter((i) => i.status === 'sent').map((i) => (
+                <div key={i.invoice.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, padding: '8px 12px', background: '#f0fdf4', borderRadius: 8 }}>
+                  <KsefStatusBadge status="ksef_sent" isMock={i.ksefRef?.startsWith('MOCK-') || i.ksefRef?.startsWith('DEMO-')} />
+                  <span style={{ flex: 1, fontSize: 13 }}>{i.invoice.number}</span>
+                  <code style={{ fontSize: 10, color: '#64748b' }}>{i.ksefRef?.slice(0, 22)}…</code>
+                  {i.ksefRef && (
+                    <Button variant="ghost" onClick={() => onShowUpo(i.ksefRef!, i.invoice.number)}>UPO</Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {result.items.filter((i) => i.status === 'error').length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <h4 style={{ fontSize: 13, marginBottom: 8, color: '#dc2626' }}>Błędy:</h4>
+              {result.items.filter((i) => i.status === 'error').map((i) => (
+                <div key={i.invoice.id} style={{ padding: '8px 12px', background: '#fef2f2', borderRadius: 8, marginBottom: 6 }}>
+                  <strong style={{ fontSize: 13 }}>{i.invoice.number}</strong>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#dc2626' }}>{i.error}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Button onClick={onClose}>Zamknij</Button>
+        </div>
+      )}
+
+      {step === 'error' && result && (
+        <div>
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <span style={{ fontSize: 48 }}>❌</span>
+            <h3 style={{ marginTop: 8 }}>Błąd wysyłki</h3>
+          </div>
+          {result.items.filter((i) => i.status === 'error').map((i) => (
+            <div key={i.invoice.id} style={{ padding: '12px 16px', background: '#fef2f2', borderRadius: 8, marginBottom: 8 }}>
+              <strong>{i.invoice.number}</strong>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#dc2626' }}>{i.error}</p>
+            </div>
+          ))}
+          <div style={{ marginTop: 16 }}>
+            <Button variant="secondary" onClick={onClose}>Zamknij</Button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+// ── Main KSeF Page ─────────────────────────────────────────
 export function KsefPage() {
   const navigate = useNavigate()
   const { profile } = useSettings()
@@ -30,15 +227,18 @@ export function KsefPage() {
 
   const [nipInput, setNipInput] = useState<string>('')
   const [tokenInput, setTokenInput] = useState<string>('')
-  const [envInput, setEnvInput] = useState<'demo' | 'test' | 'prod'>('demo')
+  const [envInput, setEnvInput] = useState<KsefEnv>('demo')
+  const [sendModalOpen, setSendModalOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<'queue' | 'received' | 'history'>('queue')
 
-  // Pre-fill inputs once profile loads (profile is undefined on first render)
+  const availability = checkKsefAvailability(session?.env ?? envInput)
+
   useEffect(() => {
     if (!profile) return
     const p = profile as Record<string, unknown>
     if (!nipInput) setNipInput((p.ksef_nip as string) || (p.nip as string) || '')
     if (!tokenInput) setTokenInput((p.ksef_token as string) || '')
-    setEnvInput(((p.ksef_env as string) === 'prod' ? 'prod' : (p.ksef_env as string) === 'test' ? 'test' : 'demo') as 'demo' | 'test' | 'prod')
+    setEnvInput(((p.ksef_env as string) === 'prod' ? 'prod' : (p.ksef_env as string) === 'test' ? 'test' : 'demo') as KsefEnv)
   }, [profile]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!enabled) {
@@ -64,11 +264,12 @@ export function KsefPage() {
     initDemo(nipInput || '0000000000', envInput)
   }
 
-  async function handleProcessQueue() {
+  const handleProcessQueue = useCallback(async () => {
     if (!session) return
     await processQueue(session, session.isDemo)
+    setSendModalOpen(false)
     refreshHistory()
-  }
+  }, [session, processQueue, refreshHistory])
 
   async function handleReceive() {
     if (!session) return
@@ -81,23 +282,32 @@ export function KsefPage() {
     upo.fetchAndShow(ksefRef, invoiceNumber, session.sessionToken, session.env, session.isDemo)
   }
 
-  function ksefStatusBadge(s: string | null) {
-    if (s === 'ksef_sent') return <Badge variant="success">wysłano</Badge>
-    if (s === 'ksef_error') return <Badge variant="danger">błąd</Badge>
-    return <Badge variant="warning">oczekuje</Badge>
-  }
+  const tabStyle = (tab: string) => ({
+    padding: '10px 20px',
+    fontSize: 13,
+    fontWeight: activeTab === tab ? 700 : 400,
+    borderBottom: activeTab === tab ? '2px solid var(--color-primary, #2563eb)' : '2px solid transparent',
+    background: 'none',
+    border: 'none',
+    borderBottomWidth: 2,
+    borderBottomStyle: 'solid' as const,
+    borderBottomColor: activeTab === tab ? 'var(--color-primary, #2563eb)' : 'transparent',
+    cursor: 'pointer' as const,
+    color: activeTab === tab ? 'var(--color-primary, #2563eb)' : '#6b7280',
+  })
 
   return (
     <div>
       <PageHeader title="KSeF" subtitle="Krajowy System e-Faktur · FA(2) · MF API" />
-      <div className="grid-2">
 
+      <AvailabilityBanner env={session?.env ?? envInput} />
+
+      <div className="grid-2">
         {/* ── SESJA ─────────────────────────────────────── */}
         <Card>
           <h3 style={{ marginBottom: 16 }}>Sesja KSeF</h3>
           {session ? (
             <div>
-              {/* Status banner */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: session.isDemo ? '#fffbeb' : '#f0fdf4', border: `1px solid ${session.isDemo ? '#fbbf24' : '#86efac'}`, borderRadius: 10, marginBottom: 16 }}>
                 <span style={{ fontSize: 22 }}>{session.isDemo ? '🔵' : '🟢'}</span>
                 <div style={{ flex: 1 }}>
@@ -108,12 +318,11 @@ export function KsefPage() {
                     Uruchomiona: {new Date(session.startedAt).toLocaleString('pl-PL')}
                   </div>
                 </div>
-                <Badge variant={session.env === 'prod' ? 'danger' : session.env === 'demo' ? 'info' : 'warning'}>
+                <Badge variant={session.env === 'prod' ? 'danger' : 'warning'}>
                   {session.env === 'prod' ? 'PRODUKCJA' : session.env === 'demo' ? 'DEMO' : 'TEST'}
                 </Badge>
               </div>
 
-              {/* Session details */}
               <div style={{ borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 16 }}>
                 {[
                   { label: 'NIP', value: <strong>{session.nip}</strong> },
@@ -132,24 +341,12 @@ export function KsefPage() {
           ) : (
             <form onSubmit={handleInitSession}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <Input
-                  label="NIP firmy"
-                  value={nipInput}
-                  onChange={(e) => setNipInput(e.target.value)}
-                  placeholder="1234567890"
-                  maxLength={10}
-                />
-                <Input
-                  label="Token autoryzacyjny KSeF"
-                  type="password"
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                  placeholder="Token z panelu podatnika / PUE MF"
-                />
+                <Input label="NIP firmy" value={nipInput} onChange={(e) => setNipInput(e.target.value)} placeholder="1234567890" maxLength={10} />
+                <Input label="Token autoryzacyjny KSeF" type="password" value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} placeholder="Token z panelu podatnika / PUE MF" />
                 <Select
                   label="Środowisko"
                   value={envInput}
-                  onChange={(e) => setEnvInput(e.target.value as 'demo' | 'test' | 'prod')}
+                  onChange={(e) => setEnvInput(e.target.value as KsefEnv)}
                   options={[
                     { value: 'demo', label: 'Demo (ksef-demo.mf.gov.pl)' },
                     { value: 'test', label: 'Testowe (ksef-test.mf.gov.pl)' },
@@ -163,164 +360,210 @@ export function KsefPage() {
                 </div>
               )}
               <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                <Button type="submit" loading={sessionLoading} disabled={!nipInput || !tokenInput}>
-                  Inicjuj sesję
-                </Button>
-                <Button type="button" variant="ghost" onClick={handleInitDemoSession}>
-                  Tryb demo
-                </Button>
+                <Button type="submit" loading={sessionLoading} disabled={!nipInput || !tokenInput}>Inicjuj sesję</Button>
+                <Button type="button" variant="ghost" onClick={handleInitDemoSession}>Tryb demo</Button>
               </div>
               <div style={{ marginTop: 12, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12, color: '#718096', lineHeight: 1.6 }}>
                 💡 NIP i token uzupełnisz w <strong>Ustawienia → Dane wykonawcy → KSeF</strong>.<br />
-                Tryb demo działa bez połączenia z MF.
+                Tryb demo działa bez połączenia z MF. Mock API symuluje odpowiedzi gdy KSeF jest offline.
               </div>
             </form>
           )}
         </Card>
 
-        {/* ── KOLEJKA ───────────────────────────────────── */}
+        {/* ── SZYBKIE AKCJE ──────────────────────────────── */}
         <Card>
-          <div className="toolbar">
-            <h3>Kolejka wysyłek ({pending.length})</h3>
-            {session && pending.length > 0 && (
-              <Button onClick={handleProcessQueue} loading={processing} disabled={processing}>
-                {processing ? 'Wysyłanie…' : 'Wyślij kolejkę'}
-              </Button>
-            )}
+          <h3 style={{ marginBottom: 16 }}>Szybkie akcje</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Button
+              disabled={!session || pending.length === 0}
+              onClick={() => setSendModalOpen(true)}
+              loading={processing}
+            >
+              📤 Wyślij do KSeF ({pending.length})
+            </Button>
+            <Button variant="secondary" disabled={!session} onClick={handleReceive} loading={receiving}>
+              📥 Odbierz dokumenty z KSeF
+            </Button>
+            <Button variant="ghost" onClick={() => navigate({ to: '/invoices' })}>
+              📋 Lista faktur
+            </Button>
+            <Button variant="ghost" onClick={() => navigate({ to: '/settings' })}>
+              ⚙️ Ustawienia KSeF
+            </Button>
           </div>
-          {!session && (
-            <p style={{ color: '#888', fontSize: 14 }}>Wymagana aktywna sesja KSeF.</p>
-          )}
-          {pending.length === 0 ? (
-            <p style={{ color: '#888', fontSize: 14 }}>
-              Brak faktur oczekujących na wysyłkę.<br />
-              <span style={{ fontSize: 12 }}>Użyj „Wyślij do KSeF" w szczegółach faktury.</span>
-            </p>
-          ) : (
-            <table className="table" style={{ fontSize: 13, width: '100%' }}>
-              <thead>
-                <tr><th>Numer</th><th>Brutto</th><th>Status</th></tr>
-              </thead>
-              <tbody>
-                {pending.map((inv) => (
-                  <tr key={inv.id}>
-                    <td>{inv.number}</td>
-                    <td className="num">{formatCurrency(inv.total_gross)}</td>
-                    <td>{ksefStatusBadge(inv.ksef_status)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          {lastResult && (
-            <div style={{ marginTop: 12, padding: '10px 14px', background: lastResult.errors > 0 ? '#fff5f5' : '#f0fff4', borderRadius: 8, fontSize: 13 }}>
-              <strong>Wynik:</strong> {lastResult.sent} wysłanych, {lastResult.errors} błędów z {lastResult.total}
-              {lastResult.items.filter((i) => i.status === 'sent' && i.ksefRef).map((i) => (
-                <div key={i.invoice.id} style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ flex: 1, fontSize: 12 }}>{i.invoice.number}</span>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleShowUpo(i.ksefRef!, i.invoice.number)}
-                    loading={upo.loading}
-                  >
-                    UPO
-                  </Button>
+
+          <div style={{ marginTop: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12, color: '#718096', lineHeight: 1.7 }}>
+            <strong>Harmonogram KSeF:</strong><br />
+            📅 Demo/Test: pon-pt 8:00 — 18:00 (CET)<br />
+            🌐 Produkcja: 24/7<br />
+            🔄 Mock API: automatycznie gdy offline
+          </div>
+        </Card>
+      </div>
+
+      {/* ── TABS: Queue / Received / History ──────────────── */}
+      <div style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: 0 }}>
+          <button style={tabStyle('queue')} onClick={() => setActiveTab('queue')}>
+            📤 Kolejka ({pending.length})
+          </button>
+          <button style={tabStyle('received')} onClick={() => setActiveTab('received')}>
+            📥 Odebrane ({docs.length})
+          </button>
+          <button style={tabStyle('history')} onClick={() => setActiveTab('history')}>
+            📜 Historia ({history.length})
+          </button>
+        </div>
+
+        <Card>
+          {/* ── QUEUE TAB ──────────────────────────────── */}
+          {activeTab === 'queue' && (
+            <div>
+              {!session && <p style={{ color: '#888', fontSize: 14 }}>Wymagana aktywna sesja KSeF.</p>}
+              {pending.length === 0 ? (
+                <p style={{ color: '#888', fontSize: 14 }}>
+                  Brak faktur oczekujących na wysyłkę.<br />
+                  <span style={{ fontSize: 12 }}>Użyj „Wyślij do KSeF" w szczegółach faktury lub kliknij przycisk u góry.</span>
+                </p>
+              ) : (
+                <div>
+                  <table className="table" style={{ fontSize: 13, width: '100%' }}>
+                    <thead>
+                      <tr><th>Numer</th><th>Kwota brutto</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                      {pending.map((inv) => (
+                        <tr key={inv.id}>
+                          <td>{inv.number}</td>
+                          <td className="num">{formatCurrency(inv.total_gross)}</td>
+                          <td><KsefStatusBadge status={inv.ksef_status} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                    <Button onClick={() => setSendModalOpen(true)} disabled={!session || processing} loading={processing}>
+                      Wyślij {pending.length} faktur
+                    </Button>
+                  </div>
                 </div>
-              ))}
-              {lastResult.items.filter((i) => i.status === 'error').map((i) => (
-                <div key={i.invoice.id} style={{ color: '#c0392b', marginTop: 4 }}>
-                  {i.invoice.number}: {i.error}
+              )}
+
+              {lastResult && !sendModalOpen && (
+                <div style={{ marginTop: 16, padding: '12px 16px', background: lastResult.errors > 0 ? '#fef2f2' : '#f0fdf4', borderRadius: 8, fontSize: 13, border: `1px solid ${lastResult.errors > 0 ? '#fca5a5' : '#86efac'}` }}>
+                  <strong>Ostatni wynik:</strong> {lastResult.sent} wysłanych, {lastResult.errors} błędów z {lastResult.total}
+                  {lastResult.items.filter((i) => i.status === 'sent' && i.ksefRef).map((i) => (
+                    <div key={i.invoice.id} style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <KsefStatusBadge status="ksef_sent" isMock={i.ksefRef?.startsWith('MOCK-') || i.ksefRef?.startsWith('DEMO-')} />
+                      <span style={{ flex: 1, fontSize: 12 }}>{i.invoice.number}</span>
+                      <code style={{ fontSize: 10, color: '#64748b' }}>{i.ksefRef?.slice(0, 22)}…</code>
+                      <Button variant="ghost" onClick={() => handleShowUpo(i.ksefRef!, i.invoice.number)} loading={upo.loading}>UPO</Button>
+                    </div>
+                  ))}
+                  {lastResult.items.filter((i) => i.status === 'error').map((i) => (
+                    <div key={i.invoice.id} style={{ color: '#dc2626', marginTop: 4, fontSize: 12 }}>
+                      ❌ {i.invoice.number}: {i.error}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+            </div>
+          )}
+
+          {/* ── RECEIVED TAB ───────────────────────────── */}
+          {activeTab === 'received' && (
+            <div>
+              {!session && <p style={{ color: '#888', fontSize: 14 }}>Wymagana aktywna sesja KSeF.</p>}
+              {receiveError && <p style={{ color: '#c0392b', fontSize: 13 }}>Błąd: {receiveError}</p>}
+              {newCount !== null && newCount >= 0 && (
+                <p style={{ fontSize: 13, color: '#27ae60', marginBottom: 8 }}>Pobrano {newCount} nowych dokumentów.</p>
+              )}
+              {docs.length === 0 ? (
+                <p style={{ color: '#888', fontSize: 14 }}>
+                  Brak odebranych dokumentów. Kliknij „Odbierz dokumenty z KSeF" aby pobrać ostatnie 30 dni.
+                </p>
+              ) : (
+                <table className="table" style={{ fontSize: 12, width: '100%' }}>
+                  <thead>
+                    <tr><th>Nr ref. KSeF</th><th>Nr faktury</th><th>NIP wystawcy</th><th>Data</th><th>Kwota</th></tr>
+                  </thead>
+                  <tbody>
+                    {docs.slice(0, 30).map((doc) => (
+                      <tr key={doc.ksefRef}>
+                        <td>
+                          <code style={{ fontSize: 11 }}>{doc.ksefRef.slice(0, 22)}…</code>
+                          {doc.ksefRef.startsWith('MOCK-') && <span style={{ fontSize: 10, color: '#f59e0b', marginLeft: 4 }}>[MOCK]</span>}
+                        </td>
+                        <td>{doc.invoiceNumber}</td>
+                        <td>{doc.issuerNip}</td>
+                        <td>{doc.issueDate ? doc.issueDate.slice(0, 10) : '—'}</td>
+                        <td className="num">{doc.grossAmount ? formatCurrency(doc.grossAmount) : '—'}</td>
+                      </tr>
+                    ))}
+                    {docs.length > 30 && (
+                      <tr><td colSpan={5} style={{ color: '#888', textAlign: 'center', fontSize: 12 }}>… i {docs.length - 30} więcej</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
+          {/* ── HISTORY TAB ────────────────────────────── */}
+          {activeTab === 'history' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 13, color: '#6b7280' }}>{history.length} operacji</span>
+                {history.length > 0 && <Button variant="ghost" onClick={clearHistory}>Wyczyść</Button>}
+              </div>
+              {history.length === 0 ? (
+                <p style={{ color: '#888', fontSize: 14 }}>Brak zarejestrowanych operacji KSeF.</p>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {history.slice(0, 60).map((entry) => (
+                    <li key={entry.id} style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ color: '#aaa', fontSize: 11, minWidth: 130 }}>
+                        {new Date(entry.timestamp).toLocaleString('pl-PL')}
+                      </span>
+                      <Badge variant={entry.status === 'success' ? 'success' : 'danger'}>{entry.action}</Badge>
+                      <span style={{ flex: 1 }}>{entry.invoiceNumber}</span>
+                      {entry.ksefRef && (
+                        <code style={{ fontSize: 11, color: '#888' }}>
+                          {entry.ksefRef.slice(0, 18)}…
+                          {(entry.ksefRef.startsWith('MOCK-') || entry.ksefRef.startsWith('DEMO-')) && (
+                            <span style={{ color: '#f59e0b', marginLeft: 4 }}>[MOCK]</span>
+                          )}
+                        </code>
+                      )}
+                      {entry.ksefRef && entry.status === 'success' && session && (
+                        <Button variant="ghost" onClick={() => handleShowUpo(entry.ksefRef!, entry.invoiceNumber)} loading={upo.loading}>UPO</Button>
+                      )}
+                      {entry.error && <span style={{ color: '#c0392b', fontSize: 12 }}>{entry.error}</span>}
+                    </li>
+                  ))}
+                  {history.length > 60 && (
+                    <li style={{ color: '#888', fontSize: 12, padding: '4px 0' }}>… i {history.length - 60} więcej</li>
+                  )}
+                </ul>
+              )}
             </div>
           )}
         </Card>
-
-        {/* ── ODBIÓR ───────────────────────────────────── */}
-        <Card>
-          <div className="toolbar">
-            <h3>Odbiór dokumentów ({docs.length})</h3>
-            {session && (
-              <Button variant="secondary" onClick={handleReceive} loading={receiving}>
-                Odbierz z KSeF
-              </Button>
-            )}
-          </div>
-          {!session && <p style={{ color: '#888', fontSize: 14 }}>Wymagana aktywna sesja KSeF.</p>}
-          {receiveError && <p style={{ color: '#c0392b', fontSize: 13 }}>Błąd: {receiveError}</p>}
-          {newCount !== null && newCount >= 0 && (
-            <p style={{ fontSize: 13, color: '#27ae60', marginBottom: 8 }}>
-              Pobrano {newCount} nowych dokumentów.
-            </p>
-          )}
-          {docs.length === 0 ? (
-            <p style={{ color: '#888', fontSize: 14 }}>
-              Brak odebranych dokumentów. Kliknij „Odbierz z KSeF" aby pobrać ostatnie 30 dni.
-            </p>
-          ) : (
-            <table className="table" style={{ fontSize: 12, width: '100%' }}>
-              <thead>
-                <tr><th>Nr ref. KSeF</th><th>Nr faktury</th><th>NIP wystawcy</th><th>Data</th></tr>
-              </thead>
-              <tbody>
-                {docs.slice(0, 30).map((doc) => (
-                  <tr key={doc.ksefRef}>
-                    <td><code style={{ fontSize: 11 }}>{doc.ksefRef.slice(0, 22)}…</code></td>
-                    <td>{doc.invoiceNumber}</td>
-                    <td>{doc.issuerNip}</td>
-                    <td>{doc.issueDate ? doc.issueDate.slice(0, 10) : '—'}</td>
-                  </tr>
-                ))}
-                {docs.length > 30 && (
-                  <tr><td colSpan={4} style={{ color: '#888', textAlign: 'center', fontSize: 12 }}>… i {docs.length - 30} więcej</td></tr>
-                )}
-              </tbody>
-            </table>
-          )}
-        </Card>
-
-        {/* ── HISTORIA ─────────────────────────────────── */}
-        <Card>
-          <div className="toolbar">
-            <h3>Historia operacji ({history.length})</h3>
-            {history.length > 0 && (
-              <Button variant="ghost" onClick={clearHistory}>Wyczyść</Button>
-            )}
-          </div>
-          {history.length === 0 ? (
-            <p style={{ color: '#888', fontSize: 14 }}>Brak zarejestrowanych operacji KSeF.</p>
-          ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {history.slice(0, 60).map((entry) => (
-                <li key={entry.id} style={{ padding: '6px 0', borderBottom: '1px solid #f0f0f0', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ color: '#aaa', fontSize: 11, minWidth: 130 }}>
-                    {new Date(entry.timestamp).toLocaleString('pl-PL')}
-                  </span>
-                  <Badge variant={entry.status === 'success' ? 'success' : 'danger'}>{entry.action}</Badge>
-                  <span style={{ flex: 1 }}>{entry.invoiceNumber}</span>
-                  {entry.ksefRef && (
-                    <code style={{ fontSize: 11, color: '#888' }}>{entry.ksefRef.slice(0, 18)}…</code>
-                  )}
-                  {entry.ksefRef && entry.status === 'success' && session && (
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleShowUpo(entry.ksefRef!, entry.invoiceNumber)}
-                      loading={upo.loading}
-                    >
-                      UPO
-                    </Button>
-                  )}
-                  {entry.error && <span style={{ color: '#c0392b', fontSize: 12 }}>{entry.error}</span>}
-                </li>
-              ))}
-              {history.length > 60 && (
-                <li style={{ color: '#888', fontSize: 12, padding: '4px 0' }}>… i {history.length - 60} więcej</li>
-              )}
-            </ul>
-          )}
-        </Card>
-
       </div>
+
+      {/* ── MODALS ─────────────────────────────────────── */}
+      <KsefSendModal
+        open={sendModalOpen}
+        onClose={() => setSendModalOpen(false)}
+        pendingCount={pending.length}
+        availability={availability}
+        isDemo={session?.isDemo ?? false}
+        processing={processing}
+        onSend={handleProcessQueue}
+        result={lastResult}
+        onShowUpo={handleShowUpo}
+      />
 
       {upo.open && upo.upoHtml && (
         <DocumentPreviewModal

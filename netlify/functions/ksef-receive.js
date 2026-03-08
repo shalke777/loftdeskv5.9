@@ -9,6 +9,7 @@
  * Output: { documents: KsefReceivedDoc[], total: number }
  */
 const { ksefFetch } = require('./ksef-http')
+const { mockApi } = require('./ksef-mock')
 
 const BASE = {
   demo: 'https://ksef-demo.mf.gov.pl/api',
@@ -89,7 +90,15 @@ exports.handler = async (event) => {
     }
   } catch (e) {
     const detail = e.message || 'upstream_error'
-    const friendly = /ECONNREFUSED|ENOTFOUND|Timeout|nie można|socket hang up|ECONNRESET/i.test(detail)
+    const isConnectionError = /ECONNREFUSED|ENOTFOUND|Timeout|nie można|socket hang up|ECONNRESET|503|502/i.test(detail)
+
+    if (isConnectionError && env !== 'prod') {
+      console.warn(`[ksef-receive] Connection failed (${env}), falling back to mock:`, detail)
+      const mock = mockApi.receiveDocuments('');
+      return { statusCode: 200, headers, body: JSON.stringify(mock.body) };
+    }
+
+    const friendly = isConnectionError
       ? `Nie można połączyć się z serwerem KSeF. ${detail}`
       : detail
     return { statusCode: 502, headers, body: JSON.stringify({ error: friendly, detail }) }
