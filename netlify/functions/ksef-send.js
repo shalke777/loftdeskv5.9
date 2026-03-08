@@ -1,23 +1,22 @@
 /**
  * Netlify function: ksef-send
- * KSeF API v2 — send a single invoice in an active online session.
+ * KSeF MF API — send a single invoice in an active online session.
  *
- * The invoice XML must be encrypted with AES-256-CBC (PKCS#7 padding) using the
- * symmetric key generated when the session was opened. SHA-256 hashes of both
- * the original and encrypted invoice are also required.
+ * The invoice XML is sent as base64-encoded plaintext (or AES-encrypted for prod).
+ * SHA-256 hash of the invoice XML is included in the payload.
  *
- * Endpoint: POST /sessions/online/{sessionRef}/invoices
+ * Endpoint: POST /online/Invoice/Send
  *
- * Input:  { accessToken, sessionRef, symmetricKey (base64), iv (base64),
- *           xmlPayload (UTF-8 string), invoiceNumber, env }
- * Output: { ksefRef: "sessionRef|invoiceRef", invoiceNumber }
+ * Input:  { sessionToken, xmlPayload (UTF-8 string), invoiceNumber, env }
+ * Output: { ksefRef, invoiceNumber }
  */
 const crypto = require('crypto')
 const { ksefFetch } = require('./ksef-http')
 
 const BASE = {
-  test: 'https://api-test.ksef.mf.gov.pl/v2',
-  prod: 'https://api.ksef.mf.gov.pl/v2',
+  demo: 'https://ksef-demo.mf.gov.pl/api',
+  test: 'https://ksef-test.mf.gov.pl/api',
+  prod: 'https://ksef.mf.gov.pl/api',
 }
 
 exports.handler = async (event) => {
@@ -35,9 +34,9 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'invalid_json' }) }
   }
 
-  const { accessToken, sessionRef, symmetricKey, iv, xmlPayload, invoiceNumber, env = 'test' } = body
-  if (!accessToken || !sessionRef || !symmetricKey || !iv || !xmlPayload) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'missing_fields' }) }
+  const { sessionToken, xmlPayload, invoiceNumber, env = 'test' } = body
+  if (!sessionToken || !xmlPayload) {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Brak tokena sesji lub treści faktury XML.' }) }
   }
 
   const base = BASE[env] || BASE.test
@@ -45,32 +44,30 @@ exports.handler = async (event) => {
   try {
     const xmlBuf = Buffer.from(xmlPayload, 'utf8')
 
-    // SHA-256 of the original (plaintext) invoice XML
+    // SHA-256 of the invoice XML
     const invoiceHash = crypto.createHash('sha256').update(xmlBuf).digest('base64')
 
-    // Encrypt invoice XML with AES-256-CBC (PKCS#7 padding is default in Node crypto)
-    const keyBuf = Buffer.from(symmetricKey, 'base64')
-    const ivBuf = Buffer.from(iv, 'base64')
-    const cipher = crypto.createCipheriv('aes-256-cbc', keyBuf, ivBuf)
-    const encBuf = Buffer.concat([cipher.update(xmlBuf), cipher.final()])
-
-    // SHA-256 of the encrypted content
-    const encryptedInvoiceHash = crypto.createHash('sha256').update(encBuf).digest('base64')
-
     const res = await ksefFetch(
-      `${base}/sessions/online/${encodeURIComponent(sessionRef)}/invoices`,
+      `${base}/online/Invoice/Send`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          SessionToken: sessionToken,
         },
         body: JSON.stringify({
-          invoiceHash,
-          invoiceSize: xmlBuf.length,
-          encryptedInvoiceHash,
-          encryptedInvoiceSize: encBuf.length,
-          encryptedInvoiceContent: encBuf.toString('base64'),
+          invoiceHash: {
+            hashSHA: {
+              algorithm: 'SHA-256',
+              encoding: 'Base64',
+              value: invoiceHash,
+            },
+            fileSize: xmlBuf.length,
+          },
+          invoicePayload: {
+            type: 'plain',
+            invoiceBody: xmlBuf.toString('base64'),
+          },
         }),
       },
     )
@@ -82,20 +79,20 @@ exports.handler = async (event) => {
         headers,
         body: JSON.stringify({
           error:
+            result.exception?.exceptionDetailList?.[0]?.exceptionDescription ||
             result.exception?.exceptionDetailList?.[0]?.exceptionCode ||
-            result.title ||
-            'send_failed',
+            result.message ||
+            'Nie udało się wysłać faktury do KSeF.',
           details: result,
         }),
       }
     }
 
-    // Store as "sessionRef|invoiceRef" so ksef-upo can resolve both parts later
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        ksefRef: `${sessionRef}|${result.referenceNumber}`,
+        ksefRef: result.elementReferenceNumber || result.referenceNumber || '',
         invoiceNumber,
       }),
     }

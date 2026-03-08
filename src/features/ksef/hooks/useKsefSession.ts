@@ -4,13 +4,17 @@ import { ksefService, type KsefEnv } from '@/services/ksef/ksef.service'
 const SESSION_KEY = 'ksef_active_session'
 
 export interface KsefSession {
-  /** JWT Bearer access token for all v2 API calls */
+  /** Session token for all KSeF API calls */
+  sessionToken: string
+  /** Session reference number */
+  referenceNumber: string
+  /** @deprecated Legacy alias for sessionToken */
   accessToken: string
-  /** Online session reference number (for sending invoices, close, UPO) */
+  /** @deprecated Legacy alias for referenceNumber */
   sessionRef: string
-  /** AES-256 symmetric key (base64) for encrypting invoices */
+  /** AES-256 symmetric key (base64) for encrypting invoices (optional) */
   symmetricKey: string
-  /** Initialization vector (base64) for AES encryption */
+  /** Initialization vector (base64) for AES encryption (optional) */
   iv: string
   env: KsefEnv
   nip: string
@@ -37,13 +41,16 @@ export function useKsefSession() {
       setError(null)
       try {
         const result = await ksefService.initSession(nip, token, env)
-        if (!result.accessToken) throw new Error('Serwer KSeF nie zwrócił tokenu dostępu')
-        if (!result.sessionRef) throw new Error('Serwer KSeF nie zwrócił numeru referencyjnego sesji')
+        const sessToken = (result.sessionToken as string) || (result.accessToken as string) || ''
+        const refNum = (result.referenceNumber as string) || (result.sessionRef as string) || ''
+        if (!sessToken) throw new Error('Serwer KSeF nie zwrócił tokenu sesji.')
         const s: KsefSession = {
-          accessToken: result.accessToken as string,
-          sessionRef: result.sessionRef as string,
-          symmetricKey: result.symmetricKey as string,
-          iv: result.iv as string,
+          sessionToken: sessToken,
+          referenceNumber: refNum,
+          accessToken: sessToken,
+          sessionRef: refNum,
+          symmetricKey: (result.symmetricKey as string) || '',
+          iv: (result.iv as string) || '',
           env,
           nip,
           startedAt: new Date().toISOString(),
@@ -66,7 +73,9 @@ export function useKsefSession() {
     if (!session) return
     setLoading(true)
     try {
-      await ksefService.closeSession(session.accessToken, session.sessionRef, session.env)
+      if (!session.isDemo) {
+        await ksefService.closeSession(session.sessionToken, session.referenceNumber, session.env)
+      }
     } catch {
       // ignore close errors — session may have already expired
     }
@@ -77,9 +86,13 @@ export function useKsefSession() {
 
   const initDemo = useCallback(
     (nip: string, env: KsefEnv = 'test'): KsefSession => {
+      const demoToken = `DEMO-${Date.now()}`
+      const demoRef = `DEMO-SESSION-${Date.now()}`
       const s: KsefSession = {
-        accessToken: `DEMO-${Date.now()}`,
-        sessionRef: `DEMO-SESSION-${Date.now()}`,
+        sessionToken: demoToken,
+        referenceNumber: demoRef,
+        accessToken: demoToken,
+        sessionRef: demoRef,
         symmetricKey: '',
         iv: '',
         env,

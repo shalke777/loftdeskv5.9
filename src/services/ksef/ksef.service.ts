@@ -1,6 +1,6 @@
 import type { Invoice } from '@/entities/invoice/model'
 
-export type KsefEnv = 'test' | 'prod'
+export type KsefEnv = 'demo' | 'test' | 'prod'
 
 export interface KsefHistoryEntry {
   id: string
@@ -61,6 +61,19 @@ function vatSuffix(rate: number): string {
 }
 
 /**
+ * Validate Polish NIP (10-digit tax ID) using checksum algorithm.
+ */
+export function validateNip(nip: string): boolean {
+  const cleaned = nip.replace(/[-\s]/g, '')
+  if (!/^\d{10}$/.test(cleaned)) return false
+  const weights = [6, 5, 7, 2, 3, 4, 5, 6, 7]
+  const digits = cleaned.split('').map(Number)
+  let sum = 0
+  for (let i = 0; i < 9; i++) sum += digits[i] * weights[i]
+  return sum % 11 === digits[9]
+}
+
+/**
  * Build official FA_VAT(2) XML per Ministry of Finance KSeF schema
  * xmlns: http://crd.gov.pl/wzor/2023/06/29/12648/
  */
@@ -69,9 +82,12 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
   const issueDate = invoice.issue_date || new Date().toISOString().slice(0, 10)
   const saleDate = invoice.sale_date || issueDate
   const [year, month] = issueDate.split('-')
-  const payCode = invoice.payment_method === 'cash' ? '5' : invoice.payment_method === 'card' ? '7' : '6'
+  const payCode = invoice.payment_method === 'cash' ? '1' : invoice.payment_method === 'card' ? '7' : '6'
   const rodzaj =
     invoice.invoice_type === 'advance' ? 'ZAL' : invoice.invoice_type === 'final' ? 'ROZ' : 'VAT'
+
+  // GTU_12 = usługi budowlane (8% VAT typically indicates construction services)
+  const hasGtu12 = invoice.items.some((item) => item.vat_rate === 8)
 
   // VAT grouping by rate
   const vatMap = new Map<number, { net: number; vat: number }>()
@@ -94,6 +110,7 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
       <fa:P_8B>${item.quantity}</fa:P_8B>
       <fa:P_9A>${fmt(item.unit_price)}</fa:P_9A>
       <fa:P_9B>${fmt(net)}</fa:P_9B>
+      <fa:P_11>${fmt(net)}</fa:P_11>
       <fa:P_12>${item.vat_rate}</fa:P_12>
     </fa:FaWiersz>`
     })
@@ -147,11 +164,8 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
     <fa:P_1M>${month}</fa:P_1M>
     <fa:P_1R>${year}</fa:P_1R>
     <fa:P_2>${escXml(invoice.number)}</fa:P_2>
+    <fa:P_6>${saleDate}</fa:P_6>
     <fa:RodzajFaktury>${rodzaj}</fa:RodzajFaktury>
-    <fa:DodatkowyOpis>
-      <fa:Klucz>DataSprzedazy</fa:Klucz>
-      <fa:Wartosc>${saleDate}</fa:Wartosc>
-    </fa:DodatkowyOpis>
 ${lines}
     <fa:Rozliczenie>
       <fa:Stawki>
@@ -161,13 +175,19 @@ ${stawki}
     </fa:Rozliczenie>
 ${advanceSection}
     <fa:Platnosc>
-      <fa:Zaplacono>0</fa:Zaplacono>
+      <fa:Zaplacono>${invoice.status === 'paid' ? '1' : '2'}</fa:Zaplacono>
       <fa:ZaplataNaleznosci>
         <fa:DataZaplaty>${invoice.due_date || issueDate}</fa:DataZaplaty>
         <fa:FormaPlatnosci>${payCode}</fa:FormaPlatnosci>
         ${invoice.bank_account ? `<fa:NumerRachunku>${escXml(invoice.bank_account)}</fa:NumerRachunku>` : ''}
       </fa:ZaplataNaleznosci>
     </fa:Platnosc>
+    <fa:Adnotacje>
+      <fa:P_16>2</fa:P_16>
+      <fa:P_17>2</fa:P_17>
+      <fa:Zwolnienie><fa:P_19N>0</fa:P_19N></fa:Zwolnienie>
+      <fa:NoweSrodkiTransportu><fa:P_22N>0</fa:P_22N></fa:NoweSrodkiTransportu>${hasGtu12 ? '\n      <fa:GTU><fa:GTU_12>1</fa:GTU_12></fa:GTU>' : ''}
+    </fa:Adnotacje>
   </fa:Fa>
 </fa:Faktura>`
 }
@@ -252,12 +272,16 @@ ${demoNote}
 </div></body></html>`
 }
 
-/** Session data needed to call v2 API methods (returned by initSession) */
+/** Session data needed for KSeF API calls (returned by initSession) */
 export interface KsefSessionData {
-  accessToken: string
-  sessionRef: string
-  symmetricKey: string
-  iv: string
+  sessionToken: string
+  referenceNumber: string
+  /** @deprecated kept for backwards compat */
+  accessToken?: string
+  /** @deprecated kept for backwards compat */
+  sessionRef?: string
+  symmetricKey?: string
+  iv?: string
   validUntil?: string
 }
 
@@ -270,8 +294,8 @@ export const ksefService = {
   async initSession(nip: string, token: string, env: KsefEnv = 'test') {
     return callProxy('ksef-session', { action: 'init', nip, token, env })
   },
-  async closeSession(accessToken: string, sessionRef: string, env: KsefEnv = 'test') {
-    return callProxy('ksef-session', { action: 'close', accessToken, sessionRef, env })
+  async closeSession(sessionToken: string, referenceNumber: string, env: KsefEnv = 'test') {
+    return callProxy('ksef-session', { action: 'close', sessionToken, referenceNumber, env })
   },
 
   // ── Invoice send ────────────────────────────────────────
@@ -279,15 +303,13 @@ export const ksefService = {
     invoice: Invoice,
     seller: KsefSeller,
     buyer: KsefBuyer,
-    session: { accessToken: string; sessionRef: string; symmetricKey: string; iv: string },
+    session: { sessionToken?: string; accessToken?: string; sessionRef?: string; symmetricKey?: string; iv?: string },
     env: KsefEnv = 'test',
   ): Promise<{ ksefRef: string; invoiceNumber: string }> {
     const xmlPayload = buildFA2Xml(invoice, seller, buyer)
+    const token = session.sessionToken || session.accessToken || ''
     const result = await callProxy('ksef-send', {
-      accessToken: session.accessToken,
-      sessionRef: session.sessionRef,
-      symmetricKey: session.symmetricKey,
-      iv: session.iv,
+      sessionToken: token,
       xmlPayload,
       invoiceNumber: invoice.number,
       env,
@@ -297,10 +319,10 @@ export const ksefService = {
 
   // ── Receive documents ───────────────────────────────────
   async receiveDocuments(
-    accessToken: string,
+    sessionToken: string,
     env: KsefEnv = 'test',
   ): Promise<KsefReceivedDoc[]> {
-    const result = await callProxy('ksef-receive', { accessToken, env })
+    const result = await callProxy('ksef-receive', { sessionToken, env })
     const incoming = (result.documents as KsefReceivedDoc[]) ?? []
     const stored = ksefService.getReceived()
     const existingRefs = new Set(stored.map((d) => d.ksefRef))
@@ -351,10 +373,10 @@ export const ksefService = {
   // ── UPO ─────────────────────────────────────────────────
   async fetchUpo(
     ksefRef: string,
-    accessToken: string,
+    sessionToken: string,
     env: KsefEnv = 'test',
   ): Promise<Record<string, unknown>> {
-    const result = await callProxy('ksef-upo', { ksefRef, accessToken, env })
+    const result = await callProxy('ksef-upo', { ksefRef, sessionToken, env })
     return result
   },
 

@@ -1,18 +1,19 @@
 /**
  * Netlify function: ksef-receive
- * KSeF API v2 — query received invoice metadata.
+ * KSeF MF API — query received invoice metadata.
  *
- * Endpoint: POST /invoices/query/metadata
+ * Endpoint: POST /online/Query/Invoice/Sync
  * Returns the last 30 days of invoices accessible in the auth context.
  *
- * Input:  { accessToken, env, pageSize?, pageOffset? }
+ * Input:  { sessionToken, env, pageSize?, pageOffset? }
  * Output: { documents: KsefReceivedDoc[], total: number }
  */
 const { ksefFetch } = require('./ksef-http')
 
 const BASE = {
-  test: 'https://api-test.ksef.mf.gov.pl/v2',
-  prod: 'https://api.ksef.mf.gov.pl/v2',
+  demo: 'https://ksef-demo.mf.gov.pl/api',
+  test: 'https://ksef-test.mf.gov.pl/api',
+  prod: 'https://ksef.mf.gov.pl/api',
 }
 
 exports.handler = async (event) => {
@@ -30,9 +31,10 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'invalid_json' }) }
   }
 
-  const { accessToken, env = 'test', pageSize = 50, pageOffset = 0 } = body
-  if (!accessToken) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'missing_access_token' }) }
+  const { sessionToken, accessToken, env = 'test', pageSize = 50, pageOffset = 0 } = body
+  const token = sessionToken || accessToken
+  if (!token) {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Brak tokena sesji.' }) }
   }
 
   const base = BASE[env] || BASE.test
@@ -41,15 +43,19 @@ exports.handler = async (event) => {
   try {
     // Query invoice metadata for last 30 days
     const res = await ksefFetch(
-      `${base}/invoices/query/metadata?pageOffset=${pageOffset}&pageSize=${Math.min(pageSize, 250)}`,
+      `${base}/online/Query/Invoice/Sync?PageSize=${Math.min(pageSize, 100)}&PageOffset=${pageOffset}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          SessionToken: token,
         },
         body: JSON.stringify({
-          acquisitionTimestampFrom: from,
+          queryCriteria: {
+            subjectType: 'subject2',
+            type: 'incremental',
+            acquisitionTimestampThresholdFrom: from,
+          },
         }),
       },
     )
@@ -59,7 +65,7 @@ exports.handler = async (event) => {
         statusCode: res.status,
         headers,
         body: JSON.stringify({
-          error: result.title || result.exception?.exceptionDetailList?.[0]?.exceptionCode || 'receive_failed',
+          error: result.exception?.exceptionDetailList?.[0]?.exceptionDescription || result.title || result.message || 'Nie udało się pobrać dokumentów z KSeF.',
           details: result,
         }),
       }

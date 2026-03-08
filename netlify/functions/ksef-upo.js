@@ -1,21 +1,20 @@
 /**
  * Netlify function: ksef-upo
- * KSeF API v2 — fetch invoice status and UPO data.
+ * KSeF MF API — fetch invoice status and UPO data.
  *
- * The ksefRef field uses format "sessionRef|invoiceRef" (set by ksef-send).
- * Endpoint: GET /sessions/{sessionRef}/invoices/{invoiceRef}
- * Returns invoice status including ksefNumber, acquisitionDate, invoiceHash,
- * and optionally upoDownloadUrl (pre-signed, no auth required).
+ * Endpoint: GET /common/Invoice/{KsefReferenceNumber}/status
+ * Returns invoice status including UPO details.
  *
- * Input:  { ksefRef, accessToken, env }
+ * Input:  { ksefRef, sessionToken, env }
  * Output: { ksefReferenceNumber, invoiceReferenceNumber, acquisitionTimestamp,
  *           hashSHA, upoDownloadUrl?, statusCode, statusDescription }
  */
 const { ksefFetch } = require('./ksef-http')
 
 const BASE = {
-  test: 'https://api-test.ksef.mf.gov.pl/v2',
-  prod: 'https://api.ksef.mf.gov.pl/v2',
+  demo: 'https://ksef-demo.mf.gov.pl/api',
+  test: 'https://ksef-test.mf.gov.pl/api',
+  prod: 'https://ksef.mf.gov.pl/api',
 }
 
 exports.handler = async (event) => {
@@ -33,37 +32,22 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'invalid_json' }) }
   }
 
-  const { ksefRef, accessToken, env = 'test' } = body
-  if (!ksefRef || !accessToken) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'missing_fields' }) }
+  const { ksefRef, sessionToken, accessToken, env = 'test' } = body
+  const token = sessionToken || accessToken
+  if (!ksefRef || !token) {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Brak numeru referencyjnego lub tokena sesji.' }) }
   }
 
-  // v2 ksefRef = "sessionRef|invoiceRef"
-  // v1 (legacy) ksefRef has no pipe separator — return graceful info
-  if (!ksefRef.includes('|')) {
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        ksefReferenceNumber: ksefRef,
-        invoiceReferenceNumber: ksefRef,
-        acquisitionTimestamp: null,
-        hashSHA: null,
-        statusCode: null,
-        statusDescription: 'UPO niedostępne dla faktur wysłanych w starszym formacie (sprzed aktualizacji API).',
-      }),
-    }
-  }
-
-  const [sessionRef, invoiceRef] = ksefRef.split('|')
+  // Clean the ksefRef — if legacy format "sessionRef|invoiceRef", use invoiceRef part
+  const refToQuery = ksefRef.includes('|') ? ksefRef.split('|')[1] : ksefRef
   const base = BASE[env] || BASE.test
 
   try {
     const res = await ksefFetch(
-      `${base}/sessions/${encodeURIComponent(sessionRef)}/invoices/${encodeURIComponent(invoiceRef)}`,
+      `${base}/common/Invoice/${encodeURIComponent(refToQuery)}/status`,
       {
         method: 'GET',
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { SessionToken: token },
       },
     )
     const data = res.json()
@@ -72,7 +56,7 @@ exports.handler = async (event) => {
         statusCode: res.status,
         headers,
         body: JSON.stringify({
-          error: data.title || data.exception?.exceptionDetailList?.[0]?.exceptionCode || 'upo_fetch_failed',
+          error: data.exception?.exceptionDetailList?.[0]?.exceptionDescription || data.title || data.message || 'Nie udało się pobrać UPO z KSeF.',
           details: data,
         }),
       }

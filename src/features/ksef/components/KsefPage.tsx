@@ -30,7 +30,7 @@ export function KsefPage() {
 
   const [nipInput, setNipInput] = useState<string>('')
   const [tokenInput, setTokenInput] = useState<string>('')
-  const [envInput, setEnvInput] = useState<'test' | 'prod'>('test')
+  const [envInput, setEnvInput] = useState<'demo' | 'test' | 'prod'>('demo')
 
   // Pre-fill inputs once profile loads (profile is undefined on first render)
   useEffect(() => {
@@ -38,7 +38,7 @@ export function KsefPage() {
     const p = profile as Record<string, unknown>
     if (!nipInput) setNipInput((p.ksef_nip as string) || (p.nip as string) || '')
     if (!tokenInput) setTokenInput((p.ksef_token as string) || '')
-    setEnvInput((p.ksef_env as string) === 'prod' ? 'prod' : 'test')
+    setEnvInput(((p.ksef_env as string) === 'prod' ? 'prod' : (p.ksef_env as string) === 'test' ? 'test' : 'demo') as 'demo' | 'test' | 'prod')
   }, [profile]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!enabled) {
@@ -108,8 +108,8 @@ export function KsefPage() {
                     Uruchomiona: {new Date(session.startedAt).toLocaleString('pl-PL')}
                   </div>
                 </div>
-                <Badge variant={session.env === 'prod' ? 'danger' : 'warning'}>
-                  {session.env === 'prod' ? 'PRODUKCJA' : 'TEST'}
+                <Badge variant={session.env === 'prod' ? 'danger' : session.env === 'demo' ? 'info' : 'warning'}>
+                  {session.env === 'prod' ? 'PRODUKCJA' : session.env === 'demo' ? 'DEMO' : 'TEST'}
                 </Badge>
               </div>
 
@@ -117,8 +117,8 @@ export function KsefPage() {
               <div style={{ borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 16 }}>
                 {[
                   { label: 'NIP', value: <strong>{session.nip}</strong> },
-                  { label: 'Serwer', value: session.env === 'prod' ? 'ksef.mf.gov.pl' : 'ksef-test.mf.gov.pl' },
-                  { label: 'Ref. sesji', value: <code style={{ fontSize: 11, color: '#64748b', background: '#e2e8f0', padding: '2px 6px', borderRadius: 4 }}>{session.sessionRef}</code> },
+                  { label: 'Serwer', value: session.env === 'prod' ? 'ksef.mf.gov.pl' : session.env === 'test' ? 'ksef-test.mf.gov.pl' : 'ksef-demo.mf.gov.pl' },
+                  { label: 'Ref. sesji', value: <code style={{ fontSize: 11, color: '#64748b', background: '#e2e8f0', padding: '2px 6px', borderRadius: 4 }}>{session.referenceNumber || session.sessionRef}</code> },
                 ].map((row, i, arr) => (
                   <div key={row.label} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: i < arr.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
                     <div style={{ padding: '10px 14px', fontSize: 12, color: '#718096', fontWeight: 500, background: '#f8fafc' }}>{row.label}</div>
@@ -149,8 +149,9 @@ export function KsefPage() {
                 <Select
                   label="Środowisko"
                   value={envInput}
-                  onChange={(e) => setEnvInput(e.target.value as 'test' | 'prod')}
+                  onChange={(e) => setEnvInput(e.target.value as 'demo' | 'test' | 'prod')}
                   options={[
+                    { value: 'demo', label: 'Demo (ksef-demo.mf.gov.pl)' },
                     { value: 'test', label: 'Testowe (ksef-test.mf.gov.pl)' },
                     { value: 'prod', label: 'Produkcyjne (ksef.mf.gov.pl)' },
                   ]}
