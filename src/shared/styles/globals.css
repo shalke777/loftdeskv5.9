@@ -144,6 +144,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .shell-topbar__left, .shell-topbar__right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .shell-pill { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 999px; background: var(--color-surface-soft); border: 1px solid var(--color-border); color: var(--color-text-secondary); transition: background .2s, border-color .2s; }
 .shell-pill:hover { background: var(--color-surface); border-color: var(--color-text-secondary); }
+.shell-pill--upgrade { background: #16a34a; border-color: #16a34a; color: #fff; font-weight: 600; }
+.shell-pill--upgrade:hover { background: #15803d; border-color: #15803d; }
 .shell-content { width: min(1440px, 100%); margin: 0 auto; padding: 28px; padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); }
 .mobile-nav { display: none; }
 

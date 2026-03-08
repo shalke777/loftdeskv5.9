@@ -136,7 +136,7 @@ export function AuthLayout() {
             </div>
           </div>
           <div className="shell-topbar__right">
-            <Link to="/billing" className="shell-pill" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+            <Link to="/billing" className={user.plan === 'free' ? 'shell-pill shell-pill--upgrade' : 'shell-pill'} style={{ textDecoration: 'none', cursor: 'pointer' }}>
               {user.plan === 'free' ? '⭐ Przejdź na Business' : `Plan: ${user.plan}`}
             </Link>
             <div ref={notifRef} style={{ position: 'relative' }}>
