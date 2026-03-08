@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { Input } from '@/shared/ui/Input/Input'
 import { Button } from '@/shared/ui/Button/Button'
 import { Select } from '@/shared/ui/Select/Select'
+import { generateId } from '@/shared/lib/generateId'
 import type { Contract, ContractTranche, CreateContractInput, CustomParagraph } from '@/entities/contract/model'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useEstimates } from '@/features/estimates/hooks/useEstimates'
@@ -28,7 +29,7 @@ function buildDefaultTranches(count: number, totalGross: number): ContractTranch
     const pct = i === count - 1 ? basePercent + remainder : basePercent
     const amount = Math.round(totalGross * pct / 100)
     result.push({
-      id: crypto.randomUUID(),
+      id: generateId(),
       label: i === 0 ? 'Zaliczka' : i === count - 1 ? 'Płatność końcowa' : `Etap ${i}`,
       amount,
       percent: pct,
@@ -108,7 +109,7 @@ export function ContractForm({ companyId, onSubmit, initialContract }: { company
   }
 
   function addParagraph() {
-    setCustomParagraphs((prev) => [...prev, { id: crypto.randomUUID(), title: '', content: '', sort_order: prev.length }])
+    setCustomParagraphs((prev) => [...prev, { id: generateId(), title: '', content: '', sort_order: prev.length }])
   }
 
   function removeParagraph(id: string) {
@@ -263,7 +264,7 @@ function parseTranches(value: string): ContractTranche[] {
     .map((line, index) => {
       const [label, amount, due_date] = line.split('|').map((item) => item?.trim())
       return {
-        id: crypto.randomUUID(),
+        id: generateId(),
         label: label || `Transza ${index + 1}`,
         amount: Number(amount || 0),
         due_date: due_date || null,

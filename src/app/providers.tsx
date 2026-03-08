@@ -1,6 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { queryClient } from '@/shared/lib/queryClient'
+import { generateId } from '@/shared/lib/generateId'
 import { ToastViewport } from '@/shared/ui/Toast/Toast'
 import { useLocalStorage } from '@/shared/hooks/useLocalStorage'
 import { demoDb, type DemoRole } from '@/shared/lib/demoDb'
@@ -135,7 +136,7 @@ function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([])
   const remove = (id: string) => setItems((prev) => prev.filter((item) => item.id !== id))
   const push = (variant: ToastItem['variant'], title: string, description?: string) => {
-    const id = crypto.randomUUID()
+    const id = generateId()
     setItems((prev) => [...prev, { id, title, description, variant }])
     window.setTimeout(() => remove(id), 3200)
   }

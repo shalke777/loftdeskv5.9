@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Button } from '@/shared/ui/Button/Button'
 import { Input } from '@/shared/ui/Input/Input'
 import { Select } from '@/shared/ui/Select/Select'
+import { generateId } from '@/shared/lib/generateId'
 import type { EstimateItem } from '@/entities/estimate/model'
 
 
@@ -38,7 +39,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
     onChange(items.map((item) => item.id === id ? { ...item, description: value } : item))
   }
   function addRow() {
-    onChange([...items, { id: crypto.randomUUID(), name: 'Nowa pozycja', description: '', unit: 'kpl', quantity: 1, unit_price: 0, vat_rate: 23, sort_order: items.length + 1 }])
+    onChange([...items, { id: generateId(), name: 'Nowa pozycja', description: '', unit: 'kpl', quantity: 1, unit_price: 0, vat_rate: 23, sort_order: items.length + 1 }])
   }
   function removeRow(id: string) { onChange(items.filter((item) => item.id !== id).map((item, index) => ({ ...item, sort_order: index + 1 }))) }
 
@@ -47,7 +48,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
     onChange([
       ...items,
       {
-        id: crypto.randomUUID(),
+        id: generateId(),
         name: fastName,
         description: fastDescription,
         unit: fastUnit,

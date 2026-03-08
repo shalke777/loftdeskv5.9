@@ -1,3 +1,4 @@
+import { generateId } from '@/shared/lib/generateId'
 import type { ClientDecision, DocumentationOverview, HandoverChecklistItem, HandoverProtocol, PhotoDocumentation, TechnicalStandard } from '@/entities/documentation/model'
 
 interface DocumentationState extends DocumentationOverview {}
@@ -73,7 +74,7 @@ function readState(): DocumentationState {
 }
 function writeState(state: DocumentationState) { if (isBrowser()) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state)) }
 function byCompany<T extends { company_id: string }>(items: T[], companyId: string) { return items.filter((item) => item.company_id === companyId) }
-function normalizeChecklist(checklist: HandoverChecklistItem[] = []) { return checklist.map((item, index) => ({ id: item.id || crypto.randomUUID(), label: item.label || `Pozycja ${index + 1}`, accepted: Boolean(item.accepted) })) }
+function normalizeChecklist(checklist: HandoverChecklistItem[] = []) { return checklist.map((item, index) => ({ id: item.id || generateId(), label: item.label || `Pozycja ${index + 1}`, accepted: Boolean(item.accepted) })) }
 
 export const documentationStore = {
   getOverview(companyId: string): DocumentationOverview {
@@ -86,7 +87,7 @@ export const documentationStore = {
       return documentationStore.getOverview(companyId).decisions.filter((item) => (!clientId || item.client_id === clientId) && (!projectId || item.project_id === projectId))
     },
     create(input: Omit<ClientDecision, 'id' | 'requested_at' | 'decided_at'>) {
-      const state = readState(); const record: ClientDecision = { ...input, id: crypto.randomUUID(), requested_at: now(), decided_at: null, client_comment: input.client_comment ?? '' }
+      const state = readState(); const record: ClientDecision = { ...input, id: generateId(), requested_at: now(), decided_at: null, client_comment: input.client_comment ?? '' }
       state.decisions.unshift(record); writeState(state); return record
     },
     update(id: string, input: Partial<ClientDecision>) {
@@ -101,7 +102,7 @@ export const documentationStore = {
       return documentationStore.getOverview(companyId).protocols.filter((item) => (!clientId || item.client_id === clientId) && (!projectId || item.project_id === projectId))
     },
     create(input: Omit<HandoverProtocol, 'id'>) {
-      const state = readState(); const record: HandoverProtocol = { ...input, id: crypto.randomUUID(), checklist: normalizeChecklist(input.checklist) }
+      const state = readState(); const record: HandoverProtocol = { ...input, id: generateId(), checklist: normalizeChecklist(input.checklist) }
       state.protocols.unshift(record); writeState(state); return record
     },
     update(id: string, input: Partial<HandoverProtocol>) {
@@ -113,7 +114,7 @@ export const documentationStore = {
   photos: {
     list(companyId: string) { return documentationStore.getOverview(companyId).photos },
     create(input: Omit<PhotoDocumentation, 'id'>) {
-      const state = readState(); const record: PhotoDocumentation = { ...input, id: crypto.randomUUID() }
+      const state = readState(); const record: PhotoDocumentation = { ...input, id: generateId() }
       state.photos.unshift(record); writeState(state); return record
     },
     update(id: string, input: Partial<PhotoDocumentation>) {
@@ -127,7 +128,7 @@ export const documentationStore = {
       return documentationStore.getOverview(companyId).standards.filter((item) => (!item.requires_client_acceptance || !item.accepted_by_client) && (!clientId || item.client_id === clientId || item.client_id == null) && (!projectId || item.project_id === projectId || item.project_id == null))
     },
     create(input: Omit<TechnicalStandard, 'id'>) {
-      const state = readState(); const record: TechnicalStandard = { ...input, id: crypto.randomUUID() }
+      const state = readState(); const record: TechnicalStandard = { ...input, id: generateId() }
       state.standards.unshift(record); writeState(state); return record
     },
     update(id: string, input: Partial<TechnicalStandard>) {

@@ -3,6 +3,7 @@ import { Input } from '@/shared/ui/Input/Input'
 import { Button } from '@/shared/ui/Button/Button'
 import { Select } from '@/shared/ui/Select/Select'
 import type { CreateInvoiceInput, Invoice, InvoiceItem } from '@/entities/invoice/model'
+import { generateId } from '@/shared/lib/generateId'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useContracts } from '@/features/contracts/hooks/useContracts'
 import { useProjects } from '@/features/projects/hooks/useProjects'
@@ -61,7 +62,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
     setContractId(initialInvoice?.contract_id || '')
     setSelectedTrancheId('')
     setAdvanceTotal(String(initialInvoice?.advance_total ?? 0))
-    setItems(initialInvoice?.items?.length ? initialInvoice.items : [{ id: crypto.randomUUID(), description: 'Usługa', unit: 'kpl', quantity: 1, unit_price: 0, vat_rate: 23, sort_order: 1, tranche_label: '' }])
+    setItems(initialInvoice?.items?.length ? initialInvoice.items : [{ id: generateId(), description: 'Usługa', unit: 'kpl', quantity: 1, unit_price: 0, vat_rate: 23, sort_order: 1, tranche_label: '' }])
     setProjectId(initialInvoice?.project_id || '')
     setNotes(initialInvoice?.notes || '')
   }, [initialInvoice])
@@ -88,14 +89,14 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
       : autoType === 'final'
       ? `Rozliczenie końcowe – umowa nr ${selectedContract.number} – ${tranche.label}`
       : `Wykonanie robót – umowa nr ${selectedContract.number} – ${tranche.label}`
-    setItems([{ id: crypto.randomUUID(), description: trancheDesc, unit: 'kpl', quantity: 1, unit_price: trancheNet, vat_rate: vatRate, sort_order: 1, tranche_label: tranche.label }])
+    setItems([{ id: generateId(), description: trancheDesc, unit: 'kpl', quantity: 1, unit_price: trancheNet, vat_rate: vatRate, sort_order: 1, tranche_label: tranche.label }])
     if (tranche.due_date) setDueDate(tranche.due_date)
   }
 
   function patchItem(id: string, key: keyof InvoiceItem, value: string) {
     setItems((prev) => prev.map((item) => item.id === id ? { ...item, [key]: ['quantity', 'unit_price', 'vat_rate', 'sort_order'].includes(String(key)) ? Number(value) : value } : item))
   }
-  function addItem() { setItems((prev) => [...prev, { id: crypto.randomUUID(), description: 'Nowa pozycja', unit: 'kpl', quantity: 1, unit_price: 0, vat_rate: 23, sort_order: prev.length + 1, tranche_label: '' }]) }
+  function addItem() { setItems((prev) => [...prev, { id: generateId(), description: 'Nowa pozycja', unit: 'kpl', quantity: 1, unit_price: 0, vat_rate: 23, sort_order: prev.length + 1, tranche_label: '' }]) }
   function removeItem(id: string) { setItems((prev) => prev.filter((i) => i.id !== id).map((i, idx) => ({ ...i, sort_order: idx + 1 }))) }
 
   const vatDiff = totals.totalGross - totals.totalNet

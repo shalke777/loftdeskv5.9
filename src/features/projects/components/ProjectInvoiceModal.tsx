@@ -3,6 +3,7 @@ import { Button } from '@/shared/ui/Button/Button'
 import { Input } from '@/shared/ui/Input/Input'
 import { Select } from '@/shared/ui/Select/Select'
 import { Modal } from '@/shared/ui/Modal/Modal'
+import { generateId } from '@/shared/lib/generateId'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { useContracts } from '@/features/contracts/hooks/useContracts'
 import { formatCurrency } from '@/shared/lib/formatters'
@@ -32,7 +33,7 @@ const VAT_OPTIONS = [
 ]
 
 function emptyTranche(): InvoiceTranche {
-  return { id: crypto.randomUUID(), label: '', amount: 0, due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10) }
+  return { id: generateId(), label: '', amount: 0, due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10) }
 }
 
 export function ProjectInvoiceModal({ open, onClose, onSubmit, projectId, isLoading }: Props) {
@@ -80,7 +81,7 @@ export function ProjectInvoiceModal({ open, onClose, onSubmit, projectId, isLoad
       } else {
         // Contract without tranches — one item with full value
         setTranches([{
-          id: crypto.randomUUID(),
+          id: generateId(),
           label: `Realizacja umowy ${selectedContract.number}`,
           amount: selectedContract.value_net ?? selectedContract.value,
           due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
