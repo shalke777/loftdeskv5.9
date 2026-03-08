@@ -43,6 +43,7 @@ exports.handler = async function (event) {
       cancel_url: cancelUrl,
       customer_email: email || undefined,
       metadata: { companyId },
+      subscription_data: { metadata: { companyId } },
       allow_promotion_codes: true,
     });
 

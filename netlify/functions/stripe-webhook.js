@@ -76,6 +76,16 @@ exports.handler = async function (event) {
         const companyId = session.metadata?.companyId;
         if (companyId && session.payment_status === 'paid') {
           await updateCompanyPlan(companyId, 'business');
+          // Ensure subscription also carries companyId metadata
+          if (session.subscription) {
+            try {
+              await stripe.subscriptions.update(session.subscription, {
+                metadata: { companyId },
+              });
+            } catch (metaErr) {
+              console.warn('Could not propagate metadata to subscription:', metaErr.message);
+            }
+          }
           console.log('Plan upgraded to business for company:', companyId);
         }
         break;
