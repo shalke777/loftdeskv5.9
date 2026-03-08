@@ -3,6 +3,8 @@ import { Card } from '@/shared/ui/Card/Card'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Button } from '@/shared/ui/Button/Button'
+import { Input } from '@/shared/ui/Input/Input'
+import { Select } from '@/shared/ui/Select/Select'
 import { useNavigate } from '@tanstack/react-router'
 import { useSettings } from '@/features/settings/hooks/useSettings'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
@@ -95,89 +97,71 @@ export function KsefPage() {
           <h3 style={{ marginBottom: 16 }}>Sesja KSeF</h3>
           {session ? (
             <div>
-              {session.isDemo && (
-                <div style={{ marginBottom: 14, padding: '10px 14px', background: '#fff3cd', borderRadius: 8, fontSize: 13, border: '1px solid #ffc107' }}>
-                  ⚠️ Tryb demo — dane nie są wysyłane do MF.
-                </div>
-              )}
-
               {/* Status banner */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: session.isDemo ? '#fffbeb' : '#f0fdf4', border: `1px solid ${session.isDemo ? '#fbbf24' : '#86efac'}`, borderRadius: 10, marginBottom: 16 }}>
-                <span style={{ fontSize: 20 }}>{session.isDemo ? '🔵' : '🟢'}</span>
-                <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: session.isDemo ? '#fffbeb' : '#f0fdf4', border: `1px solid ${session.isDemo ? '#fbbf24' : '#86efac'}`, borderRadius: 10, marginBottom: 16 }}>
+                <span style={{ fontSize: 22 }}>{session.isDemo ? '🔵' : '🟢'}</span>
+                <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>
-                    Sesja {session.isDemo ? 'demo' : 'aktywna'}
+                    {session.isDemo ? 'Tryb demo — dane nie są wysyłane do MF' : 'Sesja aktywna'}
                   </div>
-                  <div style={{ fontSize: 12, color: '#718096' }}>
+                  <div style={{ fontSize: 12, color: '#718096', marginTop: 2 }}>
                     Uruchomiona: {new Date(session.startedAt).toLocaleString('pl-PL')}
                   </div>
                 </div>
-                <div style={{ marginLeft: 'auto' }}>
-                  <Badge variant={session.env === 'prod' ? 'danger' : 'warning'}>
-                    {session.env === 'prod' ? 'PRODUKCJA' : 'TEST'}
-                  </Badge>
-                </div>
+                <Badge variant={session.env === 'prod' ? 'danger' : 'warning'}>
+                  {session.env === 'prod' ? 'PRODUKCJA' : 'TEST'}
+                </Badge>
               </div>
 
               {/* Session details */}
-              <div style={{ background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 16 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr' }}>
-                  <div style={{ padding: '10px 14px', fontSize: 12, color: '#718096', fontWeight: 500, background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>NIP</div>
-                  <div style={{ padding: '10px 14px', fontSize: 14, fontWeight: 600, borderBottom: '1px solid #e2e8f0' }}>{session.nip}</div>
-                  <div style={{ padding: '10px 14px', fontSize: 12, color: '#718096', fontWeight: 500, background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>Serwer</div>
-                  <div style={{ padding: '10px 14px', fontSize: 13, color: '#475569', borderBottom: '1px solid #e2e8f0' }}>
-                    {session.env === 'prod' ? 'ksef.mf.gov.pl' : 'ksef-test.mf.gov.pl'}
+              <div style={{ borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 16 }}>
+                {[
+                  { label: 'NIP', value: <strong>{session.nip}</strong> },
+                  { label: 'Serwer', value: session.env === 'prod' ? 'ksef.mf.gov.pl' : 'ksef-test.mf.gov.pl' },
+                  { label: 'Token sesji', value: <code style={{ fontSize: 11, color: '#64748b', background: '#e2e8f0', padding: '2px 6px', borderRadius: 4 }}>{session.token.slice(0, 32)}…</code> },
+                ].map((row, i, arr) => (
+                  <div key={row.label} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: i < arr.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                    <div style={{ padding: '10px 14px', fontSize: 12, color: '#718096', fontWeight: 500, background: '#f8fafc' }}>{row.label}</div>
+                    <div style={{ padding: '10px 14px', fontSize: 13 }}>{row.value}</div>
                   </div>
-                  <div style={{ padding: '10px 14px', fontSize: 12, color: '#718096', fontWeight: 500, background: '#f1f5f9' }}>Token sesji</div>
-                  <div style={{ padding: '10px 14px' }}>
-                    <code style={{ fontSize: 11, color: '#64748b', background: '#e2e8f0', padding: '2px 6px', borderRadius: 4 }}>
-                      {session.token.slice(0, 28)}…
-                    </code>
-                  </div>
-                </div>
+                ))}
               </div>
 
               <Button variant="secondary" onClick={closeSession} loading={sessionLoading}>Zakończ sesję</Button>
             </div>
           ) : (
             <form onSubmit={handleInitSession}>
-              <div className="form__group">
-                <label className="form__label">NIP firmy</label>
-                <input
-                  className="form__input"
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <Input
+                  label="NIP firmy"
                   value={nipInput}
                   onChange={(e) => setNipInput(e.target.value)}
                   placeholder="1234567890"
                   maxLength={10}
                 />
-              </div>
-              <div className="form__group">
-                <label className="form__label">Token autoryzacyjny KSeF</label>
-                <input
-                  className="form__input"
+                <Input
+                  label="Token autoryzacyjny KSeF"
                   type="password"
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}
                   placeholder="Token z panelu podatnika / PUE MF"
                 />
-              </div>
-              <div className="form__group">
-                <label className="form__label">Środowisko</label>
-                <select
-                  className="form__input"
+                <Select
+                  label="Środowisko"
                   value={envInput}
                   onChange={(e) => setEnvInput(e.target.value as 'test' | 'prod')}
-                >
-                  <option value="test">Testowe (ksef-test.mf.gov.pl)</option>
-                  <option value="prod">Produkcyjne (ksef.mf.gov.pl)</option>
-                </select>
+                  options={[
+                    { value: 'test', label: 'Testowe (ksef-test.mf.gov.pl)' },
+                    { value: 'prod', label: 'Produkcyjne (ksef.mf.gov.pl)' },
+                  ]}
+                />
               </div>
               {sessionError && (
-                <div style={{ padding: '10px 14px', background: '#fff5f5', border: '1px solid #fc8181', borderRadius: 8, fontSize: 13, color: '#c0392b', marginBottom: 12 }}>
+                <div style={{ marginTop: 12, padding: '10px 14px', background: '#fff5f5', border: '1px solid #fc8181', borderRadius: 8, fontSize: 13, color: '#c0392b' }}>
                   <strong>Błąd:</strong> {sessionError}
                 </div>
               )}
-              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                 <Button type="submit" loading={sessionLoading} disabled={!nipInput || !tokenInput}>
                   Inicjuj sesję
                 </Button>
