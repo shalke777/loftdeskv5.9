@@ -3,7 +3,6 @@
  * Proxy for receiving invoice documents from KSeF /online/Query/Invoice/Sync
  * Returns documents issued in the last 30 days.
  */
-const fetch = require('node-fetch')
 const BASE = {
   test: 'https://ksef-test.mf.gov.pl/api',
   prod: 'https://ksef.mf.gov.pl/api',

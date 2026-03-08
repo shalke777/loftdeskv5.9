@@ -2,7 +2,6 @@
  * Netlify function: ksef-send
  * Proxy for sending FA(2) invoice XML to KSeF /online/Invoice/Send
  */
-const fetch = require('node-fetch')
 const BASE = {
   test: 'https://ksef-test.mf.gov.pl/api',
   prod: 'https://ksef.mf.gov.pl/api',

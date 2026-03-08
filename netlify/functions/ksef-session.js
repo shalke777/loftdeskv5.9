@@ -4,7 +4,6 @@
  * Auth flow: AuthorisationChallenge → encrypt token with KSeF RSA pub key → InitToken
  */
 const crypto = require('crypto')
-const fetch = require('node-fetch')
 
 const BASE = {
   test: 'https://ksef-test.mf.gov.pl/api',

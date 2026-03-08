@@ -3,7 +3,6 @@
  * Proxy for fetching UPO (Urzędowe Poświadczenie Odbioru) for a sent invoice.
  * KSeF endpoint: GET /api/online/Invoice/{ksefReferenceNumber}/UPO
  */
-const fetch = require('node-fetch')
 const BASE = {
   test: 'https://ksef-test.mf.gov.pl/api',
   prod: 'https://ksef.mf.gov.pl/api',
