@@ -22,7 +22,7 @@ export function AuthScreen() {
         <div className="grid-2" style={{ alignItems: 'stretch' }}>
           <div className="card highlight-card">
             <span className="hero__eyebrow" style={{ background: 'rgba(255,255,255,.18)', color: 'white' }}>LoftDesk</span>
-            <h1 style={{ fontSize: 42, marginBottom: 12 }}>Wchodzisz do systemu, który porządkuje ofertę, dokumenty i realizację.</h1>
+            <h1 style={{ fontSize: 42, marginBottom: 12, color: 'var(--color-chart-5)' }}>Wchodzisz do systemu, który porządkuje ofertę, dokumenty i realizację.</h1>
             <p>LoftDesk jest prostszy niż ciężkie ERP-y i dużo bardziej dopasowany do realiów budowy niż zwykłe programy do faktur.</p>
             <div className="hero__actions">
               <Link to="/"><Button variant="secondary">Wróć na landing</Button></Link>
