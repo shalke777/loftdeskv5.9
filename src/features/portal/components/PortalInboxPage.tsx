@@ -147,7 +147,8 @@ export function PortalInboxPage() {
                   opacity: item.active ? 1 : 0.65,
                 }}
               >
-                <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', width: '100%' }}>
                   {/* Unread badge / icon */}
                   <div style={{ paddingTop: 2, flexShrink: 0 }}>
                     {unread > 0 ? (
@@ -219,12 +220,14 @@ export function PortalInboxPage() {
                       Wygasa: {expiresLabel}
                     </div>
                   </div>
+                  </div>{/* end top row */}
 
-                  {/* Actions */}
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', marginTop: 2, alignItems: 'flex-start' }}>
+                  {/* Actions — full width row below text */}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', width: '100%' }}>
                     <Button
                       variant="secondary"
                       size="sm"
+                      icon={<Copy size={13} />}
                       onClick={async () => {
                         await navigator.clipboard?.writeText(fullUrl)
                         toast.info('Skopiowano link portalu')
@@ -233,7 +236,7 @@ export function PortalInboxPage() {
                       Kopiuj link
                     </Button>
                     <a href={fullUrl} target="_blank" rel="noreferrer">
-                      <Button variant="secondary" size="sm" icon={<ExternalLink size={14} />}>
+                      <Button variant="secondary" size="sm" icon={<ExternalLink size={13} />}>
                         Otwórz
                       </Button>
                     </a>
