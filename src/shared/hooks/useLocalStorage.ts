@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 export function useLocalStorage<T>(key: string, initialValue: T) {
   const [value, setValue] = useState<T>(() => {
@@ -7,10 +7,17 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     return raw ? (JSON.parse(raw) as T) : initialValue
   })
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(key, JSON.stringify(value))
-  }, [key, value])
+  const setValuePersisted = (next: T | ((prev: T) => T)) => {
+    setValue((prev) => {
+      const resolved = typeof next === 'function' ? (next as (prev: T) => T)(prev) : next
+      // Write synchronously so that window.location.assign() after this call
+      // does not race against a useEffect flush.
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(key, JSON.stringify(resolved))
+      }
+      return resolved
+    })
+  }
 
-  return [value, setValue] as const
+  return [value, setValuePersisted] as const
 }
