@@ -152,7 +152,7 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
   </fa:Podmiot1>
   <fa:Podmiot2>
     <fa:DaneIdentyfikacyjne>
-      <fa:NIP>${escXml(buyer.nip)}</fa:NIP>
+      ${buyer.nip ? `<fa:NIP>${escXml(buyer.nip)}</fa:NIP>` : '<fa:BrakID>1</fa:BrakID>'}
       <fa:Nazwa>${escXml(buyer.name)}</fa:Nazwa>
     </fa:DaneIdentyfikacyjne>
     ${buyer.address ? `<fa:Adres><fa:AdresL1>${escXml(buyer.address)}</fa:AdresL1></fa:Adres>` : ''}

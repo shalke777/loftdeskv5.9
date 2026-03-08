@@ -72,13 +72,13 @@ export function KsefPage() {
 
   async function handleReceive() {
     if (!session) return
-    await receive(session.accessToken, session.env, session.isDemo)
+    await receive(session.sessionToken, session.env, session.isDemo)
     refreshHistory()
   }
 
   function handleShowUpo(ksefRef: string, invoiceNumber: string) {
     if (!session) return
-    upo.fetchAndShow(ksefRef, invoiceNumber, session.accessToken, session.env, session.isDemo)
+    upo.fetchAndShow(ksefRef, invoiceNumber, session.sessionToken, session.env, session.isDemo)
   }
 
   function ksefStatusBadge(s: string | null) {
