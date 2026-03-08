@@ -183,8 +183,8 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Nieznana akcja. Użyj "init" lub "close".' }) }
   } catch (e) {
     const detail = e.message || 'upstream_error'
-    const friendly = /ECONNREFUSED|ENOTFOUND|Timeout|nie można/.test(detail)
-      ? `Nie można połączyć się z serwerem KSeF: ${detail}`
+    const friendly = /ECONNREFUSED|ENOTFOUND|Timeout|nie można|socket hang up|ECONNRESET/i.test(detail)
+      ? `Nie można połączyć się z serwerem KSeF (${env}). ${detail}`
       : detail
     return { statusCode: 502, headers, body: JSON.stringify({ error: friendly, detail }) }
   }

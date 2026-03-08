@@ -98,8 +98,8 @@ exports.handler = async (event) => {
     }
   } catch (e) {
     const detail = e.message || 'upstream_error'
-    const friendly = /ECONNREFUSED|ENOTFOUND|Timeout/.test(detail)
-      ? `Nie można połączyć się z serwerem KSeF: ${detail}`
+    const friendly = /ECONNREFUSED|ENOTFOUND|Timeout|nie można|socket hang up|ECONNRESET/i.test(detail)
+      ? `Nie można połączyć się z serwerem KSeF. ${detail}`
       : detail
     return { statusCode: 502, headers, body: JSON.stringify({ error: friendly, detail }) }
   }
