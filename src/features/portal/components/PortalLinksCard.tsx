@@ -9,6 +9,7 @@ import { STATUS_META } from '@/shared/lib/constants'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Input } from '@/shared/ui/Input/Input'
 import { useToast } from '@/shared/hooks/useToast'
+import { translateError } from '@/shared/lib/errorMessages'
 
 async function copyText(text: string): Promise<void> {
   if (navigator.clipboard) {
@@ -68,7 +69,7 @@ export function PortalLinksCard({ estimate }: { estimate: Estimate }) {
               try { await copyText(fullUrl) } catch { /* clipboard unavailable — shows URL in list */ }
               toast.success('Link portalu wygenerowany', 'Adres skopiowany do schowka (jeśli dostępny).')
             } catch (err) {
-              toast.error('Błąd generowania linku', err instanceof Error ? err.message : String(err))
+              toast.error('Błąd generowania linku', translateError(err))
             }
           }}
         >

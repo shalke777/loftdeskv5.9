@@ -1,6 +1,7 @@
 import { Component, ReactNode } from 'react'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
+import { translateError } from '@/shared/lib/errorMessages'
 
 interface Props {
   children: ReactNode
@@ -15,7 +16,7 @@ export class AppErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, errorMessage: error.message }
+    return { hasError: true, errorMessage: translateError(error, 'Nieoczekiwany błąd aplikacji.') }
   }
 
   componentDidCatch(error: Error) {

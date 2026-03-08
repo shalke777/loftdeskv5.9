@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { billingApi, type BillingPlan } from '@/features/billing/api/billing.api'
 import { useCompanyId, useAuth } from '@/features/auth'
 import { useToast } from '@/shared/hooks/useToast'
+import { translateError } from '@/shared/lib/errorMessages'
 import { getStripe, hasStripeConfig } from '@/shared/lib/stripe'
 
 export function useBillingSummary() {
@@ -25,10 +26,10 @@ export function useChangePlan() {
       queryClient.invalidateQueries({ queryKey: ['dashboard', companyId] })
       queryClient.invalidateQueries({ queryKey: ['settings', 'profile', companyId] })
       await refreshSession()
-      toast.success('Plan zapisany', 'Zmiana planu zostala zapisana.')
+      toast.success('Plan zapisany', 'Zmiana planu została zapisana.')
     },
     onError: (error: unknown) => {
-      toast.error('Nie udalo sie zmienic planu', error instanceof Error ? error.message : 'Sprobuj ponownie.')
+      toast.error('Nie udało się zmienić planu', translateError(error, 'Spróbuj ponownie.'))
     },
   })
 }
@@ -46,12 +47,12 @@ export function useStripeCheckout() {
         window.location.assign(url)
       } else {
         const stripe = await getStripe()
-        if (!stripe) throw new Error('Nie mozna zaladowac Stripe.')
+        if (!stripe) throw new Error('Nie można załadować Stripe.')
         throw new Error('Brak URL sesji checkout.')
       }
     },
     onError: (error: unknown) => {
-      toast.error('Blad platnosci', error instanceof Error ? error.message : 'Sprobuj ponownie.')
+      toast.error('Błąd płatności', translateError(error, 'Spróbuj ponownie.'))
     },
   })
 }
@@ -66,7 +67,7 @@ export function useStripePortal() {
       if (url) window.location.assign(url)
     },
     onError: (error: unknown) => {
-      toast.error('Blad portalu platnosci', error instanceof Error ? error.message : 'Sprobuj ponownie.')
+      toast.error('Błąd portalu płatności', translateError(error, 'Spróbuj ponownie.'))
     },
   })
 }

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { settingsApi } from '@/features/settings/api/settings.api'
 import { useToast } from '@/shared/hooks/useToast'
+import { translateError } from '@/shared/lib/errorMessages'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 
 const settingsKeys = {
@@ -29,7 +30,7 @@ export function useInviteMember() {
       qc.invalidateQueries({ queryKey: settingsKeys.team(companyId) })
       toast.success('Członek zespołu dodany')
     },
-    onError: (error) => toast.error('Nie udało się dodać członka', error instanceof Error ? error.message : undefined),
+    onError: (error) => toast.error('Nie udało się dodać członka', translateError(error)),
   })
 }
 
@@ -45,7 +46,7 @@ export function useUpdateCompanyProfile() {
       await refreshSession()
       toast.success('Profil firmy zapisany')
     },
-    onError: (error) => toast.error('Nie udało się zapisać profilu', error instanceof Error ? error.message : undefined),
+    onError: (error) => toast.error('Nie udało się zapisać profilu', translateError(error)),
   })
 }
 
@@ -60,7 +61,7 @@ export function useRevokeInvitation() {
       qc.invalidateQueries({ queryKey: settingsKeys.invitations(companyId) })
       toast.success('Zaproszenie wycofane')
     },
-    onError: (error) => toast.error('Nie udało się wycofać zaproszenia', error instanceof Error ? error.message : undefined),
+    onError: (error) => toast.error('Nie udało się wycofać zaproszenia', translateError(error)),
   })
 }
 
@@ -81,6 +82,6 @@ export function useAcceptInvitation() {
       await refreshSession()
       toast.success('Zaproszenie zaakceptowane')
     },
-    onError: (error) => toast.error('Nie udało się zaakceptować zaproszenia', error instanceof Error ? error.message : undefined),
+    onError: (error) => toast.error('Nie udało się zaakceptować zaproszenia', translateError(error)),
   })
 }

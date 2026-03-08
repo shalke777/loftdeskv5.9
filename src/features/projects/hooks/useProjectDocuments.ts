@@ -4,6 +4,7 @@ import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { projectDocumentsApi } from '@/features/projects/api/projectDocuments.api'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/shared/hooks/useToast'
+import { translateError } from '@/shared/lib/errorMessages'
 import type { ProjectDocument, ProjectTimelineEntry } from '@/entities/project/model'
 
 // ── Project Documents ────────────────────────────────────────────────────────
@@ -36,7 +37,7 @@ export function useLinkDocument() {
       qc.invalidateQueries({ queryKey: ['projects'] })
       toast.success('Dokument przypisany do projektu')
     },
-    onError: (e) => toast.error('Błąd przypisania', e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error('Błąd przypisania', translateError(e)),
   })
 }
 
@@ -59,7 +60,7 @@ export function useUnlinkDocument() {
       qc.invalidateQueries({ queryKey: ['projects'] })
       toast.info('Dokument odpięty od projektu')
     },
-    onError: (e) => toast.error('Błąd odpinania', e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error('Błąd odpinania', translateError(e)),
   })
 }
 
@@ -93,7 +94,7 @@ export function useResolveAssignment() {
       qc.invalidateQueries({ queryKey: ['projects'] })
       toast.success('Przypisanie zaktualizowane')
     },
-    onError: (e) => toast.error('Błąd aktualizacji', e instanceof Error ? e.message : String(e)),
+    onError: (e) => toast.error('Błąd aktualizacji', translateError(e)),
   })
 }
 

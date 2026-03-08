@@ -3,6 +3,7 @@ import { Button } from '@/shared/ui/Button/Button'
 import { Input } from '@/shared/ui/Input/Input'
 import { usePortalChat } from '@/features/portal/hooks/usePortalData'
 import { useToast } from '@/shared/hooks/useToast'
+import { translateError } from '@/shared/lib/errorMessages'
 
 export function PortalChat({ token }: { token: string }) {
   const [message, setMessage] = useState('')
@@ -38,8 +39,7 @@ export function PortalChat({ token }: { token: string }) {
         toast.success('Wiadomość wysłana')
       },
       onError: (error) => {
-        const msg = error instanceof Error ? error.message : 'Spróbuj ponownie.'
-        toast.error('Nie udało się wysłać', msg)
+        toast.error('Nie udało się wysłać', translateError(error, 'Spróbuj ponownie.'))
       },
     })
   }

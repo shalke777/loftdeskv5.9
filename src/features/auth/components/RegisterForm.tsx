@@ -5,6 +5,7 @@ import { Input } from '@/shared/ui/Input/Input'
 import { authApi } from '@/features/auth/api/auth.api'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useToast } from '@/shared/hooks/useToast'
+import { translateError } from '@/shared/lib/errorMessages'
 import { isDemoMode } from '@/shared/lib/supabase'
 import { PendingInvitesNotice } from '@/features/auth/components/PendingInvitesNotice'
 import { getPendingInviteToken, clearPendingInviteToken } from '@/shared/lib/inviteIntent'
@@ -66,8 +67,7 @@ export function RegisterForm() {
                 window.location.assign('/login')
               }
             } catch (error) {
-              const message = error instanceof Error ? error.message : 'Spróbuj ponownie.'
-              toast.error('Nie udało się utworzyć konta', message)
+              toast.error('Nie udało się utworzyć konta', translateError(error, 'Spróbuj ponownie.'))
             } finally {
               setLoading(false)
             }

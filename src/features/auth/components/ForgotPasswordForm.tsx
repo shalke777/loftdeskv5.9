@@ -3,6 +3,7 @@ import { Button } from '@/shared/ui/Button/Button'
 import { Card } from '@/shared/ui/Card/Card'
 import { Input } from '@/shared/ui/Input/Input'
 import { useToast } from '@/shared/hooks/useToast'
+import { translateError } from '@/shared/lib/errorMessages'
 import { supabase } from '@/shared/lib/supabase'
 
 export function ForgotPasswordForm() {
@@ -33,7 +34,7 @@ export function ForgotPasswordForm() {
               }
               toast.success('Link wysłany', `Sprawdź skrzynkę ${email} — znajdziesz tam link do resetu hasła.`)
             } catch (err) {
-              toast.error('Błąd', err instanceof Error ? err.message : 'Spróbuj ponownie.')
+              toast.error('Błąd', translateError(err, 'Spróbuj ponownie.'))
             } finally {
               setLoading(false)
             }

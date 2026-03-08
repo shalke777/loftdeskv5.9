@@ -6,6 +6,7 @@ import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { authApi } from '@/features/auth/api/auth.api'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useToast } from '@/shared/hooks/useToast'
+import { translateError } from '@/shared/lib/errorMessages'
 import { getPendingInviteToken, clearPendingInviteToken } from '@/shared/lib/inviteIntent'
 import { settingsApi } from '@/features/settings/api/settings.api'
 
@@ -45,8 +46,7 @@ export function LoginForm() {
               toast.success('Zalogowano', 'Możesz od razu przejść do pracy w aplikacji.')
               window.location.assign(target)
             } catch (error) {
-              const message = error instanceof Error ? error.message : 'Sprawdź dane logowania.'
-              toast.error('Nie udało się zalogować', message)
+              toast.error('Nie udało się zalogować', translateError(error, 'Sprawdź dane logowania.'))
             } finally {
               setLoading(false)
             }
