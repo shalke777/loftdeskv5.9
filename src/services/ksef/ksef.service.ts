@@ -252,13 +252,26 @@ ${demoNote}
 </div></body></html>`
 }
 
+/** Session data needed to call v2 API methods (returned by initSession) */
+export interface KsefSessionData {
+  accessToken: string
+  sessionRef: string
+  symmetricKey: string
+  iv: string
+  validUntil?: string
+}
+
 export const ksefService = {
   // ── Session ────────────────────────────────────────────
+  /**
+   * Authenticate + open online session (v2 flow).
+   * Returns { accessToken, sessionRef, symmetricKey, iv, validUntil }
+   */
   async initSession(nip: string, token: string, env: KsefEnv = 'test') {
     return callProxy('ksef-session', { action: 'init', nip, token, env })
   },
-  async closeSession(sessionToken: string, env: KsefEnv = 'test') {
-    return callProxy('ksef-session', { action: 'close', sessionToken, env })
+  async closeSession(accessToken: string, sessionRef: string, env: KsefEnv = 'test') {
+    return callProxy('ksef-session', { action: 'close', accessToken, sessionRef, env })
   },
 
   // ── Invoice send ────────────────────────────────────────
@@ -266,12 +279,15 @@ export const ksefService = {
     invoice: Invoice,
     seller: KsefSeller,
     buyer: KsefBuyer,
-    sessionToken: string,
+    session: { accessToken: string; sessionRef: string; symmetricKey: string; iv: string },
     env: KsefEnv = 'test',
   ): Promise<{ ksefRef: string; invoiceNumber: string }> {
     const xmlPayload = buildFA2Xml(invoice, seller, buyer)
     const result = await callProxy('ksef-send', {
-      sessionToken,
+      accessToken: session.accessToken,
+      sessionRef: session.sessionRef,
+      symmetricKey: session.symmetricKey,
+      iv: session.iv,
       xmlPayload,
       invoiceNumber: invoice.number,
       env,
@@ -281,11 +297,10 @@ export const ksefService = {
 
   // ── Receive documents ───────────────────────────────────
   async receiveDocuments(
-    nip: string,
-    sessionToken: string,
+    accessToken: string,
     env: KsefEnv = 'test',
   ): Promise<KsefReceivedDoc[]> {
-    const result = await callProxy('ksef-receive', { nip, sessionToken, env })
+    const result = await callProxy('ksef-receive', { accessToken, env })
     const incoming = (result.documents as KsefReceivedDoc[]) ?? []
     const stored = ksefService.getReceived()
     const existingRefs = new Set(stored.map((d) => d.ksefRef))
@@ -336,10 +351,10 @@ export const ksefService = {
   // ── UPO ─────────────────────────────────────────────────
   async fetchUpo(
     ksefRef: string,
-    sessionToken: string,
+    accessToken: string,
     env: KsefEnv = 'test',
   ): Promise<Record<string, unknown>> {
-    const result = await callProxy('ksef-upo', { ksefRef, sessionToken, env })
+    const result = await callProxy('ksef-upo', { ksefRef, accessToken, env })
     return result
   },
 

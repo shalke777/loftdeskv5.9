@@ -1,12 +1,21 @@
 /**
  * Netlify function: ksef-upo
- * Proxy for fetching UPO (Urzędowe Poświadczenie Odbioru) for a sent invoice.
- * KSeF endpoint: GET /api/online/Invoice/{ksefReferenceNumber}/UPO
+ * KSeF API v2 — fetch invoice status and UPO data.
+ *
+ * The ksefRef field uses format "sessionRef|invoiceRef" (set by ksef-send).
+ * Endpoint: GET /sessions/{sessionRef}/invoices/{invoiceRef}
+ * Returns invoice status including ksefNumber, acquisitionDate, invoiceHash,
+ * and optionally upoDownloadUrl (pre-signed, no auth required).
+ *
+ * Input:  { ksefRef, accessToken, env }
+ * Output: { ksefReferenceNumber, invoiceReferenceNumber, acquisitionTimestamp,
+ *           hashSHA, upoDownloadUrl?, statusCode, statusDescription }
  */
 const { ksefFetch } = require('./ksef-http')
+
 const BASE = {
-  test: 'https://ksef-test.mf.gov.pl/api',
-  prod: 'https://ksef.mf.gov.pl/api',
+  test: 'https://api-test.ksef.mf.gov.pl/v2',
+  prod: 'https://api.ksef.mf.gov.pl/v2',
 }
 
 exports.handler = async (event) => {
@@ -24,43 +33,68 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'invalid_json' }) }
   }
 
-  const { ksefRef, sessionToken, env = 'test' } = body
-  if (!ksefRef || !sessionToken) {
+  const { ksefRef, accessToken, env = 'test' } = body
+  if (!ksefRef || !accessToken) {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'missing_fields' }) }
   }
 
+  // v2 ksefRef = "sessionRef|invoiceRef"
+  // v1 (legacy) ksefRef has no pipe separator — return graceful info
+  if (!ksefRef.includes('|')) {
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        ksefReferenceNumber: ksefRef,
+        invoiceReferenceNumber: ksefRef,
+        acquisitionTimestamp: null,
+        hashSHA: null,
+        statusCode: null,
+        statusDescription: 'UPO niedostępne dla faktur wysłanych w starszym formacie (sprzed aktualizacji API).',
+      }),
+    }
+  }
+
+  const [sessionRef, invoiceRef] = ksefRef.split('|')
   const base = BASE[env] || BASE.test
 
   try {
     const res = await ksefFetch(
-      `${base}/online/Invoice/${encodeURIComponent(ksefRef)}/UPO`,
+      `${base}/sessions/${encodeURIComponent(sessionRef)}/invoices/${encodeURIComponent(invoiceRef)}`,
       {
         method: 'GET',
-        headers: {
-          accept: 'application/json',
-          SessionToken: sessionToken,
-        },
+        headers: { Authorization: `Bearer ${accessToken}` },
       },
     )
+    const data = res.json()
     if (!res.ok) {
-      let err = {}
-      try { err = res.json() } catch {}
       return {
         statusCode: res.status,
         headers,
         body: JSON.stringify({
-          error:
-            err.exception?.exceptionDetailList?.[0]?.exceptionCode || 'upo_fetch_failed',
-          details: err,
+          error: data.title || data.exception?.exceptionDetailList?.[0]?.exceptionCode || 'upo_fetch_failed',
+          details: data,
         }),
       }
     }
-    const result = res.json()
-    return { statusCode: 200, headers, body: JSON.stringify(result) }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        ksefReferenceNumber: data.ksefNumber || invoiceRef,
+        invoiceReferenceNumber: data.invoiceNumber || invoiceRef,
+        acquisitionTimestamp: data.acquisitionDate || data.invoicingDate || null,
+        hashSHA: data.invoiceHash || null,
+        upoDownloadUrl: data.upoDownloadUrl || null,
+        statusCode: data.status?.code ?? null,
+        statusDescription: data.status?.description || null,
+      }),
+    }
   } catch (e) {
     const detail = e.message || 'upstream_error'
-    const friendly = detail.includes('fetch') || detail.includes('ECONNREFUSED') || detail.includes('ENOTFOUND')
-      ? `Nie można połączyć się z serwerem KSeF (${detail}). Serwer MF może być chwilowo niedostępny.`
+    const friendly = /ECONNREFUSED|ENOTFOUND|Timeout/.test(detail)
+      ? `Nie można połączyć się z serwerem KSeF: ${detail}`
       : detail
     return { statusCode: 502, headers, body: JSON.stringify({ error: friendly, detail }) }
   }

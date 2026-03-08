@@ -5,7 +5,8 @@ import { useClients } from '@/features/clients/hooks/useClients'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useSettings } from '@/features/settings/hooks/useSettings'
 import { invoicesApi } from '@/features/invoices/api/invoices.api'
-import { ksefService, type KsefEnv } from '@/services/ksef/ksef.service'
+import { ksefService } from '@/services/ksef/ksef.service'
+import type { KsefSession } from './useKsefSession'
 import type { Invoice } from '@/entities/invoice/model'
 
 export interface QueueItemResult {
@@ -39,7 +40,7 @@ export function useKsefQueue() {
   )
 
   const processQueue = useCallback(
-    async (sessionToken: string, env: KsefEnv = 'test', isDemo = false): Promise<ProcessResult> => {
+    async (session: KsefSession, isDemo = false): Promise<ProcessResult> => {
       setProcessing(true)
       const result: ProcessResult = { total: pending.length, sent: 0, errors: 0, items: [] }
 
@@ -85,8 +86,8 @@ export function useKsefQueue() {
               invoice,
               seller,
               buyer,
-              sessionToken,
-              env,
+              session,
+              session.env,
             )
             await invoicesApi.update(
               invoice.id,

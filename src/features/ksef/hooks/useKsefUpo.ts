@@ -11,7 +11,7 @@ export function useKsefUpo() {
     async (
       ksefRef: string,
       invoiceNumber: string,
-      sessionToken: string,
+      accessToken: string,
       env: KsefEnv = 'test',
       isDemo = false,
     ) => {
@@ -30,7 +30,7 @@ export function useKsefUpo() {
             isDemo: true,
           }
         } else {
-          const raw = await ksefService.fetchUpo(ksefRef, sessionToken, env)
+          const raw = await ksefService.fetchUpo(ksefRef, accessToken, env)
           upoData = {
             ksefReferenceNumber:
               (raw.ksefReferenceNumber as string) || ksefRef,

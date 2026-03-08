@@ -4,7 +4,14 @@ import { ksefService, type KsefEnv } from '@/services/ksef/ksef.service'
 const SESSION_KEY = 'ksef_active_session'
 
 export interface KsefSession {
-  token: string
+  /** JWT Bearer access token for all v2 API calls */
+  accessToken: string
+  /** Online session reference number (for sending invoices, close, UPO) */
+  sessionRef: string
+  /** AES-256 symmetric key (base64) for encrypting invoices */
+  symmetricKey: string
+  /** Initialization vector (base64) for AES encryption */
+  iv: string
   env: KsefEnv
   nip: string
   startedAt: string
@@ -30,9 +37,13 @@ export function useKsefSession() {
       setError(null)
       try {
         const result = await ksefService.initSession(nip, token, env)
-        if (!result.sessionToken) throw new Error('Serwer KSeF nie zwrócił tokenu sesji')
+        if (!result.accessToken) throw new Error('Serwer KSeF nie zwrócił tokenu dostępu')
+        if (!result.sessionRef) throw new Error('Serwer KSeF nie zwrócił numeru referencyjnego sesji')
         const s: KsefSession = {
-          token: result.sessionToken as string,
+          accessToken: result.accessToken as string,
+          sessionRef: result.sessionRef as string,
+          symmetricKey: result.symmetricKey as string,
+          iv: result.iv as string,
           env,
           nip,
           startedAt: new Date().toISOString(),
@@ -55,7 +66,7 @@ export function useKsefSession() {
     if (!session) return
     setLoading(true)
     try {
-      await ksefService.closeSession(session.token, session.env)
+      await ksefService.closeSession(session.accessToken, session.sessionRef, session.env)
     } catch {
       // ignore close errors — session may have already expired
     }
@@ -67,7 +78,10 @@ export function useKsefSession() {
   const initDemo = useCallback(
     (nip: string, env: KsefEnv = 'test'): KsefSession => {
       const s: KsefSession = {
-        token: `DEMO-${Date.now()}`,
+        accessToken: `DEMO-${Date.now()}`,
+        sessionRef: `DEMO-SESSION-${Date.now()}`,
+        symmetricKey: '',
+        iv: '',
         env,
         nip: nip || '0000000000',
         startedAt: new Date().toISOString(),

@@ -1,12 +1,18 @@
 /**
  * Netlify function: ksef-receive
- * Proxy for receiving invoice documents from KSeF /online/Query/Invoice/Sync
- * Returns documents issued in the last 30 days.
+ * KSeF API v2 — query received invoice metadata.
+ *
+ * Endpoint: POST /invoices/query/metadata
+ * Returns the last 30 days of invoices accessible in the auth context.
+ *
+ * Input:  { accessToken, env, pageSize?, pageOffset? }
+ * Output: { documents: KsefReceivedDoc[], total: number }
  */
 const { ksefFetch } = require('./ksef-http')
+
 const BASE = {
-  test: 'https://ksef-test.mf.gov.pl/api',
-  prod: 'https://ksef.mf.gov.pl/api',
+  test: 'https://api-test.ksef.mf.gov.pl/v2',
+  prod: 'https://api.ksef.mf.gov.pl/v2',
 }
 
 exports.handler = async (event) => {
@@ -24,64 +30,61 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'invalid_json' }) }
   }
 
-  const { nip, sessionToken, env = 'test', pageSize = 50, pageOffset = 0 } = body
-  if (!sessionToken) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'missing_session_token' }) }
+  const { accessToken, env = 'test', pageSize = 50, pageOffset = 0 } = body
+  if (!accessToken) {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'missing_access_token' }) }
   }
 
   const base = BASE[env] || BASE.test
   const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
   try {
-    const res = await ksefFetch(`${base}/online/Query/Invoice/Sync`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        accept: 'application/json',
-        SessionToken: sessionToken,
-      },
-      body: JSON.stringify({
-        queryCriteria: {
-          subjectBy: {
-            issuedBySubject: { identifier: { type: 'onip', identifier: nip || '' } },
-          },
-          acquisitionTimestampThresholdFrom: from,
+    // Query invoice metadata for last 30 days
+    const res = await ksefFetch(
+      `${base}/invoices/query/metadata?pageOffset=${pageOffset}&pageSize=${Math.min(pageSize, 250)}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
         },
-        size: pageSize,
-        offset: pageOffset,
-      }),
-    })
+        body: JSON.stringify({
+          acquisitionTimestampFrom: from,
+        }),
+      },
+    )
     const result = res.json()
     if (!res.ok) {
       return {
         statusCode: res.status,
         headers,
         body: JSON.stringify({
-          error:
-            result.exception?.exceptionDetailList?.[0]?.exceptionCode || 'receive_failed',
+          error: result.title || result.exception?.exceptionDetailList?.[0]?.exceptionCode || 'receive_failed',
           details: result,
         }),
       }
     }
 
-    const documents = (result.invoiceHeaderList || []).map((inv) => ({
-      ksefRef: inv.ksefReferenceNumber || '',
-      invoiceNumber: inv.invoiceReferenceNumber || '—',
-      issuerNip: inv.subjectBy?.issuedBySubject?.identifier?.identifier || nip || '',
-      issueDate: inv.invoicingDate || '',
-      receivedAt: new Date().toISOString(),
-      grossAmount: inv.gross || inv.net || 0,
+    // Map v2 metadata items to KsefReceivedDoc shape
+    const items = result.invoicesInfo || result.invoices || result.items || []
+    const documents = items.map((inv) => ({
+      ksefRef: inv.ksefReferenceNumber || inv.ksefNumber || '',
+      invoiceNumber: inv.invoiceNumber || inv.number || '—',
+      issuerNip: inv.sellerNip || inv.seller?.nip || inv.subject1?.nip || '',
+      issueDate: inv.issueDate || inv.invoicingDate || '',
+      receivedAt: inv.acquisitionDate || inv.permanentStorageDate || new Date().toISOString(),
+      grossAmount: Number(inv.grossValuePln ?? inv.grossValue ?? inv.p15 ?? 0),
     }))
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ documents, total: result.numberOfElements || documents.length }),
+      body: JSON.stringify({ documents, total: result.count ?? documents.length }),
     }
   } catch (e) {
     const detail = e.message || 'upstream_error'
-    const friendly = detail.includes('fetch') || detail.includes('ECONNREFUSED') || detail.includes('ENOTFOUND')
-      ? `Nie można połączyć się z serwerem KSeF (${detail}). Serwer MF może być chwilowo niedostępny.`
+    const friendly = /ECONNREFUSED|ENOTFOUND|Timeout/.test(detail)
+      ? `Nie można połączyć się z serwerem KSeF: ${detail}`
       : detail
     return { statusCode: 502, headers, body: JSON.stringify({ error: friendly, detail }) }
   }

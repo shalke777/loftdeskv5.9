@@ -66,19 +66,19 @@ export function KsefPage() {
 
   async function handleProcessQueue() {
     if (!session) return
-    await processQueue(session.token, session.env, session.isDemo)
+    await processQueue(session, session.isDemo)
     refreshHistory()
   }
 
   async function handleReceive() {
     if (!session) return
-    await receive(session.nip, session.token, session.env)
+    await receive(session.accessToken, session.env)
     refreshHistory()
   }
 
   function handleShowUpo(ksefRef: string, invoiceNumber: string) {
     if (!session) return
-    upo.fetchAndShow(ksefRef, invoiceNumber, session.token, session.env, session.isDemo)
+    upo.fetchAndShow(ksefRef, invoiceNumber, session.accessToken, session.env, session.isDemo)
   }
 
   function ksefStatusBadge(s: string | null) {
@@ -118,7 +118,7 @@ export function KsefPage() {
                 {[
                   { label: 'NIP', value: <strong>{session.nip}</strong> },
                   { label: 'Serwer', value: session.env === 'prod' ? 'ksef.mf.gov.pl' : 'ksef-test.mf.gov.pl' },
-                  { label: 'Token sesji', value: <code style={{ fontSize: 11, color: '#64748b', background: '#e2e8f0', padding: '2px 6px', borderRadius: 4 }}>{session.token.slice(0, 32)}…</code> },
+                  { label: 'Ref. sesji', value: <code style={{ fontSize: 11, color: '#64748b', background: '#e2e8f0', padding: '2px 6px', borderRadius: 4 }}>{session.sessionRef}</code> },
                 ].map((row, i, arr) => (
                   <div key={row.label} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: i < arr.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
                     <div style={{ padding: '10px 14px', fontSize: 12, color: '#718096', fontWeight: 500, background: '#f8fafc' }}>{row.label}</div>
