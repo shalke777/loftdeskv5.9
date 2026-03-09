@@ -9,6 +9,7 @@ import { Badge } from '@/shared/ui/Badge/Badge'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
 import { buildProtocolPreview } from '@/services/pdf/documentPreview'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
+import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { useAcceptStandard, useCreateDecision, useCreatePhoto, useCreateProtocol, useCreateStandard, useDecideDecision, useDecideProtocol, useDeleteDecision, useDeletePhoto, useDeleteProtocol, useDeleteStandard, useDocumentationOverview, useUpdateDecision, useUpdatePhoto, useUpdateProtocol, useUpdateStandard } from '@/features/documentation/hooks/useDocumentation'
@@ -43,6 +44,7 @@ function SectionCard({ title, subtitle, icon, actions, children }: { title: stri
 export function DocumentationPage() {
   const companyId = useCompanyId()
   const { user } = useAuth()
+  const companyMeta = useCompanyMeta()
   const { data } = useDocumentationOverview()
   const { data: clients = [] } = useClients()
   const { data: projects = [] } = useProjects()
@@ -225,7 +227,7 @@ export function DocumentationPage() {
             protocolPreview,
             clients.find((item) => item.id === protocolPreview.client_id)?.name,
             projects.find((item) => item.id === protocolPreview.project_id)?.name,
-            { name: user?.companyName, email: user?.email },
+            { name: companyMeta.name || user?.companyName, email: companyMeta.email || user?.email, logoUrl: companyMeta.logoUrl },
           ),
         }] : []}
       />

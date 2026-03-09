@@ -19,7 +19,7 @@ export function InvoiceCard({ invoice, onDelete, onMarkPaid, onOpen, onEdit, can
   const companyMeta = useCompanyMeta()
   const client = clients.find((item) => item.id === invoice.client_id)
   const tabs = useMemo(() => ([
-    { key: 'pdf', label: 'Podgląd PDF', type: 'html' as const, content: buildInvoicePreview(invoice, client ? { name: client.name, address: client.address, postalCity: `${client.postal_code || ''} ${client.city || ''}`.trim(), nip: client.nip, email: client.email, phone: client.phone } : undefined, undefined, { name: companyMeta.name || user?.companyName, nip: companyMeta.nip, address: companyMeta.address, postalCity: companyMeta.postalCity, email: companyMeta.email || user?.email, phone: companyMeta.phone, bankAccount: companyMeta.bankAccount }) },
+    { key: 'pdf', label: 'Podgląd PDF', type: 'html' as const, content: buildInvoicePreview(invoice, client ? { name: client.name, address: client.address, postalCity: `${client.postal_code || ''} ${client.city || ''}`.trim(), nip: client.nip, email: client.email, phone: client.phone } : undefined, undefined, { name: companyMeta.name || user?.companyName, nip: companyMeta.nip, address: companyMeta.address, postalCity: companyMeta.postalCity, email: companyMeta.email || user?.email, phone: companyMeta.phone, bankAccount: companyMeta.bankAccount, logoUrl: companyMeta.logoUrl }) },
     { key: 'xml', label: 'Podgląd XML', type: 'xml' as const, content: buildInvoiceXml(invoice) },
   ]), [client, companyMeta, invoice, user?.companyName, user?.email])
 

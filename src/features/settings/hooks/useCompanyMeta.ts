@@ -9,6 +9,7 @@ export interface CompanyMetaForDocs {
   email?: string
   phone?: string
   bankAccount?: string
+  logoUrl?: string
 }
 
 /**
@@ -30,5 +31,6 @@ export function useCompanyMeta(): CompanyMetaForDocs {
     email: p?.email || user?.email || '',
     phone: p?.phone || '',
     bankAccount: p?.iban || '',
+    logoUrl: p?.logo_url || '',
   }
 }

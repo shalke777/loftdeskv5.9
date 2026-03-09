@@ -16,7 +16,7 @@ export const settingsApi = {
     if (error) throw error
     return data
   },
-  async updateProfile(companyId: string, input: { company_name: string; nip?: string; address?: string; postal_code?: string; city?: string; iban?: string; phone?: string; email?: string; ksef_env: 'test' | 'prod'; ksef_nip: string; ksef_token: string }) {
+  async updateProfile(companyId: string, input: { company_name: string; nip?: string; address?: string; postal_code?: string; city?: string; iban?: string; phone?: string; email?: string; ksef_env: 'test' | 'prod'; ksef_nip: string; ksef_token: string; logo_url?: string | null }) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.companyProfileUpdate(companyId, input))
     const scope = await getDataScope(companyId)
     if (scope.mode === 'multi-tenant') {
@@ -32,6 +32,7 @@ export const settingsApi = {
         ksef_env: input.ksef_env,
         ksef_nip: input.ksef_nip || null,
         ksef_token: input.ksef_token || null,
+        ...(input.logo_url !== undefined ? { logo_url: input.logo_url } : {}),
       }).eq('id', scope.companyId).select('*').single()
       if (error) throw error
       return data
@@ -47,6 +48,7 @@ export const settingsApi = {
       ksef_env: input.ksef_env,
       ksef_nip: input.ksef_nip || null,
       ksef_token: input.ksef_token || null,
+      ...(input.logo_url !== undefined ? { logo_url: input.logo_url } : {}),
     }).eq('id', scope.userId).select('*').single()
     if (error) throw error
     return data

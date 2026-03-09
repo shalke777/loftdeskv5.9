@@ -15,6 +15,7 @@ type Party = {
 
 type CompanyMeta = Party & {
   bankAccount?: string
+  logoUrl?: string
 }
 
 function replaceEvery(value: string, search: string, replacement: string) {
@@ -145,7 +146,15 @@ function defaultCompany(company?: CompanyMeta): CompanyMeta {
     email: company?.email || '',
     phone: company?.phone || '',
     bankAccount: company?.bankAccount || '',
+    logoUrl: company?.logoUrl || '',
   }
+}
+
+function logoMark(company: CompanyMeta, style?: string): string {
+  if (company.logoUrl) {
+    return `<img src="${escapeHtml(company.logoUrl)}" alt="Logo" style="max-width:120px; max-height:60px; object-fit:contain;${style ? ' ' + style : ''}" />`
+  }
+  return `<div class="logo-mark"${style ? ` style="${style}"` : ''}>LD</div>`
 }
 
 export function buildEstimatePreview(estimate: Estimate, client?: Party, companyInput?: CompanyMeta) {
@@ -166,7 +175,7 @@ export function buildEstimatePreview(estimate: Estimate, client?: Party, company
   const vatRate = estimate.items[0]?.vat_rate ?? 23
   const totalVat = estimate.total_gross - estimate.total_net
   const page = `<section class="page">
-    <div class="topbar"></div>
+    <div class="topbar"><div class="topbar__title">WYCENA</div>${logoMark(company)}</div>
     <div class="content">
       <div class="doc-title">WYCENA</div>
       <div class="meta">Numer: ${escapeHtml(estimate.number)}<br/>Data wystawienia: ${escapeHtml((estimate.created_at || '').slice(0, 10))}</div>
@@ -290,7 +299,7 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
           </div>
         </div>
         <div style="text-align:right;">
-          <div class="logo-mark" style="margin-left:auto; margin-bottom:14px;">LD</div>
+          <div style="margin-left:auto; margin-bottom:14px;">${logoMark(company)}</div>
           <div style="font-size:12px; color:var(--muted);">Termin p\u0142atno\u015bci</div>
           <div style="font-size:22px; font-weight:800; color:var(--red);">${escapeHtml(invoice.due_date || '\u2014')}</div>
         </div>
@@ -578,6 +587,7 @@ export function buildContractPreview(contract: import('@/entities/contract/model
   const page = `<section class="page">
     <div class="topbar">
       <div class="topbar__title">UMOWA O WYKONANIE ROBÓT BUDOWLANYCH</div>
+      ${logoMark(company)}
       <div style="font-size:14px; font-weight:600;">nr ${escapeHtml(contract.number)}</div>
     </div>
     <div class="content">
@@ -599,7 +609,7 @@ export function buildProtocolPreview(protocol: HandoverProtocol, clientName?: st
     : '<div class="check"><span>Brak dodanej checklisty</span><strong>—</strong></div>'
 
   const page = `<section class="page">
-    <div class="topbar"></div>
+    <div class="topbar"><div class="topbar__title">PROTOKÓŁ ODBIORU</div>${logoMark(company)}</div>
     <div class="content">
       <div class="doc-title" style="margin-bottom:10px;">PROTOKÓŁ ODBIORU</div>
       <div class="doc-number">${escapeHtml(protocol.title)}</div>

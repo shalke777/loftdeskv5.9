@@ -23,7 +23,7 @@ export function InvoiceDetail({ invoice, onMarkPaid, onSendToKsef, onEdit, canMa
   const contract = contracts.find((item) => item.id === invoice.contract_id)
   const clientMeta = client ? { name: client.name, address: client.address, postalCity: `${client.postal_code || ''} ${client.city || ''}`.trim(), nip: client.nip, email: client.email, phone: client.phone } : undefined
   const contractMeta = contract ? { contractNumber: contract.number, contractLocation: (contract as any).location || '' } : undefined
-  const companyMeta = { name: profileMeta.name || user?.companyName, nip: profileMeta.nip, address: profileMeta.address, postalCity: profileMeta.postalCity, email: profileMeta.email || user?.email, phone: profileMeta.phone, bankAccount: profileMeta.bankAccount }
+  const companyMeta = { name: profileMeta.name || user?.companyName, nip: profileMeta.nip, address: profileMeta.address, postalCity: profileMeta.postalCity, email: profileMeta.email || user?.email, phone: profileMeta.phone, bankAccount: profileMeta.bankAccount, logoUrl: profileMeta.logoUrl }
 
   const tabs = useMemo(
     () => ([

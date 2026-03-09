@@ -22,7 +22,7 @@ export const PLAN_DEFS = {
     name: 'Business',
     price: 119,
     color: '#a87b4b',
-    features: ['Wszystko z Pro', 'Zespół i role', 'API / integracje', 'Priorytetowe wsparcie'],
+    features: ['Wszystko z Pro', 'Zespół i role', 'API / integracje', 'Własne logo na dokumentach', 'Priorytetowe wsparcie'],
   },
   admin: {
     id: 'admin',

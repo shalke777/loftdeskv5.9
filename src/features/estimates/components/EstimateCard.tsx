@@ -21,7 +21,7 @@ export function EstimateCard({ estimate, onDelete, onCreateContract, onEdit }: {
   const companyMeta = useCompanyMeta()
   const client = clients.find((item) => item.id === estimate.client_id)
   const estimateToProject = useCreateProjectFromEstimate()
-  const tabs = useMemo(() => [{ key: 'pdf', label: 'Podgląd PDF', type: 'html' as const, content: buildEstimatePreview(estimate, client ? { name: client.name, address: client.address, postalCity: `${client.postal_code || ''} ${client.city || ''}`.trim(), nip: client.nip, email: client.email, phone: client.phone } : undefined, { name: companyMeta.name || user?.companyName, nip: companyMeta.nip, address: companyMeta.address, postalCity: companyMeta.postalCity, email: companyMeta.email || user?.email, phone: companyMeta.phone, bankAccount: companyMeta.bankAccount }) }], [client, companyMeta, estimate, user?.companyName, user?.email])
+  const tabs = useMemo(() => [{ key: 'pdf', label: 'Podgląd PDF', type: 'html' as const, content: buildEstimatePreview(estimate, client ? { name: client.name, address: client.address, postalCity: `${client.postal_code || ''} ${client.city || ''}`.trim(), nip: client.nip, email: client.email, phone: client.phone } : undefined, { name: companyMeta.name || user?.companyName, nip: companyMeta.nip, address: companyMeta.address, postalCity: companyMeta.postalCity, email: companyMeta.email || user?.email, phone: companyMeta.phone, bankAccount: companyMeta.bankAccount, logoUrl: companyMeta.logoUrl }) }], [client, companyMeta, estimate, user?.companyName, user?.email])
   return (
     <>
       <Card>
