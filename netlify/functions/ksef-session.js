@@ -55,14 +55,25 @@ function findKey(keys, usage) {
 }
 
 /**
- * RSA-OAEP (SHA-256) encrypt data with a DER-encoded SPKI public key (base64).
+ * RSA-OAEP (SHA-256) encrypt data with a base64-encoded key from KSeF.
+ * KSeF returns X.509 certificates (DER). We extract the public key from the cert.
+ * Falls back to raw SPKI if parsing as X.509 fails.
  */
 function rsaOaepEncrypt(data, derKeyBase64) {
-  const publicKey = crypto.createPublicKey({
-    key: Buffer.from(derKeyBase64, 'base64'),
-    format: 'der',
-    type: 'spki',
-  })
+  const keyBuffer = Buffer.from(derKeyBase64, 'base64')
+  let publicKey
+  try {
+    // KSeF returns DER-encoded X.509 certificates — extract public key
+    const cert = new crypto.X509Certificate(keyBuffer)
+    publicKey = cert.publicKey
+  } catch {
+    // Fallback: try as raw SPKI (in case KSeF changes format)
+    try {
+      publicKey = crypto.createPublicKey({ key: keyBuffer, format: 'der', type: 'spki' })
+    } catch (e2) {
+      throw new Error(`Nie można odczytać klucza publicznego KSeF: ${e2.message}`)
+    }
+  }
   return crypto.publicEncrypt(
     { key: publicKey, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
     Buffer.isBuffer(data) ? data : Buffer.from(data, 'utf8'),

@@ -55,7 +55,7 @@ export const settingsApi = {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.members.list(companyId))
     const scope = await getDataScope(companyId)
     if (scope.mode === 'multi-tenant') {
-      const { data, error } = await supabase.from('company_members').select('role, user_id, profiles!company_members_user_id_fkey(id, email, full_name), companies!inner(name, plan)').eq('company_id', scope.companyId)
+      const { data, error } = await supabase.from('company_members').select('role, user_id, profiles!company_members_user_id_profiles_fkey(id, email, full_name), companies!inner(name, plan)').eq('company_id', scope.companyId)
       if (error) throw error
       return (data ?? []).map((row: any) => ({
         id: row.user_id,
