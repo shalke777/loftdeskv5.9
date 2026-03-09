@@ -274,7 +274,7 @@ exports.handler = async (event) => {
         },
       })
       const redeemData = redeemRes.json()
-      console.log(`[ksef-session] Step 6 result: status=${redeemRes.status}`, JSON.stringify(redeemData).slice(0, 300))
+      console.log(`[ksef-session] Step 6 result: status=${redeemRes.status} keys=[${Object.keys(redeemData)}]`)
       if (!redeemRes.ok) {
         return {
           statusCode: redeemRes.status,
@@ -285,9 +285,25 @@ exports.handler = async (event) => {
           }),
         }
       }
-      const accessToken = redeemData.token || redeemData.accessToken
-      if (!accessToken) throw new Error('KSeF token/redeem nie zwrócił accessTokena.')
-      console.log(`[ksef-session] Step 6: accessToken exists len=${accessToken.length}`)
+
+      // KSeF returns { accessToken: { token, validUntil }, refreshToken: { token, validUntil } }
+      // Handle both nested object and flat string formats
+      const rawAccess = redeemData.accessToken
+      const accessToken = typeof rawAccess === 'string' ? rawAccess
+        : (rawAccess?.token || redeemData.token || '')
+      const rawRefresh = redeemData.refreshToken
+      const refreshToken = typeof rawRefresh === 'string' ? rawRefresh
+        : (rawRefresh?.token || '')
+
+      // Hard validation — abort before /sessions/online if token is bad
+      if (!accessToken || typeof accessToken !== 'string' || accessToken.length < 20) {
+        const debugInfo = `type=${typeof accessToken} len=${accessToken ? accessToken.length : 0} raw_type=${typeof rawAccess}`
+        console.error(`[ksef-session] Step 6 FAIL: accessToken invalid — ${debugInfo}`)
+        throw new Error(`KSeF token/redeem zwrócił nieprawidłowy accessToken (${debugInfo}). Sprawdź format odpowiedzi.`)
+      }
+
+      console.log(`[ksef-session] Step 6: accessToken exists len=${accessToken.length} head=${accessToken.slice(0,4)} tail=${accessToken.slice(-4)}`)
+      console.log(`[ksef-session] Step 6: refreshToken exists=${!!refreshToken} len=${refreshToken.length}`)
       logJwtClaims('Step 6 accessToken', accessToken, nip)
 
       // 7. Generate AES-256 key + IV for invoice encryption
@@ -335,7 +351,7 @@ exports.handler = async (event) => {
           referenceNumber: sessionData.referenceNumber,
           symmetricKey: aesKey.toString('base64'),
           iv: iv.toString('base64'),
-          validUntil: sessionData.validUntil || redeemData.validUntil,
+          validUntil: sessionData.validUntil || rawAccess?.validUntil || redeemData.validUntil,
         }),
       }
     }
