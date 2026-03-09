@@ -390,7 +390,10 @@ export const ksefService = {
     env: KsefEnv = 'test',
     referenceNumber?: string,
   ): Promise<Record<string, unknown>> {
-    const result = await callProxy('ksef-upo', { ksefRef, sessionToken, referenceNumber: referenceNumber || '', env })
+    if (!referenceNumber) throw new Error('fetchUpo: brak referenceNumber sesji')
+    if (!ksefRef) throw new Error('fetchUpo: brak ksefRef faktury')
+    if (!sessionToken) throw new Error('fetchUpo: brak sessionToken')
+    const result = await callProxy('ksef-upo', { ksefRef, sessionToken, referenceNumber, env })
     return result
   },
 

@@ -31,6 +31,7 @@ export function useKsefUpo() {
             isDemo: true,
           }
         } else {
+          if (!referenceNumber) throw new Error(`Brak numeru referencyjnego sesji (referenceNumber) — nie można pobrać UPO.`)
           const raw = await ksefService.fetchUpo(ksefRef, accessToken, env, referenceNumber)
           upoData = {
             ksefReferenceNumber:

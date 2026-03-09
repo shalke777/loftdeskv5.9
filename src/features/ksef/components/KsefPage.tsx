@@ -243,7 +243,7 @@ export function KsefPage() {
 
   function handleShowUpo(ksefRef: string, invoiceNumber: string) {
     if (!session) return
-    upo.fetchAndShow(ksefRef, invoiceNumber, session.sessionToken, session.env, session.isDemo)
+    upo.fetchAndShow(ksefRef, invoiceNumber, session.sessionToken, session.env, session.isDemo, session.referenceNumber || session.sessionRef)
   }
 
   const tabStyle = (tab: string) => ({
