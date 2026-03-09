@@ -33,10 +33,12 @@ export function DocumentPreviewModal({
       downloadBlob(`${title.replace(/\s+/g, '_')}.xml`, new Blob([tab.content], { type: 'application/xml;charset=utf-8' }))
       return
     }
-    // Open the HTML in a new window and trigger the browser print dialog.
-    // The user saves as PDF from there — this is the only way to produce a
-    // correctly-formatted, CSS-styled PDF in a browser-only environment.
-    printCurrent()
+    // Open the full styled document in a new tab — user can then use
+    // Ctrl+P → "Zapisz jako PDF" to save a properly formatted PDF file.
+    const blob = new Blob([tab.content], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 15000)
   }
 
   function printCurrent() {

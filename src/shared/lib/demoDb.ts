@@ -64,6 +64,7 @@ export interface DemoInvitation {
 }
 
 interface DemoState {
+  _seedVersion?: string
   users: DemoUser[]
   clients: Client[]
   estimates: Estimate[]
@@ -76,6 +77,7 @@ interface DemoState {
 }
 
 const STORAGE_KEY = 'loftdesk-v5-demo-db'
+const SEED_VERSION = '5.9a'
 const now = () => new Date().toISOString()
 const dateOnly = () => new Date().toISOString().slice(0, 10)
 const plusDays = (days: number) => new Date(Date.now() + days * 86400000).toISOString()
@@ -88,6 +90,7 @@ const seedUsers: DemoUser[] = [
 ]
 
 const seedState: DemoState = {
+  _seedVersion: SEED_VERSION,
   users: seedUsers,
   clients: [
     { id: 'c1', company_id: 'cmp-wisniewski', name: 'Budrem Sp. z o.o.', email: 'biuro@budrem.pl', phone: '601234567', city: 'Poznań', address: 'ul. Leśna 12', postal_code: '60-001', nip: '7821001122', contact_person: 'Marek Nowak', created_at: now() },
@@ -165,9 +168,16 @@ function read(): DemoState {
     return state
   }
   try {
-    const parsed = normalizeState(JSON.parse(raw) as DemoState)
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed))
-    return parsed
+    const parsed = JSON.parse(raw) as DemoState
+    if (parsed._seedVersion !== SEED_VERSION) {
+      // Seed data changed — re-seed so users always get correct demo data
+      const fresh = normalizeState(clone(seedState))
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh))
+      return fresh
+    }
+    const normalized = normalizeState(parsed)
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
+    return normalized
   } catch {
     const state = normalizeState(clone(seedState))
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
