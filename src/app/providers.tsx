@@ -61,7 +61,7 @@ function mapUser(email?: string): SessionUser {
 }
 
 function AuthProvider({ children }: { children: ReactNode }) {
-  const [storedUser, setStoredUser] = useLocalStorage<SessionUser | null>('loftdesk-v4-session', isDemoMode ? mapUser() : null)
+  const [storedUser, setStoredUser] = useLocalStorage<SessionUser | null>('loftdesk-v5-session', isDemoMode ? mapUser() : null)
   const [user, setUser] = useState<SessionUser | null>(storedUser)
   const [loading, setLoading] = useState(!isDemoMode)
 

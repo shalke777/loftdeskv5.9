@@ -75,7 +75,7 @@ interface DemoState {
   invitations: DemoInvitation[]
 }
 
-const STORAGE_KEY = 'loftdesk-v4-demo-db'
+const STORAGE_KEY = 'loftdesk-v5-demo-db'
 const now = () => new Date().toISOString()
 const dateOnly = () => new Date().toISOString().slice(0, 10)
 const plusDays = (days: number) => new Date(Date.now() + days * 86400000).toISOString()
@@ -112,7 +112,7 @@ const seedState: DemoState = {
   invoices: [
     { id: 'f1', company_id: 'cmp-wisniewski', client_id: 'c1', project_id: 'p1', contract_id: 'u1', number: 'FV/2026/001', invoice_type: 'standard', status: 'paid', issue_date: dateOnly(), sale_date: dateOnly(), due_date: dateOnly(), payment_method: 'transfer', bank_account: 'PL61109010140000071219812874', total_net: 9800, total_gross: 12054, ksef_status: 'ksef_sent', ksef_ref: 'PL2026KSF0000123', notes: 'Etap I', created_at: now(), items: [{ id: 'ii1', description: 'Roboty wykończeniowe – etap I', unit: 'kpl', quantity: 1, unit_price: 9800, vat_rate: 23, sort_order: 1, tranche_label: 'Etap I' }] },
     { id: 'f2', company_id: 'cmp-wisniewski', client_id: 'c2', project_id: null, contract_id: null, number: 'FV/2026/002', invoice_type: 'standard', status: 'unpaid', issue_date: dateOnly(), sale_date: dateOnly(), due_date: plusDays(14).slice(0,10), payment_method: 'transfer', bank_account: 'PL61109010140000071219812874', total_net: 4500, total_gross: 4860, ksef_status: 'ksef_pending', ksef_ref: null, notes: 'Malowanie klatki schodowej', created_at: now(), items: [{ id: 'ii2', description: 'Malowanie ścian klatki schodowej', unit: 'm²', quantity: 180, unit_price: 25, vat_rate: 8, sort_order: 1, tranche_label: '' }] },
-    { id: 'f3', company_id: 'cmp-wisniewski', client_id: 'c1', project_id: 'p1', contract_id: 'u1', number: 'FV/2026/003', invoice_type: 'standard', status: 'unpaid', issue_date: dateOnly(), sale_date: dateOnly(), due_date: plusDays(14).slice(0,10), payment_method: 'transfer', bank_account: 'PL61109010140000071219812874', total_net: 6500, total_gross: 7995, ksef_status: 'ksef_pending', ksef_ref: null, notes: 'Etap II – instalacja elektryczna', created_at: now(), items: [{ id: 'ii3', description: 'Instalacja elektryczna – etap II', unit: 'kpl', quantity: 1, unit_price: 6500, vat_rate: 23, sort_order: 1, tranche_label: 'Etap II' }] },
+    { id: 'f3', company_id: 'cmp-wisniewski', client_id: 'c1', project_id: 'p1', contract_id: 'u1', number: 'FV/2026/003', invoice_type: 'standard', status: 'overdue', issue_date: dateOnly(), sale_date: dateOnly(), due_date: plusDays(-7).slice(0,10), payment_method: 'transfer', bank_account: 'PL61109010140000071219812874', total_net: 6500, total_gross: 7995, ksef_status: 'ksef_pending', ksef_ref: null, notes: 'Etap II – instalacja elektryczna', created_at: now(), items: [{ id: 'ii3', description: 'Instalacja elektryczna – etap II', unit: 'kpl', quantity: 1, unit_price: 6500, vat_rate: 23, sort_order: 1, tranche_label: 'Etap II' }] },
   ],
   contracts: [
     { id: 'u1', company_id: 'cmp-wisniewski', client_id: 'c1', project_id: 'p1', number: 'UMW/2026/001', status: 'signed', sign_date: dateOnly(), value: 28000, value_net: 22764, vat_rate: 23, start_date: null, end_date: null, location: '', notes: '3 transze płatności', template_name: 'Szablon podstawowy', template_content: '', custom_paragraphs: [], created_at: now(), tranches: [
@@ -193,17 +193,29 @@ export const demoDb = {
   members: { list(companyId: string) { return read().users.filter((item) => item.company_id === companyId) }, invite(companyId: string, email: string, role: DemoRole) { return demoDb.invitations.invite(companyId, null, email, role) } },
   dashboard(companyId: string) {
     const state = read(); const user = state.users.find((item) => item.company_id === companyId); const projects = state.projects.filter((item) => item.company_id === companyId); const estimates = state.estimates.filter((item) => item.company_id === companyId); const invoices = state.invoices.filter((item) => item.company_id === companyId); const contracts = state.contracts.filter((item) => item.company_id === companyId); const clients = state.clients.filter((item) => item.company_id === companyId)
-    const pipelineProjects = projects.map((proj) => {
+    // Build pipeline: projects with linked contracts/estimates + standalone items
+    const usedEstimateIds = new Set<string>()
+    const usedContractIds = new Set<string>()
+    const pipelineItems: { id: string; name: string; number: string; status: string; clientName: string; contractValue: number; estimateValue: number; invoicedTotal: number; paidTotal: number }[] = []
+    for (const proj of projects) {
       const contract = contracts.find((c) => c.project_id === proj.id)
       const estimate = estimates.find((e) => (e as any).project_id === proj.id)
       const projInvoices = invoices.filter((inv) => inv.project_id === proj.id)
-      const invoicedTotal = projInvoices.reduce((s, inv) => s + inv.total_gross, 0)
-      const paidTotal = projInvoices.filter((inv) => inv.status === 'paid').reduce((s, inv) => s + inv.total_gross, 0)
-      const clientName = clients.find((c) => c.id === proj.client_id)?.name || ''
-      return { id: proj.id, name: proj.name, number: proj.number, status: proj.status, clientName, contractValue: contract?.value ?? 0, estimateValue: estimate?.total_gross ?? 0, invoicedTotal, paidTotal }
-    })
-    const pipeline = pipelineProjects.reduce((s, p) => s + (p.contractValue || p.estimateValue), 0)
-    return { plan: user?.plan ?? 'free', companyName: user?.company_name ?? 'LoftDesk Demo', clientsCount: clients.length, projectsCount: projects.length, estimatesCount: estimates.length, invoicesCount: invoices.length, activeProjects: projects.filter((item) => item.status === 'active').length, paidRevenue: invoices.filter((item) => item.status === 'paid').reduce((sum, item) => sum + item.total_gross, 0), pipeline, pipelineProjects, overdueCount: invoices.filter((item) => item.status === 'overdue').length, recentActivity: ['Wysłano kosztorys do klienta.', 'Dodano projekt realizacyjny.', 'Zaktualizowano umowę i status płatności.'], upcoming: projects.slice(0, 3).map((item) => `${item.name} · ${item.status}`), contractsCount: contracts.length, ksefReady: Boolean(user?.ksef_token) }
+      if (contract) usedContractIds.add(contract.id)
+      if (estimate) usedEstimateIds.add(estimate.id)
+      pipelineItems.push({ id: proj.id, name: proj.name, number: proj.number, status: proj.status, clientName: clients.find((c) => c.id === proj.client_id)?.name || '', contractValue: contract?.value ?? 0, estimateValue: estimate?.total_gross ?? 0, invoicedTotal: projInvoices.reduce((s, inv) => s + inv.total_gross, 0), paidTotal: projInvoices.filter((inv) => inv.status === 'paid').reduce((s, inv) => s + inv.total_gross, 0) })
+    }
+    // Standalone contracts not linked to any project
+    for (const c of contracts.filter((c) => !usedContractIds.has(c.id) && !c.project_id)) {
+      const cInvoices = invoices.filter((inv) => inv.contract_id === c.id)
+      pipelineItems.push({ id: c.id, name: c.number, number: 'Umowa', status: c.status, clientName: clients.find((cl) => cl.id === c.client_id)?.name || '', contractValue: c.value, estimateValue: 0, invoicedTotal: cInvoices.reduce((s, inv) => s + inv.total_gross, 0), paidTotal: cInvoices.filter((inv) => inv.status === 'paid').reduce((s, inv) => s + inv.total_gross, 0) })
+    }
+    // Standalone estimates not linked to any project
+    for (const e of estimates.filter((e) => !usedEstimateIds.has(e.id) && !(e as any).project_id)) {
+      pipelineItems.push({ id: e.id, name: e.name || e.number, number: 'Kosztorys', status: e.status, clientName: clients.find((cl) => cl.id === e.client_id)?.name || '', contractValue: 0, estimateValue: e.total_gross, invoicedTotal: 0, paidTotal: 0 })
+    }
+    const pipeline = pipelineItems.reduce((s, p) => s + (p.contractValue || p.estimateValue), 0)
+    return { plan: user?.plan ?? 'free', companyName: user?.company_name ?? 'LoftDesk Demo', clientsCount: clients.length, projectsCount: projects.length, estimatesCount: estimates.length, invoicesCount: invoices.length, activeProjects: projects.filter((item) => item.status === 'active').length, paidRevenue: invoices.filter((item) => item.status === 'paid').reduce((sum, item) => sum + item.total_gross, 0), pipeline, pipelineProjects: pipelineItems, overdueCount: invoices.filter((item) => item.status === 'overdue').length, recentActivity: ['Wys\u0142ano kosztorys do klienta.', 'Dodano projekt realizacyjny.', 'Zaktualizowano umow\u0119 i status p\u0142atno\u015bci.'], upcoming: projects.slice(0, 3).map((item) => `${item.name} \u00b7 ${item.status}`), contractsCount: contracts.length, ksefReady: Boolean(user?.ksef_token) }
   },
   companyProfile(companyId: string) { return read().users.find((item) => item.company_id === companyId) ?? null },
   companyProfileUpdate(companyId: string, input: Partial<Pick<DemoUser, 'company_name' | 'nip' | 'address' | 'city' | 'postal_code' | 'phone' | 'iban' | 'ksef_env' | 'ksef_nip' | 'ksef_token'>>) { const state = read(); state.users = state.users.map((item) => item.company_id === companyId ? { ...item, ...input } : item); writeState(state); return state.users.find((item) => item.company_id === companyId) ?? null },

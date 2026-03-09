@@ -38,7 +38,7 @@ export function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title={data.companyName} subtitle={`Plan: ${PLAN_DEFS[data.plan].name}`} />
+      <PageHeader title={data.companyName} subtitle={`Plan: ${(PLAN_DEFS[data.plan as keyof typeof PLAN_DEFS] ?? PLAN_DEFS.free).name}`} />
 
       <section className="dashboard-hero">
         <Card className="highlight-card">
@@ -93,17 +93,17 @@ export function DashboardPage() {
           <div className="toolbar" style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <TrendingUp size={20} />
-              <h3 style={{ margin: 0 }}>Pipeline projektów</h3>
+              <h3 style={{ margin: 0 }}>Pipeline</h3>
             </div>
-            <span className="field__label">{pipelineProjects.length} {pipelineProjects.length === 1 ? 'projekt' : 'projektów'}</span>
+            <span className="field__label">{pipelineProjects.length} {pipelineProjects.length === 1 ? 'pozycja' : 'pozycji'}</span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                <th style={{ padding: '8px 12px' }}>Projekt</th>
+                <th style={{ padding: '8px 12px' }}>Nazwa</th>
                 <th style={{ padding: '8px 12px' }}>Klient</th>
                 <th style={{ padding: '8px 12px' }}>Status</th>
-                <th style={{ padding: '8px 12px', textAlign: 'right' }}>Wartość umowy</th>
+                <th style={{ padding: '8px 12px', textAlign: 'right' }}>Wartość</th>
                 <th style={{ padding: '8px 12px', textAlign: 'right' }}>Zafakturowano</th>
                 <th style={{ padding: '8px 12px', textAlign: 'right' }}>Opłacono</th>
               </tr>
