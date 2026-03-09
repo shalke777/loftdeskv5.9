@@ -105,10 +105,18 @@ function pageShell(title: string, subtitle: string, content: string) {
   .checklist { display:grid; gap:10px; margin-top:18px; }
   .check { border:1px solid var(--line); border-radius:14px; padding:12px 14px; display:flex; justify-content:space-between; gap:16px; }
   .chip { display:inline-flex; padding:6px 10px; border-radius:999px; background:#fff1f1; color:var(--red); font-size:12px; font-weight:700; }
+  @page { size: A4 portrait; margin: 12mm 10mm; }
   @media print {
-    body { background:#fff; }
-    .doc { width: auto; margin: 0; box-shadow:none; }
-    .page { min-height: auto; }
+    body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .doc { width: 100%; margin: 0; box-shadow: none; }
+    .page { min-height: auto; break-after: page; }
+    .topbar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .footer { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    table { page-break-inside: avoid; }
+    thead { display: table-header-group; }
+    .party-grid { break-inside: avoid; }
+    .totals-box { break-inside: avoid; }
+    .signature-grid { break-inside: avoid; }
   }
 </style>
 </head>

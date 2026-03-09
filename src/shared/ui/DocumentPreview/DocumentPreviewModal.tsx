@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Modal } from '@/shared/ui/Modal/Modal'
 import { Button } from '@/shared/ui/Button/Button'
-import { createSimplePdfBlob, downloadBlob, stripHtml } from '@/shared/lib/downloads'
+import { downloadBlob } from '@/shared/lib/downloads'
 
 export interface DocumentPreviewTab {
   key: string
@@ -33,8 +33,10 @@ export function DocumentPreviewModal({
       downloadBlob(`${title.replace(/\s+/g, '_')}.xml`, new Blob([tab.content], { type: 'application/xml;charset=utf-8' }))
       return
     }
-    const pdf = createSimplePdfBlob(title, stripHtml(tab.content))
-    downloadBlob(`${title.replace(/\s+/g, '_')}.pdf`, pdf)
+    // Open the HTML in a new window and trigger the browser print dialog.
+    // The user saves as PDF from there — this is the only way to produce a
+    // correctly-formatted, CSS-styled PDF in a browser-only environment.
+    printCurrent()
   }
 
   function printCurrent() {
@@ -44,7 +46,7 @@ export function DocumentPreviewModal({
     win.document.write(tab.content)
     win.document.close()
     win.focus()
-    setTimeout(() => win.print(), 250)
+    setTimeout(() => win.print(), 400)
   }
 
   return (

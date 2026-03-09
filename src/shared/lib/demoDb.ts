@@ -28,7 +28,6 @@ export interface DemoUser {
   ksef_env: 'demo' | 'test' | 'prod'
   ksef_nip: string | null
   ksef_token: string | null
-  logo_url?: string | null
 }
 
 export interface PortalThreadMessage {
@@ -76,14 +75,14 @@ interface DemoState {
   invitations: DemoInvitation[]
 }
 
-const STORAGE_KEY = 'loftdesk-v5.1-demo-db'
+const STORAGE_KEY = 'loftdesk-v5-demo-db'
 const now = () => new Date().toISOString()
 const dateOnly = () => new Date().toISOString().slice(0, 10)
 const plusDays = (days: number) => new Date(Date.now() + days * 86400000).toISOString()
 
 const seedUsers: DemoUser[] = [
-  { id: 'd1', email: 'adam@budowlanka.pl', password: 'demo123', full_name: 'Adam Wiśniewski', company_id: 'cmp-wisniewski', company_name: 'Wiśniewski Budowlanka', role: 'owner', plan: 'business', nip: '7820012345', address: 'ul. Budowlana 15, 60-800 Poznań', city: 'Poznań', postal_code: '60-800', iban: 'PL61109010140000071219812874', ksef_env: 'demo', ksef_nip: '7820012345', ksef_token: 'TEST_TOKEN_2025' },
-  { id: 'd1a', email: 'koordynator@budowlanka.pl', password: 'demo123', full_name: 'Katarzyna Koordynator', company_id: 'cmp-wisniewski', company_name: 'Wiśniewski Budowlanka', role: 'manager', plan: 'business', nip: '7820012345', address: 'ul. Budowlana 15, 60-800 Poznań', city: 'Poznań', postal_code: '60-800', iban: 'PL61109010140000071219812874', ksef_env: 'demo', ksef_nip: '7820012345', ksef_token: 'TEST_TOKEN_2025' },
+  { id: 'd1', email: 'adam@budowlanka.pl', password: 'demo123', full_name: 'Adam Wiśniewski', company_id: 'cmp-wisniewski', company_name: 'Wiśniewski Budowlanka', role: 'owner', plan: 'pro', nip: '7820012345', address: 'ul. Budowlana 15, 60-800 Poznań', city: 'Poznań', postal_code: '60-800', iban: 'PL61109010140000071219812874', ksef_env: 'demo', ksef_nip: '7820012345', ksef_token: 'TEST_TOKEN_2025' },
+  { id: 'd1a', email: 'koordynator@budowlanka.pl', password: 'demo123', full_name: 'Katarzyna Koordynator', company_id: 'cmp-wisniewski', company_name: 'Wiśniewski Budowlanka', role: 'manager', plan: 'pro', nip: '7820012345', address: 'ul. Budowlana 15, 60-800 Poznań', city: 'Poznań', postal_code: '60-800', iban: 'PL61109010140000071219812874', ksef_env: 'demo', ksef_nip: '7820012345', ksef_token: 'TEST_TOKEN_2025' },
   { id: 'd2', email: 'marta@marex.pl', password: 'demo456', full_name: 'Marta Zielińska', company_id: 'cmp-marex', company_name: 'MAREX Wykończenia', role: 'owner', plan: 'free', nip: '5260001521', address: 'ul. Rzemieślnicza 8, 00-100 Warszawa', city: 'Warszawa', postal_code: '00-100', ksef_env: 'demo', ksef_nip: '5260001521', ksef_token: null },
   { id: 'd3', email: 'biuro@loftdesk.pl', password: 'admin123', full_name: 'LoftDesk Admin', company_id: 'cmp-loftdesk-admin', company_name: 'LoftDesk Admin', role: 'admin', plan: 'admin', ksef_env: 'demo', ksef_nip: null, ksef_token: null },
 ]
@@ -219,7 +218,7 @@ export const demoDb = {
     return { plan: user?.plan ?? 'free', companyName: user?.company_name ?? 'LoftDesk Demo', clientsCount: clients.length, projectsCount: projects.length, estimatesCount: estimates.length, invoicesCount: invoices.length, activeProjects: projects.filter((item) => item.status === 'active').length, paidRevenue: invoices.filter((item) => item.status === 'paid').reduce((sum, item) => sum + item.total_gross, 0), pipeline, pipelineProjects: pipelineItems, overdueCount: invoices.filter((item) => item.status === 'overdue').length, recentActivity: ['Wys\u0142ano kosztorys do klienta.', 'Dodano projekt realizacyjny.', 'Zaktualizowano umow\u0119 i status p\u0142atno\u015bci.'], upcoming: projects.slice(0, 3).map((item) => `${item.name} \u00b7 ${item.status}`), contractsCount: contracts.length, ksefReady: Boolean(user?.ksef_token) }
   },
   companyProfile(companyId: string) { return read().users.find((item) => item.company_id === companyId) ?? null },
-  companyProfileUpdate(companyId: string, input: Partial<Pick<DemoUser, 'company_name' | 'nip' | 'address' | 'city' | 'postal_code' | 'phone' | 'iban' | 'ksef_env' | 'ksef_nip' | 'ksef_token' | 'logo_url'>>) { const state = read(); state.users = state.users.map((item) => item.company_id === companyId ? { ...item, ...input } : item); writeState(state); return state.users.find((item) => item.company_id === companyId) ?? null },
+  companyProfileUpdate(companyId: string, input: Partial<Pick<DemoUser, 'company_name' | 'nip' | 'address' | 'city' | 'postal_code' | 'phone' | 'iban' | 'ksef_env' | 'ksef_nip' | 'ksef_token'>>) { const state = read(); state.users = state.users.map((item) => item.company_id === companyId ? { ...item, ...input } : item); writeState(state); return state.users.find((item) => item.company_id === companyId) ?? null },
   companyPlanUpdate(companyId: string, plan: DemoUser['plan']) { const state = read(); state.users = state.users.map((item) => item.company_id === companyId ? { ...item, plan } : item); writeState(state); return state.users.find((item) => item.company_id === companyId) ?? null },
   companies() { const state = read(); return Array.from(new Set(state.users.map((item) => item.company_id))).map((companyId) => { const owner = state.users.find((item) => item.company_id === companyId); return { company_id: companyId, company_name: owner?.company_name ?? companyId, plan: owner?.plan ?? 'free', members: state.users.filter((item) => item.company_id === companyId).length, clients: state.clients.filter((item) => item.company_id === companyId).length, projects: state.projects.filter((item) => item.company_id === companyId).length, estimates: state.estimates.filter((item) => item.company_id === companyId).length, invoices: state.invoices.filter((item) => item.company_id === companyId).length, pending_invitations: state.invitations.filter((item) => item.company_id === companyId && item.status === 'pending').length, portal_links: state.portalTokens.filter((item) => item.company_id === companyId && item.active).length, ksefReady: Boolean(owner?.ksef_token) } }) },
   onboardingSummary(companyId: string) {
