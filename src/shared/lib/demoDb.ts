@@ -99,12 +99,12 @@ const seedState: DemoState = {
     { id: 'p2', company_id: 'cmp-wisniewski', client_id: 'c2', number: 'PRJ/2026/002', name: 'Remont łazienki – Kowalski', status: 'done', start_date: dateOnly(), end_date: null, address: 'Warszawa, ul. Słoneczna 5', notes: 'Oferta wygrana, projekt gotowy do fakturowania.', created_at: now() },
   ],
   estimates: [
-    { id: 'ke1', company_id: 'cmp-wisniewski', client_id: 'c2', number: 'KE/2026/001', name: 'Remont łazienki – Kowalski', status: 'accepted', total_net: 3830, total_gross: 4710.9, notes: 'Termin realizacji 2 tygodnie', valid_until: plusDays(14), created_at: now(), items: [
+    { id: 'ke1', company_id: 'cmp-wisniewski', client_id: 'c2', project_id: 'p2', number: 'KE/2026/001', name: 'Remont łazienki – Kowalski', status: 'accepted', total_net: 3830, total_gross: 4710.9, notes: 'Termin realizacji 2 tygodnie', valid_until: plusDays(14), created_at: now(), items: [
       { id: 'i1', name: 'Układanie płytek 60x60', description: 'Łazienka', unit: 'm²', quantity: 12, unit_price: 180, vat_rate: 23, sort_order: 1 },
       { id: 'i2', name: 'Montaż kabiny prysznicowej', description: '', unit: 'szt', quantity: 1, unit_price: 1200, vat_rate: 23, sort_order: 2 },
       { id: 'i3', name: 'Materiały', description: 'klej, fuga', unit: 'kpl', quantity: 1, unit_price: 650, vat_rate: 23, sort_order: 3 },
     ] },
-    { id: 'ke2', company_id: 'cmp-wisniewski', client_id: 'c1', number: 'KE/2026/002', name: 'Wykończenie mieszkania – Budrem', status: 'draft', total_net: 12825, total_gross: 15774.75, notes: 'Projekt powiązany z realizacją', valid_until: plusDays(10), created_at: now(), items: [
+    { id: 'ke2', company_id: 'cmp-wisniewski', client_id: 'c1', project_id: 'p1', number: 'KE/2026/002', name: 'Wykończenie mieszkania – Budrem', status: 'draft', total_net: 12825, total_gross: 15774.75, notes: 'Projekt powiązany z realizacją', valid_until: plusDays(10), created_at: now(), items: [
       { id: 'i4', name: 'Tynkowanie ścian', description: '', unit: 'm²', quantity: 120, unit_price: 35, vat_rate: 23, sort_order: 1 },
       { id: 'i5', name: 'Wylewka podłogowa', description: '', unit: 'm²', quantity: 85, unit_price: 55, vat_rate: 23, sort_order: 2 },
     ] },
@@ -193,7 +193,17 @@ export const demoDb = {
   members: { list(companyId: string) { return read().users.filter((item) => item.company_id === companyId) }, invite(companyId: string, email: string, role: DemoRole) { return demoDb.invitations.invite(companyId, null, email, role) } },
   dashboard(companyId: string) {
     const state = read(); const user = state.users.find((item) => item.company_id === companyId); const projects = state.projects.filter((item) => item.company_id === companyId); const estimates = state.estimates.filter((item) => item.company_id === companyId); const invoices = state.invoices.filter((item) => item.company_id === companyId); const contracts = state.contracts.filter((item) => item.company_id === companyId); const clients = state.clients.filter((item) => item.company_id === companyId)
-    return { plan: user?.plan ?? 'free', companyName: user?.company_name ?? 'LoftDesk Demo', clientsCount: clients.length, projectsCount: projects.length, estimatesCount: estimates.length, invoicesCount: invoices.length, activeProjects: projects.filter((item) => item.status === 'active').length, paidRevenue: invoices.filter((item) => item.status === 'paid').reduce((sum, item) => sum + item.total_gross, 0), pipeline: estimates.reduce((sum, item) => sum + item.total_gross, 0), overdueCount: invoices.filter((item) => item.status === 'overdue').length, recentActivity: ['Wysłano kosztorys do klienta.', 'Dodano projekt realizacyjny.', 'Zaktualizowano umowę i status płatności.'], upcoming: projects.slice(0, 3).map((item) => `${item.name} · ${item.status}`), contractsCount: contracts.length, ksefReady: Boolean(user?.ksef_token) }
+    const pipelineProjects = projects.map((proj) => {
+      const contract = contracts.find((c) => c.project_id === proj.id)
+      const estimate = estimates.find((e) => (e as any).project_id === proj.id)
+      const projInvoices = invoices.filter((inv) => inv.project_id === proj.id)
+      const invoicedTotal = projInvoices.reduce((s, inv) => s + inv.total_gross, 0)
+      const paidTotal = projInvoices.filter((inv) => inv.status === 'paid').reduce((s, inv) => s + inv.total_gross, 0)
+      const clientName = clients.find((c) => c.id === proj.client_id)?.name || ''
+      return { id: proj.id, name: proj.name, number: proj.number, status: proj.status, clientName, contractValue: contract?.value ?? 0, estimateValue: estimate?.total_gross ?? 0, invoicedTotal, paidTotal }
+    })
+    const pipeline = pipelineProjects.reduce((s, p) => s + (p.contractValue || p.estimateValue), 0)
+    return { plan: user?.plan ?? 'free', companyName: user?.company_name ?? 'LoftDesk Demo', clientsCount: clients.length, projectsCount: projects.length, estimatesCount: estimates.length, invoicesCount: invoices.length, activeProjects: projects.filter((item) => item.status === 'active').length, paidRevenue: invoices.filter((item) => item.status === 'paid').reduce((sum, item) => sum + item.total_gross, 0), pipeline, pipelineProjects, overdueCount: invoices.filter((item) => item.status === 'overdue').length, recentActivity: ['Wysłano kosztorys do klienta.', 'Dodano projekt realizacyjny.', 'Zaktualizowano umowę i status płatności.'], upcoming: projects.slice(0, 3).map((item) => `${item.name} · ${item.status}`), contractsCount: contracts.length, ksefReady: Boolean(user?.ksef_token) }
   },
   companyProfile(companyId: string) { return read().users.find((item) => item.company_id === companyId) ?? null },
   companyProfileUpdate(companyId: string, input: Partial<Pick<DemoUser, 'company_name' | 'nip' | 'address' | 'city' | 'postal_code' | 'phone' | 'iban' | 'ksef_env' | 'ksef_nip' | 'ksef_token'>>) { const state = read(); state.users = state.users.map((item) => item.company_id === companyId ? { ...item, ...input } : item); writeState(state); return state.users.find((item) => item.company_id === companyId) ?? null },
