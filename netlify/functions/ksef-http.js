@@ -16,8 +16,8 @@
 const https = require('https')
 const tls = require('tls')
 
-const TIMEOUT_MS = 60000  // 60 seconds — KSeF is slow
-const MAX_RETRIES = 2     // retry transient errors up to 2 times
+const TIMEOUT_MS = 30000  // 30 seconds (was 60s — reduced to avoid frontend timeout)
+const MAX_RETRIES = 1     // retry transient errors up to 1 time (was 2)
 const RETRY_DELAY = 1500  // 1.5s between retries
 
 /** Errors worth retrying (server dropped connection, network hiccup) */

@@ -46,6 +46,8 @@ exports.handler = async (event) => {
 
   const base = BASE[env] || BASE.test
 
+  console.log(`[ksef-send] START: env=${env} invoice=${invoiceNumber} ref=${referenceNumber?.slice(0,20)} token_len=${sessionToken?.length} xml_len=${xmlPayload?.length}`)
+
   try {
     const xmlBuf = Buffer.from(xmlPayload, 'utf8')
 
@@ -84,6 +86,7 @@ exports.handler = async (event) => {
     )
 
     const result = res.json()
+    console.log(`[ksef-send] RESPONSE: status=${res.status}`, JSON.stringify(result).slice(0, 300))
     if (!res.ok) {
       return {
         statusCode: res.status,
@@ -99,11 +102,13 @@ exports.handler = async (event) => {
       }
     }
 
+    const ksefRef = result.referenceNumber || result.elementReferenceNumber || ''
+    console.log(`[ksef-send] OK: ksefRef=${ksefRef} invoice=${invoiceNumber}`)
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        ksefRef: result.referenceNumber || '',
+        ksefRef,
         invoiceNumber,
       }),
     }
@@ -114,8 +119,9 @@ exports.handler = async (event) => {
     // Auto-fallback to mock for non-prod when KSeF is unreachable
     if (isConnectionError && env !== 'prod') {
       console.warn(`[ksef-send] Connection failed (${env}), falling back to mock:`, detail)
-      const mock = mockApi.sendInvoice(invoiceNumber, '');
-      return { statusCode: 200, headers, body: JSON.stringify(mock.body) };
+      const mock = mockApi.sendInvoice(invoiceNumber, '')
+      console.log(`[ksef-send] MOCK fallback: ksefRef=${mock.body.ksefRef}`)
+      return { statusCode: 200, headers, body: JSON.stringify(mock.body) }
     }
 
     const friendly = isConnectionError

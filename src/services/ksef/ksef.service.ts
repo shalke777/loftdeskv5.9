@@ -258,19 +258,29 @@ ${advanceSection}
 </fa:Faktura>`
 }
 
+const PROXY_TIMEOUT_MS = 90_000 // 90s hard timeout for any KSeF proxy call
+
 async function callProxy(path: string, body: unknown): Promise<Record<string, unknown>> {
   let res: Response
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS)
   try {
     res = await fetch(`/.netlify/functions/${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: controller.signal,
     })
   } catch (networkErr) {
-    // Browser-level network failure (no Netlify functions server or network unavailable)
+    clearTimeout(timer)
+    if (networkErr instanceof DOMException && networkErr.name === 'AbortError') {
+      throw new Error(`Timeout (${PROXY_TIMEOUT_MS / 1000}s) — serwer KSeF nie odpowiedział. Spróbuj ponownie lub użyj Trybu demo.`)
+    }
     throw new Error(
       'Brak połączenia z serwerem funkcji KSeF. Upewnij się, że aplikacja działa na Netlify lub użyj Trybu demo.',
     )
+  } finally {
+    clearTimeout(timer)
   }
   // Try to parse JSON — if response is HTML (e.g. Vite 404 page) fall back to statusText
   const data: Record<string, unknown> = await res.json().catch(() => {

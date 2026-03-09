@@ -90,8 +90,9 @@ function KsefSendModal({ open, onClose, pendingCount, availability, isDemo, proc
 
   useEffect(() => {
     if (processing) setStep('sending')
-    else if (result && result.total > 0) {
-      setStep(result.errors > 0 && result.sent === 0 ? 'error' : 'success')
+    else if (result) {
+      if (result.total === 0) setStep('success')
+      else setStep(result.errors > 0 && result.sent === 0 ? 'error' : 'success')
     }
   }, [processing, result])
 
@@ -99,7 +100,11 @@ function KsefSendModal({ open, onClose, pendingCount, availability, isDemo, proc
 
   const handleSend = async () => {
     setStep('sending')
-    await onSend()
+    try {
+      await onSend()
+    } catch {
+      if (!result) setStep('error')
+    }
   }
 
   return (
@@ -266,8 +271,9 @@ export function KsefPage() {
 
   const handleProcessQueue = useCallback(async () => {
     if (!session) return
-    await processQueue(session, session.isDemo)
-    setSendModalOpen(false)
+    try {
+      await processQueue(session, session.isDemo)
+    } catch { /* errors handled inside processQueue */ }
     refreshHistory()
   }, [session, processQueue, refreshHistory])
 
