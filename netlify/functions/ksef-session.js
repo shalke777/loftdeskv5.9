@@ -155,7 +155,7 @@ exports.handler = async (event) => {
       console.log(`  typeof    = nip:${typeof nip} token:${typeof token}`)
 
       // 2. Get authorisation challenge (v2: contextIdentifier required)
-      const contextId = { type: 'onip', identifier: nip }
+      const contextId = { type: 'Nip', value: String(nip) }
       console.log(`[ksef-session] Step 2: POST ${base}/auth/challenge`, JSON.stringify({ contextIdentifier: contextId }))
       const challengeRes = await ksefFetch(`${base}/auth/challenge`, {
         method: 'POST',
@@ -182,7 +182,7 @@ exports.handler = async (event) => {
       const encryptedToken = rsaOaepEncrypt(tokenPayload, tokenEncKey.certificate).toString('base64')
       console.log(`[ksef-session] Step 3: encrypted token payload len=${tokenPayload.length} → cipher len=${encryptedToken.length}`)
 
-      // 4. Authenticate with KSeF token (v2: contextIdentifier uses 'onip' + 'identifier')
+      // 4. Authenticate with KSeF token (v2: contextIdentifier { type: 'Nip', value: nip })
       const authBody = {
         challenge,
         contextIdentifier: contextId,
@@ -227,9 +227,8 @@ exports.handler = async (event) => {
       // 7. RSA-OAEP encrypt AES key with SymmetricKeyEncryption key
       const encryptedAesKey = rsaOaepEncrypt(aesKey, symEncKey.certificate).toString('base64')
 
-      // 8. Open online interactive session (v2: contextIdentifier REQUIRED — bez niego 403)
+      // 8. Open online interactive session (context already bound to JWT from auth step)
       const sessionBody = {
-        contextIdentifier: contextId,
         formCode: { systemCode: 'FA (3)', schemaVersion: '1-0E', value: 'FA' },
         encryption: {
           encryptedSymmetricKey: encryptedAesKey,
@@ -237,7 +236,6 @@ exports.handler = async (event) => {
         },
       }
       console.log(`[ksef-session] Step 8: POST ${base}/sessions/online`, JSON.stringify({
-        contextIdentifier: contextId,
         formCode: sessionBody.formCode,
         encryption: { encryptedSymmetricKey: encryptedAesKey.slice(0, 12) + '...', initializationVector: sessionBody.encryption.initializationVector },
       }))

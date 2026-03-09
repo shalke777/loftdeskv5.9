@@ -65,6 +65,7 @@ export function LandingPage() {
       <section className="hero">
         <div className="hero__content">
           <span className="hero__eyebrow">System dla firm budowlanych i wykonczeniowych</span>
+          <h1>To nie jest kolejna aplikacja do fakturowania !.</h1>
           <h1>Koniec z chaosem dokumentow. Wyceny, umowy, faktury i KSeF w jednym miejscu.</h1>
           <p>LoftDesk zastepuje stos arkuszy, maili i osobnych programow. Jeden system od kosztorysu przez umowe i fakture az do odbioru budowy.</p>
           <div className="hero__actions">
