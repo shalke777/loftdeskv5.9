@@ -143,10 +143,24 @@ exports.handler = async (event) => {
       if (!tokenEncKey) throw new Error('Nie znaleziono aktualnego klucza KsefTokenEncryption w KSeF.')
       if (!symEncKey) throw new Error('Nie znaleziono aktualnego klucza SymmetricKeyEncryption w KSeF.')
 
-      // 2. Get authorisation challenge (POST, no body)
+      // ── Diagnostic: token & NIP check ──────────────────────────
+      const tokenLen = token ? token.length : 0
+      const tokenHead = token ? token.slice(0, 4) : '??'
+      const tokenTail = token ? token.slice(-4) : '??'
+      console.log(`[ksef-session] INIT diagnostic:`)
+      console.log(`  env       = ${env}`)
+      console.log(`  base      = ${base}`)
+      console.log(`  nip       = ${nip}`)
+      console.log(`  token     = exists:${!!token} len:${tokenLen} head:${tokenHead} tail:${tokenTail}`)
+      console.log(`  typeof    = nip:${typeof nip} token:${typeof token}`)
+
+      // 2. Get authorisation challenge (v2: contextIdentifier required)
+      const contextId = { type: 'onip', identifier: nip }
+      console.log(`[ksef-session] Step 2: POST ${base}/auth/challenge`, JSON.stringify({ contextIdentifier: contextId }))
       const challengeRes = await ksefFetch(`${base}/auth/challenge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contextIdentifier: contextId }),
       })
       const challengeData = challengeRes.json()
       if (!challengeRes.ok) {
@@ -166,16 +180,23 @@ exports.handler = async (event) => {
       // 3. RSA-OAEP encrypt token|timestampMs with KsefTokenEncryption key
       const tokenPayload = `${token}|${timestampMs}`
       const encryptedToken = rsaOaepEncrypt(tokenPayload, tokenEncKey.certificate).toString('base64')
+      console.log(`[ksef-session] Step 3: encrypted token payload len=${tokenPayload.length} → cipher len=${encryptedToken.length}`)
 
-      // 4. Authenticate with KSeF token
+      // 4. Authenticate with KSeF token (v2: contextIdentifier uses 'onip' + 'identifier')
+      const authBody = {
+        challenge,
+        contextIdentifier: contextId,
+        encryptedToken,
+      }
+      console.log(`[ksef-session] Step 4: POST ${base}/auth/ksef-token`, JSON.stringify({
+        challenge: challenge?.slice(0, 8) + '...',
+        contextIdentifier: contextId,
+        encryptedToken: encryptedToken.slice(0, 12) + '...[' + encryptedToken.length + ' chars]',
+      }))
       const authRes = await ksefFetch(`${base}/auth/ksef-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          challenge,
-          contextIdentifier: { type: 'Nip', value: nip },
-          encryptedToken,
-        }),
+        body: JSON.stringify(authBody),
       })
       const authData = authRes.json()
       if (!authRes.ok) {
@@ -191,10 +212,13 @@ exports.handler = async (event) => {
 
       const authRef = authData.referenceNumber
       const jwt = authData.authenticationToken?.token
+      console.log(`[ksef-session] Step 4 result: authRef=${authRef} jwt=${jwt ? 'exists len=' + jwt.length : 'MISSING!'}`)
       if (!jwt) throw new Error('KSeF nie zwrócił tokenu uwierzytelnienia (JWT).')
 
       // 5. Poll auth status until authentication succeeds
+      console.log(`[ksef-session] Step 5: polling auth status for ref=${authRef}`)
       await pollAuthStatus(base, authRef, jwt)
+      console.log(`[ksef-session] Step 5: auth confirmed OK`)
 
       // 6. Generate AES-256 key + IV for invoice encryption
       const aesKey = crypto.randomBytes(32)
@@ -203,22 +227,30 @@ exports.handler = async (event) => {
       // 7. RSA-OAEP encrypt AES key with SymmetricKeyEncryption key
       const encryptedAesKey = rsaOaepEncrypt(aesKey, symEncKey.certificate).toString('base64')
 
-      // 8. Open online interactive session
+      // 8. Open online interactive session (v2: contextIdentifier REQUIRED — bez niego 403)
+      const sessionBody = {
+        contextIdentifier: contextId,
+        formCode: { systemCode: 'FA (3)', schemaVersion: '1-0E', value: 'FA' },
+        encryption: {
+          encryptedSymmetricKey: encryptedAesKey,
+          initializationVector: iv.toString('base64'),
+        },
+      }
+      console.log(`[ksef-session] Step 8: POST ${base}/sessions/online`, JSON.stringify({
+        contextIdentifier: contextId,
+        formCode: sessionBody.formCode,
+        encryption: { encryptedSymmetricKey: encryptedAesKey.slice(0, 12) + '...', initializationVector: sessionBody.encryption.initializationVector },
+      }))
       const sessionRes = await ksefFetch(`${base}/sessions/online`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${jwt}`,
         },
-        body: JSON.stringify({
-          formCode: { systemCode: 'FA (3)', schemaVersion: '1-0E', value: 'FA' },
-          encryption: {
-            encryptedSymmetricKey: encryptedAesKey,
-            initializationVector: iv.toString('base64'),
-          },
-        }),
+        body: JSON.stringify(sessionBody),
       })
       const sessionData = sessionRes.json()
+      console.log(`[ksef-session] Step 8 result: status=${sessionRes.status}`, JSON.stringify(sessionData).slice(0, 500))
       if (!sessionRes.ok) {
         return {
           statusCode: sessionRes.status,
