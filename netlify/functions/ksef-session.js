@@ -24,7 +24,6 @@
  */
 const crypto = require('crypto')
 const { ksefFetch } = require('./ksef-http')
-const { checkKsefAvailability } = require('./ksef-schedule')
 const { mockApi } = require('./ksef-mock')
 
 const BASE = {
@@ -376,13 +375,7 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ closed: true }) }
     }
 
-    // ── Check availability ─────────────────────────────────────────
-    if (action === 'check-availability') {
-      const availability = checkKsefAvailability(env);
-      return { statusCode: 200, headers, body: JSON.stringify(availability) };
-    }
-
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Nieznana akcja. Użyj "init", "close" lub "check-availability".' }) }
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Nieznana akcja. Użyj "init" lub "close".' }) }
   } catch (e) {
     const detail = e.message || 'upstream_error'
     const isConnectionError = /ECONNREFUSED|ENOTFOUND|Timeout|nie można|socket hang up|ECONNRESET|503|502/i.test(detail)

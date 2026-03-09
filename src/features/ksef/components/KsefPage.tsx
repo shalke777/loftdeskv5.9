@@ -18,7 +18,7 @@ import { useKsefQueue, type QueueItemResult } from '@/features/ksef/hooks/useKse
 import { useKsefReceive } from '@/features/ksef/hooks/useKsefReceive'
 import { useKsefHistory } from '@/features/ksef/hooks/useKsefHistory'
 import { useKsefUpo } from '@/features/ksef/hooks/useKsefUpo'
-import { checkKsefAvailability, type KsefAvailability, type KsefEnv } from '@/services/ksef/ksef.service'
+import { type KsefEnv } from '@/services/ksef/ksef.service'
 
 // ── Status Badge Component ─────────────────────────────────
 function KsefStatusBadge({ status, isMock }: { status: string | null; isMock?: boolean }) {
@@ -37,35 +37,6 @@ function KsefStatusBadge({ status, isMock }: { status: string | null; isMock?: b
   )
 }
 
-// ── Availability Indicator ─────────────────────────────────
-function AvailabilityBanner({ env }: { env: KsefEnv }) {
-  const [avail, setAvail] = useState<KsefAvailability>({ available: true })
-
-  useEffect(() => {
-    setAvail(checkKsefAvailability(env))
-    const interval = setInterval(() => setAvail(checkKsefAvailability(env)), 60_000)
-    return () => clearInterval(interval)
-  }, [env])
-
-  if (env === 'prod') return null
-  if (avail.available) {
-    return (
-      <div style={{ padding: '10px 16px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, marginBottom: 16, fontSize: 13 }}>
-        🟢 <strong>KSeF online</strong> — środowisko {env} jest dostępne (pon-pt 8:00-18:00).
-      </div>
-    )
-  }
-  return (
-    <div style={{ padding: '12px 16px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 10, marginBottom: 16, fontSize: 13 }}>
-      <div style={{ fontWeight: 600 }}>⚠️ KSeF offline — {avail.reason}</div>
-      <div style={{ marginTop: 4, color: '#92400e' }}>
-        Następna dostępność: <strong>{avail.nextAvailable}</strong>
-        &nbsp;·&nbsp;Mock API symuluje odpowiedzi gdy KSeF jest niedostępny.
-      </div>
-    </div>
-  )
-}
-
 // ── Send Modal Component ─────────────────────────────────
 type SendModalStep = 'confirm' | 'sending' | 'success' | 'error'
 
@@ -73,7 +44,6 @@ interface SendModalProps {
   open: boolean
   onClose: () => void
   pendingCount: number
-  availability: KsefAvailability
   isDemo: boolean
   processing: boolean
   onSend: () => Promise<void>
@@ -81,7 +51,7 @@ interface SendModalProps {
   onShowUpo: (ksefRef: string, invoiceNumber: string) => void
 }
 
-function KsefSendModal({ open, onClose, pendingCount, availability, isDemo, processing, onSend, result, onShowUpo }: SendModalProps) {
+function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend, result, onShowUpo }: SendModalProps) {
   const [step, setStep] = useState<SendModalStep>('confirm')
 
   useEffect(() => {
@@ -111,16 +81,6 @@ function KsefSendModal({ open, onClose, pendingCount, availability, isDemo, proc
     <Modal open={open} onClose={step === 'sending' ? () => {} : onClose} title="Wysyłka faktur do KSeF">
       {step === 'confirm' && (
         <div>
-          {!availability.available && !isDemo && (
-            <div style={{ padding: '14px 16px', background: '#fef3c7', border: '2px solid #f59e0b', borderRadius: 8, marginBottom: 16 }}>
-              <strong>⚠️ KSeF jest niedostępny</strong>
-              <p style={{ margin: '6px 0 0', fontSize: 13 }}>
-                {availability.reason}<br />
-                Faktury zostaną wysłane przez mock API (symulacja).
-              </p>
-            </div>
-          )}
-
           {isDemo && (
             <div style={{ padding: '14px 16px', background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: 8, marginBottom: 16 }}>
               <strong>🔵 Tryb demo</strong>
@@ -138,7 +98,7 @@ function KsefSendModal({ open, onClose, pendingCount, availability, isDemo, proc
 
           <div style={{ display: 'flex', gap: 12 }}>
             <Button onClick={handleSend}>
-              {availability.available || isDemo ? `Wyślij ${pendingCount} faktur` : 'Wyślij (mock API)'}
+              {`Wyślij ${pendingCount} faktur`}
             </Button>
             <Button variant="secondary" onClick={onClose}>Anuluj</Button>
           </div>
@@ -236,8 +196,6 @@ export function KsefPage() {
   const [sendModalOpen, setSendModalOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'queue' | 'received' | 'history'>('queue')
 
-  const availability = checkKsefAvailability(session?.env ?? envInput)
-
   useEffect(() => {
     if (!profile) return
     const p = profile as Record<string, unknown>
@@ -306,8 +264,6 @@ export function KsefPage() {
     <div>
       <PageHeader title="KSeF" subtitle="Krajowy System e-Faktur · FA(2) · MF API" />
 
-      <AvailabilityBanner env={session?.env ?? envInput} />
-
       <div className="grid-2">
         {/* ── SESJA ─────────────────────────────────────── */}
         <Card>
@@ -371,7 +327,7 @@ export function KsefPage() {
               </div>
               <div style={{ marginTop: 12, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12, color: '#718096', lineHeight: 1.6 }}>
                 💡 NIP i token uzupełnisz w <strong>Ustawienia → Dane wykonawcy → KSeF</strong>.<br />
-                Tryb demo działa bez połączenia z MF. Mock API symuluje odpowiedzi gdy KSeF jest offline.
+                Tryb demo działa bez połączenia z MF.
               </div>
             </form>
           )}
@@ -400,10 +356,7 @@ export function KsefPage() {
           </div>
 
           <div style={{ marginTop: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12, color: '#718096', lineHeight: 1.7 }}>
-            <strong>Harmonogram KSeF:</strong><br />
-            📅 Demo/Test: pon-pt 8:00 — 18:00 (CET)<br />
-            🌐 Produkcja: 24/7<br />
-            🔄 Mock API: automatycznie gdy offline
+            🔄 Mock API: automatycznie przy błędzie połączenia z serwerem KSeF
           </div>
         </Card>
       </div>
@@ -563,7 +516,6 @@ export function KsefPage() {
         open={sendModalOpen}
         onClose={() => setSendModalOpen(false)}
         pendingCount={pending.length}
-        availability={availability}
         isDemo={session?.isDemo ?? false}
         processing={processing}
         onSend={handleProcessQueue}
