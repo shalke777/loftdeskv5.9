@@ -6,11 +6,12 @@
  *   1. GET  /security/public-key-certificates → fetch MF encryption keys
  *   2. POST /auth/challenge → get challenge + timestampMs
  *   3. RSA-OAEP encrypt token|timestampMs with KsefTokenEncryption key
- *   4. POST /auth/ksef-token → get JWT Bearer token + authRef
+ *   4. POST /auth/ksef-token → get authenticationToken + authRef
  *   5. Poll GET /auth/{authRef} → wait until status.code === 200
- *   6. Generate AES-256 key + IV, RSA-OAEP encrypt key with SymmetricKeyEncryption key
- *   7. POST /sessions/online → open interactive session, get sessionRef
- *  Returns: { sessionToken (JWT), referenceNumber (sessionRef), symmetricKey, iv, validUntil }
+ *   6. POST /auth/token/redeem → exchange authenticationToken for accessToken (carries permissions!)
+ *   7. Generate AES-256 key + IV, RSA-OAEP encrypt key with SymmetricKeyEncryption key
+ *   8. POST /sessions/online → open interactive session with accessToken Bearer
+ *  Returns: { sessionToken (accessToken), referenceNumber (sessionRef), symmetricKey, iv, validUntil }
  *
  * CLOSE flow (action: 'close'):
  *   POST /sessions/online/{referenceNumber}/close → close interactive session
@@ -109,6 +110,48 @@ function extractError(data, fallback) {
   return data.exception?.exceptionDescription
     || data.exception?.exceptionDetailList?.[0]?.exceptionDescription
     || data.title || data.message || fallback
+}
+
+/**
+ * Safely decode JWT payload (middle segment) without signature verification.
+ * Returns parsed claims object or null on failure.
+ */
+function decodeJwtPayload(jwt) {
+  try {
+    const parts = jwt.split('.')
+    if (parts.length !== 3) return null
+    // base64url → base64 → Buffer → JSON
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const json = Buffer.from(b64, 'base64').toString('utf8')
+    return JSON.parse(json)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Log selected JWT claims for diagnostics (never the full token).
+ */
+function logJwtClaims(label, jwt, expectedNip) {
+  const claims = decodeJwtPayload(jwt)
+  if (!claims) {
+    console.log(`[ksef-session] ${label}: JWT decode failed (not a valid JWT?)`)
+    return claims
+  }
+  const ctxType = claims['context-identifier-type'] || claims['contextIdentifierType'] || '?'
+  const ctxVal  = claims['context-identifier-value'] || claims['contextIdentifierValue'] || '?'
+  const method  = claims['authentication-method'] || claims['authenticationMethod'] || '?'
+  const ttype   = claims['token-type'] || claims['tokenType'] || '?'
+  const valid   = claims['validUntil'] || claims['exp'] || '?'
+  const nipMatch = String(ctxVal) === String(expectedNip)
+  console.log(`[ksef-session] ${label} JWT claims:`)
+  console.log(`  token-type              = ${ttype}`)
+  console.log(`  context-identifier-type = ${ctxType}`)
+  console.log(`  context-identifier-value= ${ctxVal}`)
+  console.log(`  authentication-method   = ${method}`)
+  console.log(`  validUntil / exp        = ${valid}`)
+  console.log(`  NIP match (${expectedNip})    = ${nipMatch ? 'OK ✓' : 'MISMATCH ✗'}`)
+  return claims
 }
 
 exports.handler = async (event) => {
@@ -211,23 +254,50 @@ exports.handler = async (event) => {
       }
 
       const authRef = authData.referenceNumber
-      const jwt = authData.authenticationToken?.token
-      console.log(`[ksef-session] Step 4 result: authRef=${authRef} jwt=${jwt ? 'exists len=' + jwt.length : 'MISSING!'}`)
-      if (!jwt) throw new Error('KSeF nie zwrócił tokenu uwierzytelnienia (JWT).')
+      const authenticationToken = authData.authenticationToken?.token
+      console.log(`[ksef-session] Step 4 result: authRef=${authRef} authenticationToken=${authenticationToken ? 'exists len=' + authenticationToken.length : 'MISSING!'}`)
+      if (!authenticationToken) throw new Error('KSeF nie zwrócił tokenu uwierzytelnienia (authenticationToken).')
+      logJwtClaims('Step 4 authenticationToken', authenticationToken, nip)
 
       // 5. Poll auth status until authentication succeeds
       console.log(`[ksef-session] Step 5: polling auth status for ref=${authRef}`)
-      await pollAuthStatus(base, authRef, jwt)
+      await pollAuthStatus(base, authRef, authenticationToken)
       console.log(`[ksef-session] Step 5: auth confirmed OK`)
 
-      // 6. Generate AES-256 key + IV for invoice encryption
+      // 6. Redeem authenticationToken → accessToken (THIS carries permissions)
+      console.log(`[ksef-session] Step 6: POST ${base}/auth/token/redeem`)
+      const redeemRes = await ksefFetch(`${base}/auth/token/redeem`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authenticationToken}`,
+        },
+      })
+      const redeemData = redeemRes.json()
+      console.log(`[ksef-session] Step 6 result: status=${redeemRes.status}`, JSON.stringify(redeemData).slice(0, 300))
+      if (!redeemRes.ok) {
+        return {
+          statusCode: redeemRes.status,
+          headers,
+          body: JSON.stringify({
+            error: extractError(redeemData, 'Nie udało się wymienić tokenu (token/redeem).'),
+            details: redeemData,
+          }),
+        }
+      }
+      const accessToken = redeemData.token || redeemData.accessToken
+      if (!accessToken) throw new Error('KSeF token/redeem nie zwrócił accessTokena.')
+      console.log(`[ksef-session] Step 6: accessToken exists len=${accessToken.length}`)
+      logJwtClaims('Step 6 accessToken', accessToken, nip)
+
+      // 7. Generate AES-256 key + IV for invoice encryption
       const aesKey = crypto.randomBytes(32)
       const iv = crypto.randomBytes(16)
 
-      // 7. RSA-OAEP encrypt AES key with SymmetricKeyEncryption key
+      // 8. RSA-OAEP encrypt AES key with SymmetricKeyEncryption key
       const encryptedAesKey = rsaOaepEncrypt(aesKey, symEncKey.certificate).toString('base64')
 
-      // 8. Open online interactive session (context already bound to JWT from auth step)
+      // 9. Open online interactive session with accessToken (NOT authenticationToken)
       const sessionBody = {
         formCode: { systemCode: 'FA (3)', schemaVersion: '1-0E', value: 'FA' },
         encryption: {
@@ -235,20 +305,17 @@ exports.handler = async (event) => {
           initializationVector: iv.toString('base64'),
         },
       }
-      console.log(`[ksef-session] Step 8: POST ${base}/sessions/online`, JSON.stringify({
-        formCode: sessionBody.formCode,
-        encryption: { encryptedSymmetricKey: encryptedAesKey.slice(0, 12) + '...', initializationVector: sessionBody.encryption.initializationVector },
-      }))
+      console.log(`[ksef-session] Step 9: POST ${base}/sessions/online (Bearer=accessToken len=${accessToken.length})`)
       const sessionRes = await ksefFetch(`${base}/sessions/online`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${jwt}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(sessionBody),
       })
       const sessionData = sessionRes.json()
-      console.log(`[ksef-session] Step 8 result: status=${sessionRes.status}`, JSON.stringify(sessionData).slice(0, 500))
+      console.log(`[ksef-session] Step 9 result: status=${sessionRes.status}`, JSON.stringify(sessionData).slice(0, 500))
       if (!sessionRes.ok) {
         return {
           statusCode: sessionRes.status,
@@ -264,11 +331,11 @@ exports.handler = async (event) => {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-          sessionToken: jwt,
+          sessionToken: accessToken,
           referenceNumber: sessionData.referenceNumber,
           symmetricKey: aesKey.toString('base64'),
           iv: iv.toString('base64'),
-          validUntil: sessionData.validUntil || authData.authenticationToken?.validUntil,
+          validUntil: sessionData.validUntil || redeemData.validUntil,
         }),
       }
     }
