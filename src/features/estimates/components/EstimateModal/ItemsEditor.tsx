@@ -1,20 +1,34 @@
 
-import { useState } from 'react'
+import { Fragment, type CSSProperties, useState } from 'react'
 import { Button } from '@/shared/ui/Button/Button'
-import { Input } from '@/shared/ui/Input/Input'
 import { Select } from '@/shared/ui/Select/Select'
 import { generateId } from '@/shared/lib/generateId'
+import { calcItemGross } from '@/features/estimates/lib/estimate.calculations'
 import type { EstimateItem } from '@/entities/estimate/model'
+
+const DEFAULT_UNIT = 'm²'
+const DEFAULT_VAT = 8
+const VAT_OPTIONS = [
+  { value: '23', label: '23%' },
+  { value: '8', label: '8%' },
+  { value: '5', label: '5%' },
+  { value: '0', label: '0%' },
+]
+const baseInput: CSSProperties = {
+  height: 34, fontSize: 13, padding: '4px 8px', background: '#fff',
+  border: '1px solid #d1d5db', borderRadius: 6, outline: 'none',
+  width: '100%', boxSizing: 'border-box',
+}
 
 
 export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChange: (items: EstimateItem[]) => void }) {
   const [fastName, setFastName] = useState('')
   const [fastDescription, setFastDescription] = useState('')
-  const [fastUnit, setFastUnit] = useState('szt')
+  const [fastUnit, setFastUnit] = useState(DEFAULT_UNIT)
   const [fastQty, setFastQty] = useState(1)
-  const [fastNet, setFastNet] = useState(0)
-  const [fastLabor, setFastLabor] = useState(0)
-  const [fastVat, setFastVat] = useState(23)
+  const [fastNet, setFastNet] = useState('')
+  const [fastLabor, setFastLabor] = useState('')
+  const [fastVat, setFastVat] = useState(DEFAULT_VAT)
   const [editId, setEditId] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<Partial<EstimateItem>>({})
   function startEdit(item: EstimateItem) {
@@ -39,203 +53,249 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
     onChange(items.map((item) => item.id === id ? { ...item, description: value } : item))
   }
   function addRow() {
-    onChange([...items, { id: generateId(), name: 'Nowa pozycja', description: '', unit: 'kpl', quantity: 1, unit_price: 0, vat_rate: 23, sort_order: items.length + 1 }])
+    onChange([...items, { id: generateId(), name: 'Nowa pozycja', description: '', unit: DEFAULT_UNIT, quantity: 1, unit_price: 0, vat_rate: DEFAULT_VAT, sort_order: items.length + 1 }])
   }
   function removeRow(id: string) { onChange(items.filter((item) => item.id !== id).map((item, index) => ({ ...item, sort_order: index + 1 }))) }
 
   function fastAdd() {
     if (!fastName.trim()) return
+    const net = parseFloat(fastNet) || 0
+    const labor = parseFloat(fastLabor) || 0
     onChange([
       ...items,
       {
         id: generateId(),
-        name: fastName,
+        name: fastName.trim(),
         description: fastDescription,
         unit: fastUnit,
         quantity: fastQty,
-        unit_price: fastNet + fastLabor,
+        unit_price: net + labor,
         vat_rate: fastVat,
         sort_order: items.length + 1,
       },
     ])
     setFastName('')
     setFastDescription('')
-    setFastUnit('szt')
+    setFastUnit(DEFAULT_UNIT)
     setFastQty(1)
-    setFastNet(0)
-    setFastLabor(0)
+    setFastNet('')
+    setFastLabor('')
+    setFastVat(DEFAULT_VAT)
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      <div className="card" style={{ background: '#f3fdf6', border: '1px solid #b6e6c9', padding: 12, marginBottom: 0 }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 2, minWidth: 160 }}>
-            <label style={{ fontSize: 12, color: '#333', marginBottom: 2 }}>Nazwa pozycji <span style={{color:'#ef4444'}}>*</span></label>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* ── Fast-add form ── */}
+      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#166534', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Dodaj pozycję
+        </div>
+        {/* Row 1: Nazwa + j.m. + Ilość + VAT + Dodaj */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 74px 74px auto', gap: 8, alignItems: 'flex-end' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>
+              Nazwa <span style={{ color: '#ef4444' }}>*</span>
+            </label>
             <input
               className="input"
               placeholder="np. Montaż drzwi"
-              aria-label="Nazwa pozycji (wymagana)"
               value={fastName}
               onChange={e => setFastName(e.target.value)}
-              style={{ fontWeight: 600 }}
+              style={{ ...baseInput, fontWeight: 600 }}
+              onKeyDown={(e) => e.key === 'Enter' && fastAdd()}
             />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', width: 60 }}>
-            <label style={{ fontSize: 12, color: '#333', marginBottom: 2 }}>j.m</label>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>j.m.</label>
             <input
               className="input"
-              placeholder="szt, m²"
-              aria-label="j.m"
+              placeholder="m²"
               value={fastUnit}
               onChange={e => setFastUnit(e.target.value)}
+              style={{ ...baseInput, textAlign: 'center' }}
             />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', width: 120 }}>
-            <label style={{ fontSize: 12, color: '#333', marginBottom: 2 }}>Materiał netto / j.m <span style={{color:'#ef4444'}}>*</span></label>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>
+              Ilość <span style={{ color: '#ef4444' }}>*</span>
+            </label>
             <input
               className="input"
-              placeholder="zł"
-              aria-label="Materiał netto / j.m"
               type="number"
-              value={String(fastNet)}
-              onChange={e => setFastNet(Number(e.target.value))}
-              style={{ fontWeight: 600 }}
-            />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', width: 120 }}>
-            <label style={{ fontSize: 12, color: '#333', marginBottom: 2 }}>Robocizna netto</label>
-            <input
-              className="input"
-              placeholder="zł"
-              aria-label="Robocizna netto"
-              type="number"
-              value={String(fastLabor)}
-              onChange={e => setFastLabor(Number(e.target.value))}
-              style={{ fontWeight: 600 }}
-            />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', width: 70 }}>
-            <label style={{ fontSize: 12, color: '#333', marginBottom: 2 }}>Ilość <span style={{color:'#ef4444'}}>*</span></label>
-            <input
-              className="input"
-              placeholder="np. 1, 10"
-              aria-label="Ilość"
-              type="number"
+              min={0}
+              step="any"
               value={String(fastQty)}
               onChange={e => setFastQty(Number(e.target.value))}
-              style={{ fontWeight: 600 }}
+              onKeyDown={(e) => e.key === 'Enter' && fastAdd()}
+              style={{ ...baseInput, textAlign: 'right' }}
             />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', width: 70 }}>
-            <label style={{ fontSize: 12, color: '#333', marginBottom: 2 }}>VAT</label>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>VAT</label>
             <select
               className="input"
-              aria-label="VAT"
               value={String(fastVat)}
               onChange={e => setFastVat(Number(e.target.value))}
-              style={{ fontWeight: 600, height: 28, padding: '2px 6px' }}
+              style={baseInput}
             >
-              <option value="23">23%</option>
-              <option value="8">8%</option>
-              <option value="5">5%</option>
-              <option value="0">0%</option>
+              {VAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 80 }}>
-            <label style={{ fontSize: 12, color: 'transparent', marginBottom: 2 }}>Dodaj</label>
-            <button className="btn btn--sm btn--primary" onClick={fastAdd} style={{ height: 38 }}>Dodaj</button>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, color: 'transparent', marginBottom: 3 }}>–</label>
+            <button
+              className="btn btn--sm btn--primary"
+              onClick={fastAdd}
+              disabled={!fastName.trim()}
+              style={{ height: 34, padding: '0 16px', whiteSpace: 'nowrap' }}
+            >
+              + Dodaj
+            </button>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        {/* Row 2: Materiał + Robocizna */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>Materiał netto / j.m.</label>
+            <input
+              className="input"
+              type="number"
+              min={0}
+              step="any"
+              placeholder="0.00 zł"
+              value={fastNet}
+              onChange={e => setFastNet(e.target.value)}
+              style={{ ...baseInput, textAlign: 'right' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>Robocizna netto / j.m.</label>
+            <input
+              className="input"
+              type="number"
+              min={0}
+              step="any"
+              placeholder="0.00 zł"
+              value={fastLabor}
+              onChange={e => setFastLabor(e.target.value)}
+              style={{ ...baseInput, textAlign: 'right' }}
+            />
+          </div>
+        </div>
+        {/* Row 3: Opis */}
+        <div style={{ marginTop: 8 }}>
+          <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>Opis / uwagi</label>
           <textarea
             className="input"
             placeholder="Opis, szczegóły, uwagi... (opcjonalnie)"
-            aria-label="Opis pozycji"
             value={fastDescription}
             onChange={e => setFastDescription(e.target.value)}
-            style={{ fontSize: 12, padding: '2px 6px', resize: 'vertical', minHeight: 18, flex: 1 }}
+            style={{ width: '100%', fontSize: 12, padding: '6px 8px', resize: 'vertical', minHeight: 40, border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', boxSizing: 'border-box' }}
           />
         </div>
-        {/* Usunięto tekst informacyjny na życzenie użytkownika */}
       </div>
-      <div style={{overflowX:'auto', marginTop: 0}}>
-        <table style={{width:'100%', borderCollapse:'separate', borderSpacing:'0 6px', marginTop:0}}>
-          <thead>
-            <tr style={{background:'none',fontWeight:600,fontSize:14}}>
-              <th style={{padding:'4px 8px'}}>Poz.</th>
-              <th style={{padding:'4px 8px'}}>j.m.</th>
-              <th style={{padding:'4px 8px'}}>Il.</th>
-              <th style={{padding:'4px 8px'}}>Netto</th>
-              <th style={{padding:'4px 8px'}}>VAT</th>
-              <th style={{padding:'4px 8px'}}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              editId === item.id ? (
-                <>
-                  <tr key={item.id} style={{background:'#f7f8fa', height: '36px', borderRadius: '8px', boxShadow: '0 1px 2px #e5e7eb'}}>
-                    <td style={{padding:'7px 8px', minWidth:80, border:'none'}}>
-                      <input className="input" value={editValues.name ?? ''} onChange={e => setEditValues(v => ({ ...v, name: e.target.value }))} style={{width:'100%', height: 28, fontSize: 13, padding: '4px 8px', background:'#fcfcfd', border:'1px solid #e0e0e0', borderRadius: 6, outline:'none', boxShadow:'none'}} />
-                    </td>
-                    <td style={{padding:'7px 8px', border:'none'}}><input className="input" value={editValues.unit ?? ''} onChange={e => setEditValues(v => ({ ...v, unit: e.target.value }))} style={{width:40, height: 28, fontSize: 13, padding: '4px 8px', background:'#fcfcfd', border:'1px solid #e0e0e0', borderRadius: 6, outline:'none', boxShadow:'none'}} /></td>
-                    <td style={{padding:'7px 8px', border:'none'}}><input className="input" type="number" value={String(editValues.quantity ?? '')} onChange={e => setEditValues(v => ({ ...v, quantity: Number(e.target.value) }))} style={{width:48, height: 28, fontSize: 13, padding: '4px 8px', background:'#fcfcfd', border:'1px solid #e0e0e0', borderRadius: 6, outline:'none', boxShadow:'none'}} /></td>
-                    <td style={{padding:'7px 8px', border:'none'}}><input className="input" type="number" value={String(editValues.unit_price ?? '')} onChange={e => setEditValues(v => ({ ...v, unit_price: Number(e.target.value) }))} style={{width:80, height: 28, fontSize: 13, padding: '4px 8px', background:'#fcfcfd', border:'1px solid #e0e0e0', borderRadius: 6, outline:'none', boxShadow:'none'}} /></td>
-                    <td style={{padding:'7px 8px', border:'none'}}>
-                      <Select
-                        className="input"
-                        value={String(editValues.vat_rate ?? '')}
-                        onChange={e => setEditValues(v => ({ ...v, vat_rate: Number(e.target.value) }))}
-                        options={[
-                          { value: '23', label: '23%' },
-                          { value: '8', label: '8%' },
-                          { value: '5', label: '5%' },
-                          { value: '0', label: '0%' },
-                        ]}
-                        style={{ width: 54, height: 28, fontSize: 13, padding: '4px 8px', background:'#fcfcfd', border:'1px solid #e0e0e0', borderRadius: 6, outline:'none', boxShadow:'none' }}
-                      />
-                    </td>
-                    <td style={{padding:'7px 8px', border:'none', display:'flex', gap:6, alignItems:'center', background:'none'}}>
-                      <button className="btn btn--sm btn--primary" onClick={saveEdit} style={{minWidth:32, height: 28, fontSize: 13, padding: '2px 10px', borderRadius: 6, marginRight: 4}}>Zapisz</button>
-                      <button className="btn btn--sm btn--ghost" onClick={cancelEdit} style={{minWidth:32, height: 28, fontSize: 13, padding: '2px 10px', borderRadius: 6}}>Anuluj</button>
-                    </td>
-                  </tr>
-                  <tr key={item.id + '-desc'} style={{background:'none'}}>
-                    <td colSpan={6} style={{padding:'2px 18px 8px 18px', fontSize:12, color:'#555', border:'none'}}>
-                      <textarea className="input" value={editValues.description ?? ''} onChange={e => setEditValues(v => ({ ...v, description: e.target.value }))} style={{width:'100%',minHeight:18,resize:'vertical',fontSize:12, marginTop:2, padding:'4px 8px', background:'#fcfcfd', border:'1px solid #e0e0e0', borderRadius:6}} placeholder="Opis, szczegóły, uwagi..." />
-                    </td>
-                  </tr>
-                </>
-              ) : (
-                <>
-                  <tr key={item.id} style={{background:'#fdf8f3', height: '36px'}}>
-                    <td style={{padding:'7px 8px', minWidth:80, border:'none'}}>{item.name}</td>
-                    <td style={{padding:'7px 8px', border:'none'}}>{item.unit}</td>
-                    <td style={{padding:'7px 8px', border:'none'}}>{item.quantity}</td>
-                    <td style={{padding:'7px 8px', border:'none'}}>{item.unit_price}</td>
-                    <td style={{padding:'7px 8px', border:'none'}}>{item.vat_rate}%</td>
-                    <td style={{padding:'7px 8px', border:'none'}}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                        <button className="btn btn--sm btn--secondary" onClick={() => startEdit(item)} style={{minWidth:32, height: 26, fontSize: 13, padding: '2px 10px'}}>Edytuj</button>
-                        <button className="btn btn--sm btn--secondary" onClick={() => removeRow(item.id)} style={{minWidth:32, height: 26, fontSize: 13, padding: '2px 10px'}}>Usuń</button>
-                      </div>
-                    </td>
-                  </tr>
-                  {item.description?.trim() && (
-                    <tr key={item.id + '-desc'} style={{background:'none'}}>
-                      <td colSpan={6} style={{padding:'2px 18px 8px 18px', fontSize:12, color:'#555', border:'none', background:'#fdf8f3'}}>
-                        {item.description}
+
+      {/* ── Items table ── */}
+      {items.length > 0 && (
+        <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, color: '#9ca3af', fontSize: 11, width: 30 }}>#</th>
+                <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, color: '#6b7280', fontSize: 11 }}>Nazwa</th>
+                <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600, color: '#6b7280', fontSize: 11, width: 52 }}>j.m.</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: '#6b7280', fontSize: 11, width: 58 }}>Ilość</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: '#6b7280', fontSize: 11, width: 90 }}>Netto j.m.</th>
+                <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600, color: '#6b7280', fontSize: 11, width: 52 }}>VAT</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: '#6b7280', fontSize: 11, width: 90 }}>Brutto</th>
+                <th style={{ width: 110 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) =>
+                editId === item.id ? (
+                  <Fragment key={item.id}>
+                    <tr style={{ background: '#fff7ed', borderBottom: '1px solid #fed7aa' }}>
+                      <td style={{ padding: '7px 10px', color: '#9ca3af', fontSize: 12 }}>{item.sort_order}</td>
+                      <td style={{ padding: '7px 10px' }}>
+                        <input className="input" value={editValues.name ?? ''} onChange={e => setEditValues(v => ({ ...v, name: e.target.value }))} style={{ width: '100%', height: 28, fontSize: 13, padding: '3px 7px', border: '1px solid #d1d5db', borderRadius: 5 }} />
+                      </td>
+                      <td style={{ padding: '7px 10px' }}>
+                        <input className="input" value={editValues.unit ?? ''} onChange={e => setEditValues(v => ({ ...v, unit: e.target.value }))} style={{ width: 44, height: 28, fontSize: 13, padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 5, textAlign: 'center' }} />
+                      </td>
+                      <td style={{ padding: '7px 10px' }}>
+                        <input className="input" type="number" value={String(editValues.quantity ?? '')} onChange={e => setEditValues(v => ({ ...v, quantity: Number(e.target.value) }))} style={{ width: 52, height: 28, fontSize: 13, padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 5, textAlign: 'right' }} />
+                      </td>
+                      <td style={{ padding: '7px 10px' }}>
+                        <input className="input" type="number" value={String(editValues.unit_price ?? '')} onChange={e => setEditValues(v => ({ ...v, unit_price: Number(e.target.value) }))} style={{ width: 80, height: 28, fontSize: 13, padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 5, textAlign: 'right' }} />
+                      </td>
+                      <td style={{ padding: '7px 10px' }}>
+                        <Select
+                          value={String(editValues.vat_rate ?? '')}
+                          onChange={e => setEditValues(v => ({ ...v, vat_rate: Number(e.target.value) }))}
+                          options={VAT_OPTIONS}
+                          style={{ width: 60, height: 28, fontSize: 12, padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: 5 }}
+                        />
+                      </td>
+                      <td style={{ padding: '7px 10px', textAlign: 'right', color: '#9ca3af', fontSize: 12 }}>—</td>
+                      <td style={{ padding: '7px 10px' }}>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button className="btn btn--sm btn--primary" onClick={saveEdit} style={{ height: 26, padding: '0 10px', fontSize: 12 }}>Zapisz</button>
+                          <button className="btn btn--sm btn--ghost" onClick={cancelEdit} style={{ height: 26, padding: '0 8px', fontSize: 12 }}>Anuluj</button>
+                        </div>
                       </td>
                     </tr>
-                  )}
-                </>
-              )
-            ))}
-          </tbody>
-        </table>
+                    <tr style={{ background: '#fff7ed', borderBottom: '1px solid #fed7aa' }}>
+                      <td colSpan={8} style={{ padding: '2px 10px 8px 44px' }}>
+                        <textarea
+                          className="input"
+                          value={editValues.description ?? item.description ?? ''}
+                          onChange={e => setEditValues(v => ({ ...v, description: e.target.value }))}
+                          placeholder="Opis, szczegóły, uwagi..."
+                          style={{ width: '100%', minHeight: 32, resize: 'vertical', fontSize: 12, padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 5 }}
+                        />
+                      </td>
+                    </tr>
+                  </Fragment>
+                ) : (
+                  <Fragment key={item.id}>
+                    <tr
+                      style={{ borderBottom: '1px solid #f1f5f9' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#fafbfc')}
+                      onMouseLeave={e => (e.currentTarget.style.background = '')}
+                    >
+                      <td style={{ padding: '9px 10px', color: '#9ca3af', fontSize: 12 }}>{item.sort_order}</td>
+                      <td style={{ padding: '9px 10px', fontWeight: 500 }}>{item.name}</td>
+                      <td style={{ padding: '9px 10px', textAlign: 'center', color: '#6b7280' }}>{item.unit}</td>
+                      <td style={{ padding: '9px 10px', textAlign: 'right', color: '#374151' }}>{item.quantity}</td>
+                      <td style={{ padding: '9px 10px', textAlign: 'right', color: '#374151' }}>{item.unit_price.toFixed(2)}</td>
+                      <td style={{ padding: '9px 10px', textAlign: 'center', color: '#6b7280' }}>{item.vat_rate}%</td>
+                      <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 600, color: '#111827' }}>{calcItemGross(item).toFixed(2)} zł</td>
+                      <td style={{ padding: '9px 10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                          <button className="btn btn--sm btn--secondary" onClick={() => startEdit(item)} style={{ height: 26, padding: '0 10px', fontSize: 12 }}>Edytuj</button>
+                          <button className="btn btn--sm btn--ghost" onClick={() => removeRow(item.id)} style={{ height: 26, padding: '0 8px', fontSize: 12, color: '#ef4444' }}>Usuń</button>
+                        </div>
+                      </td>
+                    </tr>
+                    {item.description?.trim() && (
+                      <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td colSpan={8} style={{ padding: '2px 10px 8px 44px', fontSize: 12, color: '#6b7280' }}>
+                          {item.description}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div>
+        <Button variant="secondary" onClick={addRow}>+ Nowa pusta pozycja</Button>
       </div>
-      <div className="actions-row" style={{marginTop:12}}><Button variant="secondary" onClick={addRow}>Dodaj pozycję</Button></div>
     </div>
   )
 }
