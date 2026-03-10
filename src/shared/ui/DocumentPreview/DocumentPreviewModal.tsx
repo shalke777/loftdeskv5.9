@@ -33,12 +33,18 @@ export function DocumentPreviewModal({
       downloadBlob(`${title.replace(/\s+/g, '_')}.xml`, new Blob([tab.content], { type: 'application/xml;charset=utf-8' }))
       return
     }
-    // Open the full styled document in a new tab — user can then use
-    // Ctrl+P → "Zapisz jako PDF" to save a properly formatted PDF file.
+    // Use a hidden iframe to trigger the print dialog without opening a new window.
+    // In the print dialog, choose "Zapisz jako PDF" / "Save as PDF".
     const blob = new Blob([tab.content], { type: 'text/html;charset=utf-8' })
     const url = URL.createObjectURL(blob)
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 15000)
+    const iframe = document.createElement('iframe')
+    iframe.setAttribute('style', 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;border:none;')
+    iframe.src = url
+    iframe.onload = () => {
+      try { iframe.contentWindow?.focus(); iframe.contentWindow?.print() } catch {}
+      setTimeout(() => { try { iframe.parentNode?.removeChild(iframe) } catch {}; URL.revokeObjectURL(url) }, 60_000)
+    }
+    document.body.appendChild(iframe)
   }
 
   function printCurrent() {

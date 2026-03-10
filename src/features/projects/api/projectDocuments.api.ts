@@ -5,7 +5,36 @@ import { applyScope, getDataScope } from '@/shared/lib/dataScope'
 
 export const projectDocumentsApi = {
   async listForProject(projectId: string, companyId: string): Promise<ProjectDocument[]> {
-    if (isDemoMode || !supabase) return []
+    if (isDemoMode || !supabase) {
+      // Build the list from demoDb \u2014 find estimates/contracts/invoices linked to this project
+      const raw = JSON.parse(demoDb.exportState()) as Record<string, any[]>
+      const ts = new Date().toISOString()
+      const make = (docType: ProjectDocument['doc_type'], docId: string, createdAt: string): ProjectDocument => ({
+        id: `demo-pd-${docType}-${docId}`,
+        company_id: companyId,
+        project_id: projectId,
+        doc_type: docType,
+        doc_id: docId,
+        assignment_status: 'confirmed' as const,
+        linked_automatically: true,
+        linked_manually: false,
+        source_doc_type: null,
+        source_doc_id: null,
+        archived_at: null,
+        created_at: createdAt ?? ts,
+      })
+      const docs: ProjectDocument[] = []
+      for (const e of (raw.estimates ?? [])) {
+        if ((e as any).project_id === projectId && (e as any).company_id === companyId) docs.push(make('estimate', (e as any).id, (e as any).created_at))
+      }
+      for (const c of (raw.contracts ?? [])) {
+        if ((c as any).project_id === projectId && (c as any).company_id === companyId) docs.push(make('contract', (c as any).id, (c as any).created_at))
+      }
+      for (const f of (raw.invoices ?? [])) {
+        if ((f as any).project_id === projectId && (f as any).company_id === companyId) docs.push(make('invoice', (f as any).id, (f as any).created_at))
+      }
+      return docs
+    }
     const scope = await getDataScope(companyId)
     const { data, error } = await applyScope(
       supabase

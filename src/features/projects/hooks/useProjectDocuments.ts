@@ -6,6 +6,8 @@ import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
 import type { ProjectDocument, ProjectTimelineEntry } from '@/entities/project/model'
+import { demoDb } from '@/shared/lib/demoDb'
+import { buildEstimatePreview, buildInvoicePreview, buildContractPreview } from '@/services/pdf/documentPreview'
 
 // ── Project Documents ────────────────────────────────────────────────────────
 
@@ -145,11 +147,49 @@ export function useProjectExport(projectId: string) {
         const zip = new JSZip()
         const manifest: unknown[] = []
 
+        // Parse demoDb state once for demo-mode rendering
+        const dbRaw = isDemoMode ? (JSON.parse(demoDb.exportState()) as Record<string, any[]>) : null
+        const dbProfile = isDemoMode ? demoDb.companyProfile(companyId) : null
+        const companyMeta = dbProfile ? {
+          name: dbProfile.company_name || '',
+          nip: dbProfile.nip || '',
+          address: dbProfile.address || '',
+          postalCity: `${dbProfile.postal_code || ''} ${dbProfile.city || ''}`.trim(),
+          email: dbProfile.email || '',
+          phone: dbProfile.phone || '',
+          bankAccount: dbProfile.iban || '',
+        } : undefined
+
         for (let i = 0; i < active.length; i++) {
           const doc = active[i]
           const idx = String(ORDER[doc.doc_type] ?? 9).padStart(2, '0')
           const fileName = `${idx}_${doc.doc_type}_${doc.doc_id.slice(0, 8)}.html`
-          const html = `<!DOCTYPE html>
+
+          let html: string
+          if (isDemoMode && dbRaw) {
+            const clients = dbRaw.clients ?? []
+            if (doc.doc_type === 'estimate') {
+              const est = (dbRaw.estimates ?? []).find((e: any) => e.id === doc.doc_id)
+              const cl = est ? clients.find((c: any) => c.id === est.client_id) : undefined
+              const clientMeta = cl ? { name: cl.name, nip: cl.nip ?? '', address: cl.address ?? '', postalCity: `${cl.postal_code ?? ''} ${cl.city ?? ''}`.trim(), email: cl.email ?? '', phone: cl.phone ?? '' } : undefined
+              html = est ? buildEstimatePreview(est, clientMeta, companyMeta) : `<p>Kosztorys ${doc.doc_id}</p>`
+            } else if (doc.doc_type === 'invoice') {
+              const inv = (dbRaw.invoices ?? []).find((f: any) => f.id === doc.doc_id)
+              const cl = inv ? clients.find((c: any) => c.id === inv.client_id) : undefined
+              const ct = inv ? (dbRaw.contracts ?? []).find((c: any) => c.id === inv.contract_id) : undefined
+              const clientMeta = cl ? { name: cl.name, nip: cl.nip ?? '', address: cl.address ?? '', postalCity: `${cl.postal_code ?? ''} ${cl.city ?? ''}`.trim(), email: cl.email ?? '', phone: cl.phone ?? '' } : undefined
+              const contractMeta = ct ? { contractNumber: ct.number, contractLocation: ct.location ?? '' } : undefined
+              html = inv ? buildInvoicePreview(inv, clientMeta, contractMeta, companyMeta) : `<p>Faktura ${doc.doc_id}</p>`
+            } else if (doc.doc_type === 'contract') {
+              const ct = (dbRaw.contracts ?? []).find((c: any) => c.id === doc.doc_id)
+              const cl = ct ? clients.find((c: any) => c.id === ct.client_id) : undefined
+              const est = ct ? (dbRaw.estimates ?? []).find((e: any) => (e as any).project_id === ct.project_id) : undefined
+              html = ct ? buildContractPreview(ct, cl?.name ?? '', est?.name ?? ct?.notes ?? '', companyMeta) : `<p>Umowa ${doc.doc_id}</p>`
+            } else {
+              html = `<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>${doc.doc_type}</title></head><body><h1>LoftDesk – ${doc.doc_type.toUpperCase()}</h1><p>ID: ${doc.doc_id}</p></body></html>`
+            }
+          } else {
+            html = `<!DOCTYPE html>
 <html lang="pl">
 <head><meta charset="UTF-8"><title>${doc.doc_type} ${doc.doc_id.slice(0, 8)}</title></head>
 <body>
@@ -160,6 +200,8 @@ export function useProjectExport(projectId: string) {
   <p><strong>Data powiązania:</strong> ${new Date(doc.created_at).toLocaleDateString('pl-PL')}</p>
 </body>
 </html>`
+          }
+
           zip.file(fileName, html)
           manifest.push({
             index: i + 1,

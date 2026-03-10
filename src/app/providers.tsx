@@ -62,13 +62,14 @@ function mapUser(email?: string): SessionUser {
 
 function AuthProvider({ children }: { children: ReactNode }) {
   const [storedUser, setStoredUser] = useLocalStorage<SessionUser | null>('loftdesk-v5-session', isDemoMode ? mapUser() : null)
-  const [user, setUser] = useState<SessionUser | null>(storedUser)
+  // In demo mode always ensure a non-null user — signOut() writes null, we recover from demoDb
+  const [user, setUser] = useState<SessionUser | null>(isDemoMode ? (storedUser ?? mapUser()) : storedUser)
   const [loading, setLoading] = useState(!isDemoMode)
 
   const refreshSession = async () => {
     if (isDemoMode) {
       setUser((prev) => {
-        const next = prev ? mapUser(prev.email) : prev
+        const next = mapUser(prev?.email)
         setStoredUser(next)
         return next
       })
@@ -89,7 +90,10 @@ function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isDemoMode) {
-      setUser(storedUser)
+      // Recover null session (e.g. after signOut) with fresh demo user
+      const demo = storedUser ?? mapUser()
+      setUser(demo)
+      if (!storedUser) setStoredUser(demo)
       setLoading(false)
       return
     }
