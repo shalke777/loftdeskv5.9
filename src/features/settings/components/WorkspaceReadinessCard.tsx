@@ -1,4 +1,4 @@
-import { Card } from '@/shared/ui/Card/Card'
+﻿import { Card } from '@/shared/ui/Card/Card'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { buildWorkspaceReadiness } from '@/shared/lib/releaseReadiness'
 import { useSettings } from '@/features/settings/hooks/useSettings'
@@ -10,31 +10,42 @@ import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
 
 export function WorkspaceReadinessCard() {
   const { user } = useAuth()
-  const { team, invitations, profile } = useSettings()
-  const { data: estimates = [] } = useEstimates()
-  const { data: invoices = [] } = useInvoices()
-  const { data: projects = [] } = useProjects()
-  const { data: portalTokens = [] } = usePortalTokens(user?.companyId ?? '')
+
+  // -- Real Supabase data -- all scoped to user.companyId via useCompanyId() --
+  const { team, invitations, profile, loading: settingsLoading } = useSettings()
+  const { data: estimates, isLoading: estimatesLoading } = useEstimates()
+  const { data: invoices, isLoading: invoicesLoading } = useInvoices()
+  const { data: projects, isLoading: projectsLoading } = useProjects()
+  // usePortalTokens receives companyId explicitly; '' is safe -- query is disabled when falsy
+  const { data: portalTokens, isLoading: portalLoading } = usePortalTokens(user?.companyId ?? '')
 
   if (!user) return null
+
+  // While ANY data source is still loading we suppress all computed statuses --
+  // so we never show `uwaga` just because a hook returned undefined/[] before the
+  // first successful response.
+  const isLoading = settingsLoading || estimatesLoading || invoicesLoading || projectsLoading || portalLoading
 
   const checks = buildWorkspaceReadiness({
     companyName: user.companyName,
     plan: user.plan,
-    ksefReady: Boolean((profile as any)?.ksef_token),
-    membersCount: team.length,
-    pendingInvitations: invitations.filter((item: any) => item.status === 'pending').length,
-    portalLinks: portalTokens.filter((t) => t.active).length,
-    estimatesCount: estimates.length,
-    invoicesCount: invoices.length,
-    projectsCount: projects.length,
+    // profile is from Supabase via useSettings -- safe to derive ksef_token directly
+    ksefReady: isLoading ? true : Boolean((profile as any)?.ksef_token),
+    // team / invitations are from Supabase via useSettings -- already scoped to companyId
+    membersCount: isLoading ? 2 : team.length,
+    pendingInvitations: isLoading ? 0 : invitations.filter((item: any) => item.status === 'pending').length,
+    // count only active portal tokens so expired/deactivated ones do not inflate the score
+    portalLinks: isLoading ? 1 : (portalTokens ?? []).filter((t) => t.active).length,
+    estimatesCount: isLoading ? 1 : (estimates ?? []).length,
+    invoicesCount: isLoading ? 1 : (invoices ?? []).length,
+    projectsCount: isLoading ? 1 : (projects ?? []).length,
   })
 
   return (
     <Card>
       <div className="toolbar" style={{ marginBottom: 8 }}>
         <div>
-          <h3>Readiness workspace’u</h3>
+          <h3>Readiness workspace'u</h3>
           <p className="field__label">Szybki przegląd gotowości firmy do przejścia na staging / pracę produkcyjną.</p>
         </div>
       </div>
@@ -43,10 +54,22 @@ export function WorkspaceReadinessCard() {
           <div key={check.id} className="toolbar" style={{ padding: 10, border: '1px solid var(--color-border)', borderRadius: 12 }}>
             <div>
               <strong>{check.label}</strong>
-              <div className="field__label">{check.hint}</div>
+              <div className="field__label">
+                {isLoading ? 'Sprawdzanie…' : check.hint}
+              </div>
             </div>
-            <Badge variant={check.status === 'done' ? 'success' : check.status === 'warning' ? 'warning' : 'danger'}>
-              {check.status === 'done' ? 'gotowe' : check.status === 'warning' ? 'uwaga' : 'blokada'}
+            <Badge
+              variant={
+                isLoading
+                  ? 'default'
+                  : check.status === 'done'
+                  ? 'success'
+                  : check.status === 'warning'
+                  ? 'warning'
+                  : 'danger'
+              }
+            >
+              {isLoading ? '…' : check.status === 'done' ? 'gotowe' : check.status === 'warning' ? 'uwaga' : 'blokada'}
             </Badge>
           </div>
         ))}
