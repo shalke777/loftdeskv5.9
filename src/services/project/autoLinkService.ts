@@ -1,5 +1,6 @@
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { demoDb } from '@/shared/lib/demoDb'
+import { getDataScope, withScope } from '@/shared/lib/dataScope'
 import { projectDocumentsApi } from '@/features/projects/api/projectDocuments.api'
 import type { ProjectDocument } from '@/entities/project/model'
 
@@ -182,22 +183,38 @@ export const autoLinkService = {
     if (!candidateId && input.clientId && (input.type === 'estimate' || input.type === 'contract')) {
       const year = new Date().getFullYear()
       const suffix = Date.now().toString().slice(-4)
+      let scope
+      try {
+        scope = await getDataScope(input.companyId)
+      } catch (scopeErr) {
+        console.error('[autoLink] KROK4 getDataScope failed — brak sesji użytkownika przy auto-tworzeniu projektu', scopeErr)
+        return { projectId: null, created: false }
+      }
+      console.debug('[autoLink] KROK4 auto-create project', {
+        type: input.type,
+        docId: input.id,
+        companyId: input.companyId,
+        userId: scope.userId ?? '??',
+        clientId: input.clientId,
+      })
+      const newProjPayload = withScope(scope, {
+        client_id: input.clientId,
+        number: `PRJ/${year}/${suffix}`,
+        name: 'Projekt klienta (auto)',
+        investment_address: input.address ?? null,
+        address: input.address ?? null,
+        status: 'offer',
+        completeness_score: 0,
+        completeness_flags: {},
+      })
       const { data: newProj, error: projErr } = await supabase
         .from('projects')
-        .insert({
-          company_id: input.companyId,
-          client_id: input.clientId,
-          number: `PRJ/${year}/${suffix}`,
-          name: 'Projekt klienta (auto)',
-          investment_address: input.address ?? null,
-          address: input.address ?? null,
-          status: 'offer',
-          completeness_score: 0,
-          completeness_flags: {},
-        })
+        .insert(newProjPayload)
         .select('id')
         .single()
-      if (!projErr && newProj) {
+      if (projErr) {
+        console.error('[autoLink] KROK4 insert projects failed', projErr)
+      } else if (newProj) {
         const newProjId: string = newProj.id
         candidateId = newProjId
         // Propaguj project_id na sam dokument
