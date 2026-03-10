@@ -288,7 +288,7 @@ export function KsefPage() {
               <div style={{ borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: 16 }}>
                 {[
                   { label: 'NIP', value: <strong>{session.nip}</strong> },
-                  { label: 'Serwer', value: session.env === 'prod' ? 'ksef.mf.gov.pl' : session.env === 'test' ? 'ksef-test.mf.gov.pl' : 'ksef-demo.mf.gov.pl' },
+                  { label: 'Serwer', value: session.env === 'prod' ? 'api.ksef.mf.gov.pl' : session.env === 'test' ? 'api-test.ksef.mf.gov.pl' : 'api-demo.ksef.mf.gov.pl' },
                   { label: 'Ref. sesji', value: <code style={{ fontSize: 11, color: '#64748b', background: '#e2e8f0', padding: '2px 6px', borderRadius: 4 }}>{session.referenceNumber || session.sessionRef}</code> },
                 ].map((row, i, arr) => (
                   <div key={row.label} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: i < arr.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
@@ -310,9 +310,9 @@ export function KsefPage() {
                   value={envInput}
                   onChange={(e) => setEnvInput(e.target.value as KsefEnv)}
                   options={[
-                    { value: 'demo', label: 'Demo (ksef-demo.mf.gov.pl)' },
-                    { value: 'test', label: 'Testowe (ksef-test.mf.gov.pl)' },
-                    { value: 'prod', label: 'Produkcyjne (ksef.mf.gov.pl)' },
+                    { value: 'demo', label: 'Demo (api-demo.ksef.mf.gov.pl)' },
+                    { value: 'test', label: 'Testowe (api-test.ksef.mf.gov.pl)' },
+                    { value: 'prod', label: 'Produkcyjne (api.ksef.mf.gov.pl)' },
                   ]}
                 />
               </div>

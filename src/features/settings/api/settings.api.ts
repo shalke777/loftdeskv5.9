@@ -16,7 +16,7 @@ export const settingsApi = {
     if (error) throw error
     return data
   },
-  async updateProfile(companyId: string, input: { company_name: string; nip?: string; address?: string; postal_code?: string; city?: string; iban?: string; phone?: string; email?: string; ksef_env: 'test' | 'prod'; ksef_nip: string; ksef_token: string; logo_url?: string | null }) {
+  async updateProfile(companyId: string, input: { company_name: string; nip?: string; address?: string; postal_code?: string; city?: string; iban?: string; phone?: string; email?: string; ksef_env: 'test' | 'demo' | 'prod'; ksef_nip: string; ksef_token: string; logo_url?: string | null }) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.companyProfileUpdate(companyId, input))
     const scope = await getDataScope(companyId)
     if (scope.mode === 'multi-tenant') {

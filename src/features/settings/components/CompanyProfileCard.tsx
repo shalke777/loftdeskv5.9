@@ -23,7 +23,7 @@ export function CompanyProfileCard() {
   const [iban, setIban] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
-  const [ksefEnv, setKsefEnv] = useState<'test' | 'prod'>('test')
+  const [ksefEnv, setKsefEnv] = useState<'test' | 'demo' | 'prod'>('test')
   const [ksefNip, setKsefNip] = useState('')
   const [ksefToken, setKsefToken] = useState('')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
@@ -42,7 +42,7 @@ export function CompanyProfileCard() {
     setIban(p.iban || '')
     setPhone(p.phone || '')
     setEmail(p.email || '')
-    setKsefEnv((p.ksef_env || 'test') as 'test' | 'prod')
+    setKsefEnv((p.ksef_env || 'test') as 'test' | 'demo' | 'prod')
     setKsefNip(p.ksef_nip || p.nip || '')
     setKsefToken(p.ksef_token || '')
     setLogoUrl(p.logo_url || null)
@@ -148,7 +148,7 @@ export function CompanyProfileCard() {
       <div style={{ marginBottom: 4 }}>
         <p className="field__label" style={{ marginBottom: 8, fontWeight: 600, fontSize: 13 }}>KSeF</p>
         <div className="grid-2">
-          <Select label="Środowisko KSeF" value={ksefEnv} onChange={(e) => setKsefEnv((e.target.value || 'test') as 'test' | 'prod')} options={[{ value: 'test', label: 'Testowe (ksef-test.mf.gov.pl)' }, { value: 'prod', label: 'Produkcyjne (ksef.mf.gov.pl)' }]} disabled={!canEdit} />
+          <Select label="Środowisko KSeF" value={ksefEnv} onChange={(e) => setKsefEnv((e.target.value || 'test') as 'test' | 'demo' | 'prod')} options={[{ value: 'demo', label: 'Demo (api-demo.ksef.mf.gov.pl)' }, { value: 'test', label: 'Testowe (api-test.ksef.mf.gov.pl)' }, { value: 'prod', label: 'Produkcyjne (api.ksef.mf.gov.pl)' }]} disabled={!canEdit} />
           <Input label="NIP do KSeF (jeśli inny niż wyżej)" value={ksefNip} onChange={(e) => setKsefNip(e.target.value)} placeholder="domyślnie z NIP firmy" disabled={!canEdit} />
           <Input label="Token KSeF" value={ksefToken} onChange={(e) => setKsefToken(e.target.value)} placeholder="Token z panelu podatnika / PUE MF" disabled={!canEdit} style={{ gridColumn: 'span 2' }} />
         </div>
