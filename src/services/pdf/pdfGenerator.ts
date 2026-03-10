@@ -14,8 +14,8 @@
 
 const A4_W_MM = 210
 const A4_H_MM = 297
-/** Width in px used for the off-screen render container */
-const RENDER_WIDTH_PX = 960
+/** Width in px used for the off-screen render container — matches the .doc fixed width */
+const RENDER_WIDTH_PX = 900
 
 function extractStylesAndBody(html: string): { styles: string; body: string } {
   const styles: string[] = []

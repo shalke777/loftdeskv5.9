@@ -53,6 +53,7 @@ function pageShell(title: string, subtitle: string, content: string) {
   .party-box p { margin: 5px 0; color:var(--muted); line-height: 1.45; }
   table {
     width: 100%;
+    table-layout: fixed;
     border-collapse: separate;
     border-spacing: 0;
     margin-top: 18px;
@@ -63,16 +64,20 @@ function pageShell(title: string, subtitle: string, content: string) {
   }
   th, td {
     border: none;
-    padding: 13px 16px;
-    font-size: 15px;
-    vertical-align: middle;
+    padding: 7px 9px;
+    font-size: 12px;
+    vertical-align: top;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    overflow: hidden;
   }
   thead th {
     background: #f3f4f6;
     color: #1f2937;
     text-align: left;
     font-weight: 700;
-    font-size: 15px;
+    font-size: 12px;
     border-top-left-radius: 14px;
     border-top-right-radius: 14px;
     letter-spacing: .01em;
@@ -83,7 +88,7 @@ function pageShell(title: string, subtitle: string, content: string) {
   tbody tr:not(:last-child) td {
     border-bottom: 1px solid #e5e7eb;
   }
-  td.num, th.num { text-align: right; white-space: nowrap; }
+  td.num, th.num { text-align: right; }
   td.center, th.center { text-align: center; }
   .totals-box { margin-left:auto; width: 340px; border: 3px solid var(--red); border-radius: 18px; padding: 18px 20px; margin-top: 28px; }
   .totals-line { display:flex; justify-content:space-between; gap:16px; padding: 8px 0; font-weight:700; }
@@ -321,9 +326,20 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
       ${contractRefHtml}
 
       <table>
+        <colgroup>
+          <col style="width:4%"/>
+          <col style="width:26%"/>
+          <col style="width:5%"/>
+          <col style="width:7%"/>
+          <col style="width:11%"/>
+          <col style="width:11%"/>
+          <col style="width:7%"/>
+          <col style="width:11%"/>
+          <col style="width:18%"/>
+        </colgroup>
         <thead>
           <tr>
-            <th class="center" style="width:36px;">Lp.</th>
+            <th class="center">Lp.</th>
             <th>Nazwa us\u0142ugi / towar</th>
             <th class="center">J.m.</th>
             <th class="num">Ilo\u015b\u0107</th>
