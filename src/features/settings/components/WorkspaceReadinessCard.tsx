@@ -3,15 +3,18 @@ import { Badge } from '@/shared/ui/Badge/Badge'
 import { buildWorkspaceReadiness } from '@/shared/lib/releaseReadiness'
 import { useSettings } from '@/features/settings/hooks/useSettings'
 import { useAuth } from '@/features/auth/hooks/useAuth'
-import { demoDb } from '@/shared/lib/demoDb'
+import { useEstimates } from '@/features/estimates/hooks/useEstimates'
+import { useInvoices } from '@/features/invoices/hooks/useInvoices'
+import { useProjects } from '@/features/projects/hooks/useProjects'
+import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
 
 export function WorkspaceReadinessCard() {
   const { user } = useAuth()
   const { team, invitations, profile } = useSettings()
-  const portalLinks = user ? demoDb.portal.listForCompany(user.companyId).length : 0
-  const estimatesCount = user ? demoDb.estimates.list(user.companyId).length : 0
-  const invoicesCount = user ? demoDb.invoices.list(user.companyId).length : 0
-  const projectsCount = user ? demoDb.projects.list(user.companyId).length : 0
+  const { data: estimates = [] } = useEstimates()
+  const { data: invoices = [] } = useInvoices()
+  const { data: projects = [] } = useProjects()
+  const { data: portalTokens = [] } = usePortalTokens(user?.companyId ?? '')
 
   if (!user) return null
 
@@ -21,10 +24,10 @@ export function WorkspaceReadinessCard() {
     ksefReady: Boolean((profile as any)?.ksef_token),
     membersCount: team.length,
     pendingInvitations: invitations.filter((item: any) => item.status === 'pending').length,
-    portalLinks,
-    estimatesCount,
-    invoicesCount,
-    projectsCount,
+    portalLinks: portalTokens.filter((t) => t.active).length,
+    estimatesCount: estimates.length,
+    invoicesCount: invoices.length,
+    projectsCount: projects.length,
   })
 
   return (
