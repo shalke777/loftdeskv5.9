@@ -38,6 +38,18 @@ export const dashboardApi = {
     const contracts = contractsRes.status === 'fulfilled' ? contractsRes.value : []
     const profile   = profileRes.status   === 'fulfilled' ? profileRes.value   : null
 
+    if (import.meta.env.DEV) {
+      console.group('[dashboard] getStats — input counts')
+      console.log('company_id:', companyId)
+      console.log('clients:', clients.length, clientsRes.status === 'rejected' ? `(BŁĄD: ${(clientsRes as PromiseRejectedResult).reason})` : '')
+      console.log('estimates:', estimates.length, estimatesRes.status === 'rejected' ? `(BŁĄD: ${(estimatesRes as PromiseRejectedResult).reason})` : '')
+      console.log('invoices:', invoices.length, invoicesRes.status === 'rejected' ? `(BŁĄD: ${(invoicesRes as PromiseRejectedResult).reason})` : '')
+      console.log('projects:', projects.length, projectsRes.status === 'rejected' ? `(BŁĄD: ${(projectsRes as PromiseRejectedResult).reason})` : '')
+      console.log('contracts:', contracts.length, contractsRes.status === 'rejected' ? `(BŁĄD: ${(contractsRes as PromiseRejectedResult).reason})` : '')
+      console.log('profile:', profile, profileRes.status === 'rejected' ? `(BŁĄD: ${(profileRes as PromiseRejectedResult).reason})` : '')
+      console.groupEnd()
+    }
+
     // --- Pipeline aggregation (mirrors demoDb.dashboard logic) ---
     const usedEstimateIds = new Set<string>()
     const usedContractIds = new Set<string>()
@@ -102,7 +114,7 @@ export const dashboardApi = {
     const plan: 'free' | 'pro' | 'business' | 'admin' = (profile as any)?.plan ?? 'pro'
     const ksefReady = Boolean((profile as any)?.ksef_token)
 
-    return {
+    const result = {
       plan,
       companyName,
       clientsCount: clients.length,
@@ -123,5 +135,17 @@ export const dashboardApi = {
       ].filter(Boolean) as string[],
       upcoming: projects.slice(0, 3).map((p) => `${p.name} · ${p.status}`),
     }
+
+    if (import.meta.env.DEV) {
+      console.group('[dashboard] getStats — agregacja')
+      console.log('activeProjects:', result.activeProjects, '/ projectsCount:', result.projectsCount)
+      console.log('paidRevenue:', result.paidRevenue, '| overdueCount:', result.overdueCount)
+      console.log('pipeline:', result.pipeline, '| pipelineProjects:', result.pipelineProjects.length)
+      console.log('estimatesCount:', result.estimatesCount, '| invoicesCount:', result.invoicesCount, '| contractsCount:', result.contractsCount)
+      console.log('companyName:', result.companyName, '| plan:', result.plan, '| ksefReady:', result.ksefReady)
+      console.groupEnd()
+    }
+
+    return result
   },
 }
