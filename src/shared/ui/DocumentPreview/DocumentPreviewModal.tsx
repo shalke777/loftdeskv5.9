@@ -22,31 +22,53 @@ export function DocumentPreviewModal({
   tabs: DocumentPreviewTab[]
 }) {
   const [active, setActive] = useState(tabs[0]?.key ?? 'preview')
+  const [downloading, setDownloading] = useState(false)
   useEffect(() => {
     setActive(tabs[0]?.key ?? 'preview')
   }, [tabs])
   const tab = useMemo(() => tabs.find((item) => item.key === active) ?? tabs[0], [active, tabs])
 
-  function downloadCurrent() {
-    if (!tab) return
-    if (tab.type === 'xml') {
-      downloadBlob(`${title.replace(/\s+/g, '_')}.xml`, new Blob([tab.content], { type: 'application/xml;charset=utf-8' }))
-      return
+  // ── Download PDF ──────────────────────────────────────────────────────────
+  // Generates a real binary PDF file and triggers a browser download (anchor).
+  // Does NOT open a print dialog. Does NOT open a new tab.
+  async function downloadPdf() {
+    if (!tab || downloading) return
+    setDownloading(true)
+    try {
+      const { generatePdfBlob } = await import('@/services/pdf/pdfGenerator')
+      const pdfBlob = await generatePdfBlob(tab.content)
+      const filename = `${title.replace(/\s+/g, '_')}.pdf`
+      console.log('[LoftDesk] PDF Download', {
+        action: 'downloadPdf',
+        isBlob: pdfBlob instanceof Blob,
+        type: pdfBlob.type,
+        size: pdfBlob.size,
+        filename,
+      })
+      downloadBlob(filename, pdfBlob)
+    } catch (err) {
+      console.error('[LoftDesk] PDF generation failed – falling back to HTML download', err)
+      // Fallback so the user gets something even if the PDF renderer fails
+      downloadBlob(
+        `${title.replace(/\s+/g, '_')}.html`,
+        new Blob([tab.content], { type: 'text/html;charset=utf-8' }),
+      )
+    } finally {
+      setDownloading(false)
     }
-    // Use a hidden iframe to trigger the print dialog without opening a new window.
-    // In the print dialog, choose "Zapisz jako PDF" / "Save as PDF".
-    const blob = new Blob([tab.content], { type: 'text/html;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const iframe = document.createElement('iframe')
-    iframe.setAttribute('style', 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;border:none;')
-    iframe.src = url
-    iframe.onload = () => {
-      try { iframe.contentWindow?.focus(); iframe.contentWindow?.print() } catch {}
-      setTimeout(() => { try { iframe.parentNode?.removeChild(iframe) } catch {}; URL.revokeObjectURL(url) }, 60_000)
-    }
-    document.body.appendChild(iframe)
   }
 
+  // ── Download XML ──────────────────────────────────────────────────────────
+  function downloadXml() {
+    if (!tab) return
+    downloadBlob(
+      `${title.replace(/\s+/g, '_')}.xml`,
+      new Blob([tab.content], { type: 'application/xml;charset=utf-8' }),
+    )
+  }
+
+  // ── Print ─────────────────────────────────────────────────────────────────
+  // Opens the browser print dialog. This is the ONLY action that calls print().
   function printCurrent() {
     if (!tab || tab.type !== 'html') return
     const win = window.open('', '_blank', 'width=960,height=720')
@@ -67,7 +89,13 @@ export function DocumentPreviewModal({
             </Button>
           ))}
           <div className="doc-preview__actions">
-            <Button size="sm" variant="secondary" onClick={downloadCurrent}>Pobierz {tab?.type === 'xml' ? 'XML' : 'PDF'}</Button>
+            {tab?.type === 'xml' ? (
+              <Button size="sm" variant="secondary" onClick={downloadXml}>Pobierz XML</Button>
+            ) : (
+              <Button size="sm" variant="secondary" loading={downloading} onClick={downloadPdf}>
+                {downloading ? 'Generowanie PDF…' : 'Pobierz PDF'}
+              </Button>
+            )}
             {tab?.type === 'html' ? <Button size="sm" variant="ghost" onClick={printCurrent}>Drukuj</Button> : null}
           </div>
         </div>

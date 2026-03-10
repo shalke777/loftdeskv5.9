@@ -133,7 +133,10 @@ export function useProjectExport(projectId: string) {
       setLoading(true)
       setError(null)
       try {
-        const { default: JSZip } = await import('jszip')
+        const [{ default: JSZip }, { generatePdfBlob }] = await Promise.all([
+          import('jszip'),
+          import('@/services/pdf/pdfGenerator'),
+        ])
         const docs = await projectDocumentsApi.listForProject(projectId, companyId)
         const active = docs.filter(
           (d) => !d.archived_at && (selectedDocIds ? selectedDocIds.includes(d.doc_id) : true),
@@ -160,10 +163,13 @@ export function useProjectExport(projectId: string) {
           bankAccount: dbProfile.iban || '',
         } : undefined
 
+        console.log('[LoftDesk] ZIP Export – starting', { projectId, docsCount: active.length })
+
         for (let i = 0; i < active.length; i++) {
           const doc = active[i]
           const idx = String(ORDER[doc.doc_type] ?? 9).padStart(2, '0')
-          const fileName = `${idx}_${doc.doc_type}_${doc.doc_id.slice(0, 8)}.html`
+          // Extension is .pdf – ZIP will contain real binary PDF files
+          const fileName = `${idx}_${doc.doc_type}_${doc.doc_id.slice(0, 8)}.pdf`
 
           let html: string
           if (isDemoMode && dbRaw) {
@@ -172,19 +178,19 @@ export function useProjectExport(projectId: string) {
               const est = (dbRaw.estimates ?? []).find((e: any) => e.id === doc.doc_id)
               const cl = est ? clients.find((c: any) => c.id === est.client_id) : undefined
               const clientMeta = cl ? { name: cl.name, nip: cl.nip ?? '', address: cl.address ?? '', postalCity: `${cl.postal_code ?? ''} ${cl.city ?? ''}`.trim(), email: cl.email ?? '', phone: cl.phone ?? '' } : undefined
-              html = est ? buildEstimatePreview(est, clientMeta, companyMeta) : `<p>Kosztorys ${doc.doc_id}</p>`
+              html = est ? buildEstimatePreview(est, clientMeta, companyMeta) : `<!DOCTYPE html><html><body><p>Kosztorys ${doc.doc_id}</p></body></html>`
             } else if (doc.doc_type === 'invoice') {
               const inv = (dbRaw.invoices ?? []).find((f: any) => f.id === doc.doc_id)
               const cl = inv ? clients.find((c: any) => c.id === inv.client_id) : undefined
               const ct = inv ? (dbRaw.contracts ?? []).find((c: any) => c.id === inv.contract_id) : undefined
               const clientMeta = cl ? { name: cl.name, nip: cl.nip ?? '', address: cl.address ?? '', postalCity: `${cl.postal_code ?? ''} ${cl.city ?? ''}`.trim(), email: cl.email ?? '', phone: cl.phone ?? '' } : undefined
               const contractMeta = ct ? { contractNumber: ct.number, contractLocation: ct.location ?? '' } : undefined
-              html = inv ? buildInvoicePreview(inv, clientMeta, contractMeta, companyMeta) : `<p>Faktura ${doc.doc_id}</p>`
+              html = inv ? buildInvoicePreview(inv, clientMeta, contractMeta, companyMeta) : `<!DOCTYPE html><html><body><p>Faktura ${doc.doc_id}</p></body></html>`
             } else if (doc.doc_type === 'contract') {
               const ct = (dbRaw.contracts ?? []).find((c: any) => c.id === doc.doc_id)
               const cl = ct ? clients.find((c: any) => c.id === ct.client_id) : undefined
               const est = ct ? (dbRaw.estimates ?? []).find((e: any) => (e as any).project_id === ct.project_id) : undefined
-              html = ct ? buildContractPreview(ct, cl?.name ?? '', est?.name ?? ct?.notes ?? '', companyMeta) : `<p>Umowa ${doc.doc_id}</p>`
+              html = ct ? buildContractPreview(ct, cl?.name ?? '', est?.name ?? ct?.notes ?? '', companyMeta) : `<!DOCTYPE html><html><body><p>Umowa ${doc.doc_id}</p></body></html>`
             } else {
               html = `<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>${doc.doc_type}</title></head><body><h1>LoftDesk – ${doc.doc_type.toUpperCase()}</h1><p>ID: ${doc.doc_id}</p></body></html>`
             }
@@ -202,12 +208,31 @@ export function useProjectExport(projectId: string) {
 </html>`
           }
 
-          zip.file(fileName, html)
+          // Convert HTML → real binary PDF blob (application/pdf)
+          const pdfBlob = await generatePdfBlob(html)
+
+          // Safety guard: refuse to pack HTML strings / non-PDF blobs into a .pdf file
+          if (!(pdfBlob instanceof Blob)) {
+            throw new Error(`[LoftDesk] ZIP Export: expected Blob for ${fileName} but got ${typeof pdfBlob}`)
+          }
+          if (!pdfBlob.type.includes('pdf')) {
+            throw new Error(`[LoftDesk] ZIP Export: expected application/pdf Blob for ${fileName} but got MIME "${pdfBlob.type}"`)
+          }
+
+          console.log('[LoftDesk] ZIP Export – adding file', {
+            file: fileName,
+            type: pdfBlob.type,
+            size: pdfBlob.size,
+          })
+
+          zip.file(fileName, pdfBlob)
           manifest.push({
             index: i + 1,
             type: doc.doc_type,
             id: doc.doc_id,
             file: fileName,
+            mimeType: pdfBlob.type,
+            sizeBytes: pdfBlob.size,
             auto: doc.linked_automatically,
           })
         }
@@ -223,8 +248,11 @@ export function useProjectExport(projectId: string) {
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
+
+        console.log('[LoftDesk] ZIP Export – done', { files: manifest.length })
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : String(e))
+        console.error('[LoftDesk] ZIP Export – error', e)
       } finally {
         setLoading(false)
       }
