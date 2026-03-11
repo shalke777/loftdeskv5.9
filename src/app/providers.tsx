@@ -3,6 +3,7 @@ import { ReactNode, createContext, useContext, useEffect, useMemo, useState } fr
 import { queryClient } from '@/shared/lib/queryClient'
 import { generateId } from '@/shared/lib/generateId'
 import { ToastViewport } from '@/shared/ui/Toast/Toast'
+import { CookieBanner } from '@/features/legal/components/CookieBanner'
 import { useLocalStorage } from '@/shared/hooks/useLocalStorage'
 import { demoDb, type DemoRole } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
@@ -181,6 +182,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
         <AuthProvider>
           {children}
           <ToastViewport />
+          <CookieBanner />
         </AuthProvider>
       </ToastProvider>
     </QueryClientProvider>

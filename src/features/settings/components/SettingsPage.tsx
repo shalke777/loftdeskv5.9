@@ -17,6 +17,7 @@ import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { WorkspaceReadinessCard } from '@/features/settings/components/WorkspaceReadinessCard'
 import { WorkspaceLimitsCard } from '@/features/settings/components/WorkspaceLimitsCard'
 import { downloadBlob } from '@/shared/lib/downloads'
+import { LegalCenterCard } from '@/features/legal/components/LegalCenterCard'
 
 function HelperCard({ icon, title, text, href }: { icon: ReactNode; title: string; text: string; href: string }) {
   const navigate = useNavigate()
@@ -93,6 +94,8 @@ export function SettingsPage() {
         <WorkspaceLimitsCard />
         <TeamMembersCard />
         <TeamInvitationsCard />
+
+        <LegalCenterCard />
 
         <Card>
           <h3>Backup i odzyskiwanie</h3>

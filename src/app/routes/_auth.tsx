@@ -22,6 +22,7 @@ import { APP_NAME } from '@/shared/lib/constants'
 import { InstallAppButton } from '@/shared/ui/InstallAppButton/InstallAppButton'
 import { usePortalNotifications } from '@/features/portal/hooks/usePortalNotifications'
 import { useEffect, useRef, useState } from 'react'
+import { LegalAcceptanceGate } from '@/features/legal/components/LegalAcceptanceGate'
 
 type MainNavItem = {
   type?: 'route'
@@ -82,7 +83,10 @@ export function AuthLayout() {
   const visibleMobileNav = mobileNav.filter((item) => !item.feature || featureFlags[item.feature])
 
   return (
-    <div className="app-shell">
+    <>
+      {/* Acceptance gate — renders as full-screen overlay when required docs are missing */}
+      <LegalAcceptanceGate />
+      <div className="app-shell">
       <aside className="sidebar">
 		<div className="sidebar__brand">
 		  <div className="sidebar__brand-mark">LD</div>
@@ -215,5 +219,6 @@ export function AuthLayout() {
         </nav>
       </section>
     </div>
+    </>
   )
 }

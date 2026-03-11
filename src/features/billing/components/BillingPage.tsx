@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { PLAN_DEFS } from '@/shared/lib/constants'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
@@ -12,6 +12,14 @@ import { formatCurrency } from '@/shared/lib/formatters'
 import { hasStripeConfig } from '@/shared/lib/stripe'
 import { isDemoMode } from '@/shared/lib/supabase'
 import { useCan } from '@/features/auth/hooks/usePermissions'
+import {
+  CheckoutConsentCheckboxes,
+  defaultCheckoutConsents,
+  checkoutConsentsValid,
+  type ConsentValues,
+} from '@/features/legal/components/LegalConsentCheckboxes'
+
+type CheckoutKey = 'autoRenewal' | 'zasadyPlatnosci' | 'b2bCheckout'
 
 function renderLimit(limit: number | '∞', used: number) {
   return typeof limit === 'number' ? `${used} / ${limit}` : `${used} / bez limitu`
@@ -28,6 +36,8 @@ export function BillingPage() {
   const changePlan = useChangePlan()
   const canManagePlan = useCan('billing.changePlan')
   const stripeEnabled = hasStripeConfig() && !isDemoMode
+  const [checkoutConsents, setCheckoutConsents] = useState<ConsentValues<CheckoutKey>>(defaultCheckoutConsents())
+  const checkoutReady = checkoutConsentsValid(checkoutConsents)
 
   const search = (typeof window !== 'undefined' ? Object.fromEntries(new URLSearchParams(window.location.search)) : {}) as Record<string, string>
 
@@ -67,6 +77,10 @@ export function BillingPage() {
       return
     }
     if (planId === 'business' && data!.currentPlan !== 'business') {
+      if (!checkoutReady) {
+        toast.error('Wymagane zgody', 'Zaznacz wszystkie wymagane pola przed zakupem.')
+        return
+      }
       if (stripeEnabled) {
         stripeCheckout.mutate()
       } else if (isDemoMode) {
@@ -129,6 +143,20 @@ export function BillingPage() {
         </div>
       )}
 
+      {/* Checkout consent checkboxes — shown only when upgrading is possible */}
+      {data.currentPlan === 'free' && (
+        <Card style={{ marginBottom: 16 }}>
+          <h3>Warunki zakupu subskrypcji Business</h3>
+          <p className="field__label" style={{ marginBottom: 12 }}>
+            Zaznacz wszystkie pola, aby odblokować przycisk zakupu.
+          </p>
+          <CheckoutConsentCheckboxes
+            values={checkoutConsents}
+            onChange={(key, val) => setCheckoutConsents((prev) => ({ ...prev, [key]: val }))}
+          />
+        </Card>
+      )}
+
       <div className="grid-3">
         {Object.values(PLAN_DEFS)
           .filter((plan) => (VISIBLE_PLANS as readonly string[]).includes(plan.id))
@@ -147,7 +175,10 @@ export function BillingPage() {
               <div className="actions-row" style={{ marginTop: 12 }}>
                 <Button
                   variant={data.currentPlan === plan.id ? 'ghost' : 'primary'}
-                  disabled={data.currentPlan === plan.id}
+                  disabled={
+                    data.currentPlan === plan.id ||
+                    (plan.id === 'business' && data.currentPlan === 'free' && !checkoutReady)
+                  }
                   loading={upgradeLoading}
                   onClick={() => handleUpgrade(plan.id)}
                 >

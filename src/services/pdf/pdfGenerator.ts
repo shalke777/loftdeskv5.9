@@ -62,7 +62,7 @@ export async function generatePdfBlob(html: string): Promise<Blob> {
 
   try {
     // Wait two animation frames so the browser fully lays out the injected content
-    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
 
     // Target the main .doc container if present (gives cleaner output than full body)
     const target = (wrapper.querySelector('.doc') as HTMLElement | null) ?? wrapper

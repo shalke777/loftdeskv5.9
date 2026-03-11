@@ -10,6 +10,14 @@ import { isDemoMode } from '@/shared/lib/supabase'
 import { PendingInvitesNotice } from '@/features/auth/components/PendingInvitesNotice'
 import { getPendingInviteToken, clearPendingInviteToken } from '@/shared/lib/inviteIntent'
 import { settingsApi } from '@/features/settings/api/settings.api'
+import {
+  SignupConsentCheckboxes,
+  defaultSignupConsents,
+  signupConsentsValid,
+  type ConsentValues,
+} from '@/features/legal/components/LegalConsentCheckboxes'
+
+type SignupKey = 'regulamin' | 'prywatnosc' | 'b2b' | 'dpa' | 'komunikacja'
 
 export function RegisterForm() {
   const { registerDemoCompany } = useAuth()
@@ -20,6 +28,10 @@ export function RegisterForm() {
   const [nip, setNip] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [consents, setConsents] = useState<ConsentValues<SignupKey>>(defaultSignupConsents())
+
+  const handleConsentChange = (key: SignupKey, val: boolean) =>
+    setConsents((prev) => ({ ...prev, [key]: val }))
 
   const finalizeInviteIfNeeded = async () => {
     const token = getPendingInviteToken()
@@ -50,10 +62,18 @@ export function RegisterForm() {
         <Input label="Hasło" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
       <PendingInvitesNotice email={email} />
+
+      <SignupConsentCheckboxes values={consents} onChange={handleConsentChange} />
+
       <div className="actions-row">
         <Button
           loading={loading}
+          disabled={!signupConsentsValid(consents)}
           onClick={async () => {
+            if (!signupConsentsValid(consents)) {
+              toast.error('Wymagane zgody', 'Zaznacz wszystkie obowiązkowe pola, aby założyć konto.')
+              return
+            }
             try {
               setLoading(true)
               await authApi.register({ email, password, companyName, fullName, nip })

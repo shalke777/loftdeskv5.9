@@ -1,3 +1,4 @@
+declare module '*.md?raw' { const content: string; export default content; }
 declare module 'react' { export const useState: any; export const useEffect: any; export const useMemo: any; export const forwardRef: any; export type InputHTMLAttributes<T=any> = any; export type SelectHTMLAttributes<T=any> = any; export type ButtonHTMLAttributes<T=any> = any; export type HTMLAttributes<T=any> = any; export type ReactNode = any; }
 declare module 'react/jsx-runtime' { export const jsx: any; export const jsxs: any; export const Fragment: any; }
 declare module '@tanstack/react-query' { export const useQuery: any; export const useMutation: any; export const useQueryClient: any; }

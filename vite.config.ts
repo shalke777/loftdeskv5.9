@@ -33,7 +33,12 @@ export default defineConfig({
       devOptions: { enabled: false }
     })
   ],
-  resolve: { alias: { '@': path.resolve(__dirname, './src') } },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@docs-legal': path.resolve(__dirname, './docs/legal'),
+    },
+  },
   build: {
     sourcemap: true,
     rollupOptions: {
