@@ -1,0 +1,345 @@
+import { useState, useEffect } from 'react'
+import type {
+  ParseInvoiceResult,
+  CreateExpenseForProjectInput,
+  ExpenseSourceType,
+  ExpenseCostType,
+} from '@/features/expenses/api/expenses.api'
+import { ExpenseConfidenceBadge } from './ExpenseConfidenceBadge'
+
+interface Props {
+  projectId:   string
+  parseResult: ParseInvoiceResult | null
+  sourceType:  ExpenseSourceType
+  file:        File | null
+  onSave:      (data: Omit<CreateExpenseForProjectInput, 'company_id' | 'project_id'> & { file?: File | null }) => void
+  onCancel:    () => void
+  saving:      boolean
+}
+
+const COST_TYPE_LABELS: Record<ExpenseCostType | 'other', string> = {
+  material:   'Materiały',
+  service:    'Usługi',
+  equipment:  'Sprzęt / narzędzia',
+  labor:      'Robocizna',
+  transport:  'Transport',
+  other:      'Inne',
+}
+
+const CURRENCIES = ['PLN', 'EUR', 'USD', 'GBP']
+
+function emptyState() {
+  return {
+    vendor_name:      '',
+    vendor_nip:       '',
+    invoice_number:   '',
+    issue_date:       '',
+    sale_date:        '',
+    net_amount:       '',
+    vat_amount:       '',
+    gross_amount:     '',
+    currency:         'PLN',
+    cost_type:        '' as ExpenseCostType | '',
+    category:         '',
+    payment_due_date: '',
+    notes:            '',
+  }
+}
+
+type FormState = ReturnType<typeof emptyState>
+
+export function ExpenseConfirmForm({
+  projectId,
+  parseResult,
+  sourceType,
+  file,
+  onSave,
+  onCancel,
+  saving,
+}: Props) {
+  const [form, setForm] = useState<FormState>(emptyState())
+
+  // Pre-fill from parse result
+  useEffect(() => {
+    if (!parseResult) return
+    setForm({
+      vendor_name:      parseResult.vendor_name      ?? '',
+      vendor_nip:       parseResult.vendor_nip        ?? '',
+      invoice_number:   parseResult.invoice_number   ?? '',
+      issue_date:       parseResult.issue_date        ?? '',
+      sale_date:        parseResult.sale_date         ?? '',
+      net_amount:       parseResult.net_amount        != null ? String(parseResult.net_amount)    : '',
+      vat_amount:       parseResult.vat_amount        != null ? String(parseResult.vat_amount)    : '',
+      gross_amount:     parseResult.gross_amount      != null ? String(parseResult.gross_amount)  : '',
+      currency:         parseResult.currency          ?? 'PLN',
+      cost_type:        '',
+      category:         '',
+      payment_due_date: parseResult.payment_due_date ?? '',
+      notes:            parseResult.notes             ?? '',
+    })
+  }, [parseResult])
+
+  function set(field: keyof FormState, value: string) {
+    setForm((prev) => {
+      const next = { ...prev, [field]: value }
+
+      // Auto-derive gross = net + vat
+      if ((field === 'net_amount' || field === 'vat_amount') && !next.gross_amount) {
+        const n = parseFloat(next.net_amount)
+        const v = parseFloat(next.vat_amount)
+        if (!isNaN(n) && !isNaN(v)) next.gross_amount = String(Math.round((n + v) * 100) / 100)
+      }
+
+      return next
+    })
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.vendor_name.trim()) return alert('Podaj nazwę sprzedawcy')
+
+    onSave({
+      file,
+      source_type:    sourceType,
+      vendor_name:    form.vendor_name.trim(),
+      vendor_nip:     form.vendor_nip.trim()  || null,
+      invoice_number: form.invoice_number.trim() || null,
+      issue_date:     form.issue_date    || null,
+      sale_date:      form.sale_date     || null,
+      net_amount:     form.net_amount    ? parseFloat(form.net_amount)    : null,
+      vat_amount:     form.vat_amount    ? parseFloat(form.vat_amount)    : null,
+      gross_amount:   form.gross_amount  ? parseFloat(form.gross_amount)  : null,
+      currency:       form.currency,
+      cost_type:      (form.cost_type as ExpenseCostType) || null,
+      category:       form.category.trim()  || null,
+      payment_due_date: form.payment_due_date || null,
+      notes:          form.notes.trim()     || null,
+      extraction_confidence:      parseResult?.extraction_confidence      ?? null,
+      extraction_warnings:        parseResult?.extraction_warnings        ?? null,
+      requires_user_confirmation: parseResult?.requires_user_confirmation ?? null,
+      parser_source:              parseResult?.parser_source              ?? 'manual',
+    })
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', boxSizing: 'border-box',
+    padding: '8px 10px', borderRadius: 6, fontSize: 14,
+    border: '1px solid var(--color-border, #d1d5db)',
+    background: 'var(--color-surface, #fff)',
+    color: 'var(--color-text, #111)',
+  }
+  const labelStyle: React.CSSProperties = {
+    display: 'block', fontSize: 12, fontWeight: 600,
+    color: 'var(--color-text-muted, #6b7280)', marginBottom: 4,
+  }
+  const fieldStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column' }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* Confidence badge */}
+      {parseResult && (
+        <ExpenseConfidenceBadge
+          confidence={parseResult.extraction_confidence}
+          warnings={parseResult.extraction_warnings}
+        />
+      )}
+
+      {/* Section: sprzedawca */}
+      <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted, #6b7280)', marginBottom: 4, padding: 0 }}>
+          Sprzedawca
+        </legend>
+
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Nazwa sprzedawcy *</label>
+          <input
+            style={inputStyle}
+            value={form.vendor_name}
+            onChange={(e) => set('vendor_name', e.target.value)}
+            placeholder="np. ABC Sp. z o.o."
+            required
+          />
+        </div>
+
+        <div style={fieldStyle}>
+          <label style={labelStyle}>NIP sprzedawcy</label>
+          <input
+            style={inputStyle}
+            value={form.vendor_nip}
+            onChange={(e) => set('vendor_nip', e.target.value)}
+            placeholder="10 cyfr"
+            inputMode="numeric"
+            maxLength={10}
+          />
+        </div>
+      </fieldset>
+
+      {/* Section: faktura */}
+      <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted, #6b7280)', marginBottom: 4, padding: 0 }}>
+          Faktura
+        </legend>
+
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Numer faktury</label>
+          <input
+            style={inputStyle}
+            value={form.invoice_number}
+            onChange={(e) => set('invoice_number', e.target.value)}
+            placeholder="np. FV/2026/001"
+          />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Data wystawienia</label>
+            <input
+              style={inputStyle}
+              type="date"
+              value={form.issue_date}
+              onChange={(e) => set('issue_date', e.target.value)}
+            />
+          </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Data sprzedaży</label>
+            <input
+              style={inputStyle}
+              type="date"
+              value={form.sale_date}
+              onChange={(e) => set('sale_date', e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Termin płatności</label>
+          <input
+            style={inputStyle}
+            type="date"
+            value={form.payment_due_date}
+            onChange={(e) => set('payment_due_date', e.target.value)}
+          />
+        </div>
+      </fieldset>
+
+      {/* Section: kwoty */}
+      <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted, #6b7280)', marginBottom: 4, padding: 0 }}>
+          Kwoty
+        </legend>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Netto</label>
+            <input
+              style={inputStyle}
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.net_amount}
+              onChange={(e) => set('net_amount', e.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>VAT</label>
+            <input
+              style={inputStyle}
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.vat_amount}
+              onChange={(e) => set('vat_amount', e.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Brutto</label>
+            <input
+              style={inputStyle}
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.gross_amount}
+              onChange={(e) => set('gross_amount', e.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+        </div>
+
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Waluta</label>
+          <select
+            style={inputStyle}
+            value={form.currency}
+            onChange={(e) => set('currency', e.target.value)}
+          >
+            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+      </fieldset>
+
+      {/* Section: klasyfikacja */}
+      <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted, #6b7280)', marginBottom: 4, padding: 0 }}>
+          Klasyfikacja
+        </legend>
+
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Typ kosztu</label>
+          <select
+            style={inputStyle}
+            value={form.cost_type}
+            onChange={(e) => set('cost_type', e.target.value)}
+          >
+            <option value="">— wybierz —</option>
+            {(Object.entries(COST_TYPE_LABELS) as [ExpenseCostType | 'other', string][]).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Kategoria (opcjonalna)</label>
+          <input
+            style={inputStyle}
+            value={form.category}
+            onChange={(e) => set('category', e.target.value)}
+            placeholder="np. Instalacje elektryczne"
+          />
+        </div>
+      </fieldset>
+
+      {/* Notes */}
+      <div style={fieldStyle}>
+        <label style={labelStyle}>Notatka</label>
+        <textarea
+          style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
+          value={form.notes}
+          onChange={(e) => set('notes', e.target.value)}
+          placeholder="Opis towarów / usług…"
+        />
+      </div>
+
+      {/* Buttons */}
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 4 }}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={onCancel}
+          disabled={saving}
+        >
+          Anuluj
+        </button>
+        <button
+          type="submit"
+          className="btn"
+          disabled={saving || !form.vendor_name.trim()}
+        >
+          {saving ? 'Zapisywanie…' : 'Zapisz koszt'}
+        </button>
+      </div>
+    </form>
+  )
+}

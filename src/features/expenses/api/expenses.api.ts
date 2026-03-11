@@ -334,3 +334,225 @@ export const expensesApi = {
     return data?.[0]?.id ?? null
   },
 }
+
+// =============================================================================
+// Etap 4 — Project-centric expenses with OCR metadata (new types + methods)
+// =============================================================================
+
+export type ExpenseSourceType    = 'camera' | 'gallery' | 'pdf' | 'manual'
+export type ExpenseCostType      = 'material' | 'service' | 'equipment' | 'labor' | 'transport' | 'other'
+export type ExpenseApprovalStatus = 'pending' | 'approved' | 'rejected' | 'not_required'
+
+/** Extended ExpenseInvoice — adds Etap 1 new columns (all optional for backward compat) */
+export interface ExpenseInvoiceV4 extends ExpenseInvoice {
+  // vendor_name is aliased from "vendor" for clarity in new code
+  vendor_name?:              string | null
+  source_type?:              ExpenseSourceType | null
+  cost_type?:                ExpenseCostType | string | null
+  approval_status?:          ExpenseApprovalStatus | null
+  extraction_confidence?:    number | null
+  extraction_warnings?:      string[] | null
+  requires_user_confirmation?: boolean | null
+  parser_source?:            'ai' | 'regex' | 'manual' | null
+  possible_duplicate?:       boolean | null
+  duplicate_of_expense_id?:  string | null
+  category?:                 string | null
+  currency?:                 string | null
+  sale_date?:                string | null
+  payment_due_date?:         string | null
+}
+
+/** The result returned by /.netlify/functions/parse-invoice */
+export interface ParseInvoiceResult {
+  vendor_name:      string | null
+  vendor_nip:       string | null
+  invoice_number:   string | null
+  issue_date:       string | null
+  sale_date:        string | null
+  net_amount:       number | null
+  vat_amount:       number | null
+  gross_amount:     number | null
+  currency:         string
+  payment_due_date: string | null
+  notes:            string | null
+  // metadata
+  extraction_confidence:      number   // 0–100
+  extraction_warnings:        string[]
+  requires_user_confirmation: boolean
+  parser_source:              'ai' | 'regex' | 'manual'
+}
+
+/** Input to create an expense and link it to a project */
+export interface CreateExpenseForProjectInput {
+  company_id:    string
+  project_id:    string
+  // file (already uploaded)
+  file_url?:     string | null
+  file_name?:    string | null
+  // core fields
+  vendor_name:   string
+  vendor_nip?:   string | null
+  invoice_number?: string | null
+  issue_date?:   string | null
+  sale_date?:    string | null
+  net_amount?:   number | null
+  vat_amount?:   number | null
+  gross_amount?: number | null
+  currency?:     string
+  payment_due_date?: string | null
+  category?:     string | null
+  cost_type?:    ExpenseCostType | string | null
+  notes?:        string | null
+  // OCR metadata
+  source_type:                ExpenseSourceType
+  extraction_confidence?:     number | null
+  extraction_warnings?:       string[] | null
+  requires_user_confirmation?: boolean | null
+  parser_source?:              'ai' | 'regex' | 'manual' | null
+}
+
+// In-memory demo store for v4 project expenses
+const demoProjectExpenses: ExpenseInvoiceV4[] = [
+  {
+    id: 'exp-v4-demo-1',
+    company_id: 'demo-company',
+    project_id: 'demo-project-1',
+    project_name: 'Remont łazienki',
+    file_url: null,
+    file_name: 'faktura_v4.pdf',
+    invoice_number: 'FV/2026/00999',
+    vendor: 'Ceramika Design Sp. z o.o.',
+    vendor_name: 'Ceramika Design Sp. z o.o.',
+    vendor_nip: '5221234567',
+    issue_date: '2026-04-01',
+    amount_net: 2000.00,
+    amount_vat: 460.00,
+    amount_gross: 2460.00,
+    description: 'Płytki wielkoformatowe 120x60',
+    status: 'assigned',
+    duplicate_of: null,
+    source_type: 'pdf',
+    cost_type: 'material',
+    approval_status: 'approved',
+    extraction_confidence: 82,
+    extraction_warnings: [],
+    requires_user_confirmation: false,
+    parser_source: 'regex',
+    possible_duplicate: false,
+    duplicate_of_expense_id: null,
+    category: 'Materiały budowlane',
+    currency: 'PLN',
+    sale_date: '2026-04-01',
+    payment_due_date: '2026-04-15',
+    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+]
+
+export const projectExpensesApi = {
+  /** List expenses for a specific project */
+  async listForProject(projectId: string, companyId: string): Promise<ExpenseInvoiceV4[]> {
+    if (isDemoMode || !supabase) {
+      return demoProjectExpenses.filter((e) => e.project_id === projectId)
+    }
+
+    const { data, error } = await supabase
+      .from('expense_invoices')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return (data ?? []) as ExpenseInvoiceV4[]
+  },
+
+  /** Create an expense and link it to a project. Checks for soft duplicates. */
+  async createForProject(input: CreateExpenseForProjectInput): Promise<ExpenseInvoiceV4> {
+    if (isDemoMode || !supabase) {
+      const item: ExpenseInvoiceV4 = {
+        id: `exp-v4-${Date.now()}`,
+        company_id: input.company_id,
+        project_id: input.project_id,
+        file_url: input.file_url ?? null,
+        file_name: input.file_name ?? null,
+        invoice_number: input.invoice_number ?? null,
+        vendor: input.vendor_name,
+        vendor_name: input.vendor_name,
+        vendor_nip: input.vendor_nip ?? null,
+        issue_date: input.issue_date ?? null,
+        amount_net: input.net_amount ?? null,
+        amount_vat: input.vat_amount ?? null,
+        amount_gross: input.gross_amount ?? null,
+        description: input.notes ?? null,
+        status: 'review',
+        duplicate_of: null,
+        source_type: input.source_type,
+        cost_type: input.cost_type ?? null,
+        approval_status: 'pending',
+        extraction_confidence: input.extraction_confidence ?? null,
+        extraction_warnings: input.extraction_warnings ?? null,
+        requires_user_confirmation: input.requires_user_confirmation ?? null,
+        parser_source: input.parser_source ?? null,
+        possible_duplicate: false,
+        duplicate_of_expense_id: null,
+        category: input.category ?? null,
+        currency: input.currency ?? 'PLN',
+        sale_date: input.sale_date ?? null,
+        payment_due_date: input.payment_due_date ?? null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+      demoProjectExpenses.unshift(item)
+      return item
+    }
+
+    // Soft duplicate check (non-blocking — just sets flag on new record)
+    let possibleDuplicate = false
+    if (input.invoice_number && input.vendor_nip) {
+      const { data: dupCheck } = await supabase
+        .from('expense_invoices')
+        .select('id')
+        .eq('company_id', input.company_id)
+        .eq('invoice_number', input.invoice_number)
+        .eq('vendor_nip', input.vendor_nip)
+        .limit(1)
+      if (dupCheck && dupCheck.length > 0) possibleDuplicate = true
+    }
+
+    const { data, error } = await supabase
+      .from('expense_invoices')
+      .insert({
+        company_id:    input.company_id,
+        project_id:    input.project_id,
+        file_url:      input.file_url ?? null,
+        file_name:     input.file_name ?? null,
+        invoice_number: input.invoice_number ?? null,
+        vendor:        input.vendor_name,
+        vendor_nip:    input.vendor_nip ?? null,
+        issue_date:    input.issue_date ?? null,
+        sale_date:     input.sale_date ?? null,
+        amount_net:    input.net_amount ?? null,
+        amount_vat:    input.vat_amount ?? null,
+        amount_gross:  input.gross_amount ?? null,
+        description:   input.notes ?? null,
+        status: 'review',
+        source_type:   input.source_type,
+        cost_type:     input.cost_type ?? null,
+        approval_status: 'pending',
+        extraction_confidence:      input.extraction_confidence ?? null,
+        extraction_warnings:        input.extraction_warnings ?? null,
+        requires_user_confirmation: input.requires_user_confirmation ?? null,
+        parser_source:              input.parser_source ?? null,
+        possible_duplicate:         possibleDuplicate,
+        category:      input.category ?? null,
+        currency:      input.currency ?? 'PLN',
+        payment_due_date: input.payment_due_date ?? null,
+      })
+      .select('*')
+      .single()
+
+    if (error) throw error
+    return data as ExpenseInvoiceV4
+  },
+}

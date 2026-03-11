@@ -8,9 +8,10 @@ import { ProjectNotes } from '@/features/projects/components/ProjectNotes'
 import { ProjectDocuments } from '@/features/projects/components/ProjectDocuments'
 import { ProjectCompleteness } from '@/features/projects/components/ProjectCompleteness'
 import { ProjectPortalCTA } from '@/features/projects/components/ProjectPortalCTA'
-import { ProjectThreadsTab } from '@/features/projects/components/ProjectThreadsTab'
+import { ProjectThreadsTab }  from '@/features/projects/components/ProjectThreadsTab'
+import { ProjectExpensesTab } from '@/features/expenses/components/ProjectExpensesTab'
 
-type MainTab = 'overview' | 'threads'
+type MainTab = 'overview' | 'threads' | 'expenses'
 
 export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: Project | null; onEdit?: (project: Project) => void; onCreateInvoice?: (id: string) => void }) {
   const [tab, setTab] = useState<MainTab>('overview')
@@ -40,7 +41,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
 
         {/* Zakładki główne */}
         <div style={{ display: 'flex', gap: 4, marginTop: 20, marginBottom: 16, borderBottom: '1px solid var(--color-border)', paddingBottom: 0 }}>
-          {(['overview', 'threads'] as MainTab[]).map(t => (
+          {(['overview', 'threads', 'expenses'] as MainTab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -56,14 +57,15 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
                 marginBottom: -1,
               }}
             >
-              {t === 'overview' ? 'Przegląd' : '💬 Wątki'}
+              {t === 'overview' ? 'Przegląd' : t === 'threads' ? '💬 Wątki' : '💰 Koszty'}
             </button>
           ))}
         </div>
 
         {/* Zawartość zakładki */}
-        {tab === 'overview' && <ProjectTimeline project={project} />}
-        {tab === 'threads'  && <ProjectThreadsTab projectId={project.id} />}
+        {tab === 'overview'  && <ProjectTimeline project={project} />}
+        {tab === 'threads'   && <ProjectThreadsTab  projectId={project.id} />}
+        {tab === 'expenses'  && <ProjectExpensesTab projectId={project.id} />}
       </Card>
 
       <div style={{ display: 'grid', gap: 16 }}>
