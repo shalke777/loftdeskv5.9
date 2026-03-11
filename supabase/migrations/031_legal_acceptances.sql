@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.legal_acceptances (
   document_version     text        NOT NULL,
   accepted_at          timestamptz NOT NULL DEFAULT now(),
   source               text        NOT NULL
-    CHECK (source IN ('signup','login','checkout','settings','gate')),
+    CHECK (source IN ('signup','login','checkout','settings','gate','first_login','version_update')),
   accepted_b2b_statement boolean   NOT NULL DEFAULT false,
   user_agent           text,
 

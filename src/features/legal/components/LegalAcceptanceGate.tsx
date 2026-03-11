@@ -1,28 +1,70 @@
 import { useState } from 'react'
-import { ExternalLink, Shield } from 'lucide-react'
+import { ExternalLink, RefreshCw, Shield } from 'lucide-react'
 import { Button } from '@/shared/ui/Button/Button'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
-import { useMissingAcceptances, useSaveAcceptances } from '@/features/legal/hooks/useLegal'
+import { useLegalAcceptances, useMissingAcceptances, useSaveAcceptances } from '@/features/legal/hooks/useLegal'
 import { useAuthContext } from '@/app/providers'
 import { LEGAL_DOC_BY_KEY, REQUIRED_DOCS } from '@/features/legal/config/legalDocuments'
+import type { SaveInput } from '@/features/legal/api/legal.api'
+
+// ── sessionStorage helpers ────────────────────────────────────────────────────
+// RegisterForm stores pending consents here after signup so the first-login
+// gate can surface them pre-checked (signup flow) instead of being a blank gate.
+
+/** Maps document_key → signup consent form key */
+const DOC_TO_SIGNUP_KEY: Record<string, string> = {
+  'regulamin': 'regulamin',
+  'polityka-prywatnosci': 'prywatnosc',
+  'dpa': 'dpa',
+  'b2b-statement': 'b2b',
+}
+
+function readPendingSignup(): Record<string, boolean> | null {
+  try {
+    const raw = sessionStorage.getItem('loftdesk-pending-legal')
+    return raw ? (JSON.parse(raw) as Record<string, boolean>) : null
+  } catch {
+    return null
+  }
+}
+
+function clearPendingSignup() {
+  try { sessionStorage.removeItem('loftdesk-pending-legal') } catch { /* ignore */ }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Full-screen blocking overlay shown when a logged-in user has not yet
- * accepted the current versions of all required documents.
+ * Full-screen blocking gate shown when a logged-in user hasn't accepted
+ * the current versions of all required documents.
  *
- * The overlay cannot be dismissed without accepting.  Links to the actual
- * document pages open in a new tab so the user can read them first.
+ * Three scenarios handled:
+ *  1. New user after email confirmation (signup pending in sessionStorage)
+ *     → boxes are pre-checked, one click saves with source='signup'
+ *  2. Existing user who never accepted (first_login)
+ *     → blank gate, source='first_login'
+ *  3. Existing user after a document version bump (version_update)
+ *     → tailored messaging, source='version_update'
  */
 export function LegalAcceptanceGate() {
   const { user } = useAuthContext()
+  const { data: allAcceptances } = useLegalAcceptances()
   const missing = useMissingAcceptances()
   const saveAcceptances = useSaveAcceptances()
 
-  // Per-checkbox state
-  const [checked, setChecked] = useState<Record<string, boolean>>({})
+  // Pre-check boxes from signup pending consents if present
+  const [checked, setChecked] = useState<Record<string, boolean>>(() => {
+    const pending = readPendingSignup()
+    if (!pending) return {}
+    const init: Record<string, boolean> = {}
+    for (const doc of REQUIRED_DOCS) {
+      const signupKey = DOC_TO_SIGNUP_KEY[doc.key] ?? doc.key
+      init[doc.key] = Boolean(pending[signupKey])
+    }
+    return init
+  })
 
-  // While loading acceptances from the server, keep the app blocked —
-  // never grant access optimistically.
+  // Block the app while loading — never grant access optimistically
   if (missing === undefined) {
     return (
       <div className="legal-gate__backdrop">
@@ -33,11 +75,27 @@ export function LegalAcceptanceGate() {
     )
   }
 
-  // All required docs accepted — render nothing (gate lifts)
+  // All required docs accepted — gate lifts
   if (missing.length === 0) return null
 
   const requiredMissing = REQUIRED_DOCS.filter((d) => missing.includes(d.key))
   const allChecked = requiredMissing.every((d) => checked[d.key])
+
+  // ── Determine context ──────────────────────────────────────────────────────
+  const signupPending = readPendingSignup()
+  const priorAcceptancesExist = (allAcceptances?.length ?? 0) > 0
+
+  const source: SaveInput['source'] = signupPending
+    ? 'signup'           // new user — consents came from the registration form
+    : priorAcceptancesExist
+      ? 'version_update' // existing user — docs were updated since last acceptance
+      : 'first_login'    // existing user — never accepted (legacy account)
+
+  const isVersionUpdate = !signupPending && priorAcceptancesExist
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const toggle = (key: string) =>
+    setChecked((prev) => ({ ...prev, [key]: !prev[key] }))
 
   const handleAccept = async () => {
     if (!user || !allChecked) return
@@ -47,39 +105,49 @@ export function LegalAcceptanceGate() {
       companyId: user.companyId ?? null,
       documentKey: doc.key,
       documentVersion: doc.version,
-      source: 'gate' as const,
+      source,
       acceptedB2bStatement: doc.key === 'b2b-statement',
     }))
 
     if (import.meta.env.DEV) {
-      console.log('[legal gate] saving acceptances', inputs.map((i) => `${i.documentKey}@${i.documentVersion}`))
+      console.log('[legal gate] saving acceptances', inputs.map((i) => `${i.documentKey}@${i.documentVersion} source=${i.source}`))
     }
 
-    await saveAcceptances.mutateAsync(inputs)
+    try {
+      await saveAcceptances.mutateAsync(inputs)
+      clearPendingSignup()
+    } catch {
+      // Error is handled by useSaveAcceptances onError (toast) + isError banner below
+    }
   }
 
-  const toggle = (key: string) =>
-    setChecked((prev) => ({ ...prev, [key]: !prev[key] }))
-
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="legal-gate__backdrop">
       <div className="legal-gate__card">
         <div className="legal-gate__icon">
-          <Shield size={28} />
+          {isVersionUpdate ? <RefreshCw size={28} /> : <Shield size={28} />}
         </div>
 
-        <h2 className="legal-gate__title">Wymagana akceptacja dokumentów</h2>
+        <h2 className="legal-gate__title">
+          {isVersionUpdate
+            ? 'Zaktualizowaliśmy warunki korzystania z LoftDesk'
+            : 'Witaj w LoftDesk — wymagana akceptacja warunków'}
+        </h2>
+
         <p className="legal-gate__subtitle">
-          Zanim przejdziesz do aplikacji, zapoznaj się z poniższymi dokumentami i
-          zaakceptuj ich postanowienia. LoftDesk jest przeznaczony wyłącznie dla
-          przedsiębiorców.
+          {isVersionUpdate
+            ? 'Zaktualizowaliśmy treść poniższych dokumentów. Prosimy o ponowne zapoznanie się z nimi i potwierdzenie akceptacji.'
+            : 'Zanim przejdziesz do aplikacji, zapoznaj się z poniższymi dokumentami i zaakceptuj ich postanowienia. LoftDesk jest przeznaczony wyłącznie dla przedsiębiorców.'}
         </p>
 
-        <div className="legal-gate__notice">
-          LoftDesk jest aplikacją przeznaczoną wyłącznie dla przedsiębiorców.
-          Rejestrując konto, potwierdzasz, że działasz jako firma, nie jako osoba
-          prywatna.
-        </div>
+        {!isVersionUpdate && (
+          <div className="legal-gate__notice">
+            LoftDesk jest aplikacją przeznaczoną wyłącznie dla przedsiębiorców.
+            Rejestrując konto, potwierdzasz, że działasz jako firma, nie jako osoba
+            prywatna.
+          </div>
+        )}
 
         <div className="legal-gate__checks">
           {requiredMissing.map((doc) => {
@@ -127,10 +195,10 @@ export function LegalAcceptanceGate() {
                   {doc.key === 'b2b-statement' && (
                     <>
                       Oświadczam, że rejestruję się jako przedsiębiorca w rozumieniu
-                      art. 43¹ Kodeksu cywilnego, a korzystanie z LoftDesk jest
+                      art.&nbsp;43¹ Kodeksu cywilnego, a korzystanie z LoftDesk jest
                       bezpośrednio związane z moją działalnością zawodową lub
                       gospodarczą. Potwierdzam, że{' '}
-                      <strong>nie jestem konsumentem</strong> w rozumieniu art. 22¹
+                      <strong>nie jestem konsumentem</strong> w rozumieniu art.&nbsp;22¹
                       Kodeksu cywilnego.
                     </>
                   )}

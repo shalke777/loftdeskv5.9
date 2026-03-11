@@ -83,6 +83,16 @@ export function RegisterForm() {
                 toast.success('Workspace utworzony', `Firma ${companyName} została zainicjowana w demo.`)
                 window.location.assign(target)
               } else {
+                // Bridge signup consents to first-login gate so the user
+                // doesn't have to tick the same boxes twice after email confirm.
+                try {
+                  sessionStorage.setItem('loftdesk-pending-legal', JSON.stringify({
+                    regulamin: consents.regulamin,
+                    prywatnosc: consents.prywatnosc,
+                    b2b: consents.b2b,
+                    dpa: consents.dpa,
+                  }))
+                } catch { /* sessionStorage unavailable — gate will show normally */ }
                 toast.success('Konto utworzone', 'Potwierdź maila i zaloguj się do LoftDesk.')
                 window.location.assign('/login')
               }

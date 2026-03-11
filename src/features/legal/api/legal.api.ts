@@ -14,7 +14,7 @@ export interface SaveInput {
   companyId: string | null
   documentKey: string
   documentVersion: string
-  source: 'signup' | 'login' | 'checkout' | 'settings' | 'gate'
+  source: 'signup' | 'login' | 'checkout' | 'settings' | 'gate' | 'first_login' | 'version_update'
   acceptedB2bStatement?: boolean
 }
 
