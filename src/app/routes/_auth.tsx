@@ -12,6 +12,7 @@ import {
   Settings,
   Shield,
   Users,
+  Wallet,
 } from 'lucide-react'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import { Button } from '@/shared/ui/Button/Button'
@@ -26,7 +27,7 @@ import { LegalAcceptanceGate } from '@/features/legal/components/LegalAcceptance
 
 type MainNavItem = {
   type?: 'route'
-  to: '/dashboard' | '/clients' | '/estimates' | '/contracts' | '/invoices' | '/projects' | '/ksef' | '/settings'
+  to: '/dashboard' | '/clients' | '/estimates' | '/contracts' | '/invoices' | '/projects' | '/ksef' | '/settings' | '/chat' | '/expenses'
   label: string
   icon: typeof LayoutDashboard
   feature?: 'ksef'
@@ -39,6 +40,8 @@ const mainNavItems: MainNavItem[] = [
   { to: '/contracts', label: 'Umowa', icon: FileText },
   { to: '/invoices', label: 'Faktura', icon: Receipt },
   { to: '/projects', label: 'Projekty', icon: FolderKanban },
+  { to: '/chat', label: 'Rozmowy', icon: MessageSquare },
+  { to: '/expenses', label: 'Koszty', icon: Wallet },
   { to: '/ksef', label: 'KSeF', icon: Shield, feature: 'ksef' },
   { to: '/settings', label: 'Ustawienia', icon: Settings },
 ]

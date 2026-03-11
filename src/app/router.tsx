@@ -21,6 +21,8 @@ import { JoinInvitationRoutePage } from '@/app/routes/join.$token'
 import { DocumentationRoutePage } from '@/app/routes/documentation'
 import { ColorDemoRoutePage } from '@/app/routes/color-demo'
 import { PortalInboxRoutePage } from '@/app/routes/portal-inbox'
+import { ChatRoutePage } from '@/app/routes/chat'
+import { ExpensesRoutePage } from '@/app/routes/expenses'
 import { AuthCallbackRoutePage } from '@/app/routes/auth-callback'
 import { LegalDocRoutePage, LegalIndexRoutePage } from '@/app/routes/legal'
 
@@ -52,6 +54,8 @@ const teamRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'te
 const onboardingRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'onboarding', component: OnboardingRoutePage })
 const documentationRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'documentation', component: DocumentationRoutePage })
 const portalInboxRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'portal-inbox', component: PortalInboxRoutePage })
+const chatRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'chat', component: ChatRoutePage })
+const expensesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'expenses', component: ExpensesRoutePage })
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -71,6 +75,8 @@ const routeTree = rootRoute.addChildren([
     settingsRoute,
     documentationRoute,
     portalInboxRoute,
+    chatRoute,
+    expensesRoute,
   ]),
 ])
 
