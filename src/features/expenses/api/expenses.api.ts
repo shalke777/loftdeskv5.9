@@ -3,7 +3,6 @@
 // =============================================================================
 
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
-import { getDataScope, withScope } from '@/shared/lib/dataScope'
 
 export interface ExpenseInvoice {
   id: string
@@ -181,10 +180,11 @@ export const expensesApi = {
       return item
     }
 
-    const scope = await getDataScope(input.companyId)
+    // Insert expense — no user_id column in this table
     const { data, error } = await supabase
       .from('expense_invoices')
-      .insert(withScope(scope, {
+      .insert({
+        company_id: input.companyId,
         project_id: input.projectId ?? null,
         file_url: input.fileUrl ?? null,
         file_name: input.fileName ?? null,
@@ -197,7 +197,7 @@ export const expensesApi = {
         amount_gross: input.parsed?.amount_gross ?? null,
         description: input.parsed?.description ?? null,
         status: 'review',
-      }))
+      })
       .select('*')
       .single()
 

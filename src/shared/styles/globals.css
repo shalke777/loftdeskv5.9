@@ -1263,7 +1263,17 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 6px 10px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+}
+
+.exp-form__parse-info {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  margin-bottom: 8px;
 }
 
 .exp-form__dup-warn {

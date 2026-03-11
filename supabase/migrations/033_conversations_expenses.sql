@@ -16,10 +16,12 @@ CREATE TABLE IF NOT EXISTS public.conversations (
   client_id          uuid        REFERENCES public.clients(id) ON DELETE SET NULL,
   project_id         uuid        REFERENCES public.projects(id) ON DELETE SET NULL,
   portal_token_id    uuid,       -- link to existing portal_tokens row (optional)
-  subject            text,
-  last_message_at    timestamptz,
-  unread_count       int         NOT NULL DEFAULT 0,
-  archived           boolean     NOT NULL DEFAULT false,
+  subject              text,
+  last_message_at      timestamptz,
+  last_message_preview text,                    -- last message content (first 160 chars)
+  last_message_sender  text DEFAULT 'operator', -- 'operator' | 'client' | 'note'
+  unread_count         int  NOT NULL DEFAULT 0,
+  archived             boolean NOT NULL DEFAULT false,
   created_at         timestamptz NOT NULL DEFAULT now()
 );
 

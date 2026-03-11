@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks/useExpenses'
-import { expensesApi, ExpenseInvoice, ParsedExpenseData } from '../api/expenses.api'
+import { expensesApi, ExpenseInvoice, ParsedExpenseData, parseInvoiceFromText } from '../api/expenses.api'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Button } from '@/shared/ui/Button/Button'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
@@ -102,6 +102,7 @@ export function ExpensesPage() {
 
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [parseInfo, setParseInfo] = useState<string | null>(null) // parse diagnostics
 
   // modal: 'add' or 'edit'
   const [modal, setModal] = useState<{ type: 'add'; fileUrl: string; fileName: string; parsed: ParsedExpenseData } | { type: 'edit'; expense: ExpenseInvoice } | null>(null)
@@ -116,17 +117,40 @@ export function ExpensesPage() {
     if (!file) return
     setUploading(true)
     setUploadError(null)
+    setParseInfo(null)
     try {
       const { url, name } = await expensesApi.uploadFile(file, companyId)
-      // Attempt text extraction for images via canvas (browser-side, no server needed)
+
+      // —— extract text from the document ————————————————————
+      let rawText = ''
       let parsed: ParsedExpenseData = {}
-      if (file.type.startsWith('image/')) {
+
+      if (file.type === 'application/pdf') {
         try {
-          parsed = await extractTextFromImage(file)
-        } catch {
-          // ignore, user fills manually
+          rawText = await extractPdfText(file)
+          if (rawText.length > 20) {
+            parsed = await parseInvoiceFromText(rawText)
+          }
+        } catch (ex) {
+          console.warn('[Koszty] PDF text extraction failed', ex)
         }
       }
+      // For images: no browser-side OCR — form opens empty, user fills manually
+
+      // build parse diagnostics (dev-friendly, no sensitive raw content)
+      const fields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
+      if (file.type === 'application/pdf') {
+        setParseInfo(
+          fields.length > 0
+            ? `✅ Parser rozpoznał: ${fields.join(', ')}`
+            : rawText.length > 20
+              ? '⚠️ Parser uruchomiony, ale nie rozpoznał żadnych pól — wypełnij ręcznie'
+              : '⚠️ PDF nie zawiera osadzonego tekstu — wypełnij ręcznie'
+        )
+      } else {
+        setParseInfo('ℹ️ Zdjęcia / obrazy — wypełnij dane ręcznie')
+      }
+
       setForm({ ...emptyForm(), ...parsedToForm(parsed) })
       setModal({ type: 'add', fileUrl: url, fileName: name, parsed })
     } catch (err: any) {
@@ -185,6 +209,7 @@ export function ExpensesPage() {
       }
       setModal(null)
       setDuplicateWarning(null)
+      setParseInfo(null)
     } catch (err: any) {
       setUploadError(err?.message ?? 'Błąd zapisu')
     } finally {
@@ -382,12 +407,18 @@ export function ExpensesPage() {
         <Modal
           open={true}
           title={modal.type === 'add' ? 'Dodaj fakturę kosztową' : 'Edytuj fakturę'}
-          onClose={() => { setModal(null); setDuplicateWarning(null) }}
+          onClose={() => { setModal(null); setDuplicateWarning(null); setParseInfo(null) }}
         >
           <div className="exp-form">
             {modal.type === 'add' && modal.fileName && (
               <div className="exp-form__file-hint">
                 <FileText size={14} /> {modal.fileName}
+              </div>
+            )}
+
+            {parseInfo && (
+              <div className="exp-form__parse-info">
+                {parseInfo}
               </div>
             )}
 
@@ -493,7 +524,7 @@ export function ExpensesPage() {
             </div>
 
             <div className="exp-form__actions">
-              <Button variant="secondary" onClick={() => { setModal(null); setDuplicateWarning(null) }}>
+              <Button variant="secondary" onClick={() => { setModal(null); setDuplicateWarning(null); setParseInfo(null) }}>
                 Anuluj
               </Button>
               <Button
@@ -526,10 +557,123 @@ export function ExpensesPage() {
   )
 }
 
-// ── browser-side image text extraction (no server needed) ─────────────────────
+// ── PDF text extraction (browser-native, works for digitally-generated PDFs) —————
 
-async function extractTextFromImage(file: File): Promise<ParsedExpenseData> {
-  // This renders the image to a canvas and attempts minimal heuristic parsing.
-  // For production, replace with a proper OCR API call (e.g., Azure AI Document Intelligence).
-  return {}
+/**
+ * Extracts embedded text from a PDF file.
+ * Works for most software-generated PDFs (iFirma, Fakturownia, Comarch, LibreOffice, Word).
+ * Does NOT work for scanned PDFs (images embedded in PDF).
+ */
+async function extractPdfText(file: File): Promise<string> {
+  const ab = await file.arrayBuffer()
+  const bytes = new Uint8Array(ab)
+  const latin = new TextDecoder('latin1').decode(bytes)
+
+  const textChunks: string[] = []
+
+  // Walk all stream...endstream blocks
+  const streamMarker = /stream\r?\n/g
+  let m: RegExpExecArray | null
+  while ((m = streamMarker.exec(latin)) !== null) {
+    const streamStart = m.index + m[0].length
+    const streamEnd = latin.indexOf('endstream', streamStart)
+    if (streamEnd === -1) continue
+
+    // Check what filter this stream uses (look back into the dictionary)
+    const dict = latin.substring(Math.max(0, m.index - 300), m.index)
+    const isFlate = /FlateDecode|Fl\b/.test(dict)
+    const isASCII = /ASCIIHexDecode|ASCII85Decode/.test(dict)
+    if (isASCII) continue // skip non-text encoded streams
+
+    let streamText: string
+    if (isFlate) {
+      try {
+        const compressed = bytes.slice(streamStart, streamEnd)
+        const decompressed = await decompressDeflate(compressed)
+        streamText = new TextDecoder('latin1').decode(decompressed)
+      } catch {
+        continue // decompress failed — skip this stream
+      }
+    } else {
+      streamText = latin.substring(streamStart, streamEnd)
+    }
+
+    const extracted = extractTjOperators(streamText)
+    if (extracted) textChunks.push(extracted)
+  }
+
+  return textChunks.join(' ')
+}
+
+/** Decompress a deflate-compressed byte array using the browser's DecompressionStream */
+async function decompressDeflate(data: Uint8Array): Promise<Uint8Array> {
+  // PDFs use raw deflate (zlib without gzip header), try both
+  for (const format of ['deflate', 'raw'] as const) {
+    try {
+      const ds = new DecompressionStream(format === 'raw' ? 'deflate-raw' : 'deflate')
+      const writer = ds.writable.getWriter()
+      void writer.write(data as unknown as ArrayBuffer)
+      void writer.close()
+      const reader = ds.readable.getReader()
+      const chunks: Uint8Array[] = []
+      for (;;) {
+        const { value, done } = await reader.read()
+        if (done) break
+        chunks.push(value)
+      }
+      return mergeUint8Arrays(chunks)
+    } catch {
+      // try next format
+    }
+  }
+  throw new Error('decompression failed')
+}
+
+function mergeUint8Arrays(chunks: Uint8Array[]): Uint8Array {
+  const total = chunks.reduce((n, c) => n + c.length, 0)
+  const out = new Uint8Array(total)
+  let offset = 0
+  for (const c of chunks) { out.set(c, offset); offset += c.length }
+  return out
+}
+
+/**
+ * Extract readable text from a PDF content stream by parsing Tj/TJ operators.
+ * These are the standard PDF "show text" commands.
+ */
+function extractTjOperators(stream: string): string {
+  const parts: string[] = []
+
+  // Tj: (text) Tj  — single string
+  const tjRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)\s*Tj/g
+  let m: RegExpExecArray | null
+  while ((m = tjRe.exec(stream)) !== null) {
+    const t = decodePdfString(m[1])
+    if (t.trim()) parts.push(t.trim())
+  }
+
+  // TJ: [(text) num ...] TJ  — text array (kern pairs)
+  const tjArrRe = /\[([^\]]+)\]\s*TJ/g
+  while ((m = tjArrRe.exec(stream)) !== null) {
+    const inner = m[1]
+    const strRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)/g
+    let sm: RegExpExecArray | null
+    while ((sm = strRe.exec(inner)) !== null) {
+      const t = decodePdfString(sm[1])
+      if (t.trim()) parts.push(t.trim())
+    }
+  }
+
+  return parts.join(' ')
+}
+
+function decodePdfString(s: string): string {
+  return s
+    .replace(/\\n/g, ' ')
+    .replace(/\\r/g, '')
+    .replace(/\\t/g, ' ')
+    .replace(/\\\(/g, '(')
+    .replace(/\\\)/g, ')')
+    .replace(/\\\\/g, '\\')
+    .replace(/\\([0-7]{3})/g, (_, oct) => String.fromCharCode(parseInt(oct, 8)))
 }

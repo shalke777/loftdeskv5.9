@@ -4,7 +4,6 @@
 // =============================================================================
 
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
-import { getDataScope, withScope } from '@/shared/lib/dataScope'
 
 export interface Conversation {
   id: string
@@ -151,26 +150,31 @@ export const conversationsApi = {
       return msg
     }
 
-    const scope = await getDataScope(input.companyId)
+    // Insert message — no user_id column in this table
     const { data, error } = await supabase
       .from('conversation_messages')
-      .insert(withScope(scope, {
+      .insert({
         conversation_id: input.conversationId,
+        company_id: input.companyId,
         sender: input.sender,
         content: input.content,
         attachment_url: input.attachmentUrl ?? null,
         attachment_name: input.attachmentName ?? null,
         read: true,
-      }))
+      })
       .select('*')
       .single()
 
     if (error) throw error
 
-    // Update conversation last_message_at
+    // Keep conversation snapshot up-to-date
     await supabase
       .from('conversations')
-      .update({ last_message_at: data.created_at })
+      .update({
+        last_message_at: data.created_at,
+        last_message_preview: input.content.slice(0, 160),
+        last_message_sender: input.sender,
+      })
       .eq('id', input.conversationId)
 
     return data as ConversationMessage
@@ -222,14 +226,15 @@ export const conversationsApi = {
       return conv
     }
 
-    const scope = await getDataScope(input.companyId)
+    // Insert conversation — no user_id column in this table
     const { data, error } = await supabase
       .from('conversations')
-      .insert(withScope(scope, {
+      .insert({
+        company_id: input.companyId,
         client_id: input.clientId ?? null,
         project_id: input.projectId ?? null,
         subject: input.subject ?? null,
-      }))
+      })
       .select('*')
       .single()
 
