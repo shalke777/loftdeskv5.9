@@ -310,7 +310,7 @@ export function ChatPage() {
             >
               <option value="">— wszystkie projekty —</option>
               {convProjects.map(([id, name]) => (
-                <option key={id} value={id}>{name}</option>
+                <option key={id!} value={id!}>{name}</option>
               ))}
             </select>
           </div>
