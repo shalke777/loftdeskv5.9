@@ -158,53 +158,63 @@ export async function portalMarkMessagesRead(sessionId: string): Promise<void> {
 
 import type { CreatePortalTokenInput, ProjectPortalToken } from '@/features/portal/model/project-portal.types'
 
+// Typ odpowiedzi z portal-token-create.ts
+interface PortalTokenCreateResponse {
+  status: 'ok' | 'error'
+  raw_token: string
+  token_id: string
+  portal_url: string
+  expires_at: string | null
+  scope: string[]
+}
+
+/**
+ * Tworzy nowy token portalu klienta przez Netlify function portal-token-create.
+ *
+ * - raw token oraz SHA-256 są generowane WYŁĄCZNIE po stronie serwera
+ * - do DB trafia tylko token_hash — nigdy plaintext
+ * - raw token wraca tylko raz w tej odpowiedzi; po odświeżeniu strony jest niedostępny
+ * - poprzedni aktywny token dla projektu jest automatycznie unieważniany (auto-revoke)
+ */
 export async function createProjectPortalToken(
   input: CreatePortalTokenInput & { company_id: string },
 ): Promise<{ raw_token: string; id: string } | null> {
-  // Generujemy raw token po stronie frontendu, backend go hashuje
-  // Tutaj token jest generowany po stronie API — w praktyce powinna to
-  // robić osobna Netlify function, żeby hash był robiony server-side.
-  // Na tym etapie: do Supabase wstawiamy już zahashowaną wartość.
-  //
-  // TODO Etap 3: Przenieść generowanie tokenów do dedykowanej Netlify function
-  //   (portal-token-create.ts), która:
-  //   1. Generuje kryptograficznie bezpieczny raw token (crypto.randomBytes(32).toString('hex'))
-  //   2. Hashuje SHA-256
-  //   3. Wstawia do project_portal_tokens
-  //   4. Zwraca raw token TYLKO RAZ do operatora
-  //
-  // Na potrzeby MVP: generujemy raw token w przeglądarce, hashujemy SHA-256 (SubtleCrypto)
-  // i wstawiamy bezpośrednio. Bezpieczeństwo: token_hash UNIQUE gwarantuje unikalność.
-
   if (!supabase) return null
 
-  const rawBytes = crypto.getRandomValues(new Uint8Array(32))
-  const rawToken = Array.from(rawBytes).map(b => b.toString(16).padStart(2, '0')).join('')
-
-  const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rawToken))
-  const tokenHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
-
-  const { data, error } = await supabase
-    .from('project_portal_tokens')
-    .insert({
-      company_id:   input.company_id,
-      project_id:   input.project_id,
-      client_id:    input.client_id    ?? null,
-      scope:        input.scope        ?? ['read_updates', 'read_messages', 'send_messages', 'read_documents', 'read_approvals', 'respond_approvals'],
-      client_name:  input.client_name  ?? null,
-      client_email: input.client_email ?? null,
-      expires_at:   input.expires_at   ?? null,
-      token_hash:   tokenHash,
-    })
-    .select('id')
-    .single()
-
-  if (error || !data) {
-    console.warn('[portal-project.api] createProjectPortalToken error:', error?.message)
+  // JWT operatora — wymagany przez portal-token-create
+  const { data: sessionData } = await supabase.auth.getSession()
+  const jwt = sessionData.session?.access_token
+  if (!jwt) {
+    console.warn('[portal-project.api] createProjectPortalToken: no active session')
     return null
   }
 
-  return { raw_token: rawToken, id: data.id }
+  const res = await fetch('/.netlify/functions/portal-token-create', {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${jwt}`,
+    },
+    body: JSON.stringify({
+      company_id:   input.company_id,
+      project_id:   input.project_id,
+      scope:        input.scope        ?? null,
+      client_name:  input.client_name  ?? null,
+      client_email: input.client_email ?? null,
+      expires_at:   input.expires_at   ?? null,
+    }),
+  })
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({})) as Record<string, unknown>
+    console.warn('[portal-project.api] createProjectPortalToken error:', res.status, errBody.error)
+    return null
+  }
+
+  const data = await res.json() as PortalTokenCreateResponse
+  if (data.status !== 'ok') return null
+
+  return { raw_token: data.raw_token, id: data.token_id }
 }
 
 export async function revokeProjectPortalToken(
