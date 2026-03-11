@@ -699,6 +699,22 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   font-weight: 600;
 }
 
+.chat-project-select {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  outline: none;
+  cursor: pointer;
+}
+
+.chat-project-select:focus {
+  border-color: var(--color-brand);
+}
+
 .chat-sidebar__list {
   flex: 1;
   overflow-y: auto;
@@ -731,6 +747,17 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .chat-conv-item--active {
   background: var(--color-brand-light, #e6f0eb);
   border-left-color: var(--color-brand);
+}
+
+/* Unread conversation — bold name + accent border */
+.chat-conv-item--unread:not(.chat-conv-item--active) {
+  border-left-color: var(--color-brand);
+  background: var(--color-brand-light, #e6f0eb);
+  background: color-mix(in srgb, var(--color-brand-light, #e6f0eb) 40%, transparent);
+}
+
+.chat-conv-item--unread .chat-conv-item__name {
+  font-weight: 700;
 }
 
 .chat-conv-item__avatar {
@@ -1335,6 +1362,66 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   justify-content: flex-end;
   padding-top: 4px;
   border-top: 1px solid var(--color-border);
+}
+
+/* ── No-project row indicator ───────────────────────────────────── */
+.exp-table__row--no-project td:nth-child(3) {
+  color: var(--color-text-muted);
+  border-left: 3px solid #f59e0b;
+  padding-left: 11px;
+}
+
+/* ── Two-column modal split: preview + form ─────────────────────── */
+.exp-modal-split {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  min-width: min(880px, 90vw);
+}
+
+.exp-modal-split__preview {
+  flex: 0 0 46%;
+  min-height: 420px;
+  max-height: 80vh;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f8f9fa;
+  display: flex;
+  align-items: stretch;
+}
+
+.exp-modal-split__iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: none;
+  display: block;
+}
+
+.exp-modal-split__img {
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  object-fit: contain;
+  display: block;
+}
+
+.exp-modal-split .exp-form {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .exp-modal-split {
+    flex-direction: column;
+  }
+  .exp-modal-split__preview {
+    flex: none;
+    width: 100%;
+    min-height: 200px;
+    max-height: 40vh;
+  }
 }
 
 

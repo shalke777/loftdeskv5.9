@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageSquare, Plus, Paperclip, Send, StickyNote, User, FolderKanban, Search } from 'lucide-react'
+import { MessageSquare, Plus, Paperclip, Send, StickyNote, FolderKanban, Search } from 'lucide-react'
 import { Button } from '@/shared/ui/Button/Button'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
@@ -13,6 +13,7 @@ import {
 } from '@/features/chat/hooks/useConversations'
 import { conversationsApi, type Conversation } from '@/features/chat/api/conversations.api'
 import { useToast } from '@/shared/hooks/useToast'
+import { Modal } from '@/shared/ui/Modal/Modal'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,7 @@ function ConversationListItem({
   return (
     <button
       onClick={onClick}
-      className={`chat-conv-item${active ? ' chat-conv-item--active' : ''}`}
+      className={`chat-conv-item${active ? ' chat-conv-item--active' : ''}${(conv.unread_count ?? 0) > 0 ? ' chat-conv-item--unread' : ''}`}
     >
       <div className="chat-conv-item__avatar">
         {conv.client_name ? conv.client_name[0].toUpperCase() : '?'}
@@ -127,13 +128,10 @@ function NewConversationModal({
   }
 
   return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 440 }}>
-        <div className="modal__header">
-          <h2 className="modal__title">Nowa rozmowa</h2>
-        </div>
-        <div className="modal__body">
-          <label className="field__label">Temat rozmowy</label>
+    <Modal open={true} title="Nowa rozmowa" onClose={onClose}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div>
+          <label className="field__label" style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 600 }}>Temat rozmowy</label>
           <input
             className="input"
             value={subject}
@@ -141,9 +139,10 @@ function NewConversationModal({
             placeholder="np. Pytanie o projekt łazienki"
             autoFocus
             onKeyDown={(e) => e.key === 'Enter' && void handleCreate()}
+            style={{ width: '100%', boxSizing: 'border-box' }}
           />
         </div>
-        <div className="modal__footer">
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 8, borderTop: '1px solid var(--color-border)' }}>
           <Button variant="ghost" onClick={onClose}>Anuluj</Button>
           <Button
             variant="primary"
@@ -155,7 +154,7 @@ function NewConversationModal({
           </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -168,7 +167,8 @@ export function ChatPage() {
 
   const { data: conversations = [], isLoading } = useConversations(companyId)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'unread'>('all')
+  const [filter, setFilter] = useState<'all' | 'unread' | 'project'>('all')
+  const [filterProjectId, setFilterProjectId] = useState<string>('')
   const [search, setSearch] = useState('')
   const [draftText, setDraftText] = useState('')
   const [noteMode, setNoteMode] = useState(false)
@@ -190,21 +190,39 @@ export function ChatPage() {
     }
   }, [conversations, activeId])
 
-  // Mark as read when opening a conversation
+  // Scroll to bottom instantly when switching conversations, smoothly for new messages
+  const prevActiveId = useRef<string | null>(null)
+  useEffect(() => {
+    if (activeId !== prevActiveId.current) {
+      prevActiveId.current = activeId
+      // Use instant scroll when navigating to a conversation so we land at bottom
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior }), 0)
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages.length, activeId])
+
+  // Mark as read when opening a conversation or when new unread messages arrive while it's open
   useEffect(() => {
     if (activeId && (activeConv?.unread_count ?? 0) > 0) {
       markRead.mutate(activeId)
     }
-  }, [activeId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, activeConv?.unread_count])
 
-  // Scroll to bottom when messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages.length])
+  // Unique list of projects in conversations for project filter dropdown
+  const convProjects = Array.from(
+    new Map(
+      conversations
+        .filter((c) => c.project_id && c.project_name)
+        .map((c) => [c.project_id, c.project_name])
+    ).entries()
+  )
 
   const filteredConvs = conversations
     .filter((c) => {
       if (filter === 'unread' && (c.unread_count ?? 0) === 0) return false
+      if (filter === 'project' && filterProjectId && c.project_id !== filterProjectId) return false
       if (search) {
         const q = search.toLowerCase()
         return (
@@ -262,17 +280,41 @@ export function ChatPage() {
         </div>
 
         <div className="chat-sidebar__filters">
-          {(['all', 'unread'] as const).map((f) => (
+          <button
+            onClick={() => setFilter('all')}
+            className={`chat-filter-btn${filter === 'all' ? ' chat-filter-btn--active' : ''}`}
+          >
+            Wszystkie
+          </button>
+          <button
+            onClick={() => setFilter('unread')}
+            className={`chat-filter-btn${filter === 'unread' ? ' chat-filter-btn--active' : ''}`}
+          >
+            Nieprzeczytane{totalUnread > 0 && ` (${totalUnread})`}
+          </button>
+          {convProjects.length > 0 && (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`chat-filter-btn${filter === f ? ' chat-filter-btn--active' : ''}`}
+              onClick={() => setFilter(filter === 'project' ? 'all' : 'project')}
+              className={`chat-filter-btn${filter === 'project' ? ' chat-filter-btn--active' : ''}`}
             >
-              {f === 'all' ? 'Wszystkie' : 'Nieprzeczytane'}
-              {f === 'unread' && totalUnread > 0 && ` (${totalUnread})`}
+              Projekt
             </button>
-          ))}
+          )}
         </div>
+        {filter === 'project' && convProjects.length > 0 && (
+          <div style={{ padding: '4px 10px 6px' }}>
+            <select
+              className="chat-project-select"
+              value={filterProjectId}
+              onChange={(e) => setFilterProjectId(e.target.value)}
+            >
+              <option value="">— wszystkie projekty —</option>
+              {convProjects.map(([id, name]) => (
+                <option key={id} value={id}>{name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="chat-sidebar__list">
           {isLoading ? (

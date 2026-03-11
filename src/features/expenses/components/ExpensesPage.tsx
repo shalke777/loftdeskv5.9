@@ -366,7 +366,7 @@ export function ExpensesPage() {
             </thead>
             <tbody>
               {expenses.map((exp) => (
-                <tr key={exp.id} className="exp-table__row">
+                <tr key={exp.id} className={`exp-table__row${!exp.project_id ? ' exp-table__row--no-project' : ''}`}>
                   <td>
                     <div className="exp-vendor">{exp.vendor ?? <span className="exp-empty-cell">—</span>}</div>
                     <div className="exp-invoice-num">{exp.invoice_number ?? <span className="exp-empty-cell">bez numeru</span>}</div>
@@ -409,8 +409,28 @@ export function ExpensesPage() {
           title={modal.type === 'add' ? 'Dodaj fakturę kosztową' : 'Edytuj fakturę'}
           onClose={() => { setModal(null); setDuplicateWarning(null); setParseInfo(null) }}
         >
+          {/* Two-column layout when a file preview is available */}
+          <div className={modal.type === 'add' && modal.fileUrl ? 'exp-modal-split' : undefined}>
+            {modal.type === 'add' && modal.fileUrl && (
+              <div className="exp-modal-split__preview">
+                {/\.pdf$/i.test(modal.fileName) ? (
+                  <iframe
+                    src={modal.fileUrl}
+                    title="Podgląd faktury"
+                    className="exp-modal-split__iframe"
+                  />
+                ) : (
+                  <img
+                    src={modal.fileUrl}
+                    alt="Podgląd faktury"
+                    className="exp-modal-split__img"
+                  />
+                )}
+              </div>
+            )}
+
           <div className="exp-form">
-            {modal.type === 'add' && modal.fileName && (
+            {modal.type === 'add' && modal.fileName && !modal.fileUrl && (
               <div className="exp-form__file-hint">
                 <FileText size={14} /> {modal.fileName}
               </div>
@@ -537,6 +557,7 @@ export function ExpensesPage() {
               </Button>
             </div>
           </div>
+          </div>{/* end exp-modal-split */}
         </Modal>
       )}
 

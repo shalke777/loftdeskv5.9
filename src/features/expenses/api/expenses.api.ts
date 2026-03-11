@@ -92,42 +92,121 @@ const demoExpenses: ExpenseInvoice[] = [
 export async function parseInvoiceFromText(text: string): Promise<ParsedExpenseData> {
   const result: ParsedExpenseData = {}
 
-  // Simple heuristic extraction — handles common Polish invoice formats
-  const numberMatch = text.match(/(?:nr|numer|FV|faktura)[^\n:]*[:.]?\s*([A-Z0-9\/\-]+)/i)
-  if (numberMatch) result.invoice_number = numberMatch[1].trim()
+  // ── Normalize whitespace (PDF text is often token-per-space) ────────────
+  const t = text.replace(/\s+/g, ' ')
 
-  const nipMatch = text.match(/NIP[:\s]+([0-9]{10})/i)
-  if (nipMatch) result.vendor_nip = nipMatch[1]
+  // ── Invoice number ────────────────────────────────────────────────────────
+  // Match typical Polish invoice patterns: FV/2026/001, FVAT-2026-001, FS/001/2026, VAT/001/2026
+  // Anchor to known invoice-type prefixes to avoid false positives
+  const numMatch = t.match(
+    /(?:(?:nr|numer|faktura(?:\s+(?:nr|numer|vat))?|fv(?:at)?|fs(?:vat)?|rachun(?:ek|ku))[\s:#/]*)((?:[A-Z0-9]{1,6}[\/\-]){1,3}[A-Z0-9]{1,8})/i
+  )
+  if (numMatch) result.invoice_number = numMatch[1].trim().toUpperCase()
 
-  const dateMatch = text.match(/(?:data wystawienia|data)[:\s]+(\d{4}-\d{2}-\d{2}|\d{2}[./-]\d{2}[./-]\d{4})/i)
+  // ── NIP (handles 10 digits, with or without dashes/spaces) ───────────────
+  const nipMatch = t.match(/NIP[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/i)
+  if (nipMatch) {
+    const digits = nipMatch[1].replace(/[\s\-]/g, '')
+    if (digits.length === 10) result.vendor_nip = digits
+  }
+
+  // ── Vendor / seller name ─────────────────────────────────────────────────
+  // Look for lines after "Sprzedawca", "Wystawca", "Sprzedający", "Firma", "Nazwa"
+  const vendorLabelMatch = t.match(
+    /(?:sprzedawca|wystawca|sprzedaj[aą]cy|firma|dostawca|wykonawca)[:\s]+([^\n,;(]{4,60}(?:sp\.\s*z\.?\s*o\.?\.?o\.?|s\.?a\.?|sp\.\s*j\.?|ltd|gmbh)?[^\n,;(]{0,30})/i
+  )
+  if (vendorLabelMatch) {
+    result.vendor = vendorLabelMatch[1].trim().replace(/\s{2,}/g, ' ')
+  }
+
+  // Fallback: find a line that looks like a company name (contains "Sp. z o.o.", "S.A.", "Sp. j.", etc.)
+  if (!result.vendor) {
+    const companyMatch = t.match(/([A-ZŁÓŚĄŹĆĘŃ][A-Za-ząęółśźćń\s\.\-"]{3,50}(?:Sp\.\s*z\s*o\.o\.|S\.A\.|Sp\.\s*j\.|Ltd\.|GmbH|s\.c\.))/i)
+    if (companyMatch) result.vendor = companyMatch[1].trim().replace(/\s{2,}/g, ' ')
+  }
+
+  // ── Issue date ────────────────────────────────────────────────────────────
+  // Matches: data wystawienia, data, data FV, wystawiono, data sprzedaży
+  const dateMatch = t.match(
+    /(?:data\s+(?:wystawienia|sprzeda[żz]y|faktury|wyst\.?)|wystawiono|data\s+fv|data)[:\s]+(\d{4}-\d{2}-\d{2}|\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4}|\d{4}[.\/-]\d{1,2}[.\/-]\d{1,2})/i
+  )
   if (dateMatch) {
-    const raw = dateMatch[1]
-    // Normalize to YYYY-MM-DD
-    if (raw.includes('-') && raw.indexOf('-') === 4) {
-      result.issue_date = raw
-    } else {
-      const parts = raw.split(/[./-]/)
-      if (parts.length === 3 && parts[2].length === 4) {
-        result.issue_date = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
-      }
-    }
+    result.issue_date = normalizeDatePl(dateMatch[1])
   }
 
-  const grossMatch = text.match(/(?:brutto|do zapłaty|razem)[:\s]+([0-9,. ]+)\s*(?:PLN|zł)/i)
+  // ── Amounts (gross / net) — currency suffix is optional ──────────────────
+  // Gross: "do zapłaty", "razem brutto", "kwota brutto", "total", "suma"
+  const grossMatch = t.match(
+    /(?:do\s+zap[łl]aty|razem\s+brutto|kwota\s+brutto|warto[śs][ćc]\s+brutto|sum[ma]?\s+brutto|brutto\s+płatno[śs][ćc]?|brutto)[:\s]+([0-9]+[,. ][0-9]{0,3}[,. ]?[0-9]{0,2})\s*(?:PLN|z[łl]|EUR)?/i
+  )
   if (grossMatch) {
-    result.amount_gross = parseFloat(grossMatch[1].replace(/[, ]/g, '.').replace('..', '.'))
+    const v = parsePolishAmount(grossMatch[1])
+    if (v > 0) result.amount_gross = v
   }
 
-  const netMatch = text.match(/(?:netto|wartość netto)[:\s]+([0-9,. ]+)\s*(?:PLN|zł)/i)
+  // Net: "netto", "wartość netto", "razem netto"
+  const netMatch = t.match(
+    /(?:razem\s+netto|kwota\s+netto|warto[śs][ćc]\s+netto|suma\s+netto|netto)[:\s]+([0-9]+[,. ][0-9]{0,3}[,. ]?[0-9]{0,2})\s*(?:PLN|z[łl]|EUR)?/i
+  )
   if (netMatch) {
-    result.amount_net = parseFloat(netMatch[1].replace(/[, ]/g, '.').replace('..', '.'))
+    const v = parsePolishAmount(netMatch[1])
+    if (v > 0) result.amount_net = v
   }
 
-  if (result.amount_gross && result.amount_net) {
+  // VAT amount
+  const vatMatch = t.match(
+    /(?:kwota\s+vat|podatek\s+vat|vat\s+razem|suma\s+vat|vat)[:\s]+([0-9]+[,. ][0-9]{0,3}[,. ]?[0-9]{0,2})\s*(?:PLN|z[łl]|EUR)?/i
+  )
+  if (vatMatch) {
+    const v = parsePolishAmount(vatMatch[1])
+    if (v > 0) result.amount_vat = v
+  }
+
+  // Derive missing amount from the other two
+  if (result.amount_gross && result.amount_net && !result.amount_vat) {
     result.amount_vat = Math.round((result.amount_gross - result.amount_net) * 100) / 100
+  } else if (result.amount_gross && result.amount_vat && !result.amount_net) {
+    result.amount_net = Math.round((result.amount_gross - result.amount_vat) * 100) / 100
+  } else if (result.amount_net && result.amount_vat && !result.amount_gross) {
+    result.amount_gross = Math.round((result.amount_net + result.amount_vat) * 100) / 100
   }
 
   return result
+}
+
+/** Parse a number written in Polish locale (12 345,67 or 12345.67 or 12,345.67) */
+function parsePolishAmount(raw: string): number {
+  const s = raw.trim()
+  // Determine if comma or dot is the decimal separator
+  const lastComma = s.lastIndexOf(',')
+  const lastDot = s.lastIndexOf('.')
+  let normalized: string
+  if (lastComma > lastDot) {
+    // European: 1.234,56 → 1234.56
+    normalized = s.replace(/\./g, '').replace(',', '.')
+  } else {
+    // US-style: 1,234.56 → 1234.56
+    normalized = s.replace(/,/g, '')
+  }
+  return parseFloat(normalized.replace(/\s/g, '')) || 0
+}
+
+/** Normalize a date string to YYYY-MM-DD */
+function normalizeDatePl(raw: string): string {
+  const clean = raw.trim()
+  // Already ISO
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean
+  // DD.MM.YYYY or DD/MM/YYYY or DD-MM-YYYY
+  const parts = clean.split(/[.\/\-]/)
+  if (parts.length === 3) {
+    if (parts[0].length <= 2 && parts[2].length === 4) {
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+    }
+    if (parts[0].length === 4 && parts[2].length <= 2) {
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`
+    }
+  }
+  return clean
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
