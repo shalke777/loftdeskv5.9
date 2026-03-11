@@ -67,7 +67,7 @@ export const invoicesApi = {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.invoices.createFromEstimate(companyId, estimateId))
     const { data: estimate, error: estErr } = await supabase.from('cost_estimates').select('*, items:cost_estimate_items(*)').eq('id', estimateId).single()
     if (estErr || !estimate) throw estErr ?? new Error('Nie znaleziono kosztorysu')
-    const invoiceItems = (estimate.items ?? []).map((item: any, i: number) => ({ description: item.name || item.description || '', unit: item.unit || 'szt', quantity: Number(item.quantity), unit_price: Number(item.unit_price), vat_rate: Number(item.vat_rate ?? 23), sort_order: i }))
+    const invoiceItems = (estimate.items ?? []).map((item: any, i: number) => ({ id: crypto.randomUUID(), description: item.name || item.description || '', unit: item.unit || 'szt', quantity: Number(item.quantity), unit_price: Number(item.unit_price), vat_rate: Number(item.vat_rate ?? 23), sort_order: i }))
     return invoicesApi.create({ company_id: companyId, client_id: estimate.client_id, project_id: estimate.project_id ?? null, status: 'unpaid', issue_date: new Date().toISOString().slice(0, 10), due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10), items: invoiceItems })
   },
   async createFromProject(companyId: string, config: { projectId: string; vatRate?: number; tranches?: Array<{ id: string; label: string; amount: number; due_date: string }> }) {
@@ -76,8 +76,8 @@ export const invoicesApi = {
     if (projErr || !project) throw projErr ?? new Error('Nie znaleziono projektu')
     const vatRate = config.vatRate ?? 23
     const items = config.tranches?.length
-      ? config.tranches.map((t, i) => ({ description: t.label, unit: 'usł' as const, quantity: 1, unit_price: t.amount, vat_rate: vatRate, sort_order: i, tranche_label: t.label }))
-      : [{ description: `Realizacja projektu: ${project.name}`, unit: 'usł' as const, quantity: 1, unit_price: 0, vat_rate: vatRate, sort_order: 0, tranche_label: '' }]
+      ? config.tranches.map((t, i) => ({ id: crypto.randomUUID(), description: t.label, unit: 'usł' as const, quantity: 1, unit_price: t.amount, vat_rate: vatRate, sort_order: i, tranche_label: t.label }))
+      : [{ id: crypto.randomUUID(), description: `Realizacja projektu: ${project.name}`, unit: 'usł' as const, quantity: 1, unit_price: 0, vat_rate: vatRate, sort_order: 0, tranche_label: '' }]
     const dueDate = config.tranches?.[0]?.due_date || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)
     return invoicesApi.create({ company_id: companyId, client_id: project.client_id, project_id: config.projectId, status: 'unpaid', issue_date: new Date().toISOString().slice(0, 10), due_date: dueDate, items })
   },

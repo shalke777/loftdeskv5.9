@@ -26,5 +26,5 @@ export function useUpdateClient() {
 
 export function useDeleteClient() {
   const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast()
-  return useMutation({ mutationFn: clientsApi.delete, onSuccess: () => { qc.invalidateQueries({ queryKey: clientKeys.list(companyId) }); toast.info('Klient usunięty') } })
+  return useMutation({ mutationFn: (id: string) => clientsApi.delete(id, companyId), onSuccess: () => { qc.invalidateQueries({ queryKey: clientKeys.list(companyId) }); toast.info('Klient usunięty') } })
 }
