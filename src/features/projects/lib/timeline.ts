@@ -11,6 +11,7 @@ import type {
 export async function createTimelineEvent(
   input: CreateTimelineEventInput,
 ): Promise<string | null> {
+  if (!supabase) return null
   const { data, error } = await supabase.rpc('create_timeline_event', {
     p_company_id:     input.company_id,
     p_project_id:     input.project_id,
@@ -49,6 +50,7 @@ export async function getProjectTimeline(
 ): Promise<ProjectTimelineEvent[]> {
   const { includeInternal = true, limit = 100 } = options;
 
+  if (!supabase) return []
   let query = supabase
     .from('project_timeline_events')
     .select('*')

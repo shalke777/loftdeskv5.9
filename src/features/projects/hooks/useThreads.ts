@@ -45,7 +45,7 @@ export function useThreads(projectId: string | null) {
       .subscribe()
 
     return () => {
-      void supabase.removeChannel(channel)
+      void supabase?.removeChannel(channel)
     }
   }, [projectId, queryClient])
 

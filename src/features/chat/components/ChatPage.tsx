@@ -19,7 +19,7 @@
 
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { MessageSquare, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Badge } from '@/shared/ui/Badge/Badge'
@@ -87,15 +87,7 @@ export function ChatPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="shell-content" style={{ paddingBottom: 0, flex: 'none' }}>
         <PageHeader
-          title={
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <MessageSquare size={20} />
-              Wiadomości
-              {totalUnread > 0 && (
-                <Badge variant="danger" style={{ fontSize: 11 }}>{totalUnread}</Badge>
-              )}
-            </span>
-          }
+          title="Wiadomości"
           subtitle="Wiadomości ze wszystkich projektów — tylko bieżący model wątków"
         />
       </div>

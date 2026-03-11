@@ -62,7 +62,7 @@ export function useThreadMessages(threadId: string | null) {
       .subscribe()
 
     return () => {
-      void supabase.removeChannel(channel)
+      void supabase?.removeChannel(channel)
     }
   }, [threadId, queryClient])
 

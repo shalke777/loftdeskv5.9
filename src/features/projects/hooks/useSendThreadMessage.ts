@@ -19,7 +19,7 @@ export function useSendThreadMessage(projectId: string | null) {
 
   return useMutation({
     mutationFn: (input: SendThreadMessageInput) =>
-      threadsApi.sendMessage(input, companyId, user?.name ?? user?.email ?? undefined),
+      threadsApi.sendMessage(input, companyId, user?.fullName ?? user?.email ?? undefined),
     onMutate: async (input) => {
       // Blokuj realtime update podczas mutacji — patrz useThreadMessages
       queryClient.setMutationDefaults(messagesKey(input.thread_id), {})

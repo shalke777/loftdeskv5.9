@@ -57,7 +57,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
       createProjectPortalToken({
         company_id:  companyId,
         project_id:  projectId,
-        client_name: null,
+        client_name: undefined,
       }),
     onSuccess: (result) => {
       if (result) {
