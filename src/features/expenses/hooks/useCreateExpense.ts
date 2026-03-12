@@ -58,10 +58,10 @@ export function useCreateExpense(projectId: string) {
           ? `Faktura ${expense.invoice_number} — ${expense.amount_gross ?? '?'} ${expense.currency ?? 'PLN'}`
           : `Kwota: ${expense.amount_gross ?? '?'} ${expense.currency ?? 'PLN'}`,
         actor_type:   'operator',
-        actor_id:     user?.id ?? null,
-        actor_name:   user?.fullName ?? null,
+        actor_id:     user?.id ?? undefined,
+        actor_name:   user?.fullName ?? undefined,
         reference_id:   expense.id,
-        reference_type: 'expense_invoice',
+        reference_type: 'expense' as const,
         payload: {
           expense_id:    expense.id,
           vendor_name:   expense.vendor_name ?? expense.vendor,
