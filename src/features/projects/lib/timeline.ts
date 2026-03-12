@@ -38,7 +38,7 @@ export async function createTimelineEvent(
 
 // ─── Pobranie osi czasu projektu (z podziałem na widoczność) ────────────────
 
-interface GetTimelineOptions {
+export interface GetTimelineOptions {
   /** Jeśli false pokaż tylko client_shared (widok portalu klienta) */
   includeInternal?: boolean;
   limit?: number;
