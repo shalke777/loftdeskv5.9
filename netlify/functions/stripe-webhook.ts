@@ -72,8 +72,9 @@ async function syncSubscription(admin: AdminClient, sub: Stripe.Subscription) {
   const status    = toInternalStatus(sub.status)
   const priceId   = sub.items.data[0]?.price?.id ?? null
   const plan      = status === 'canceled' ? 'free' : priceIdToPlan(priceId)
-  const periodEnd = sub.current_period_end
-    ? new Date(sub.current_period_end * 1000).toISOString()
+  const rawPeriodEnd = sub.items.data[0]?.current_period_end
+  const periodEnd = rawPeriodEnd
+    ? new Date(rawPeriodEnd * 1000).toISOString()
     : null
   const trialEnd  = sub.trial_end
     ? new Date(sub.trial_end * 1000).toISOString()
@@ -170,9 +171,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
       // Invoice paid — renew access period
       case 'invoice.paid': {
         const invoice = stripeEvent.data.object as Stripe.Invoice
-        const subId = typeof invoice.subscription === 'string'
-          ? invoice.subscription
-          : (invoice.subscription as any)?.id
+        const rawSubRef = invoice.parent?.subscription_details?.subscription
+        const subId = typeof rawSubRef === 'string' ? rawSubRef : (rawSubRef as any)?.id ?? null
         if (!subId || !admin) break
         const sub = await stripe.subscriptions.retrieve(subId)
         await syncSubscription(admin, sub)
@@ -182,9 +182,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
       // Invoice payment failed — mark past_due
       case 'invoice.payment_failed': {
         const invoice = stripeEvent.data.object as Stripe.Invoice
-        const subId = typeof invoice.subscription === 'string'
-          ? invoice.subscription
-          : (invoice.subscription as any)?.id
+        const rawSubRef = invoice.parent?.subscription_details?.subscription
+        const subId = typeof rawSubRef === 'string' ? rawSubRef : (rawSubRef as any)?.id ?? null
         if (!subId || !admin) break
         const sub = await stripe.subscriptions.retrieve(subId)
         const companyId = sub.metadata?.companyId
