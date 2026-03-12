@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { CheckCircle2, Zap } from 'lucide-react'
 import { PLAN_DEFS } from '@/shared/lib/constants'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
@@ -126,14 +127,74 @@ export function BillingPage() {
       </div>
 
       <div className="grid-3" style={{ marginBottom: 16 }}>
-        <Card><h3>Klienci</h3><p>{renderLimit(data.limits.clients, data.usage.clients)}</p></Card>
-        <Card><h3>Projekty</h3><p>{renderLimit(data.limits.projects, data.usage.projects)}</p></Card>
-        <Card><h3>Kosztorysy</h3><p>{renderLimit(data.limits.estimates, data.usage.estimates)}</p></Card>
-        <Card><h3>Faktury</h3><p>{renderLimit(data.limits.invoices, data.usage.invoices)}</p></Card>
-        <Card><h3>Umowy</h3><p>{renderLimit(data.limits.contracts, data.usage.contracts)}</p></Card>
+        <Card style={{ gridColumn: 'span 2' }}>
+          <h3 style={{ marginBottom: 14 }}>Wykorzystanie zasobów</h3>
+          {(
+            [
+              ['clients',   'Klienci'],
+              ['projects',  'Projekty'],
+              ['estimates', 'Kosztorysy'],
+              ['invoices',  'Faktury'],
+              ['contracts', 'Umowy'],
+            ] as const
+          ).map(([key, label]) => {
+            const used  = data.usage[key]
+            const limit = data.limits[key]
+            const pct   = limit === '∞' ? null : limit === 0 ? 100 : Math.round((used / limit) * 100)
+            const warn  = pct !== null && pct >= 80
+            return (
+              <div key={key} style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                  <span>{label}</span>
+                  <span style={{ fontWeight: 600, color: warn ? '#d97706' : undefined }}>
+                    {renderLimit(limit, used)}
+                  </span>
+                </div>
+                <div style={{ height: 6, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      width: pct === null ? '4%' : `${Math.min(pct, 100)}%`,
+                      height: '100%',
+                      background: pct !== null && pct >= 100 ? '#dc2626' : warn ? '#f59e0b' : 'var(--color-brand, #7a2230)',
+                      transition: 'width 0.4s ease',
+                    }}
+                  />
+                </div>
+              </div>
+            )
+          })}
+        </Card>
         <Card>
           <h3>Status</h3>
-          <p>{data.currentPlan === 'free' ? 'Przejdz na Business by odblokowac pelne funkcje.' : 'Plan aktywny — pelne mozliwosci systemu.'}</p>
+          <p style={{ fontSize: 13, marginBottom: 12, color: 'var(--color-text-muted)' }}>
+            {data.currentPlan === 'free'
+              ? 'Przejdź na Business, aby odblokować pełne możliwości systemu.'
+              : 'Plan aktywny — masz dostęp do wszystkich funkcji.'}
+          </p>
+          {data.currentPlan === 'free' && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 12px',
+                background: '#fffbeb',
+                border: '1px solid #fcd34d',
+                borderRadius: 8,
+                fontSize: 12,
+                marginBottom: 10,
+              }}
+            >
+              <Zap size={13} color="#d97706" />
+              <span style={{ color: '#92400e', flex: 1 }}>
+                Plan <strong>Free</strong> — ograniczone limity.
+              </span>
+            </div>
+          )}
+          <div className="actions-row" style={{ marginTop: 8 }}>
+            <Button variant="secondary" onClick={() => navigate({ to: '/settings' })}>Ustawienia firmy</Button>
+            <Button variant="ghost" onClick={() => navigate({ to: '/team' })}>Zespół</Button>
+          </div>
         </Card>
       </div>
 
@@ -160,37 +221,74 @@ export function BillingPage() {
       <div className="grid-3">
         {Object.values(PLAN_DEFS)
           .filter((plan) => (VISIBLE_PLANS as readonly string[]).includes(plan.id))
-          .map((plan) => (
-            <Card key={plan.id}>
-              <div className="toolbar" style={{ marginBottom: 8 }}>
-                <div>
-                  <h3>{plan.name}</h3>
-                  <p>{formatCurrency(plan.price)} / mies.</p>
-                </div>
-                {data.currentPlan === plan.id ? <Badge variant="success">Aktywny</Badge> : null}
-              </div>
-              <ul style={{ paddingLeft: 18 }}>
-                {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
-              </ul>
-              <div className="actions-row" style={{ marginTop: 12 }}>
+          .map((plan) => {
+            const isActive = data.currentPlan === plan.id
+            const isBusiness = plan.id === 'business'
+            return (
+              <Card
+                key={plan.id}
+                style={{
+                  border: isActive ? '2px solid var(--color-brand, #7a2230)' : undefined,
+                  position: 'relative',
+                }}
+              >
+                {isActive && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                    }}
+                  >
+                    <Badge variant="success">Aktywny</Badge>
+                  </div>
+                )}
+                {isBusiness && !isActive && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                    }}
+                  >
+                    <Badge variant="warning">Polecany</Badge>
+                  </div>
+                )}
+                <h3 style={{ fontSize: 18, marginBottom: 4 }}>{plan.name}</h3>
+                <p style={{ fontSize: 22, fontWeight: 700, marginBottom: 14 }}>
+                  {plan.price === 0 ? 'Bezpłatny' : `${formatCurrency(plan.price)} / mies.`}
+                </p>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', display: 'grid', gap: 6 }}>
+                  {plan.features.map((feature) => (
+                    <li key={feature} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                      <CheckCircle2 size={14} color="var(--color-success, #16a34a)" style={{ flexShrink: 0 }} />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
                 <Button
-                  variant={data.currentPlan === plan.id ? 'ghost' : 'primary'}
+                  variant={isActive ? 'ghost' : 'primary'}
                   disabled={
-                    data.currentPlan === plan.id ||
-                    (plan.id === 'business' && data.currentPlan === 'free' && !checkoutReady)
+                    isActive ||
+                    (isBusiness && data.currentPlan === 'free' && !checkoutReady)
                   }
                   loading={upgradeLoading}
                   onClick={() => handleUpgrade(plan.id)}
+                  style={{ width: '100%' }}
                 >
-                  {data.currentPlan === plan.id
+                  {isActive
                     ? 'Plan aktywny'
-                    : plan.id === 'business'
-                      ? (stripeEnabled ? 'Kup Business' : (isDemoMode ? 'Aktywuj Business (demo)' : 'Przejdz na Business'))
-                      : 'Przejdz na Free'}
+                    : isBusiness
+                      ? stripeEnabled
+                        ? 'Kup Business'
+                        : isDemoMode
+                          ? 'Aktywuj Business (demo)'
+                          : 'Przejdź na Business'
+                      : 'Wróć do Free'}
                 </Button>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            )
+          })}
       </div>
     </div>
   )

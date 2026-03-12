@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Users } from 'lucide-react'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Card } from '@/shared/ui/Card/Card'
 import { Table } from '@/shared/ui/Table/Table'
@@ -26,7 +27,18 @@ export function ClientsPage() {
       </div>
       <Card>
         {isLoading ? <Spinner /> : null}
-        {!isLoading && !data?.length ? <EmptyState title="Brak kontrahentów" description="Dodaj pierwszego kontrahenta, aby rozpocząć." /> : null}
+        {!isLoading && !data?.length ? (
+          <EmptyState
+            title="Brak kontrahentów"
+            description="Dodaj swojego pierwszego klienta lub inwestora. Kontrahenci trafią do kosztorysów, umów i faktur."
+            icon={Users}
+            action={
+              canCreate ? (
+                <Button onClick={() => { setSelected(null); setOpen(true) }}>Dodaj kontrahenta</Button>
+              ) : undefined
+            }
+          />
+        ) : null}
         {data?.length ? (
           <Table data={data} columns={[
             { key: 'name', header: 'Nazwa' },

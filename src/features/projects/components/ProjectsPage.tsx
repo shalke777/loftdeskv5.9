@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { FolderKanban } from 'lucide-react'
 import { Button } from '@/shared/ui/Button/Button'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import { Modal } from '@/shared/ui/Modal/Modal'
@@ -47,7 +48,14 @@ export function ProjectsPage() {
       <div className="grid-4" style={{ marginBottom: 16 }}><div className="card"><h3>Aktywne</h3><p>{summary.active}</p></div><div className="card"><h3>W ofercie</h3><p>{summary.offer}</p></div><div className="card"><h3>Zakończone</h3><p>{summary.done}</p></div></div>
       {selected ? <ProjectDetail project={selected} onEdit={(item) => { setEditing(item); setOpen(true) }} onCreateInvoice={handleCreateInvoice} /> : null}
       {isLoading ? <Spinner /> : null}
-      {!isLoading && !data?.length ? <EmptyState title="Brak projektów" description="Dodaj pierwszy projekt, aby uruchomić harmonogram." /> : null}
+      {!isLoading && !data?.length ? (
+        <EmptyState
+          title="Brak projektów"
+          description="Projekt łączy klienta, koszty, dokumenty i portal klienta w jednym miejscu. Utwórz pierwszy projekt, aby zacząć realizację."
+          icon={FolderKanban}
+          action={canCreate ? <Button onClick={() => { setEditing(null); setOpen(true) }}>Utwórz projekt</Button> : undefined}
+        />
+      ) : null}
       {data?.length ? <KanbanBoard projects={data} /> : null}
       <div className="grid-2" style={{ marginTop: 16 }}>{data?.map((project) => <ProjectCard key={project.id} project={project} onOpen={setSelected} onEdit={(item) => { setEditing(item); setOpen(true) }} onStatusChange={(id, status) => updateStatus.mutate({ id, status })} onCreateInvoice={handleCreateInvoice} onDelete={(id) => deleteProject.mutate(id)} canAdvance={canUpdateStatus} canDelete={canDelete} />)}</div>
       {canCreate ? <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edytuj projekt' : 'Nowy projekt'}><ProjectForm companyId={companyId} initialProject={editing} onSubmit={submit} /></Modal> : null}
