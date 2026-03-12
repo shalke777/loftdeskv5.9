@@ -23,7 +23,7 @@ import {
 } from '@/features/portal/api/portal-project.api'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useAuth } from '@/features/auth/hooks/useAuth'
-import { supabase } from '@/shared/lib/supabase'
+import { supabase, isDemoMode } from '@/shared/lib/supabase'
 
 function buildPortalUrl(rawToken: string) {
   return `${window.location.origin}/portal/${rawToken}`
@@ -53,17 +53,18 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
 
   // Generowanie nowego tokenu
   const generate = useMutation({
-    mutationFn: () =>
-      createProjectPortalToken({
+    mutationFn: async () => {
+      const result = await createProjectPortalToken({
         company_id:  companyId,
         project_id:  projectId,
         client_name: undefined,
-      }),
+      })
+      if (!result) throw new Error('Nie udało się wygenerować linku portalu. Sprawdź konfigurację Supabase i Netlify.')
+      return result
+    },
     onSuccess: (result) => {
-      if (result) {
-        setNewRawToken(result.raw_token)
-        queryClient.invalidateQueries({ queryKey: ['portal-tokens', projectId] })
-      }
+      setNewRawToken(result.raw_token)
+      queryClient.invalidateQueries({ queryKey: ['portal-tokens', projectId] })
     },
   })
 
@@ -88,6 +89,22 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
+  }
+
+  // Demo mode — portal wymaga prawdziwego Supabase + Netlify functions
+  if (isDemoMode) {
+    return (
+      <Card>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
+          <h3 style={{ margin: 0 }}>Portal klienta</h3>
+          <Badge variant="default">Tryb demo</Badge>
+        </div>
+        <p style={{ fontSize: 13, color: '#92400e', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 6, padding: '8px 12px', margin: 0 }}>
+          Portal klienta działa tylko w trybie produkcyjnym (wymaga Supabase + Netlify).
+          Ustaw zmienne <code>VITE_SUPABASE_URL</code> i <code>VITE_SUPABASE_ANON_KEY</code>, aby aktywować tę funkcję.
+        </p>
+      </Card>
+    )
   }
 
   if (isLoading) return <Spinner />
@@ -225,6 +242,12 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
       >
         {generate.isPending ? 'Generowanie linku…' : '🔗 Uruchom portal klienta'}
       </Button>
+
+      {generate.isError && (
+        <div style={{ marginTop: 10, fontSize: 13, color: 'var(--color-error, #dc2626)', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, padding: '8px 12px' }}>
+          ⚠️ {(generate.error as Error)?.message ?? 'Błąd generowania linku.'}
+        </div>
+      )}
     </Card>
   )
 }
