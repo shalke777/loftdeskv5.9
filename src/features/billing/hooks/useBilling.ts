@@ -3,7 +3,7 @@ import { billingApi, type BillingPlan } from '@/features/billing/api/billing.api
 import { useCompanyId, useAuth } from '@/features/auth'
 import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
-import { getStripe, hasStripeConfig } from '@/shared/lib/stripe'
+import { hasStripeConfig } from '@/shared/lib/stripe'
 
 export function useBillingSummary() {
   const companyId = useCompanyId()
@@ -36,18 +36,15 @@ export function useChangePlan() {
 
 export function useStripeCheckout() {
   const companyId = useCompanyId()
-  const { user } = useAuth()
   const toast = useToast()
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (priceId?: string) => {
       if (!hasStripeConfig()) throw new Error('Stripe nie jest skonfigurowany.')
-      const { url } = await billingApi.createCheckoutSession(companyId, user?.email ?? '')
+      const { url } = await billingApi.createCheckoutSession(companyId, priceId)
       if (url) {
         window.location.assign(url)
       } else {
-        const stripe = await getStripe()
-        if (!stripe) throw new Error('Nie można załadować Stripe.')
         throw new Error('Brak URL sesji checkout.')
       }
     },
@@ -58,12 +55,12 @@ export function useStripeCheckout() {
 }
 
 export function useStripePortal() {
-  const { user } = useAuth()
+  const companyId = useCompanyId()
   const toast = useToast()
 
   return useMutation({
     mutationFn: async () => {
-      const { url } = await billingApi.openCustomerPortal(user?.email ?? '')
+      const { url } = await billingApi.openCustomerPortal(companyId)
       if (url) window.location.assign(url)
     },
     onError: (error: unknown) => {

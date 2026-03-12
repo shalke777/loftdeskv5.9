@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Zap } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle, CheckCircle2, Clock, Zap } from 'lucide-react'
 import { PLAN_DEFS } from '@/shared/lib/constants'
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Button } from '@/shared/ui/Button/Button'
@@ -19,6 +20,7 @@ import {
   checkoutConsentsValid,
   type ConsentValues,
 } from '@/features/legal/components/LegalConsentCheckboxes'
+import type { SubscriptionStatus } from '@/features/billing/api/billing.api'
 
 type CheckoutKey = 'autoRenewal' | 'zasadyPlatnosci' | 'b2bCheckout'
 
@@ -27,9 +29,33 @@ function renderLimit(limit: number | '∞', used: number) {
 }
 
 const VISIBLE_PLANS = ['free', 'business'] as const
+// ── Subscription status display helpers ─────────────────────────────────────
+function trialDaysLeft(trialEndsAt: string | null): number | null {
+  if (!trialEndsAt) return null
+  const ms = new Date(trialEndsAt).getTime() - Date.now()
+  return Math.max(0, Math.ceil(ms / 86_400_000))
+}
 
+function subStatusBadge(status: SubscriptionStatus, daysLeft: number | null) {
+  switch (status) {
+    case 'active':     return { label: 'Aktywna',    variant: 'success' as const }
+    case 'trialing':   return { label: daysLeft !== null ? `Trial • ${daysLeft}d` : 'Trial', variant: 'warning' as const }
+    case 'past_due':   return { label: 'Zaległość',  variant: 'danger'  as const }
+    case 'canceled':   return { label: 'Anulowana',  variant: 'danger'  as const }
+    case 'unpaid':     return { label: 'Nieopłacona', variant: 'danger'  as const }
+    case 'incomplete': return { label: 'Niekompletna', variant: 'warning' as const }
+    default:           return { label: 'Brak sub.',  variant: 'default' as const }
+  }
+}
+
+function formatDate(iso: string | null): string | null {
+  if (!iso) return null
+  try { return new Date(iso).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' }) }
+  catch { return iso }
+}
 export function BillingPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const summary = useBillingSummary()
   const toast = useToast()
   const stripeCheckout = useStripeCheckout()
@@ -44,10 +70,12 @@ export function BillingPage() {
 
   useEffect(() => {
     if (search.checkout === 'success') {
-      toast.success('Platnosc zakonczona', 'Twoj plan zostal zaktualizowany. Moze to potrwac kilka sekund.')
+      toast.success('Płatność zakończona', 'Twój plan zostanie zaktualizowany w ciągu kilku sekund.')
       window.history.replaceState({}, '', '/billing')
+      // Re-fetch after 3 s to pick up webhook-driven plan update
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['billing', 'summary'] }), 3000)
     } else if (search.checkout === 'cancel') {
-      toast.info('Platnosc anulowana', 'Nie dokonano zmian w planie.')
+      toast.info('Płatność anulowana', 'Nie dokonano zmian w planie.')
       window.history.replaceState({}, '', '/billing')
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -66,15 +94,12 @@ export function BillingPage() {
 
   function handleUpgrade(planId: string) {
     if (!canManagePlan) {
-      toast.info('Brak uprawnien', 'Zmiana planu wymaga roli wlasciciela firmy.')
+      toast.info('Brak uprawnień', 'Zmiana planu wymaga roli właściciela firmy.')
       return
     }
     if (planId === 'free' && data!.currentPlan !== 'free') {
-      if (stripeEnabled) {
-        stripePortal.mutate()
-      } else if (isDemoMode) {
-        changePlan.mutate('free')
-      }
+      if (stripeEnabled) { stripePortal.mutate() }
+      else if (isDemoMode) { changePlan.mutate('free') }
       return
     }
     if (planId === 'business' && data!.currentPlan !== 'business') {
@@ -82,21 +107,49 @@ export function BillingPage() {
         toast.error('Wymagane zgody', 'Zaznacz wszystkie wymagane pola przed zakupem.')
         return
       }
-      if (stripeEnabled) {
-        stripeCheckout.mutate()
-      } else if (isDemoMode) {
-        changePlan.mutate('business')
-      } else {
-        toast.info('Platnosci niedostepne', 'Skonfiguruj klucze Stripe aby aktywowac platnosci online.')
-      }
+      if (stripeEnabled) { stripeCheckout.mutate(undefined) }
+      else if (isDemoMode) { changePlan.mutate('business') }
+      else { toast.info('Płatności niedostępne', 'Skonfiguruj klucze Stripe, aby aktywować płatności online.') }
     }
   }
 
   const upgradeLoading = stripeCheckout.isPending || changePlan.isPending
 
+  const daysLeft  = trialDaysLeft(data.trialEndsAt)
+  const subBadge  = subStatusBadge(data.subscriptionStatus, daysLeft)
+  const periodEnd = formatDate(data.subscriptionPeriodEnd ?? data.trialEndsAt)
+
+  const isPastDue = data.subscriptionStatus === 'past_due' || data.subscriptionStatus === 'unpaid'
+  const isCanceled = data.subscriptionStatus === 'canceled'
+
   return (
     <div>
-      <PageHeader title="Plan i limity" subtitle="Aktywny plan, limity i zarzadzanie subskrypcja." />
+      <PageHeader title="Plan i limity" subtitle="Aktywny plan, limity i zarządzanie subskrypcją." />
+
+      {/* Past-due or unpaid — high-urgency alert */}
+      {isPastDue && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, fontSize: 13 }}>
+          <AlertTriangle size={16} color="#dc2626" style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1, color: '#991b1b' }}>
+            <strong>Płatność nie powiodła się.</strong> Zaktualizuj metodę płatności, aby uniknąć przerwy w dostępie.
+          </span>
+          {stripeEnabled && (
+            <Button variant="primary" size="sm" onClick={() => stripePortal.mutate()} loading={stripePortal.isPending}>
+              Zaktualizuj płatność
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Canceled — softer info */}
+      {isCanceled && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '12px 16px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, fontSize: 13 }}>
+          <Clock size={16} color="#c2410c" style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1, color: '#9a3412' }}>
+            Subskrypcja została anulowana. Dostęp do funkcji premium wygasł.
+          </span>
+        </div>
+      )}
 
       <div className="grid-3" style={{ marginBottom: 16 }}>
         <Card>
@@ -106,22 +159,37 @@ export function BillingPage() {
         </Card>
         <Card>
           <h3>Plan aktywny</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <Badge variant={data.currentPlan === 'free' ? 'warning' : 'success'}>{PLAN_DEFS[data.currentPlan as keyof typeof PLAN_DEFS]?.name ?? data.currentPlan}</Badge>
-            <span>{formatCurrency(PLAN_DEFS[data.currentPlan as keyof typeof PLAN_DEFS]?.price ?? 0)} / mies.</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            <Badge variant={data.currentPlan === 'free' ? 'warning' : 'success'}>
+              {PLAN_DEFS[data.currentPlan as keyof typeof PLAN_DEFS]?.name ?? data.currentPlan}
+            </Badge>
+            <Badge variant={subBadge.variant}>{subBadge.label}</Badge>
+            <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+              {formatCurrency(PLAN_DEFS[data.currentPlan as keyof typeof PLAN_DEFS]?.price ?? 0)} / mies.
+            </span>
           </div>
+          {data.subscriptionStatus === 'trialing' && daysLeft !== null && (
+            <p style={{ fontSize: 12, color: daysLeft <= 3 ? '#dc2626' : '#92400e', marginBottom: 6 }}>
+              {daysLeft === 0
+                ? '⏰ Trial wygasa dziś — aktywuj płatność, aby zachować dostęp.'
+                : `⏰ ${daysLeft} • dni trialu pozostało.${daysLeft <= 5 ? ' Aktywuj plan.' : ''}`}
+            </p>
+          )}
+          {periodEnd && data.subscriptionStatus === 'active' && (
+            <p className="field__label" style={{ marginBottom: 6 }}>Odnowienie: {periodEnd}</p>
+          )}
           <p className="field__label">{data.ksefReady ? 'KSeF skonfigurowany' : 'KSeF wymaga konfiguracji'}</p>
           {data.currentPlan !== 'free' && stripeEnabled && (
             <Button variant="ghost" onClick={() => stripePortal.mutate()} loading={stripePortal.isPending} style={{ marginTop: 8 }}>
-              Zarzadzaj subskrypcja
+              Zarządzaj subskrypcją
             </Button>
           )}
         </Card>
         <Card>
-          <h3>Skroty</h3>
+          <h3>Skróty</h3>
           <div className="actions-row" style={{ marginTop: 8 }}>
             <Button variant="secondary" onClick={() => navigate({ to: '/settings' })}>Ustawienia firmy</Button>
-            <Button variant="ghost" onClick={() => navigate({ to: '/team' })}>Zespol</Button>
+            <Button variant="ghost" onClick={() => navigate({ to: '/team' })}>Zespół</Button>
           </div>
         </Card>
       </div>
@@ -165,42 +233,42 @@ export function BillingPage() {
           })}
         </Card>
         <Card>
-          <h3>Status</h3>
-          <p style={{ fontSize: 13, marginBottom: 12, color: 'var(--color-text-muted)' }}>
-            {data.currentPlan === 'free'
-              ? 'Przejdź na Business, aby odblokować pełne możliwości systemu.'
-              : 'Plan aktywny — masz dostęp do wszystkich funkcji.'}
+          <h3>Status subskrypcji</h3>
+          <p style={{ fontSize: 13, marginBottom: 10, color: 'var(--color-text-muted)' }}>
+            {data.subscriptionStatus === 'active' && data.currentPlan !== 'free'
+              ? 'Plan aktywny — masz dostęp do wszystkich funkcji.'
+              : data.subscriptionStatus === 'trialing'
+                ? 'Korzystasz z okresu próbnego. Po wygaśnięciu trialu potrzebujesz aktywnej subskrypcji.'
+                : data.subscriptionStatus === 'past_due'
+                  ? 'Płatność nie powiodła się. Zaktualizuj dane płatności.'
+                  : data.subscriptionStatus === 'canceled'
+                    ? 'Subskrypcja została anulowana. Przejdź na plan płatny, aby przywrócić dostęp.'
+                    : 'Przej dź na Business, aby odblokować pełne możliwości systemu.'}
           </p>
-          {data.currentPlan === 'free' && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 12px',
-                background: '#fffbeb',
-                border: '1px solid #fcd34d',
-                borderRadius: 8,
-                fontSize: 12,
-                marginBottom: 10,
-              }}
-            >
-              <Zap size={13} color="#d97706" />
-              <span style={{ color: '#92400e', flex: 1 }}>
-                Plan <strong>Free</strong> — ograniczone limity.
+          {data.subscriptionStatus === 'trialing' && daysLeft !== null && daysLeft <= 7 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: daysLeft <= 2 ? '#fef2f2' : '#fffbeb', border: `1px solid ${daysLeft <= 2 ? '#fca5a5' : '#fcd34d'}`, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>
+              <Clock size={13} color={daysLeft <= 2 ? '#dc2626' : '#d97706'} />
+              <span style={{ color: daysLeft <= 2 ? '#991b1b' : '#92400e', flex: 1 }}>
+                {daysLeft === 0 ? 'Trial wygasa dziś.' : `${daysLeft} dni trialu pozostało.`}
               </span>
+            </div>
+          )}
+          {(data.currentPlan === 'free' || data.subscriptionStatus === 'canceled') && !isPastDue && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, fontSize: 12, marginBottom: 10 }}>
+              <Zap size={13} color="#d97706" />
+              <span style={{ color: '#92400e', flex: 1 }}>Plan <strong>Free</strong> — ograniczone limity.</span>
             </div>
           )}
           <div className="actions-row" style={{ marginTop: 8 }}>
             <Button variant="secondary" onClick={() => navigate({ to: '/settings' })}>Ustawienia firmy</Button>
-            <Button variant="ghost" onClick={() => navigate({ to: '/team' })}>Zespół</Button>
+            <Button variant="ghost" onClick={() => navigate({ to: '/team' })}>Zeszół</Button>
           </div>
         </Card>
       </div>
 
       {isDemoMode && (
         <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fffbeb', border: '1px solid #fbbf24', borderRadius: 10, fontSize: 13 }}>
-          <strong>Tryb demo</strong> — zmiana planu dziala natychmiast bez platnosci. W produkcji platnosci obsluguje Stripe.
+          <strong>Tryb demo</strong> — zmiana planu działa natychmiast bez płatności. W produkcji płatności obsługuje Stripe.
         </div>
       )}
 

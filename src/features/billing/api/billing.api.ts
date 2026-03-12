@@ -5,11 +5,23 @@ import { getDataScope } from '@/shared/lib/dataScope'
 
 export type BillingPlan = keyof typeof PLAN_DEFS
 
+export type SubscriptionStatus =
+  | 'none'
+  | 'trialing'
+  | 'active'
+  | 'past_due'
+  | 'canceled'
+  | 'unpaid'
+  | 'incomplete'
+
 export interface BillingSummary {
   companyName: string
   companyId: string
   currentPlan: BillingPlan
   ksefReady: boolean
+  subscriptionStatus: SubscriptionStatus
+  trialEndsAt: string | null
+  subscriptionPeriodEnd: string | null
   usage: {
     clients: number
     projects: number
@@ -40,6 +52,9 @@ export const billingApi = {
         companyId,
         currentPlan: dashboard.plan,
         ksefReady: dashboard.ksefReady,
+        subscriptionStatus: 'active' as SubscriptionStatus,
+        trialEndsAt: null,
+        subscriptionPeriodEnd: null,
         usage: {
           clients: dashboard.clientsCount,
           projects: dashboard.projectsCount,
@@ -64,13 +79,16 @@ export const billingApi = {
     ])
 
     if (scope.mode === 'multi-tenant') {
-      const { data: company } = await supabase.from('companies').select('name, plan, ksef_token').eq('id', scope.companyId).maybeSingle()
+      const { data: company } = await supabase.from('companies').select('name, plan, ksef_token, subscription_status, trial_ends_at, subscription_current_period_end').eq('id', scope.companyId).maybeSingle()
       const currentPlan = ((company?.plan as BillingPlan | null) ?? 'free')
       return {
         companyName: company?.name ?? 'LoftDesk Workspace',
         companyId: scope.companyId,
         currentPlan,
         ksefReady: Boolean(company?.ksef_token),
+        subscriptionStatus: ((company?.subscription_status as SubscriptionStatus | null) ?? 'none'),
+        trialEndsAt: (company?.trial_ends_at as string | null) ?? null,
+        subscriptionPeriodEnd: (company?.subscription_current_period_end as string | null) ?? null,
         usage: { clients: clients ?? 0, projects: projects ?? 0, estimates: estimates ?? 0, invoices: invoices ?? 0, contracts: contracts ?? 0 },
         limits: planLimits(currentPlan),
       }
@@ -83,6 +101,9 @@ export const billingApi = {
       companyId: scope.companyId,
       currentPlan,
       ksefReady: Boolean(profile?.ksef_token),
+      subscriptionStatus: 'none' as SubscriptionStatus,
+      trialEndsAt: null,
+      subscriptionPeriodEnd: null,
       usage: { clients: clients ?? 0, projects: projects ?? 0, estimates: estimates ?? 0, invoices: invoices ?? 0, contracts: contracts ?? 0 },
       limits: planLimits(currentPlan),
     }
@@ -102,16 +123,22 @@ export const billingApi = {
     return data
   },
 
-  async createCheckoutSession(companyId: string, email: string): Promise<{ url: string }> {
-    const priceId = import.meta.env.VITE_STRIPE_BUSINESS_PRICE_ID
-    if (!priceId) throw new Error('Stripe price ID not configured (VITE_STRIPE_BUSINESS_PRICE_ID)')
+  async createCheckoutSession(companyId: string, priceId?: string): Promise<{ url: string }> {
+    const resolvedPriceId = priceId ?? import.meta.env.VITE_STRIPE_BUSINESS_PRICE_ID
+    if (!resolvedPriceId) throw new Error('Stripe price ID not configured (VITE_STRIPE_BUSINESS_PRICE_ID)')
+    if (!supabase) throw new Error('Supabase not configured')
+    const { data: { session } } = await supabase.auth.getSession()
+    const accessToken = session?.access_token
+    if (!accessToken) throw new Error('Nie zalogowany. Zaloguj się i spróbuj ponownie.')
     const res = await fetch('/api/stripe/checkout', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
       body: JSON.stringify({
-        priceId,
+        priceId: resolvedPriceId,
         companyId,
-        email,
         successUrl: `${window.location.origin}/billing?checkout=success`,
         cancelUrl: `${window.location.origin}/billing?checkout=cancel`,
       }),
@@ -123,12 +150,19 @@ export const billingApi = {
     return res.json()
   },
 
-  async openCustomerPortal(email: string): Promise<{ url: string }> {
+  async openCustomerPortal(companyId: string): Promise<{ url: string }> {
+    if (!supabase) throw new Error('Supabase not configured')
+    const { data: { session } } = await supabase.auth.getSession()
+    const accessToken = session?.access_token
+    if (!accessToken) throw new Error('Nie zalogowany. Zaloguj się i spróbuj ponownie.')
     const res = await fetch('/api/stripe/portal', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
       body: JSON.stringify({
-        email,
+        companyId,
         returnUrl: `${window.location.origin}/billing`,
       }),
     })
