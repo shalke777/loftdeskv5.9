@@ -1,3 +1,4 @@
+import type { LucideIcon }           from 'lucide-react'
 import { usePortalTimeline }         from '@/features/portal/hooks/usePortalTimeline'
 import { Card }                      from '@/shared/ui/Card/Card'
 import { Spinner }                   from '@/shared/ui/Spinner/Spinner'
@@ -11,6 +12,7 @@ import type { ProjectTimelineEvent } from '@/features/portal/model/project-porta
 function PortalTimelineItem({ event, isLast }: { event: ProjectTimelineEvent; isLast: boolean }) {
   const meta  = getTimelineEventMeta(event.event_type)
   const title = buildTimelineEventTitle(event)
+  const Icon  = meta.icon as LucideIcon
 
   return (
     <div style={{ display: 'flex', gap: 12, paddingBottom: isLast ? 0 : 24, position: 'relative' }}>
@@ -21,10 +23,10 @@ function PortalTimelineItem({ event, isLast }: { event: ProjectTimelineEvent; is
             width: 28, height: 28, borderRadius: '50%',
             background: meta.bgColor, border: `2px solid ${meta.dotColor}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 13, lineHeight: 1, flexShrink: 0,
+            flexShrink: 0,
           }}
         >
-          {meta.icon}
+          <Icon size={12} strokeWidth={1.75} color={meta.dotColor} />
         </div>
         {!isLast && (
           <div style={{ width: 2, flex: 1, background: '#e2e8f0', marginTop: 4 }} />

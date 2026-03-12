@@ -1,3 +1,4 @@
+import type { LucideIcon } from 'lucide-react'
 import type { ProjectTimelineEvent } from '@/features/portal/model/project-portal.types'
 import {
   getTimelineEventMeta,
@@ -18,6 +19,7 @@ export function TimelineEventItem({ event, isLast = false, compact = false }: Pr
   const meta  = getTimelineEventMeta(event.event_type)
   const title = buildTimelineEventTitle(event)
   const desc  = compact ? null : buildTimelineEventDescription(event)
+  const Icon  = meta.icon as LucideIcon
 
   return (
     <div
@@ -49,13 +51,11 @@ export function TimelineEventItem({ event, isLast = false, compact = false }: Pr
             display:      'flex',
             alignItems:   'center',
             justifyContent: 'center',
-            fontSize:     13,
-            lineHeight:   1,
             flexShrink:   0,
           }}
           title={meta.label}
         >
-          {meta.icon}
+          <Icon size={14} strokeWidth={1.75} color={meta.dotColor} />
         </div>
 
         {/* Vertical connector line */}
@@ -84,7 +84,7 @@ export function TimelineEventItem({ event, isLast = false, compact = false }: Pr
             wordBreak:  'break-word',
           }}
         >
-          {meta.icon} {title}
+          {title}
         </p>
 
         {/* Description */}

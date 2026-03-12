@@ -44,6 +44,22 @@ function json(statusCode: number, body: Record<string, unknown>) {
 
 const SESSION_TTL_HOURS = 4
 
+// ── Rate limiting (in-memory, per IP, 30 req / 5 min) ──────────────────────────────────────
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+const RATE_LIMIT_MAX = 30
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+    return false
+  }
+  entry.count++
+  return entry.count > RATE_LIMIT_MAX
+}
+
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: HEADERS, body: '' }
   if (event.httpMethod !== 'GET') return json(405, { status: 'error', error: 'method_not_allowed' })
@@ -55,9 +71,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return json(400, { status: 'invalid', error: 'bad_request' })
   }
 
-  // TODO: rate limiting — dodaj tu sprawdzenie IP w Redis/upstash-ratelimit
-  // const clientIp = event.headers['x-forwarded-for'] ?? 'unknown'
-  // if (await isRateLimited(clientIp)) return json(429, { status: 'error', error: 'too_many_requests' })
+  const clientIp = ((event.headers['x-forwarded-for'] ?? event.headers['x-nf-client-connection-ip'] ?? 'unknown') as string).split(',')[0].trim()
+  if (isRateLimited(clientIp)) {
+    return json(429, { status: 'error', error: 'too_many_requests' })
+  }
 
   try {
     // ── Hash — NIGDY nie loguj rawToken ──────────────────────────────────────

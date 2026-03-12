@@ -59,7 +59,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // Sprawdź czy token należy do tej samej firmy co operator
   const { data: tok, error: tokErr } = await client
     .from('project_portal_tokens')
-    .select('id, company_id')
+    .select('id, company_id, project_id')
     .eq('id', tokenId)
     .maybeSingle()
 
@@ -86,6 +86,22 @@ export const handler: Handler = async (event: HandlerEvent) => {
     console.error('[portal-revoke] error:', revokeErr.message)
     return json(500, { error: 'server_error' })
   }
+
+  // fire-and-forget portal_revoked timeline event
+  client.rpc('create_timeline_event', {
+    p_company_id:     tok.company_id,
+    p_project_id:     (tok as any).project_id,
+    p_event_type:     'portal_revoked',
+    p_visibility:     'internal',
+    p_title:          'Dostęp do portalu cofnięty',
+    p_description:    null,
+    p_actor_type:     'operator',
+    p_actor_id:       userResp.user.id,
+    p_actor_name:     null,
+    p_reference_id:   tokenId,
+    p_reference_type: 'portal_token',
+    p_payload:        {},
+  }).then(() => {}).catch(() => {})
 
   return json(200, { status: 'ok' })
 }

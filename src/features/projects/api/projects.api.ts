@@ -2,6 +2,7 @@ import type { CreateProjectInput, Project } from '@/entities/project/model'
 import { demoDb } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { applyScope, getDataScope, withScope } from '@/shared/lib/dataScope'
+import { createTimelineEvent } from '@/features/projects/lib/timeline'
 
 export const projectsApi = {
   async list(companyId: string): Promise<Project[]> {
@@ -18,7 +19,9 @@ export const projectsApi = {
     const payload = withScope(scope, { number: `PRJ/${new Date().getFullYear()}/${Date.now().toString().slice(-4)}`, client_id: input.client_id, name: input.name, status: input.status, start_date: input.start_date, end_date: input.end_date, address: input.address ?? null, investment_address: input.investment_address ?? null, notes: input.notes ?? null, completeness_score: 0, completeness_flags: {} })
     const { data, error } = await supabase.from('projects').insert(payload).select('*').single()
     if (error) throw error
-    return { id: data.id, company_id: data.company_id ?? input.company_id, client_id: data.client_id, number: data.number, name: data.name, status: data.status, start_date: data.start_date, end_date: data.end_date, address: data.address ?? '', investment_address: data.investment_address ?? null, notes: data.notes ?? '', completeness_score: Number(data.completeness_score ?? 0), completeness_flags: data.completeness_flags ?? null, archived_at: data.archived_at ?? null, created_at: data.created_at }
+    const project: Project = { id: data.id, company_id: data.company_id ?? input.company_id, client_id: data.client_id, number: data.number, name: data.name, status: data.status, start_date: data.start_date, end_date: data.end_date, address: data.address ?? '', investment_address: data.investment_address ?? null, notes: data.notes ?? '', completeness_score: Number(data.completeness_score ?? 0), completeness_flags: data.completeness_flags ?? null, archived_at: data.archived_at ?? null, created_at: data.created_at }
+    createTimelineEvent({ company_id: project.company_id, project_id: project.id, event_type: 'project_created', visibility: 'internal', title: `Projekt ${project.number} został utworzony`, actor_type: 'operator', payload: { project_name: project.name, project_number: project.number } }).catch(() => {})
+    return project
   },
   async update(id: string, input: Partial<Project>, companyId?: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.projects.update(id, input))
@@ -100,6 +103,6 @@ export const projectsApi = {
     }
     return { id: data.id, company_id: data.company_id ?? companyId, client_id: data.client_id, number: data.number, name: data.name, status: data.status, start_date: data.start_date, end_date: data.end_date, address: data.address ?? '', investment_address: data.investment_address ?? null, notes: data.notes ?? '', completeness_score: data.completeness_score ?? 0, completeness_flags: data.completeness_flags ?? {}, created_at: data.created_at }
   },
-  async updateStatus(id: string, status: Project['status'], companyId?: string) { if (isDemoMode || !supabase) { demoDb.projects.updateStatus(id, status); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('projects').update({ status }).eq('id', id), scope); const { error } = await query; if (error) throw error },
+  async updateStatus(id: string, status: Project['status'], companyId?: string) { if (isDemoMode || !supabase) { demoDb.projects.updateStatus(id, status); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('projects').update({ status }).eq('id', id), scope); const { error } = await query; if (error) throw error; if (companyId) createTimelineEvent({ company_id: companyId, project_id: id, event_type: 'project_status_changed', visibility: 'internal', title: 'Zmiana statusu projektu', actor_type: 'operator', payload: { new_status: status } }).catch(() => {}) },
   async delete(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.projects.delete(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('projects').delete().eq('id', id), scope); const { error } = await query; if (error) throw error },
 }
