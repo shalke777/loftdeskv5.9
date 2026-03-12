@@ -192,7 +192,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const portalUrl = `${baseUrl}/portal/${rawToken}`
 
   // fire-and-forget portal_activated timeline event
-  admin.rpc('create_timeline_event', {
+  Promise.resolve(admin.rpc('create_timeline_event', {
     p_company_id:     company_id as string,
     p_project_id:     project_id as string,
     p_event_type:     'portal_activated',
@@ -207,7 +207,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     p_reference_id:   newToken.id,
     p_reference_type: 'portal_token',
     p_payload:        { client_name, client_email },
-  }).then(() => {}).catch(() => {})
+  })).catch(() => {})
 
   // rawToken zwracany TYLKO RAZ — operator musi go skopiować natychmiast
   return json(200, {

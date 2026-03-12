@@ -88,7 +88,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   // fire-and-forget portal_revoked timeline event
-  client.rpc('create_timeline_event', {
+  Promise.resolve(client.rpc('create_timeline_event', {
     p_company_id:     tok.company_id,
     p_project_id:     (tok as any).project_id,
     p_event_type:     'portal_revoked',
@@ -101,7 +101,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     p_reference_id:   tokenId,
     p_reference_type: 'portal_token',
     p_payload:        {},
-  }).then(() => {}).catch(() => {})
+  })).catch(() => {})
 
   return json(200, { status: 'ok' })
 }
