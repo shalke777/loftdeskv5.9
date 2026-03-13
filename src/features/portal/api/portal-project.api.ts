@@ -178,15 +178,23 @@ interface PortalTokenCreateResponse {
  */
 export async function createProjectPortalToken(
   input: CreatePortalTokenInput & { company_id: string },
-): Promise<{ raw_token: string; id: string } | null> {
-  if (!supabase) return null
+): Promise<{ raw_token: string; id: string }> {
+  if (!supabase) throw new Error('Klient Supabase nie jest zainicjowany')
 
-  // JWT operatora — wymagany przez portal-token-create
+  // JWT operatora — wymagany przez portal-token-create.
+  // getSession() zwraca cached token, który może być wygasły.
+  // Sprawdzamy expires_at i wymuszamy refresh jeśli token wygasł lub zaraz wygaśnie.
   const { data: sessionData } = await supabase.auth.getSession()
-  const jwt = sessionData.session?.access_token
-  if (!jwt) {
-    console.warn('[portal-project.api] createProjectPortalToken: no active session')
-    return null
+  let jwt = sessionData.session?.access_token
+  const expiresAt = (sessionData.session?.expires_at ?? 0) * 1000
+
+  if (!jwt || Date.now() >= expiresAt - 15_000) {
+    // Token wygasł lub wygaśnie za <15s — odśwież przez refresh_token
+    const { data: freshData, error: refreshErr } = await supabase.auth.refreshSession()
+    if (refreshErr || !freshData.session?.access_token) {
+      throw new Error('Brak aktywnej sesji — zaloguj się ponownie')
+    }
+    jwt = freshData.session.access_token
   }
 
   const res = await fetch('/.netlify/functions/portal-token-create', {
@@ -207,12 +215,16 @@ export async function createProjectPortalToken(
 
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({})) as Record<string, unknown>
-    console.warn('[portal-project.api] createProjectPortalToken error:', res.status, errBody.error)
-    return null
+    const errCode = (errBody.error as string | undefined) ?? String(res.status)
+    console.warn('[portal-project.api] createProjectPortalToken error:', res.status, errCode)
+    if (res.status === 401) throw new Error('Brak aktywnej sesji — zaloguj się ponownie')
+    if (res.status === 403) throw new Error('Brak uprawnień do generowania linku portalu')
+    if (res.status === 404) throw new Error('Projekt nie istnieje lub nie należy do tej firmy')
+    throw new Error(`Błąd serwera (${res.status}): ${errCode}`)
   }
 
   const data = await res.json() as PortalTokenCreateResponse
-  if (data.status !== 'ok') return null
+  if (data.status !== 'ok') throw new Error('Serwer zwrócił nieoczekiwaną odpowiedź')
 
   return { raw_token: data.raw_token, id: data.token_id }
 }

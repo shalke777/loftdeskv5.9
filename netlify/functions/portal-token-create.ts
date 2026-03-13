@@ -87,17 +87,32 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   // ── 1. Weryfikacja JWT operatora ──────────────────────────────────────────
   const auth = event.headers['authorization'] ?? event.headers['Authorization']
-  if (!auth?.startsWith('Bearer ')) return json(401, { error: 'unauthorized' })
+  if (!auth?.startsWith('Bearer ')) return json(401, { error: 'unauthorized', detail: 'missing_bearer' })
 
   const jwt = auth.slice(7)
+  if (!jwt || jwt.length < 20) return json(401, { error: 'unauthorized', detail: 'empty_token' })
 
   let userId: string
+  let anonClient: ReturnType<typeof sbAnon>
   try {
-    const { data: userResp, error: userErr } = await sbAnon().auth.getUser(jwt)
-    if (userErr || !userResp.user) return json(401, { error: 'unauthorized' })
+    anonClient = sbAnon()
+  } catch (e: unknown) {
+    // Brakuje zmiennych środowiskowych — to błąd konfiguracji serwera, nie auth
+    console.error('[portal-token-create] missing env vars:', e instanceof Error ? e.message : e)
+    return json(500, { error: 'server_misconfiguration' })
+  }
+
+  try {
+    const { data: userResp, error: userErr } = await anonClient.auth.getUser(jwt)
+    if (userErr) {
+      console.warn('[portal-token-create] auth.getUser error:', userErr.message)
+      return json(401, { error: 'unauthorized', detail: userErr.message })
+    }
+    if (!userResp.user) return json(401, { error: 'unauthorized', detail: 'no_user' })
     userId = userResp.user.id
-  } catch {
-    return json(401, { error: 'unauthorized' })
+  } catch (e: unknown) {
+    console.error('[portal-token-create] auth.getUser threw:', e instanceof Error ? e.message : e)
+    return json(401, { error: 'unauthorized', detail: 'auth_error' })
   }
 
   // ── 2. Parse body ─────────────────────────────────────────────────────────
