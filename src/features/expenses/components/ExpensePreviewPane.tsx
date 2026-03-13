@@ -1,5 +1,12 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ParseInvoiceResult } from '@/features/expenses/api/expenses.api'
+
+const OCR_STEPS = [
+  'Przygotowuję obraz…',
+  'Odczytuję tekst z faktury…',
+  'Analizuję dane…',
+  'Uzupełniam formularz…',
+]
 
 interface Props {
   file:        File | null
@@ -12,6 +19,14 @@ const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/heic', 'imag
 export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
   const objectUrlRef = useRef<string | null>(null)
   const imgRef       = useRef<HTMLImageElement>(null)
+  const [ocrStep, setOcrStep] = useState(0)
+
+  // Cycle through OCR step messages while parsing is in progress
+  useEffect(() => {
+    if (!parsing) { setOcrStep(0); return }
+    const id = setInterval(() => setOcrStep(s => Math.min(s + 1, OCR_STEPS.length - 1)), 4500)
+    return () => clearInterval(id)
+  }, [parsing])
 
   // Create and revoke object URL to avoid memory leaks
   useEffect(() => {
@@ -75,7 +90,7 @@ export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
       {parsing && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted, #6b7280)' }}>
           <span className="spinner" style={{ width: 16, height: 16 }} />
-          Analizowanie faktury…
+          {OCR_STEPS[ocrStep]}
         </div>
       )}
 

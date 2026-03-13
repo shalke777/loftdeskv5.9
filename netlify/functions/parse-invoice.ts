@@ -5,10 +5,9 @@
 //
 // Two execution paths:
 //   A. PDF with text layer  → buffer scan + regex parser → confidence based on filled fields
-//   B. Image + OPENAI_API_KEY set → OpenAI Vision (gpt-4o-mini) → structured JSON
-//   C. Image, no OCR key   → empty result, confidence=0, user fills manually
+//   B. Image               → Tesseract.js OCR (pol+eng) → regex parser
 //
-// To enable image OCR: set OPENAI_API_KEY env var in Netlify dashboard.
+// Image OCR is always available — no API key required.
 //
 // Request:
 //   POST /.netlify/functions/parse-invoice
@@ -60,81 +59,32 @@ function json(statusCode: number, body: Record<string, unknown>) {
   return { statusCode, headers: CORS_HEADERS, body: JSON.stringify(body) }
 }
 
-// ─── OpenAI Vision extraction ────────────────────────────────────────────────
+// ─── Tesseract OCR extraction ────────────────────────────────────────────────
 
-const EXTRACTION_PROMPT = `You are an invoice data extraction assistant.
-Extract structured fields from the invoice image. Return ONLY a JSON object with these exact keys (use null for any field you cannot read):
-{
-  "vendor_name":     "<seller/company name or null>",
-  "vendor_nip":      "<10 digits, no spaces/dashes, or null>",
-  "invoice_number":  "<invoice identifier or null>",
-  "issue_date":      "<YYYY-MM-DD or null>",
-  "sale_date":       "<YYYY-MM-DD or null>",
-  "net_amount":      <number or null>,
-  "vat_amount":      <number or null>,
-  "gross_amount":    <number or null>,
-  "currency":        "<ISO 4217 code, default PLN>",
-  "payment_due_date":"<YYYY-MM-DD or null>",
-  "notes":           "<brief description of goods/services, max 120 chars, or null>"
-}
-Return ONLY the JSON object. No explanations, no markdown fences.`
-
-async function extractViaOpenAI(
+async function extractViaOCR(
   fileBase64: string,
-  fileType: string,
-): Promise<Partial<ParseInvoiceResult> & { warnings: string[] }> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return { warnings: ['OpenAI API key not configured — image OCR unavailable'] }
-
+): Promise<{ text: string; warnings: string[] }> {
   try {
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type':  'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: `data:${fileType};base64,${fileBase64}`, detail: 'auto' } },
-            { type: 'text',      text: EXTRACTION_PROMPT },
-          ],
-        }],
-        max_tokens:  600,
-        temperature: 0,
-      }),
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore — tesseract.js is installed in netlify/functions/node_modules, not root
+    const { createWorker } = await import('tesseract.js')
+    const worker = await createWorker(['pol', 'eng'], 1, {
+      logger: () => {}, // suppress progress output in function logs
     })
+    const buffer = Buffer.from(fileBase64, 'base64')
+    const { data: { text } } = await worker.recognize(buffer)
+    await worker.terminate()
 
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({})) as Record<string, unknown>
-      return { warnings: [`OpenAI error: ${String((err as any)?.error?.message ?? resp.status)}`] }
+    const trimmed = text.trim()
+    if (trimmed.length < 10) {
+      return { text: '', warnings: ['OCR nie wykrył tekstu na obrazie — uzupełnij dane ręcznie'] }
     }
-
-    const data = await resp.json() as any
-    const rawContent: string = data?.choices?.[0]?.message?.content ?? ''
-
-    // Strip optional markdown fences
-    const jsonStr = rawContent.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim()
-    const parsed = JSON.parse(jsonStr) as Record<string, unknown>
-
-    return {
-      vendor_name:      parsed.vendor_name     != null ? String(parsed.vendor_name)     : null,
-      vendor_nip:       parsed.vendor_nip      != null ? String(parsed.vendor_nip)      : null,
-      invoice_number:   parsed.invoice_number  != null ? String(parsed.invoice_number)  : null,
-      issue_date:       validateDate(String(parsed.issue_date ?? '')),
-      sale_date:        validateDate(String(parsed.sale_date ?? '')),
-      net_amount:       toNum(parsed.net_amount),
-      vat_amount:       toNum(parsed.vat_amount),
-      gross_amount:     toNum(parsed.gross_amount),
-      currency:         String(parsed.currency || 'PLN').toUpperCase(),
-      payment_due_date: validateDate(String(parsed.payment_due_date ?? '')),
-      notes:            parsed.notes != null ? String(parsed.notes).slice(0, 120) : null,
-      warnings: [],
-    }
+    return { text: trimmed, warnings: [] }
   } catch (e: unknown) {
-    return { warnings: [`Parse error: ${e instanceof Error ? e.message : String(e)}`] }
+    return {
+      text: '',
+      warnings: [`Błąd OCR: ${e instanceof Error ? e.message : String(e)}`],
+    }
   }
 }
 
@@ -390,31 +340,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
       baseWarnings.push('Nie udało się wyodrębnić tekstu z PDF (prawdopodobnie skan — uzupełnij dane ręcznie)')
     }
   } else if (isImage) {
-    // Try OpenAI Vision if API key is available
-    if (process.env.OPENAI_API_KEY) {
-      const aiResult = await extractViaOpenAI(file_base64, file_type)
-      const { warnings: aiWarnings, ...fields } = aiResult
-      const confidence = calcConfidence(fields)
-      const warnings   = [...baseWarnings, ...aiWarnings, ...buildWarnings(fields)]
-      return json(200, {
-        ...emptyResult(),
-        ...fields,
-        parser_source: 'ai' as const,
-        extraction_confidence:    confidence,
-        extraction_warnings:      warnings,
-        requires_user_confirmation: confidence < 70 || warnings.length > 0,
-      } satisfies ParseInvoiceResult)
-    } else {
-      baseWarnings.push('Rozpoznawanie obrazów wymaga klucza OPENAI_API_KEY. Uzupełnij dane ręcznie.')
-      const empty = emptyResult()
-      return json(200, {
-        ...empty,
-        parser_source: 'manual' as const,
-        extraction_confidence: 0,
-        extraction_warnings:   baseWarnings,
-        requires_user_confirmation: true,
-      } satisfies ParseInvoiceResult)
-    }
+    const ocrResult = await extractViaOCR(file_base64)
+    extractedText   = ocrResult.text
+    baseWarnings.push(...ocrResult.warnings)
+    parserSource    = 'regex'
   } else {
     baseWarnings.push(`Nieobsługiwany typ pliku: ${file_type}`)
     parserSource = 'manual'

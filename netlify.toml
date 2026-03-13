@@ -8,6 +8,10 @@
 
 [functions]
   node_bundler = "esbuild"
+  external_node_modules = ["tesseract.js"]
+
+[functions."parse-invoice"]
+  timeout = 26
 
 [build.processing]
   skip_processing = true
