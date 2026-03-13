@@ -65,6 +65,30 @@ export function PortalProjectPage({ token }: Props) {
   if (status === 'loading')  return <PortalLoading />
   if (status === 'expired')  return <PortalExpired />
   if (status === 'revoked')  return <PortalRevoked />
+  if (status === 'error') {
+    return (
+      <div className="portal-page" style={{ maxWidth: 480, margin: '0 auto', padding: '24px 16px' }}>
+        <div style={{ textAlign: 'center', padding: '40px 24px', background: '#fff', borderRadius: 16, border: '1px solid #e5e7eb' }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+          <h3 style={{ margin: '0 0 8px' }}>Problem z po\u0142\u0105czeniem</h3>
+          <p style={{ color: '#718096', lineHeight: 1.6, marginBottom: 16 }}>
+            Nie uda\u0142o si\u0119 sprawdzi\u0107 linku portalu.<br />
+            Sprawd\u017a po\u0142\u0105czenie z internetem i spr\u00f3buj ponownie.
+          </p>
+          <button
+            onClick={revalidate}
+            style={{
+              padding: '10px 24px', borderRadius: 8,
+              border: '1px solid #d1d5db', background: '#f9fafb',
+              cursor: 'pointer', fontSize: 14, fontWeight: 600,
+            }}
+          >
+            \ud83d\udd04 Spr\u00f3buj ponownie
+          </button>
+        </div>
+      </div>
+    )
+  }
   if (status === 'invalid' || !session) return <PortalInvalid />
 
   const { session_id, client_name, scope, project } = session

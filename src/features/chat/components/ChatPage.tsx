@@ -87,8 +87,8 @@ export function ChatPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="shell-content" style={{ paddingBottom: 0, flex: 'none' }}>
         <PageHeader
-          title="Wiadomości"
-          subtitle="Wiadomości ze wszystkich projektów — tylko bieżący model wątków"
+          title="Chat"
+          subtitle="Wiadomości projektowe — pisz do klientów przez portal lub dodawaj notatki wewnętrzne"
         />
       </div>
 
@@ -170,7 +170,7 @@ export function ChatPage() {
               marginTop: 'auto',
             }}
           >
-            💡 Nowe wątki tworzone są w widoku projektu → zakładka Wątki
+            💡 Wątki tworzone są w projekcie → zakładka Wątki. Do klientów — uruchom portal klienta.
           </div>
         </div>
 
@@ -194,7 +194,7 @@ export function ChatPage() {
             </div>
           ) : null}
 
-          <ThreadView threadId={activeId} projectId={activeThread?.project_id ?? null} />
+          <ThreadView threadId={activeId} projectId={activeThread?.project_id ?? null} visibility={activeThread?.visibility} />
 
           {activeThread && (
             <MessageComposer thread={activeThread as ProjectThread} projectId={activeThread.project_id} />

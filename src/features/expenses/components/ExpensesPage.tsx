@@ -277,6 +277,25 @@ export function ExpensesPage() {
     <div className="page">
       <PageHeader title="Koszty" subtitle="Skanuj i ewidencjonuj faktury kosztowe" />
 
+      {/* ── Mobile quick-action bar (hidden on desktop) ──────────────── */}
+      <div className="exp-mobile-actions">
+        <button type="button" onClick={() => cameraInputRef.current?.click()}>
+          <Camera size={22} />
+          Zdjęcie
+        </button>
+        <button type="button" onClick={() => fileInputRef.current?.click()}>
+          <Upload size={22} />
+          Galeria / PDF
+        </button>
+        <button type="button" onClick={() => {
+          setForm(emptyForm())
+          setModal({ type: 'add', fileUrl: '', fileName: '', parsed: {} })
+        }}>
+          <FileText size={22} />
+          Ręcznie
+        </button>
+      </div>
+
       {/* Upload zone */}
       <div
         className="exp-upload-zone"

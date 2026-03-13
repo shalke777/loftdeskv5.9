@@ -1166,6 +1166,48 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
    EXPENSES / KOSZTY
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* Mobile quick-action bar — only shown on small screens */
+.exp-mobile-actions {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .exp-mobile-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .exp-mobile-actions button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 16px 8px;
+    border-radius: 14px;
+    border: 1.5px solid var(--color-border);
+    background: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+  }
+
+  /* First button (camera) — branded */
+  .exp-mobile-actions button:first-child {
+    border-color: var(--color-brand, #dc2626);
+    background: var(--color-brand-light, #fef2f2);
+    color: var(--color-brand, #dc2626);
+  }
+
+  .exp-mobile-actions button:active {
+    opacity: 0.75;
+  }
+}
+
 .exp-upload-zone {
   border: 2px dashed var(--color-border);
   border-radius: 14px;

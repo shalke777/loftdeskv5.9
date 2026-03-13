@@ -22,7 +22,7 @@ import { validatePortalToken } from '@/features/portal/api/portal-project.api'
 import type { PortalProjectData } from '@/features/portal/api/portal-project.api'
 import type { PortalScope } from '@/features/portal/model/project-portal.types'
 
-export type PortalSessionStatus = 'loading' | 'invalid' | 'expired' | 'revoked' | 'ready'
+export type PortalSessionStatus = 'loading' | 'invalid' | 'expired' | 'revoked' | 'ready' | 'error'
 
 export interface PortalSessionData {
   session_id:   string
@@ -125,20 +125,29 @@ export function usePortalSession(rawToken: string | undefined): UsePortalSession
         clearStoredSession(token)
         setSession(null)
         setStatus('revoked')
+      } else if (result.status === 'error') {
+        // Server error (500) — retryable, don’t clear a valid cached session
+        const stored = readStoredSession(token)
+        if (stored) {
+          setSession(stored)
+          setStatus('ready')
+        } else {
+          setStatus('error')
+        }
       } else {
-        // 'invalid', 'not_found', 'error', 'bad_request' → invalid
+        // 'invalid', 'not_found', 'bad_request' — truly invalid token
         clearStoredSession(token)
         setSession(null)
         setStatus('invalid')
       }
     } catch {
-      // Brak sieci — jeśli mamy sesję w localStorage, używamy jej
+      // Network error — use cached session if available, else show retryable error
       const stored = readStoredSession(token)
       if (stored) {
         setSession(stored)
         setStatus('ready')
       } else {
-        setStatus('invalid')
+        setStatus('error')
       }
     }
   }, [])

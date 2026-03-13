@@ -119,11 +119,13 @@ function MessageBubble({ msg }: BubbleProps) {
 // ─── ThreadView ───────────────────────────────────────────────────────────────
 
 interface ThreadViewProps {
-  threadId:  string | null
-  projectId: string | null
+  threadId:   string | null
+  projectId:  string | null
+  /** Visibility of the current thread — drives context messages */
+  visibility?: 'internal' | 'client_shared' | 'approval'
 }
 
-export function ThreadView({ threadId, projectId }: ThreadViewProps) {
+export function ThreadView({ threadId, projectId, visibility }: ThreadViewProps) {
   const { data: messages, isLoading } = useThreadMessages(threadId)
   const listRef    = useRef<HTMLDivElement>(null)
   const prevThread = useRef<string | null>(null)
@@ -156,8 +158,11 @@ export function ThreadView({ threadId, projectId }: ThreadViewProps) {
       <div className="chat-thread__empty">
         <div style={{ fontSize: 48, lineHeight: 1 }}>💬</div>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Wybierz wątek</p>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#9ca3af' }}>Kliknij wątek z listy, aby zobaczyć rozmowę</p>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Chat projektowy</p>
+          <p style={{ margin: '6px 0 0', fontSize: 13, color: '#9ca3af', maxWidth: 280, lineHeight: 1.5 }}>
+            Chat zbiera wiadomości z projektów.
+            Aby pisać z klientem, uruchom portal klienta w projekcie.
+          </p>
         </div>
       </div>
     )
@@ -181,10 +186,17 @@ export function ThreadView({ threadId, projectId }: ThreadViewProps) {
       {list.length === 0 ? (
         <div className="chat-thread__no-messages">
           <div style={{ fontSize: 36 }}>📭</div>
-          <p style={{ margin: 0 }}>Brak wiadomości — napisz pierwszą</p>
+          <p style={{ margin: 0 }}>
+            {visibility === 'client_shared'
+              ? 'Napisz pierwszą wiadomość — klient zobaczy ją w portalu'
+              : visibility === 'internal'
+                ? 'Dodaj notatkę — klient tego nie zobaczy'
+                : 'Brak wiadomości — napisz pierwszą'}
+          </p>
         </div>
       ) : (
-        list.map((msg) => {
+        <>
+          {list.map((msg) => {
           const dateLabel = formatDate(msg.created_at)
           const showDate  = dateLabel !== lastDate
           lastDate        = dateLabel
@@ -194,7 +206,18 @@ export function ThreadView({ threadId, projectId }: ThreadViewProps) {
               <MessageBubble msg={msg} />
             </div>
           )
-        })
+          })}
+          {/* Awaiting-client hint: thread has messages but none from client yet */}
+          {visibility === 'client_shared' && list.every(m => m.sender_type !== 'client') && (
+            <div style={{
+              textAlign: 'center', margin: '16px 8px 4px',
+              fontSize: 12, color: '#9ca3af',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+              <span>⏳</span> Oczekiwanie na odpowiedź klienta z portalu projektu
+            </div>
+          )}
+        </>
       )}
     </div>
   )

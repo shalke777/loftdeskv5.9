@@ -40,7 +40,7 @@ const mainNavItems: MainNavItem[] = [
   { to: '/contracts', label: 'Umowa', icon: FileText },
   { to: '/invoices', label: 'Faktura', icon: Receipt },
   { to: '/projects', label: 'Projekty', icon: FolderKanban },
-  { to: '/chat', label: 'Rozmowy', icon: MessageSquare },
+  { to: '/chat', label: 'Chat', icon: MessageSquare },
   { to: '/expenses', label: 'Koszty', icon: Wallet },
   { to: '/ksef', label: 'KSeF', icon: Shield, feature: 'ksef' },
   { to: '/settings', label: 'Ustawienia', icon: Settings },
@@ -48,9 +48,11 @@ const mainNavItems: MainNavItem[] = [
 
 const mobileNav: MainNavItem[] = [
   { to: '/dashboard', label: 'Tablica', icon: LayoutDashboard },
-  { to: '/estimates', label: 'Wycena', icon: Calculator },
-  { to: '/invoices', label: 'Faktura', icon: Receipt },
-  { to: '/settings', label: 'Ustawienia', icon: Settings },
+  { to: '/projects',  label: 'Projekty', icon: FolderKanban },
+  { to: '/chat',      label: 'Chat',     icon: MessageSquare },
+  { to: '/expenses',  label: 'Koszty',   icon: Wallet },
+  { to: '/invoices',  label: 'Faktura',  icon: Receipt },
+  { to: '/settings',  label: 'Ustawienia', icon: Settings },
 ]
 
 function isActive(pathname: string, item: MainNavItem) {
