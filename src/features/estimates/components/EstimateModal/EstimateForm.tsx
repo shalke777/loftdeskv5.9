@@ -125,7 +125,14 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
           <Input label="Nazwa wyceny *" value={name} onChange={(e) => setName(e.target.value)} placeholder="np. Remont łazienki – oferta wstępna" />
         </div>
         <Select label="Klient" value={clientId} onChange={(e) => setClientId(e.target.value)} options={clientOptions} placeholder="Bez przypisania" />
-        <Select label="Projekt" value={projectId} onChange={(e) => setProjectId(e.target.value)} options={projectOptions} placeholder="Bez projektu" />
+        <Select label="Projekt" value={projectId} onChange={(e) => {
+          const pid = e.target.value
+          setProjectId(pid)
+          if (pid) {
+            const proj = projects.find(p => p.id === pid)
+            if (proj?.client_id) setClientId(proj.client_id)
+          }
+        }} options={projectOptions} placeholder="Bez projektu" />
         <Input label="Ważny do" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
         <Select
           label="Status"

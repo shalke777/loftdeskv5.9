@@ -59,9 +59,13 @@ export function EstimatesPage() {
   )
 
   async function submit(input: any) {
-    if (editing) await updateEstimate.mutateAsync({ id: editing.id, input })
-    else await createEstimate.mutateAsync(input)
-    setEditing(null); setOpen(false)
+    try {
+      if (editing) await updateEstimate.mutateAsync({ id: editing.id, input })
+      else await createEstimate.mutateAsync(input)
+      setEditing(null); setOpen(false)
+    } catch {
+      // error displayed via onError in mutation
+    }
   }
 
   return (

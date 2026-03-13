@@ -12,7 +12,7 @@ export const estimatesApi = {
     const query = applyScope(supabase.from('cost_estimates').select('*, items:cost_estimate_items(*)').order('created_at', { ascending: false }), scope)
     const { data, error } = await query
     if (error) throw error
-    return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, number: row.number, name: row.name, status: row.status, total_net: Number(row.total_net ?? 0), total_gross: Number(row.total_gross ?? 0), notes: row.notes ?? '', valid_until: row.valid_until ?? null, created_at: row.created_at, items: (row.items ?? []).map((item: any, index: number) => ({ id: item.id, name: item.name ?? item.description, description: item.description ?? '', unit: item.unit, quantity: Number(item.quantity), unit_price: Number(item.unit_price), vat_rate: Number(item.vat_rate ?? 23), sort_order: item.sort_order ?? index })) }))
+    return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, project_id: row.project_id ?? null, number: row.number, name: row.name, status: row.status, total_net: Number(row.total_net ?? 0), total_gross: Number(row.total_gross ?? 0), notes: row.notes ?? '', valid_until: row.valid_until ?? null, created_at: row.created_at, items: (row.items ?? []).map((item: any, index: number) => ({ id: item.id, name: item.name ?? item.description, description: item.description ?? '', unit: item.unit, quantity: Number(item.quantity), unit_price: Number(item.unit_price), vat_rate: Number(item.vat_rate ?? 23), sort_order: item.sort_order ?? index })) }))
   },
   async create(input: CreateEstimateInput): Promise<Estimate> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.estimates.create({ company_id: input.company_id, client_id: input.client_id, name: input.name, status: input.status ?? 'draft', notes: input.notes, valid_until: input.valid_until ?? null, items: input.items ?? [] }))
@@ -32,10 +32,17 @@ export const estimatesApi = {
   },
   async update(id: string, input: Partial<Estimate>, companyId?: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.estimates.update(id, input))
-    const scope = await getDataScope(companyId)
     const items = input.items
-    const payload: any = { ...input }
-    delete payload.items
+    // Explicit whitelist — never spread the full Estimate object into the PATCH body.
+    // Sending company_id / id / created_at / number causes PostgREST to either try to
+    // update immutable columns or trigger RLS WITH CHECK violations → 400.
+    const payload: any = {}
+    if (input.name !== undefined) payload.name = input.name
+    if (input.status !== undefined) payload.status = input.status
+    if (input.client_id !== undefined) payload.client_id = input.client_id ?? null
+    if (input.project_id !== undefined) payload.project_id = input.project_id ?? null
+    if (input.notes !== undefined) payload.notes = input.notes
+    if (input.valid_until !== undefined) payload.valid_until = input.valid_until
     if (items) {
       const totals = calcTotals(items)
       payload.total_net = totals.net
@@ -50,6 +57,9 @@ export const estimatesApi = {
         const { error: itemsError } = await supabase.from('cost_estimate_items').insert(itemRows)
         if (itemsError) throw itemsError
       }
+    }
+    if (payload.project_id && companyId) {
+      try { await projectDocumentsApi.link(companyId, payload.project_id, 'estimate', id, { manual: true }) } catch {}
     }
     const { data: refreshed } = await supabase.from('cost_estimates').select('*, items:cost_estimate_items(*)').eq('id', id).single()
     return refreshed ?? data
