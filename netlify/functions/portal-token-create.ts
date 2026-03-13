@@ -124,7 +124,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (!company_id || typeof company_id !== 'string') return json(400, { error: 'missing_company_id' })
   if (!project_id || typeof project_id !== 'string') return json(400, { error: 'missing_project_id' })
 
-  const admin = sbAdmin()
+  let admin: ReturnType<typeof sbAdmin>
+  try {
+    admin = sbAdmin()
+  } catch (e: unknown) {
+    console.error('[portal-token-create] sbAdmin init failed:', e instanceof Error ? e.message : e)
+    return json(500, { error: 'server_misconfiguration' })
+  }
 
   // ── 3. Weryfikacja: operator jest członkiem firmy (wymagana rola) ─────────
   const { data: member } = await admin
