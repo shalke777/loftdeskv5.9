@@ -12,6 +12,7 @@ import { EstimateForm } from '@/features/estimates/components/EstimateModal/Esti
 import { useEstimateToContract } from '@/workflows/estimate-to-contract/useEstimateToContract'
 import { useCan } from '@/features/auth/hooks/usePermissions'
 import { useClients } from '@/features/clients/hooks/useClients'
+import { useProjects } from '@/features/projects/hooks/useProjects'
 import type { Estimate } from '@/entities/estimate/model'
 
 type FilterStatus = 'all' | Estimate['status']
@@ -32,6 +33,7 @@ export function EstimatesPage() {
   const companyId = useCompanyId()
   const { data, isLoading } = useEstimates()
   const { data: clients = [] } = useClients()
+  const { data: projects = [] } = useProjects()
   const createEstimate = useCreateEstimate()
   const updateEstimate = useUpdateEstimate()
   const deleteEstimate = useDeleteEstimate()
@@ -43,6 +45,11 @@ export function EstimatesPage() {
   const clientMap = useMemo(
     () => Object.fromEntries(clients.map(c => [c.id, c.name])),
     [clients],
+  )
+
+  const projectMap = useMemo(
+    () => Object.fromEntries(projects.map(p => [p.id, `${p.number} · ${p.name}`])),
+    [projects],
   )
 
   const counts = useMemo(() => ({
@@ -110,6 +117,7 @@ export function EstimatesPage() {
               key={estimate.id}
               estimate={estimate}
               clientName={estimate.client_id ? (clientMap[estimate.client_id] ?? null) : null}
+              projectName={estimate.project_id ? (projectMap[estimate.project_id] ?? null) : null}
               onEdit={e => { setEditing(e); setOpen(true) }}
               onDelete={canDelete ? id => deleteEstimate.mutate(id) : undefined}
               onCreateContract={canConvert ? id => estimateToContract.mutate(id) : undefined}

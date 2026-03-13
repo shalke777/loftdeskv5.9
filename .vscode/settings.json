@@ -1,4 +1,6 @@
 {
     "githubPullRequests.experimental.notificationsMarkPullRequests": "markAsDone",
-    "githubPullRequests.experimental.useQuickChat": true
+    "githubPullRequests.experimental.useQuickChat": true,
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true
 }

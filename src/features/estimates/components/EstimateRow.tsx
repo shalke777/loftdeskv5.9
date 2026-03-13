@@ -23,12 +23,13 @@ const STATUS_CLASS: Record<Estimate['status'], string> = {
 interface Props {
   estimate: Estimate
   clientName: string | null
+  projectName?: string | null
   onEdit: (e: Estimate) => void
   onDelete?: (id: string) => void
   onCreateContract?: (id: string) => void
 }
 
-export function EstimateRow({ estimate, clientName, onEdit, onDelete, onCreateContract }: Props) {
+export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelete, onCreateContract }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -80,6 +81,7 @@ export function EstimateRow({ estimate, clientName, onEdit, onDelete, onCreateCo
           <span className="proj-row__name">{estimate.number} · {estimate.name}</span>
           <span className="proj-row__meta">
             {clientName && <span className="proj-row__client">{clientName}</span>}
+            {projectName && <span className="proj-row__number">📁 {projectName}</span>}
             {estimate.valid_until && (
               <span className="proj-row__number">ważna do {estimate.valid_until}</span>
             )}

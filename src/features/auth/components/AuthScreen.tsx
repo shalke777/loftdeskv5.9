@@ -1,20 +1,95 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/shared/ui/Button/Button'
+import { Input } from '@/shared/ui/Input/Input'
 import { LoginForm } from '@/features/auth/components/LoginForm'
 import { RegisterForm } from '@/features/auth/components/RegisterForm'
 import { ForgotPasswordForm } from '@/features/auth/components/ForgotPasswordForm'
+import { supabase } from '@/shared/lib/supabase'
 
 const tabs = [
-  { key: 'login', label: 'Logowanie' },
+  { key: 'login',    label: 'Logowanie' },
   { key: 'register', label: 'Nowa firma' },
-  { key: 'forgot', label: 'Reset hasła' },
+  { key: 'forgot',   label: 'Reset hasła' },
+  { key: 'client',   label: 'Jestem klientem' },
 ] as const
 
 type AuthTab = (typeof tabs)[number]['key']
 
+// ── Prosty formularz magic-link dla klientów ──────────────────────────────────
+function ClientMagicLinkForm() {
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email.trim() || !supabase) return
+    setLoading(true)
+    setError('')
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email: email.toLowerCase().trim(),
+      options: { emailRedirectTo: `${baseUrl}/auth/callback?mode=client` },
+    })
+    setLoading(false)
+    if (err) { setError('Nie udało się wysłać linku. Sprawdź adres email.'); return }
+    setSent(true)
+  }
+
+  if (sent) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: 32 }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>📬</div>
+        <h2 style={{ marginBottom: 8 }}>Sprawdź skrzynkę</h2>
+        <p style={{ color: '#64748b', lineHeight: 1.6 }}>
+          Wysłaliśmy link logowania na <strong>{email}</strong>.<br />
+          Kliknij go, aby przejść do swoich projektów.
+        </p>
+        <Button variant="secondary" style={{ marginTop: 20 }} onClick={() => { setSent(false); setEmail('') }}>
+          Wyślij ponownie
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="card" style={{ padding: '28px 32px' }}>
+      <h2 style={{ marginBottom: 6, fontSize: 20 }}>Dostęp do projektów</h2>
+      <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, lineHeight: 1.5 }}>
+        Jeśli wykonawca przydzielił Ci dostęp do projektu, wpisz swój adres email.<br />
+        Wyślemy Ci link logowania bez hasła.
+      </p>
+      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 14 }}>
+        <Input
+          label="Adres email"
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="twoj@email.pl"
+          required
+        />
+        {error && <p style={{ color: '#dc2626', fontSize: 13, margin: 0 }}>{error}</p>}
+        <Button type="submit" disabled={loading || !email.trim()}>
+          {loading ? 'Wysyłanie…' : 'Wyślij link logowania'}
+        </Button>
+      </form>
+      <p style={{ marginTop: 14, fontSize: 12, color: '#94a3b8', textAlign: 'center' }}>
+        Nie masz dostępu? Skontaktuj się bezpośrednio ze swoim wykonawcą.
+      </p>
+    </div>
+  )
+}
+
 export function AuthScreen() {
-  const [tab, setTab] = useState<AuthTab>('login')
+  const [tab, setTab] = useState<AuthTab>(() => {
+    // Jeśli URL zawiera ?mode=client, otwórz od razu zakładkę klienta
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'client') {
+      return 'client'
+    }
+    return 'login'
+  })
 
   return (
     <main className="auth-shell">
@@ -38,9 +113,10 @@ export function AuthScreen() {
                 ))}
               </div>
             </div>
-            {tab === 'login' ? <LoginForm /> : null}
-            {tab === 'register' ? <RegisterForm /> : null}
-            {tab === 'forgot' ? <ForgotPasswordForm /> : null}
+            {tab === 'login'    ? <LoginForm />             : null}
+            {tab === 'register' ? <RegisterForm />          : null}
+            {tab === 'forgot'   ? <ForgotPasswordForm />    : null}
+            {tab === 'client'   ? <ClientMagicLinkForm />   : null}
           </div>
         </div>
       </div>
