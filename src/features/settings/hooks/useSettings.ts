@@ -43,6 +43,7 @@ export function useUpdateCompanyProfile() {
     mutationFn: (input: { company_name: string; nip?: string; address?: string; postal_code?: string; city?: string; iban?: string; phone?: string; email?: string; ksef_env: 'test' | 'demo' | 'prod'; ksef_nip: string; ksef_token: string; logo_url?: string | null }) => settingsApi.updateProfile(companyId, input),
     onSuccess: async () => {
       qc.invalidateQueries({ queryKey: settingsKeys.profile(companyId) })
+      qc.invalidateQueries({ queryKey: ['onboarding-progress', companyId] })
       await refreshSession()
       toast.success('Profil firmy zapisany')
     },
