@@ -146,8 +146,20 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
   const result: Record<string, unknown> = { currency: 'PLN', notes: null }
 
   // Invoice number
-  const numMatch = t.match(/(?:(?:nr|numer|faktura(?:\s+(?:nr|numer|vat))?|fv(?:at)?|fs(?:vat)?|rachun(?:ek|ku))[\s:#/]*)((?:[A-Z0-9]{1,6}[\/\-]){1,3}[A-Z0-9]{1,8})/i)
-  if (numMatch) result.invoice_number = numMatch[1].trim().toUpperCase()
+  const numMatch = t.match(/(?:(?:nr|numer|faktura(?:\s+(?:nr|numer|vat))?|fv(?:at)?|fs(?:vat)?|rachun(?:ek|ku))[\s:#\/]*)((?:[A-Z0-9]{1,6}[\/\-\s]){1,3}[A-Z0-9]{1,8})/i)
+  if (numMatch) result.invoice_number = numMatch[1].trim().replace(/\s*\/\s*/g, '/').toUpperCase()
+
+  // Fallback: standalone FV… pattern (OCR may omit leading keyword)
+  if (!result.invoice_number) {
+    const fvAlone = t.match(/\b((?:FV|FA|FS|FZ|RF|RV)(?:AT)?[\s\/\-]?(?:\d{4}[\s\/\-])?\d{1,5}[\s\/\-]\d{1,4})\b/i)
+    if (fvAlone) {
+      result.invoice_number = fvAlone[1]
+        .trim()
+        .replace(/\s+([\/ \-])\s+/g, '$1')
+        .replace(/\s+/g, '/')
+        .toUpperCase()
+    }
+  }
 
   // NIP
   const nipMatch = t.match(/NIP[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/i)
@@ -182,16 +194,31 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
   else if (/\bGBP\b/i.test(t)) result.currency = 'GBP'
 
   // Gross amount
-  const grossMatch = t.match(/(?:do\s+zap[łl]aty|razem\s+brutto|kwota\s+brutto|warto[śs][ćc]\s+brutto|sum[ma]?\s+brutto|brutto)[:\s]+([0-9]+[,. ][0-9]{0,3}[,. ]?[0-9]{0,2})\s*(?:PLN|z[łl]|EUR|USD)?/i)
+  const grossMatch = t.match(/(?:do\s+zap[\u0142l]aty|razem\s+brutto|kwota\s+brutto|warto[\u015bs][\u0107c]\s+brutto|sum[ma]?\s+brutto|brutto)[:\s]+([0-9]+[\s]?[0-9]{0,3}[,.][0-9]{1,2})\s*(?:PLN|z[\u0142l]|EUR|USD)?/i)
   if (grossMatch) { const v = parsePolishAmount(grossMatch[1]); if (v > 0) result.gross_amount = v }
 
   // Net amount
-  const netMatch = t.match(/(?:razem\s+netto|kwota\s+netto|warto[śs][ćc]\s+netto|suma\s+netto|netto)[:\s]+([0-9]+[,. ][0-9]{0,3}[,. ]?[0-9]{0,2})\s*(?:PLN|z[łl]|EUR)?/i)
+  const netMatch = t.match(/(?:razem\s+netto|kwota\s+netto|warto[\u015bs][\u0107c]\s+netto|suma\s+netto|netto)[:\s]+([0-9]+[\s]?[0-9]{0,3}[,.][0-9]{1,2})\s*(?:PLN|z[\u0142l]|EUR)?/i)
   if (netMatch) { const v = parsePolishAmount(netMatch[1]); if (v > 0) result.net_amount = v }
 
   // VAT
-  const vatMatch = t.match(/(?:kwota\s+vat|podatek\s+vat|vat\s+razem|suma\s+vat)[:\s]+([0-9]+[,. ][0-9]{0,3}[,. ]?[0-9]{0,2})\s*(?:PLN|z[łl]|EUR)?/i)
+  const vatMatch = t.match(/(?:kwota\s+vat|podatek\s+vat|vat\s+razem|suma\s+vat)[:\s]+([0-9]+[\s]?[0-9]{0,3}[,.][0-9]{1,2})\s*(?:PLN|z[\u0142l]|EUR)?/i)
   if (vatMatch) { const v = parsePolishAmount(vatMatch[1]); if (v > 0) result.vat_amount = v }
+
+  // Fallback gross: look for "do zaplaty" (no diacritics from OCR) + number
+  if (!result.gross_amount) {
+    const fallbackGross = t.match(/(?:do\s+zaplaty|do\s+zap[\u0142l]aty|total|ogolnie|ogolna|summary)[:\s]+([0-9]{1,6}[\s]?[0-9]{0,3}[,.][0-9]{1,2})/i)
+    if (fallbackGross) { const v = parsePolishAmount(fallbackGross[1]); if (v > 0) result.gross_amount = v }
+  }
+
+  // Fallback gross: last decimal number preceded or followed by currency
+  if (!result.gross_amount) {
+    const allWithCurrency = [...t.matchAll(/([0-9]{1,6}(?:[\s][0-9]{3})*[,.][0-9]{2})\s*(?:PLN|z[\u0142l])/gi)]
+    if (allWithCurrency.length > 0) {
+      const amounts = allWithCurrency.map(m => parsePolishAmount(m[1])).filter(v => v > 0)
+      if (amounts.length > 0) result.gross_amount = amounts[amounts.length - 1] // last = likely total
+    }
+  }
 
   // Derive missing amount
   const g = result.gross_amount as number | undefined

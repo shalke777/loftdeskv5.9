@@ -1,7 +1,72 @@
 import { useMutation } from '@tanstack/react-query'
 import type { ParseInvoiceResult, ExpenseSourceType } from '@/features/expenses/api/expenses.api'
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
+const MAX_FILE_SIZE  = 5 * 1024 * 1024 // 5 MB
+const MAX_OCR_WIDTH  = 1800             // px — keeps detail, reduces payload
+
+const IMAGE_MIME_SET = new Set([
+  'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+  'image/gif', 'image/heic', 'image/heif',
+])
+
+// ── Image preprocessing (resize + grayscale + contrast) ──────────────────────
+// Dramatically improves Tesseract OCR quality on mobile camera photos.
+// HEIC/HEIF from iOS are decoded by the browser before reaching canvas.
+
+async function preprocessForOCR(file: File): Promise<File> {
+  const isImg = IMAGE_MIME_SET.has(file.type) || /\.(jpe?g|png|webp|gif)$/i.test(file.name)
+  if (!isImg || typeof document === 'undefined') return file
+
+  try {
+    const url = URL.createObjectURL(file)
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const el = new Image()
+      el.onload  = () => res(el)
+      el.onerror = () => rej(new Error('img load failed'))
+      el.src = url
+    })
+    URL.revokeObjectURL(url)
+
+    const scale = Math.min(1, MAX_OCR_WIDTH / (img.naturalWidth || 1))
+    const w = Math.round(img.naturalWidth  * scale)
+    const h = Math.round(img.naturalHeight * scale)
+
+    const canvas = document.createElement('canvas')
+    canvas.width  = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return file
+
+    ctx.drawImage(img, 0, 0, w, h)
+
+    // Convert to grayscale + mild contrast boost (improves OCR edge detection)
+    const id = ctx.getImageData(0, 0, w, h)
+    const d  = id.data
+    for (let i = 0; i < d.length; i += 4) {
+      const gray    = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
+      const boosted = Math.min(255, Math.max(0, (gray - 128) * 1.3 + 128))
+      d[i] = d[i + 1] = d[i + 2] = boosted
+      // d[i+3] (alpha) unchanged
+    }
+    ctx.putImageData(id, 0, 0)
+
+    return await new Promise<File>((resolve) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(file); return }
+          const name = file.name.replace(/\.[^.]+$/, '') + '_ocr.jpg'
+          resolve(new File([blob], name, { type: 'image/jpeg' }))
+        },
+        'image/jpeg',
+        0.90,
+      )
+    })
+  } catch {
+    return file // graceful fallback — use original
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
  * Converts a File to base64 string (without the data URL prefix).
@@ -37,15 +102,19 @@ async function callParseInvoice(file: File, sourceType: ExpenseSourceType): Prom
     }
   }
 
-  const file_base64 = await fileToBase64(file)
+  // Preprocess images before OCR (resize + grayscale + contrast boost)
+  const isImage = IMAGE_MIME_SET.has(file.type) || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(file.name)
+  const processedFile = isImage ? await preprocessForOCR(file) : file
+
+  const file_base64 = await fileToBase64(processedFile)
 
   const resp = await fetch('/.netlify/functions/parse-invoice', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       file_base64,
-      file_name: file.name,
-      file_type: file.type,
+      file_name:   processedFile.name,
+      file_type:   processedFile.type,
       source_type: sourceType,
     }),
   })

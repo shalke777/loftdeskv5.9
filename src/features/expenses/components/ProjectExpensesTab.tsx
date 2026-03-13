@@ -11,7 +11,7 @@ import { ExpenseApprovalModal } from './ExpenseApprovalModal'
 import type { ParseInvoiceResult } from '@/features/expenses/api/expenses.api'
 import type { ApprovalStatus } from '@/features/expenses/api/cost-approvals.api'
 
-type TabMode = 'list' | 'capture' | 'confirm'
+type TabMode = 'list' | 'capture' | 'processing' | 'confirm'
 
 interface Props { projectId: string }
 
@@ -65,12 +65,15 @@ export function ProjectExpensesTab({ projectId }: Props) {
     setFileState(file)
     setSourceType(type)
     setParseResult(null)
-    setMode('confirm')
+    // Stay on processing screen until OCR completes — don't show empty form immediately
+    setMode('processing')
 
-    // Kick off async parse
     parseInvoice.mutate(
       { file, sourceType: type },
-      { onSuccess: (result) => setParseResult(result) },
+      {
+        onSuccess: (result) => { setParseResult(result); setMode('confirm') },
+        onError:   ()       => { setMode('confirm') }, // silent failure → empty form fallback
+      },
     )
   }
 
@@ -245,7 +248,39 @@ export function ProjectExpensesTab({ projectId }: Props) {
       </div>
     )
   }
+  // ── Rendering: processing (OCR w toku) ─────────────────────────────────────
 
+  if (mode === 'processing') {
+    return (
+      <div style={{ padding: '16px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 13 }}>← Anuluj</button>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Odczytuję fakturę…</h3>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: fileState ? 'minmax(0,1fr) minmax(0,1.4fr)' : '1fr', gap: 20, alignItems: 'start' }}>
+          {fileState && (
+            <ExpensePreviewPane file={fileState} parseResult={null} parsing={true} />
+          )}
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 20, padding: '52px 24px',
+            background: 'var(--color-surface-soft, #f9fafb)',
+            border: '1px solid var(--color-border, #e5e7eb)',
+            borderRadius: 8, minHeight: 280,
+          }}>
+            <div className="spinner" style={{ width: 40, height: 40 }} />
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: 15 }}>Odczytuję tekst z faktury…</p>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted, #6b7280)', lineHeight: 1.6 }}>
+                OCR analizuje obraz — zazwyczaj trwa 10–25&nbsp;sekund.<br />
+                Pola zostaną wypełnione automatycznie.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
   // ── Rendering: confirm ────────────────────────────────────────────────────
 
   return (
