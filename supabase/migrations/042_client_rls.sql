@@ -117,22 +117,22 @@ CREATE POLICY "approvals_client_respond" ON public.cost_approvals
 
 -- ── 9. RLS: project_timeline_events (visibility=client_shared) ───────────────
 -- Zakłada kolumnę visibility na project_timeline_events, jeśli istnieje
-DO $$
+DO $outer$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'project_timeline_events' AND column_name = 'visibility'
   ) THEN
-    EXECUTE $$
+    EXECUTE $exec$
       DROP POLICY IF EXISTS "te_client_select" ON public.project_timeline_events;
       CREATE POLICY "te_client_select" ON public.project_timeline_events
         FOR SELECT USING (
           visibility IN ('client_shared')
           AND project_id IN (SELECT my_client_project_ids())
         )
-    $$;
+    $exec$;
   END IF;
-END $$;
+END $outer$;
 
 -- ── 10. expense_invoices: BRAK POLITYKI DLA KLIENTA ──────────────────────────
 -- NIE DODAJEMY żadnej polityki SELECT/INSERT/UPDATE/DELETE dla klienta
