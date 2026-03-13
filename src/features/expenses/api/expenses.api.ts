@@ -4,6 +4,14 @@
 
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 
+/** Remove diacritics and replace unsafe Storage path characters */
+function sanitizeFilename(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')   // strip diacritics (ą→a, ę→e, etc.)
+    .replace(/[^a-zA-Z0-9._-]/g, '_') // replace spaces / special chars
+}
+
 export interface ExpenseInvoice {
   id: string
   company_id: string
@@ -313,12 +321,14 @@ export const expensesApi = {
     if (isDemoMode || !supabase) {
       return { url: URL.createObjectURL(file), name: file.name }
     }
-    const path = `${companyId}/expenses/${Date.now()}_${file.name}`
+    const safeName = sanitizeFilename(file.name)
+    const contentType = file.type || 'application/octet-stream'
+    const path = `${companyId}/expenses/${Date.now()}_${safeName}`
     const { error } = await supabase.storage
-      .from('company-logos')
-      .upload(path, file, { upsert: false, contentType: file.type })
+      .from('company-files')
+      .upload(path, file, { upsert: false, contentType })
     if (error) throw error
-    const { data } = supabase.storage.from('company-logos').getPublicUrl(path)
+    const { data } = supabase.storage.from('company-files').getPublicUrl(path)
     return { url: data.publicUrl, name: file.name }
   },
 
