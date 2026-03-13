@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useCreateEstimate, useDeleteEstimate, useEstimates, useUpdateEstimate } from '@/features/estimates/hooks/useEstimates'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
@@ -6,30 +7,56 @@ import { Button } from '@/shared/ui/Button/Button'
 import { Modal } from '@/shared/ui/Modal/Modal'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
-import { EstimateCard } from '@/features/estimates/components/EstimateCard'
+import { EstimateRow } from '@/features/estimates/components/EstimateRow'
 import { EstimateForm } from '@/features/estimates/components/EstimateModal/EstimateForm'
-import { EstimateToContractFlow } from '@/workflows/estimate-to-contract/EstimateToContractFlow'
 import { useEstimateToContract } from '@/workflows/estimate-to-contract/useEstimateToContract'
-import { EstimateToInvoiceFlow } from '@/workflows/estimate-to-invoice/EstimateToInvoiceFlow'
-import { useCreateProjectFromEstimate } from '@/features/projects/hooks/useProjects'
-import { Card } from '@/shared/ui/Card/Card'
 import { useCan } from '@/features/auth/hooks/usePermissions'
+import { useClients } from '@/features/clients/hooks/useClients'
 import type { Estimate } from '@/entities/estimate/model'
 
+type FilterStatus = 'all' | Estimate['status']
+
+const FILTER_LABELS: { value: FilterStatus; label: string }[] = [
+  { value: 'all',      label: 'Wszystkie' },
+  { value: 'draft',    label: 'Szkic' },
+  { value: 'sent',     label: 'Wysłane' },
+  { value: 'accepted', label: 'Zaakceptowane' },
+  { value: 'rejected', label: 'Odrzucone' },
+]
+
 export function EstimatesPage() {
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Estimate | null>(null)
+
   const companyId = useCompanyId()
   const { data, isLoading } = useEstimates()
+  const { data: clients = [] } = useClients()
   const createEstimate = useCreateEstimate()
   const updateEstimate = useUpdateEstimate()
   const deleteEstimate = useDeleteEstimate()
   const estimateToContract = useEstimateToContract()
-  const estimateToProject = useCreateProjectFromEstimate()
-  const featuredAccepted = useMemo(() => data?.find((item) => item.status === 'accepted') ?? null, [data])
   const canCreate = useCan('estimates.create')
   const canDelete = useCan('estimates.delete')
   const canConvert = useCan('estimates.convert')
+
+  const clientMap = useMemo(
+    () => Object.fromEntries(clients.map(c => [c.id, c.name])),
+    [clients],
+  )
+
+  const counts = useMemo(() => ({
+    all:      data?.length ?? 0,
+    draft:    data?.filter(e => e.status === 'draft').length    ?? 0,
+    sent:     data?.filter(e => e.status === 'sent').length     ?? 0,
+    accepted: data?.filter(e => e.status === 'accepted').length ?? 0,
+    rejected: data?.filter(e => e.status === 'rejected').length ?? 0,
+  }), [data])
+
+  const visible = useMemo(
+    () => filterStatus === 'all' ? (data ?? []) : (data ?? []).filter(e => e.status === filterStatus),
+    [data, filterStatus],
+  )
 
   async function submit(input: any) {
     if (editing) await updateEstimate.mutateAsync({ id: editing.id, input })
@@ -38,16 +65,60 @@ export function EstimatesPage() {
   }
 
   return (
-    <div>
+    <div className="page">
       <div className="toolbar">
-        <PageHeader title="Wyceny" subtitle="Edytowalne pozycje, portal klienta i workflow do umów, faktur i projektów." />
-        <div className="toolbar__actions">{canCreate ? <Button onClick={() => { setEditing(null); setOpen(true) }}>Nowa wycena</Button> : null}</div>
+        <PageHeader title="Wyceny" subtitle="Edytowalne pozycje, portal klienta i workflow do umów i faktur." />
+        <div className="toolbar__actions">
+          {canCreate && (
+            <Button onClick={() => { setEditing(null); setOpen(true) }}>
+              <Plus size={16} style={{ marginRight: 4 }} />
+              Nowa wycena
+            </Button>
+          )}
+        </div>
       </div>
-      {featuredAccepted && canConvert ? <div className="grid-3" style={{ marginBottom: 16 }}><EstimateToContractFlow estimate={featuredAccepted} /><EstimateToInvoiceFlow estimate={featuredAccepted} /><Card><h3>Workflow kosztorys → projekt</h3><p>Po wygranej ofercie uruchamiasz realizację z gotowym budżetem.</p><div className="actions-row"><Button disabled={featuredAccepted.status !== 'accepted'} loading={estimateToProject.isPending} onClick={() => estimateToProject.mutate(featuredAccepted.id)}>Utwórz projekt z kosztorysu</Button></div></Card></div> : null}
-      {isLoading ? <Spinner /> : null}
-      {!isLoading && !data?.length ? <EmptyState title="Brak kosztorysów" description="Dodaj pierwszą wycenę, aby uruchomić moduł ofert." /> : null}
-      <div className="grid-2">{data?.map((estimate) => <EstimateCard key={estimate.id} estimate={estimate} onEdit={(item) => { setEditing(item); setOpen(true) }} onDelete={canDelete ? (id) => deleteEstimate.mutate(id) : undefined} onCreateContract={canConvert ? (id) => estimateToContract.mutate(id) : undefined} />)}</div>
-      {canCreate ? <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edytuj wycenę' : 'Nowa wycena'}><EstimateForm companyId={companyId} initialEstimate={editing} onSubmit={submit} /></Modal> : null}
+
+      <div className="proj-filters">
+        {FILTER_LABELS.map(({ value, label }) => (
+          <button key={value} type="button"
+            className={`proj-filter-pill${filterStatus === value ? ' proj-filter-pill--active' : ''}`}
+            onClick={() => setFilterStatus(value)}>
+            {label}
+            <span className="proj-filter-pill__count">{counts[value]}</span>
+          </button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><Spinner /></div>
+      ) : visible.length === 0 ? (
+        <EmptyState
+          title={filterStatus === 'all' ? 'Brak wycen' : 'Brak wycen w tej kategorii'}
+          description={filterStatus === 'all' ? 'Dodaj pierwszą wycenę, aby uruchomić moduł ofert.' : 'Zmień filtr lub utwórz nową wycenę.'}
+          action={canCreate && filterStatus === 'all'
+            ? <Button onClick={() => { setEditing(null); setOpen(true) }}>Utwórz wycenę</Button>
+            : undefined}
+        />
+      ) : (
+        <div className="proj-list">
+          {visible.map(estimate => (
+            <EstimateRow
+              key={estimate.id}
+              estimate={estimate}
+              clientName={estimate.client_id ? (clientMap[estimate.client_id] ?? null) : null}
+              onEdit={e => { setEditing(e); setOpen(true) }}
+              onDelete={canDelete ? id => deleteEstimate.mutate(id) : undefined}
+              onCreateContract={canConvert ? id => estimateToContract.mutate(id) : undefined}
+            />
+          ))}
+        </div>
+      )}
+
+      {canCreate && (
+        <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edytuj wycenę' : 'Nowa wycena'}>
+          <EstimateForm companyId={companyId} initialEstimate={editing} onSubmit={submit} />
+        </Modal>
+      )}
     </div>
   )
 }

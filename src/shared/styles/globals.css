@@ -1775,6 +1775,22 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .proj-status--active    { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
 .proj-status--done      { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
 .proj-status--cancelled { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+/* Estimate */
+.proj-status--draft    { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+.proj-status--sent     { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.proj-status--accepted { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+.proj-status--rejected { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+/* Contract */
+.proj-status--unsigned { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+.proj-status--signed   { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+/* Invoice */
+.proj-status--unpaid   { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+.proj-status--paid     { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+.proj-status--overdue  { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+/* KSeF */
+.proj-status--ksef-sent    { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+.proj-status--ksef-pending { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.proj-status--ksef-error   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
 
 /* Row action buttons */
 .proj-row__actions {
