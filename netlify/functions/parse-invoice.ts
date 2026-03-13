@@ -88,6 +88,38 @@ async function extractViaOCR(
   }
 }
 
+// ─── PDF embedded JPEG extraction ────────────────────────────────────────────
+
+/**
+ * Finds JPEG images embedded inside a PDF binary (FF D8 FF … FF D9 pattern).
+ * Most office scanners and phone PDF-print tools store each page as a DCTDecode
+ * (JPEG) image, so this works for the common "scanned PDF" case without needing
+ * pdfjs-dist or the native `canvas` package.
+ */
+function extractEmbeddedJpegsFromPdf(buffer: Buffer): Buffer[] {
+  const jpegs: Buffer[] = []
+  const SOI = Buffer.from([0xFF, 0xD8, 0xFF]) // JPEG start-of-image
+  const EOI = Buffer.from([0xFF, 0xD9])        // JPEG end-of-image
+  let pos = 0
+  while (pos < buffer.length - 3) {
+    const soiIdx = buffer.indexOf(SOI, pos)
+    if (soiIdx < 0) break
+    // Start scanning for EOI at least 500 bytes in (skip JPEG headers / metadata)
+    const eoiSearch = soiIdx + 500
+    const eoiIdx    = eoiSearch < buffer.length ? buffer.indexOf(EOI, eoiSearch) : -1
+    if (eoiIdx < 0) { pos = soiIdx + 3; continue }
+    const end = eoiIdx + 2 // include the 2-byte EOI marker
+    // Accept only images > 10 KB — skip tiny thumbnails / color-space descriptors
+    if (end - soiIdx > 10_000) {
+      const jpeg = Buffer.allocUnsafe(end - soiIdx)
+      buffer.copy(jpeg, 0, soiIdx, end)
+      jpegs.push(jpeg)
+    }
+    pos = end
+  }
+  return jpegs
+}
+
 // ─── PDF text extraction ─────────────────────────────────────────────────────
 
 /**
@@ -363,8 +395,36 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   if (isPDF) {
     extractedText = extractTextFromPDF(buffer)
-    if (!extractedText.trim()) {
-      baseWarnings.push('Nie udało się wyodrębnić tekstu z PDF (prawdopodobnie skan — uzupełnij dane ręcznie)')
+
+    // Determine whether the extracted text is actually usable
+    const PDF_KEYWORDS = ['faktura', 'fvat', 'nip', 'netto', 'brutto', 'zaplat', 'termin', 'faktur']
+    const hasUsableText = extractedText.trim().length >= 80 &&
+      PDF_KEYWORDS.some(kw => extractedText.toLowerCase().includes(kw))
+
+    if (!hasUsableText) {
+      // Scanned / image-only PDF — try to extract embedded JPEG pages and OCR them
+      const jpegs = extractEmbeddedJpegsFromPdf(buffer)
+      if (jpegs.length > 0) {
+        const ocrTexts: string[] = []
+        for (const jpeg of jpegs.slice(0, 3)) { // limit to first 3 pages
+          const b64                        = jpeg.toString('base64')
+          const { text, warnings: ocrW }   = await extractViaOCR(b64)
+          if (text) ocrTexts.push(text)
+          // propagate only non-trivial OCR warnings (skip "fill manually" duplicates)
+          baseWarnings.push(...ocrW.filter(w => !w.includes('ręcznie')))
+        }
+        if (ocrTexts.length > 0) {
+          extractedText = ocrTexts.join('\n\n')
+          parserSource  = 'regex'
+        } else {
+          baseWarnings.push('Skanowany PDF: OCR nie wykrył czytelnego tekstu — uzupełnij dane ręcznie')
+          parserSource = 'manual'
+        }
+      } else {
+        // No embedded JPEGs (e.g. FlateDecode image or unusual encoding)
+        baseWarnings.push('PDF nie zawiera warstwy tekstowej ani obrazów JPEG — uzupełnij dane ręcznie')
+        parserSource = 'manual'
+      }
     }
   } else if (isImage) {
     const ocrResult = await extractViaOCR(file_base64)

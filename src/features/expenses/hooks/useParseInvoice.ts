@@ -86,8 +86,10 @@ function fileToBase64(file: File): Promise<string> {
 /**
  * Calls the parse-invoice Netlify function with a file and returns ParseInvoiceResult.
  * If the file is too large or the call fails, returns a manual fallback result.
+ *
+ * Exported so that non-hook components (e.g. ExpensesPage) can call it directly.
  */
-async function callParseInvoice(file: File, sourceType: ExpenseSourceType): Promise<ParseInvoiceResult> {
+export async function callParseInvoice(file: File, sourceType: ExpenseSourceType): Promise<ParseInvoiceResult> {
   // Client-side file size guard
   if (file.size > MAX_FILE_SIZE) {
     return {

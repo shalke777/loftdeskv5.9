@@ -2,6 +2,8 @@ import { useRef, useState } from 'react'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks/useExpenses'
 import { expensesApi, ExpenseInvoice, ParsedExpenseData, parseInvoiceFromText } from '../api/expenses.api'
+import type { ParseInvoiceResult, ExpenseSourceType } from '../api/expenses.api'
+import { callParseInvoice } from '../hooks/useParseInvoice'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Button } from '@/shared/ui/Button/Button'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
@@ -101,6 +103,7 @@ export function ExpensesPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const [uploading, setUploading] = useState(false)
+  const [uploadStep, setUploadStep] = useState<string>('Przesyłanie...')
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [parseInfo, setParseInfo] = useState<string | null>(null) // parse diagnostics
 
@@ -116,41 +119,79 @@ export function ExpensesPage() {
   async function handleFileSelected(file: File) {
     if (!file) return
     setUploading(true)
+    setUploadStep('Przesyłanie pliku...')
     setUploadError(null)
     setParseInfo(null)
     try {
+      // ── Step 1: upload to storage ─────────────────────────────
       const { url, name } = await expensesApi.uploadFile(file, companyId)
 
-      // —— extract text from the document ————————————————————
-      let rawText = ''
+      // ── Step 2: choose extraction path ────────────────────────
+      const isPDF   = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
       let parsed: ParsedExpenseData = {}
+      let usedLocalParser = false
 
-      if (file.type === 'application/pdf') {
+      setUploadStep('Odczytuję tekst...')
+
+      // For digitally-generated PDFs: try fast local text extraction first
+      if (isPDF) {
         try {
-          rawText = await extractPdfText(file)
-          if (rawText.length > 20) {
+          const rawText = await extractPdfText(file)
+          const PDF_KEYWORDS = ['faktura', 'fvat', 'nip', 'netto', 'brutto', 'zaplat', 'termin']
+          const hasGoodText  = rawText.trim().length >= 80 &&
+            PDF_KEYWORDS.some(kw => rawText.toLowerCase().includes(kw))
+          if (hasGoodText) {
             parsed = await parseInvoiceFromText(rawText)
+            usedLocalParser = true
           }
-        } catch (ex) {
-          console.warn('[Koszty] PDF text extraction failed', ex)
+        } catch {
+          // local extraction failed — fall through to Netlify OCR
         }
       }
-      // For images: no browser-side OCR — form opens empty, user fills manually
 
-      // build parse diagnostics (dev-friendly, no sensitive raw content)
-      const fields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
-      if (file.type === 'application/pdf') {
+      // For images OR scanned PDFs without usable text layer: use Netlify OCR
+      if (!usedLocalParser) {
+        setUploadStep('Analizuję dane faktury...')
+        try {
+          const sourceType: ExpenseSourceType = isPDF ? 'pdf' : 'gallery'
+          const result: ParseInvoiceResult    = await callParseInvoice(file, sourceType)
+
+          // Map ParseInvoiceResult → ParsedExpenseData (local form shape)
+          parsed = {
+            invoice_number: result.invoice_number ?? undefined,
+            vendor:         result.vendor_name    ?? undefined,
+            vendor_nip:     result.vendor_nip     ?? undefined,
+            issue_date:     result.issue_date     ?? undefined,
+            amount_net:     result.net_amount     ?? undefined,
+            amount_vat:     result.vat_amount     ?? undefined,
+            amount_gross:   result.gross_amount   ?? undefined,
+            description:    result.notes          ?? undefined,
+          }
+
+          const confidence   = result.extraction_confidence
+          const filledFields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
+          if (filledFields.length > 0 && confidence >= 50) {
+            setParseInfo(`✅ OCR rozpoznał: ${filledFields.join(', ')}`)
+          } else if (filledFields.length > 0) {
+            setParseInfo(`⚠️ Częściowe rozpoznanie (${confidence}%) — sprawdź i uzupełnij brakujące pola`)
+          } else {
+            setParseInfo('⚠️ Nie udało się odczytać danych — uzupełnij pola ręcznie')
+          }
+        } catch {
+          setParseInfo('⚠️ Błąd odczytu OCR — uzupełnij pola ręcznie')
+        }
+      } else {
+        // Local PDF parser succeeded
+        const fields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
         setParseInfo(
           fields.length > 0
             ? `✅ Parser rozpoznał: ${fields.join(', ')}`
-            : rawText.length > 20
-              ? '⚠️ Parser uruchomiony, ale nie rozpoznał żadnych pól — wypełnij ręcznie'
-              : '⚠️ PDF nie zawiera osadzonego tekstu — wypełnij ręcznie'
+            : '⚠️ Parser uruchomiony, ale nie rozpoznał pól — sprawdź ręcznie'
         )
-      } else {
-        setParseInfo('ℹ️ Zdjęcia / obrazy — wypełnij dane ręcznie')
       }
 
+      // ── Step 3: open modal with pre-filled form ───────────────
+      setUploadStep('Uzupełniam formularz...')
       setForm({ ...emptyForm(), ...parsedToForm(parsed) })
       setModal({ type: 'add', fileUrl: url, fileName: name, parsed })
     } catch (err: any) {
@@ -328,7 +369,7 @@ export function ExpensesPage() {
         {uploading ? (
           <div className="exp-upload-zone__inner">
             <Spinner />
-            <span>Przesyłanie...</span>
+            <span>{uploadStep}</span>
           </div>
         ) : (
           <div className="exp-upload-zone__inner">
