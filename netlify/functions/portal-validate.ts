@@ -24,12 +24,11 @@ import type { Handler, HandlerEvent } from '@netlify/functions'
 // Supabase service role — używany TYLKO w funkcjach Netlify (serwer)
 // Nigdy nie trafia do przeglądarki
 function sb() {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
-  }
-  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  })
+  // Netlify Dashboard może mieć SUPABASE_URL lub VITE_SUPABASE_URL — obsługujemy oba
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+  return createClient(url, key, { auth: { persistSession: false } })
 }
 
 const HEADERS = {
