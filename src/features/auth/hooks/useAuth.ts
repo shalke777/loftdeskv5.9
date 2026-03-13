@@ -14,7 +14,13 @@ export function useSession() {
     isOwner: user?.role === 'owner',
     isManager: user?.role === 'manager',
     isAccountant: user?.role === 'accountant',
+    isClient: user?.role === 'client',
   }
+}
+
+export function useIsClient() {
+  const { user } = useAuthContext()
+  return user?.role === 'client'
 }
 
 export function useCompanyId() {

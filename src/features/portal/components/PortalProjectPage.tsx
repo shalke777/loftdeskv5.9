@@ -29,6 +29,7 @@ import { PortalMessagesTab }  from '@/features/portal/components/PortalMessagesT
 import { PortalDocumentsTab } from '@/features/portal/components/PortalDocumentsTab'
 import { PortalApprovalsTab } from '@/features/portal/components/PortalApprovalsTab'
 import { Badge } from '@/shared/ui/Badge/Badge'
+import { ClientIdentifyCTA } from '@/features/client-portal/components/ClientIdentifyCTA'
 
 type TabKey = 'updates' | 'messages' | 'documents' | 'approvals'
 
@@ -142,6 +143,9 @@ export function PortalProjectPage({ token }: Props) {
           </div>
         )}
       </div>
+
+      {/* ── CTA — pełny portal klienta (v6.0) ───────────────────────────────── */}
+      <ClientIdentifyCTA portalToken={token} />
 
       {/* ── Zakładki ──────────────────────────────────────────────────────── */}
       <div

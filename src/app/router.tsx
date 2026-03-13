@@ -25,6 +25,9 @@ import { ChatRoutePage } from '@/app/routes/chat'
 import { ExpensesRoutePage } from '@/app/routes/expenses'
 import { AuthCallbackRoutePage } from '@/app/routes/auth-callback'
 import { LegalDocRoutePage, LegalIndexRoutePage } from '@/app/routes/legal'
+import { ClientDashboardRoutePage } from '@/app/routes/client/dashboard'
+import { ClientProjectRoutePage } from '@/app/routes/client/project.$id'
+import { ClientProfileRoutePage } from '@/app/routes/client/profile'
 
 const rootRoute = createRootRoute({ component: RootDocument })
 
@@ -64,6 +67,10 @@ const chatRoute = createRoute({
 })
 const expensesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'expenses', component: ExpensesRoutePage })
 
+const clientDashboardRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'client/dashboard', component: ClientDashboardRoutePage })
+const clientProjectRoute   = createRoute({ getParentRoute: () => authLayoutRoute, path: 'client/project/$id', component: ClientProjectRoutePage })
+const clientProfileRoute   = createRoute({ getParentRoute: () => authLayoutRoute, path: 'client/profile', component: ClientProfileRoutePage })
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   publicLayoutRoute.addChildren([landingRoute, portalRoute, joinRoute, colorDemoRoute, authCallbackRoute, legalIndexRoute, legalDocRoute]),
@@ -84,6 +91,9 @@ const routeTree = rootRoute.addChildren([
     portalInboxRoute,
     chatRoute,
     expensesRoute,
+    clientDashboardRoute,
+    clientProjectRoute,
+    clientProfileRoute,
   ]),
 ])
 

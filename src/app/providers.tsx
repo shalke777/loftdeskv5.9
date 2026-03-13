@@ -9,7 +9,7 @@ import { demoDb, type DemoRole } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { resolveSupabaseSession } from '@/shared/lib/backend'
 
-export type UserRole = DemoRole
+export type UserRole = DemoRole | 'client'
 
 export interface SessionUser {
   id: string

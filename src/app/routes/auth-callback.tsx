@@ -9,6 +9,8 @@ export function AuthCallbackRoutePage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [hasSession, setHasSession] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const isClientMode = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('mode') === 'client'
 
   useEffect(() => {
     if (!supabase) {
@@ -111,10 +113,10 @@ export function AuthCallbackRoutePage() {
           </div>
 
           <Button
-            onClick={() => window.location.assign(hasSession ? '/dashboard' : '/login')}
+            onClick={() => window.location.assign(hasSession ? (isClientMode ? '/client/dashboard' : '/dashboard') : '/login')}
             style={{ width: '100%', fontSize: 16, padding: '12px 0' }}
           >
-            {hasSession ? 'Przejdź do aplikacji' : 'Zaloguj się'}
+            {hasSession ? (isClientMode ? 'Przejdź do swoich projektów' : 'Przejdź do aplikacji') : 'Zaloguj się'}
           </Button>
 
           {!hasSession && (

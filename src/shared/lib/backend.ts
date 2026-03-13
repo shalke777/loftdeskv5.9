@@ -22,6 +22,28 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   const authUser = authData.user
   if (!authUser) return { user: null }
 
+  // ── Sprawdź czy to konto klienta (v6.0) ─────────────────────────────────
+  const { data: clientAccount } = await supabase
+    .from('client_accounts')
+    .select('id, company_id, email, full_name')
+    .eq('auth_user_id', authUser.id)
+    .limit(1)
+    .maybeSingle()
+
+  if (clientAccount) {
+    return {
+      user: {
+        id: authUser.id,
+        email: authUser.email ?? clientAccount.email ?? '',
+        companyId: clientAccount.company_id,
+        companyName: 'Portal klienta',
+        role: 'client' as const,
+        plan: 'free' as const,
+        fullName: clientAccount.full_name ?? authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Klient',
+      },
+    }
+  }
+
   let { data: memberRow } = await supabase
     .from('company_members')
     .select('company_id, role, companies(name, plan)')

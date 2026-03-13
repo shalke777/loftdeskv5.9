@@ -24,6 +24,7 @@ import { InstallAppButton } from '@/shared/ui/InstallAppButton/InstallAppButton'
 import { usePortalNotifications } from '@/features/portal/hooks/usePortalNotifications'
 import { useEffect, useRef, useState } from 'react'
 import { LegalAcceptanceGate } from '@/features/legal/components/LegalAcceptanceGate'
+import { ClientShell } from '@/features/client-portal/components/ClientShell'
 
 type MainNavItem = {
   type?: 'route'
@@ -82,6 +83,9 @@ export function AuthLayout() {
 
   if (loading) return <div className="page-loading">Ładowanie sesji...</div>
   if (!user) return <AuthScreen />
+
+  // Klient (v6.0) — lekki shell bez nawigacji wykonawcy
+  if (user.role === 'client') return <ClientShell />
 
   const featureFlags = { ksef: canUseKsef } as const
   const visibleMainNav = mainNavItems.filter((item) => !item.feature || featureFlags[item.feature])
