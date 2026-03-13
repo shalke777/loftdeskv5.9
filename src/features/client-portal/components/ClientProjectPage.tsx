@@ -4,7 +4,7 @@
 // Zakładki: Dokumenty | Chat | Akceptacje | Oś czasu
 // =============================================================================
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   useClientProject,
   useClientEstimates,
@@ -45,17 +45,21 @@ const CONTRACT_STATUS: Record<string, string> = {
 }
 
 const APPROVAL_STATUS_LABEL: Record<string, string> = {
-  pending:    'Oczekuje',
-  accepted:   'Zaakceptowane',
-  rejected:   'Odrzucone',
-  questioned: 'Zapytanie',
+  pending_client: 'Oczekuje',
+  pending:        'Oczekuje',      // fallback dla starszych rekordów
+  accepted:       'Zaakceptowane',
+  rejected:       'Odrzucone',
+  questioned:     'Zapytanie',
+  not_sent:       'Nie wysłano',
 }
 
 const APPROVAL_STATUS_VARIANT: Record<string, 'default' | 'success' | 'warning' | 'danger'> = {
-  pending:    'warning',
-  accepted:   'success',
-  rejected:   'danger',
-  questioned: 'default',
+  pending_client: 'warning',
+  pending:        'warning',
+  accepted:       'success',
+  rejected:       'danger',
+  questioned:     'default',
+  not_sent:       'default',
 }
 
 const STATUS_BADGE: Record<string, 'default' | 'success' | 'warning' | 'danger'> = {
@@ -269,7 +273,7 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
             </p>
           )}
 
-          {approval.status === 'pending' && (
+          {(approval.status === 'pending_client' || approval.status === 'pending') && (
             <div className="client-approval-card__actions">
               <input
                 className="client-approval-card__comment"
@@ -315,9 +319,10 @@ function TimelineTab({ projectId }: { projectId: string }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  // Import supabase directly — portal timeline uses project_timeline_events with RLS
   // RLS (migr. 042) ensures client can only see visibility='client_shared' events
-  useState(() => {
+  useEffect(() => {
+    setLoading(true)
+    setError(false)
     import('@/shared/lib/supabase').then(({ supabase }) => {
       if (!supabase) { setLoading(false); return }
       supabase
@@ -332,7 +337,7 @@ function TimelineTab({ projectId }: { projectId: string }) {
           setLoading(false)
         })
     })
-  })
+  }, [projectId])
 
   if (loading) return <div className="client-tab-loading">Ładowanie historii...</div>
   if (error)   return <div className="client-tab-empty"><p>Nie udało się załadować osi czasu.</p></div>

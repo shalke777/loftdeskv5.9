@@ -7,8 +7,9 @@
 // Renderowany przez AuthLayout gdy user.role === 'client'
 // =============================================================================
 
+import { useEffect } from 'react'
 import { FolderKanban, LogOut, User } from 'lucide-react'
-import { Link, Outlet, useRouterState } from '@tanstack/react-router'
+import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { ClientInstallBanner } from '@/features/client-portal/components/ClientInstallBanner'
 
@@ -20,6 +21,13 @@ const NAV = [
 export function ClientShell() {
   const { user, signOut } = useAuth()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!pathname.startsWith('/client/')) {
+      void navigate({ to: '/client/dashboard' })
+    }
+  }, [pathname, navigate])
 
   return (
     <div className="client-shell">

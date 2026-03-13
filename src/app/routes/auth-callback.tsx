@@ -104,12 +104,21 @@ export function AuthCallbackRoutePage() {
             textAlign: 'left',
           }}>
             <p style={{ fontWeight: 600, marginBottom: 10, color: '#166534' }}>Co możesz teraz zrobić:</p>
-            <ul style={{ margin: 0, paddingLeft: 20, color: '#15803d', lineHeight: 1.8, fontSize: 14 }}>
-              <li>Uzupełnij dane firmy w ustawieniach</li>
-              <li>Dodaj pierwszego klienta i kosztorys</li>
-              <li>Wystaw pierwszą fakturę</li>
-              <li>Zaproś członków zespołu</li>
-            </ul>
+            {isClientMode ? (
+              <ul style={{ margin: 0, paddingLeft: 20, color: '#15803d', lineHeight: 1.8, fontSize: 14 }}>
+                <li>Przeglądaj dokumenty swoich projektów</li>
+                <li>Odpowiadaj na akceptacje kosztorysów</li>
+                <li>Przesyłaj wiadomości do wykonawcy</li>
+                <li>Uzupełnij swój profil</li>
+              </ul>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: 20, color: '#15803d', lineHeight: 1.8, fontSize: 14 }}>
+                <li>Uzupełnij dane firmy w ustawieniach</li>
+                <li>Dodaj pierwszego klienta i kosztorys</li>
+                <li>Wystaw pierwszą fakturę</li>
+                <li>Zaproś członków zespołu</li>
+              </ul>
+            )}
           </div>
 
           <Button

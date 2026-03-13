@@ -22,6 +22,7 @@
 //   - Idempotentny: wielokrotne wywołanie nie tworzy duplikatów
 // =============================================================================
 
+import { createHash } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 import type { Handler, HandlerEvent } from '@netlify/functions'
 
@@ -111,18 +112,21 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   const sb = sbAdmin()
 
+  // ── SHA-256 hash tokenu — project_portal_tokens przechowuje token_hash, nie raw token ─────────
+  const tokenHash = createHash('sha256').update(token).digest('hex')
+
   // ── Waliduj token portalu ────────────────────────────────────────────────────
-  // Szukamy w project_portal_tokens (nowy system — migr. 034) najpierw
+  // Szukamy w project_portal_tokens (nowy system — migr. 034) najpierw (po token_hash)
   const { data: portalToken } = await sb
     .from('project_portal_tokens')
     .select('id, project_id, company_id, active, revoked_at')
-    .eq('raw_token_hint', token)   // raw_token_hint może nie istnieć — sprawdzamy oba systemy
+    .eq('token_hash', tokenHash)
     .eq('active', true)
     .is('revoked_at', null)
     .maybeSingle()
     .then(async (res) => {
       if (res.data) return res
-      // Fallback: stary system client_tokens (migr. 004)
+      // Fallback: stary system client_tokens (migr. 004) — token przechowywany jawnie
       return sb
         .from('client_tokens')
         .select('id, project_id, company_id, active')
@@ -166,7 +170,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // Aktualizujemy w obu tabelach (obsługa obu systemów)
   await Promise.allSettled([
     sb.from('client_tokens').update({ client_account_id: account.id }).eq('token', token),
-    sb.from('project_portal_tokens').update({ client_account_id: account.id }).eq('raw_token_hint', token),
+    sb.from('project_portal_tokens').update({ client_account_id: account.id }).eq('token_hash', tokenHash),
   ])
 
   // ── Nadaj dostęp do projektu ─────────────────────────────────────────────────
