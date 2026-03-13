@@ -51,6 +51,7 @@ export function useCreatePortalToken(companyId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portal', 'company-tokens', companyId] })
       queryClient.invalidateQueries({ queryKey: ['estimates'] })
+      queryClient.invalidateQueries({ queryKey: ['onboarding-progress', companyId] })
     },
   })
 }

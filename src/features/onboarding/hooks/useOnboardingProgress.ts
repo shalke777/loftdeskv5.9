@@ -10,7 +10,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { billingApi } from '@/features/billing/api/billing.api'
 import { demoDb } from '@/shared/lib/demoDb'
-import { isDemoMode } from '@/shared/lib/supabase'
+import { isDemoMode, supabase } from '@/shared/lib/supabase'
 
 export interface OnboardingStep {
   key: string
@@ -91,14 +91,29 @@ export function useOnboardingProgress() {
         }
       }
 
-      // Supabase mode: derive from billing summary
+      // Supabase mode: derive from billing summary + portal check
       const billing = await billingApi.summary(companyId)
+
+      let portalDone = false
+      try {
+        if (supabase) {
+          const { count } = await supabase
+            .from('project_portal_tokens')
+            .select('*', { count: 'exact', head: true })
+            .eq('company_id', companyId)
+            .eq('active', true)
+          portalDone = (count ?? 0) > 0
+        }
+      } catch {
+        // table may not exist in older deployments — treat as not done
+      }
+
       const checks: Record<string, boolean> = {
         companyProfile: Boolean(billing.companyName && billing.companyName !== 'LoftDesk Workspace'),
         firstClient: billing.usage.clients > 0,
         firstEstimate: billing.usage.estimates > 0,
         projects: billing.usage.projects > 0,
-        portal: false, // can't check portal status cheaply here; skip
+        portal: portalDone,
       }
       const steps = buildSteps(checks)
       const done = steps.filter((s) => s.done).length
@@ -115,7 +130,8 @@ export function useOnboardingProgress() {
         isEmpty,
       }
     },
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchOnWindowFocus: true,
   })
 }
 

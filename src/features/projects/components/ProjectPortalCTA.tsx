@@ -65,6 +65,8 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
     onSuccess: (result) => {
       setNewRawToken(result.raw_token)
       queryClient.invalidateQueries({ queryKey: ['portal-tokens', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['portal', 'company-tokens', companyId] })
+      queryClient.invalidateQueries({ queryKey: ['onboarding-progress', companyId] })
     },
   })
 

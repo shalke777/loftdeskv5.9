@@ -16,7 +16,7 @@ export function useClients() {
 
 export function useCreateClient() {
   const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast()
-  return useMutation({ mutationFn: (input: Omit<Client, 'id' | 'created_at'>) => clientsApi.create(input), onSuccess: () => { qc.invalidateQueries({ queryKey: clientKeys.list(companyId) }); toast.success('Klient dodany') } })
+  return useMutation({ mutationFn: (input: Omit<Client, 'id' | 'created_at'>) => clientsApi.create(input), onSuccess: () => { qc.invalidateQueries({ queryKey: clientKeys.list(companyId) }); qc.invalidateQueries({ queryKey: ['onboarding-progress', companyId] }); toast.success('Klient dodany') } })
 }
 
 export function useUpdateClient() {
