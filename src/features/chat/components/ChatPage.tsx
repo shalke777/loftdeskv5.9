@@ -163,10 +163,10 @@ export function ChatPage() {
 
           <div
             style={{
-              padding: '12px 14px',
-              borderTop: '1px solid var(--color-border)',
+              padding: '10px 14px',
+              borderTop: '1px solid var(--color-border-light)',
               fontSize: 11,
-              color: '#94a3b8',
+              color: '#9ca3af',
               marginTop: 'auto',
             }}
           >
@@ -174,47 +174,25 @@ export function ChatPage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="chat-thread">
           {activeThread ? (
-            <div
-              style={{
-                padding: '12px 20px',
-                borderBottom: '1px solid var(--color-border)',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 10,
-                background: 'var(--color-surface-soft)',
-                flexShrink: 0,
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>
+            <div className="chat-thread__header">
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="chat-thread__name">
                   {activeThread.title ?? activeThread.type}
                 </div>
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                  {activeThread.project_number && `${activeThread.project_number} · `}
-                  {activeThread.project_name}
+                <div className="chat-thread__meta">
+                  {activeThread.project_number ? `${activeThread.project_number} · ` : ''}{activeThread.project_name}
                 </div>
               </div>
               <Badge
                 variant={activeThread.visibility === 'client_shared' ? 'success' : 'default'}
-                style={{ fontSize: 11, marginLeft: 'auto', flexShrink: 0 }}
+                style={{ fontSize: 11, flexShrink: 0 }}
               >
                 {activeThread.visibility === 'client_shared' ? 'Klient' : activeThread.visibility === 'internal' ? 'Wewnętrzny' : 'Akceptacje'}
               </Badge>
             </div>
-          ) : (
-            <div
-              style={{
-                padding: '12px 20px',
-                borderBottom: '1px solid var(--color-border)',
-                background: 'var(--color-surface-soft)',
-                flexShrink: 0,
-              }}
-            >
-              <span style={{ fontSize: 14, color: '#94a3b8' }}>Wybierz wątek z listy</span>
-            </div>
-          )}
+          ) : null}
 
           <ThreadView threadId={activeId} projectId={activeThread?.project_id ?? null} />
 

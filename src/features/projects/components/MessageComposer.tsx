@@ -13,7 +13,7 @@
 //   - Obsługa braku internetu: mutation.error → komunikat
 
 import { useRef, useState, type KeyboardEvent } from 'react'
-import { Button } from '@/shared/ui/Button/Button'
+import { Send } from 'lucide-react'
 import { useSendThreadMessage } from '@/features/projects/hooks/useSendThreadMessage'
 import type { ProjectThread } from '@/features/portal/model/project-portal.types'
 
@@ -88,87 +88,52 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
   })()
 
   return (
-    <div
-      style={{
-        borderTop: '1px solid var(--color-border)',
-        padding:   '12px 16px',
-        display:   'flex',
-        flexDirection: 'column',
-        gap:       8,
-      }}
-    >
-      {/* Banner */}
+    <div className="chat-thread__composer">
       {banner && (
         <div
-          style={{
-            background:   banner.bg,
-            border:       `1px solid ${banner.border}`,
-            borderRadius: 8,
-            padding:      '7px 12px',
-            fontSize:     12,
-            color:        banner.color,
-            display:      'flex',
-            alignItems:   'center',
-            gap:          8,
-          }}
+          className="chat-thread__composer-banner"
+          style={{ background: banner.bg, border: `1px solid ${banner.border}`, color: banner.color }}
         >
           <span>{banner.icon}</span>
           <span>{banner.text}</span>
         </div>
       )}
 
-      {/* Textarea */}
-      <textarea
-        ref={textRef}
-        value={body}
-        onChange={e => setBody(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={
-          thread.visibility === 'internal'
-            ? 'Dodaj notatkę wewnętrzną…'
-            : thread.visibility === 'approval'
-            ? 'Dodaj wiadomość dotyczącą akceptacji…'
-            : 'Napisz wiadomość do klienta…'
-        }
-        disabled={disabled || send.isPending}
-        rows={3}
-        style={{
-          width:        '100%',
-          padding:      '10px 12px',
-          border:       '1px solid var(--color-border)',
-          borderRadius: 12,
-          fontSize:     14,
-          lineHeight:   1.5,
-          resize:       'none',
-          fontFamily:   'inherit',
-          background:   'var(--color-surface-soft)',
-          color:        'var(--color-text-primary)',
-          boxSizing:    'border-box',
-        }}
-      />
-
-      {/* Akcje */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        {/* Błąd wysyłki */}
-        {send.isError && (
-          <span style={{ fontSize: 12, color: 'var(--color-error)' }}>
-            ⚠️ Błąd wysyłki — sprawdź połączenie i spróbuj ponownie
-          </span>
-        )}
-        {!send.isError && (
-          <span style={{ fontSize: 11, color: '#94a3b8' }}>
-            Ctrl+Enter aby wysłać
-          </span>
-        )}
-        <Button
+      <div className="chat-thread__composer-row">
+        <textarea
+          ref={textRef}
+          value={body}
+          onChange={e => setBody(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={
+            thread.visibility === 'internal'
+              ? 'Dodaj notatkę wewnętrzną…'
+              : thread.visibility === 'approval'
+              ? 'Dodaj wiadomość w kontekście akceptacji…'
+              : 'Napisz wiadomość do klienta…'
+          }
+          disabled={disabled || send.isPending}
+          rows={2}
+          className={`chat-textarea${thread.visibility === 'internal' ? ' chat-textarea--note' : ''}`}
+        />
+        <button
           onClick={handleSend}
           disabled={!body.trim() || disabled || send.isPending}
-          loading={send.isPending}
-          variant={thread.visibility === 'client_shared' || thread.visibility === 'approval' ? 'primary' : 'secondary'}
+          className={`chat-send-btn${thread.visibility === 'internal' ? ' chat-send-btn--note' : ''}`}
+          title="Wyślij (Ctrl+Enter)"
+          type="button"
         >
-          {thread.visibility === 'internal' ? '📝 Zapisz notatkę' : '📤 Wyślij'}
-        </Button>
+          <Send size={16} strokeWidth={2.5} />
+        </button>
       </div>
+
+      {send.isError ? (
+        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-error)' }}>
+          ⚠️ Błąd wysyłki — sprawdź połączenie
+        </div>
+      ) : (
+        <div className="chat-hint">Ctrl+Enter aby wysłać</div>
+      )}
     </div>
   )
 }

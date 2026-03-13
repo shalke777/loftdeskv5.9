@@ -82,7 +82,7 @@ function MessageBubble({ msg }: BubbleProps) {
         {/* Label: notatka wewnętrzna */}
         {isInternal && !isClient && (
           <span className="chat-bubble__note-label" style={{ fontSize: 11, marginBottom: 4, display: 'block', opacity: 0.75 }}>
-            🔒 Notatka wewnętrzna
+            � Notatka wewnętrzna
           </span>
         )}
 
@@ -153,19 +153,12 @@ export function ThreadView({ threadId, projectId }: ThreadViewProps) {
 
   if (!threadId) {
     return (
-      <div
-        style={{
-          flex:           1,
-          display:        'flex',
-          flexDirection:  'column',
-          alignItems:     'center',
-          justifyContent: 'center',
-          color:          '#94a3b8',
-          gap:            12,
-        }}
-      >
-        <div style={{ fontSize: 40 }}>💬</div>
-        <p style={{ margin: 0, fontSize: 14 }}>Wybierz wątek z listy</p>
+      <div className="chat-thread__empty">
+        <div style={{ fontSize: 48, lineHeight: 1 }}>💬</div>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Wybierz wątek</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#9ca3af' }}>Kliknij wątek z listy, aby zobaczyć rozmowę</p>
+        </div>
       </div>
     )
   }
@@ -184,21 +177,11 @@ export function ThreadView({ threadId, projectId }: ThreadViewProps) {
   let lastDate = ''
 
   return (
-    <div
-      ref={listRef}
-      style={{
-        flex:          1,
-        overflowY:     'auto',
-        padding:       '12px 16px',
-        display:       'flex',
-        flexDirection: 'column',
-        gap:           2,
-      }}
-    >
+    <div ref={listRef} className="chat-thread__messages">
       {list.length === 0 ? (
-        <div className="empty-state">
-          <div style={{ fontSize: 28, marginBottom: 8 }}>📭</div>
-          <p style={{ margin: 0, fontSize: 13 }}>Brak wiadomości w tym wątku</p>
+        <div className="chat-thread__no-messages">
+          <div style={{ fontSize: 36 }}>📭</div>
+          <p style={{ margin: 0 }}>Brak wiadomości — napisz pierwszą</p>
         </div>
       ) : (
         list.map((msg) => {
@@ -207,18 +190,7 @@ export function ThreadView({ threadId, projectId }: ThreadViewProps) {
           lastDate        = dateLabel
           return (
             <div key={msg.id}>
-              {showDate && (
-                <div
-                  style={{
-                    textAlign:  'center',
-                    fontSize:   11,
-                    color:      '#94a3b8',
-                    margin:     '16px 0 8px',
-                  }}
-                >
-                  {dateLabel}
-                </div>
-              )}
+              {showDate && <div className="chat-date-sep">{dateLabel}</div>}
               <MessageBubble msg={msg} />
             </div>
           )

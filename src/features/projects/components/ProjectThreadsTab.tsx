@@ -156,7 +156,7 @@ export function ProjectThreadsTab({ projectId }: Props) {
     <div
       style={{
         display:       'flex',
-        height:        560,
+        height:        640,
         overflow:      'hidden',
         border:        '1px solid var(--color-border)',
         borderRadius:  16,
@@ -211,25 +211,18 @@ export function ProjectThreadsTab({ projectId }: Props) {
           flexDirection: 'column',
           minWidth:      0,
           overflow:      'hidden',
+          background:    'var(--color-bg)',
         }}
       >
         {/* Nagłówek aktywnego wątku */}
         {activeThread && (
-          <div
-            style={{
-              padding:       '10px 16px',
-              borderBottom:  '1px solid var(--color-border)',
-              display:       'flex',
-              alignItems:    'center',
-              gap:           8,
-              background:    'var(--color-surface-soft)',
-              flexShrink:    0,
-            }}
-          >
-            <span style={{ fontWeight: 600, fontSize: 14 }}>
-              {activeThread.title ?? THREAD_TYPE_LABELS[activeThread.type] ?? activeThread.type}
-            </span>
-            <Badge variant={activeThread.visibility === 'client_shared' ? 'success' : 'default'} style={{ fontSize: 11, padding: '2px 8px' }}>
+          <div className="chat-thread__header">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="chat-thread__name">
+                {activeThread.title ?? THREAD_TYPE_LABELS[activeThread.type] ?? activeThread.type}
+              </div>
+            </div>
+            <Badge variant={activeThread.visibility === 'client_shared' ? 'success' : 'default'} style={{ fontSize: 11, flexShrink: 0 }}>
               {VISIBILITY_LABELS[activeThread.visibility] ?? activeThread.visibility}
             </Badge>
           </div>

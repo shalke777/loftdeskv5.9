@@ -30,30 +30,34 @@ const THREAD_TYPE_LABELS: Record<string, string> = {
   internal:  'Wewnętrzny',
 }
 
-const VISIBILITY_DOT: Record<string, { color: string; title: string }> = {
-  internal:      { color: '#94a3b8', title: 'Tylko widok firmowy' },
-  client_shared: { color: '#22c55e', title: 'Widoczny dla klienta' },
-  approval:      { color: '#f59e0b', title: 'Akceptacje / pytania' },
+const VISIBILITY_CHIP: Record<string, { label: string; color: string; bg: string }> = {
+  internal:      { label: 'Wewn.',  color: '#64748b', bg: '#f1f5f9' },
+  client_shared: { label: 'Klient', color: '#15803d', bg: '#dcfce7' },
+  approval:      { label: 'Akcept.',color: '#b45309', bg: '#fef3c7' },
 }
 
-interface VisibilityDotProps {
+interface VisibilityChipProps {
   visibility: string
 }
 
-function VisibilityDot({ visibility }: VisibilityDotProps) {
-  const cfg = VISIBILITY_DOT[visibility] ?? VISIBILITY_DOT.internal
+function VisibilityChip({ visibility }: VisibilityChipProps) {
+  const cfg = VISIBILITY_CHIP[visibility] ?? VISIBILITY_CHIP.internal
   return (
     <span
-      title={cfg.title}
       style={{
-        display:      'inline-block',
-        width:        8,
-        height:       8,
-        borderRadius: '50%',
-        background:   cfg.color,
-        flexShrink:   0,
+        fontSize:      10,
+        padding:       '2px 7px',
+        borderRadius:  20,
+        background:    cfg.bg,
+        color:         cfg.color,
+        fontWeight:    600,
+        letterSpacing: '0.02em',
+        flexShrink:    0,
+        whiteSpace:    'nowrap',
       }}
-    />
+    >
+      {cfg.label}
+    </span>
   )
 }
 
@@ -87,13 +91,15 @@ export function ThreadListItem({ thread, active, showProject, onClick }: ThreadL
 
       <div className="chat-conv-item__body">
         <div className="chat-conv-item__header">
-          <span className="chat-conv-item__name" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <VisibilityDot visibility={thread.visibility} />
+          <span className="chat-conv-item__name">
             {thread.title ?? THREAD_TYPE_LABELS[thread.type] ?? thread.type}
           </span>
-          <span className="chat-conv-item__time">
-            {formatRelative(thread.last_message_at)}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+            <VisibilityChip visibility={thread.visibility} />
+            <span className="chat-conv-item__time">
+              {formatRelative(thread.last_message_at)}
+            </span>
+          </div>
         </div>
 
         {/* Projekt — tylko w global inbox */}
@@ -143,9 +149,10 @@ export function ThreadList({
 }: ThreadListProps) {
   if (threads.length === 0) {
     return (
-      <div className="empty-state" style={{ padding: '32px 16px' }}>
-        <div style={{ fontSize: 28, marginBottom: 8 }}>💬</div>
-        <p style={{ margin: 0, fontSize: 13 }}>{emptyLabel}</p>
+      <div className="chat-sidebar__empty">
+        <div style={{ fontSize: 32, marginBottom: 10 }}>💬</div>
+        <p style={{ margin: 0, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{emptyLabel}</p>
+        <p style={{ margin: '4px 0 0', fontSize: 12 }}>Wątki tworzone są w widoku projektu</p>
       </div>
     )
   }
