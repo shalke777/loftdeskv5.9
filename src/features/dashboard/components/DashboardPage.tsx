@@ -155,19 +155,23 @@ export function DashboardPage() {
       <div className="grid-3" style={{ marginTop: 16 }}>
         <Card>
           <h3>Wskaźniki</h3>
-          <ul>
-            <li>Klienci: {data.clientsCount}</li>
-            <li>Kosztorysy: {data.estimatesCount}</li>
-            <li>Umowy: {data.contractsCount}</li>
-            <li>Przychód opłacony: {formatCurrency(data.paidRevenue)}</li>
-            <li>KSeF ready: {data.ksefReady ? 'tak' : 'nie'}</li>
-          </ul>
+          <div className="stack-sm" style={{ marginTop: 10 }}>
+            <div className="list-row"><span>Klienci</span><strong>{data.clientsCount}</strong></div>
+            <div className="list-row"><span>Kosztorysy</span><strong>{data.estimatesCount}</strong></div>
+            <div className="list-row"><span>Umowy</span><strong>{data.contractsCount}</strong></div>
+            <div className="list-row"><span>Przychód opłacony</span><strong>{formatCurrency(data.paidRevenue)}</strong></div>
+            <div className="list-row"><span>KSeF ready</span><strong>{data.ksefReady ? 'tak' : 'nie'}</strong></div>
+          </div>
         </Card>
         <Card>
           <h3>Ostatnia aktywność</h3>
-          <ul>
-            {data.recentActivity.map((item) => <li key={item}>{item}</li>)}
-          </ul>
+          <div className="stack-sm" style={{ marginTop: 10 }}>
+            {data.recentActivity.length === 0
+              ? <p className="muted">Brak aktywności.</p>
+              : data.recentActivity.map((item) => (
+                  <div key={item} className="list-row"><span>{item}</span></div>
+                ))}
+          </div>
         </Card>
         <Card>
           <h3>Portal klienta</h3>

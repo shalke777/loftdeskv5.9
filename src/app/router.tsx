@@ -54,7 +54,14 @@ const teamRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'te
 const onboardingRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'onboarding', component: OnboardingRoutePage })
 const documentationRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'documentation', component: DocumentationRoutePage })
 const portalInboxRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'portal-inbox', component: PortalInboxRoutePage })
-const chatRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'chat', component: ChatRoutePage })
+const chatRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: 'chat',
+  component: ChatRoutePage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    threadId: typeof search.threadId === 'string' ? search.threadId : undefined,
+  }),
+})
 const expensesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'expenses', component: ExpensesRoutePage })
 
 const routeTree = rootRoute.addChildren([

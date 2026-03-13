@@ -1,8 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Copy, ExternalLink, MessageSquare } from 'lucide-react'
-import { Card } from '@/shared/ui/Card/Card'
+import { ChevronDown, Copy, ExternalLink, MessageSquare } from 'lucide-react'
 import { Button } from '@/shared/ui/Button/Button'
-import { Badge } from '@/shared/ui/Badge/Badge'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { useToast } from '@/shared/hooks/useToast'
@@ -29,6 +27,7 @@ export function PortalInboxPage() {
 
   const [filter, setFilter] = useState<FilterKey>('active')
   const [sortBy, setSortBy] = useState<SortKey>('activity')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const totalUnread = useMemo(
     () => Object.values(unreadByToken).reduce((s, v) => s + v, 0),
@@ -47,7 +46,6 @@ export function PortalInboxPage() {
     } else if (sortBy === 'estimate') {
       list.sort((a, b) => a.estimate_number.localeCompare(b.estimate_number))
     } else {
-      // activity — sort by last message date, fallback to expires_at
       list.sort((a, b) => {
         const aDate = lastByToken[a.id]?.created_at ?? a.expires_at ?? ''
         const bDate = lastByToken[b.id]?.created_at ?? b.expires_at ?? ''
@@ -69,26 +67,22 @@ export function PortalInboxPage() {
       />
 
       {/* Filter + sort bar */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20, alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 4 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18, alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {(Object.keys(FILTER_LABELS) as FilterKey[]).map((f) => (
             <button
               key={f}
+              className={`proj-filter-pill${filter === f ? ' proj-filter-pill--active' : ''}`}
               onClick={() => setFilter(f)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 6,
-                border: '1px solid',
-                borderColor: filter === f ? 'var(--color-accent, #3b82f6)' : '#e5e7eb',
-                background: filter === f ? 'var(--color-accent, #3b82f6)' : '#fff',
-                color: filter === f ? '#fff' : '#374151',
-                fontWeight: filter === f ? 600 : 400,
-                fontSize: 13,
-                cursor: 'pointer',
-                transition: 'all .15s',
-              }}
             >
               {FILTER_LABELS[f]}
+              <span className="proj-filter-pill__count">
+                {f === 'active'
+                  ? tokens.filter((t) => t.active).length
+                  : f === 'inactive'
+                    ? tokens.filter((t) => !t.active).length
+                    : tokens.length}
+              </span>
             </button>
           ))}
         </div>
@@ -98,7 +92,8 @@ export function PortalInboxPage() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortKey)}
-            style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: 13, background: '#fff', cursor: 'pointer' }}
+            className="chat-project-select"
+            style={{ width: 'auto' }}
           >
             <option value="activity">Ostatnia aktywność</option>
             <option value="unread">Nieprzeczytane</option>
@@ -109,19 +104,15 @@ export function PortalInboxPage() {
       </div>
 
       {displayed.length === 0 ? (
-        <Card>
-          <div style={{ textAlign: 'center', padding: '36px 0', color: '#9ca3af' }}>
-            <MessageSquare size={36} style={{ margin: '0 auto 14px', opacity: 0.35, display: 'block' }} />
-            <p style={{ fontSize: 15, fontWeight: 500, color: '#6b7280' }}>
-              {filter === 'active' ? 'Brak aktywnych linków portalu' : 'Brak linków portalu'}
-            </p>
-            <p style={{ fontSize: 13, marginTop: 6 }}>
-              Generuj nowe linki w widoku Wyceny → Portal klienta.
-            </p>
-          </div>
-        </Card>
+        <div className="proj-list" style={{ padding: '40px 20px', textAlign: 'center', color: '#9ca3af' }}>
+          <MessageSquare size={36} style={{ margin: '0 auto 14px', opacity: 0.35, display: 'block' }} />
+          <p style={{ fontSize: 15, fontWeight: 500, color: '#6b7280', margin: '0 0 6px' }}>
+            {filter === 'active' ? 'Brak aktywnych linków portalu' : 'Brak linków portalu'}
+          </p>
+          <p style={{ fontSize: 13, margin: 0 }}>Generuj nowe linki w widoku Wyceny → Portal klienta.</p>
+        </div>
       ) : (
-        <div style={{ display: 'grid', gap: 8 }}>
+        <div className="proj-list">
           {displayed.map((item) => {
             const fullUrl = `${origin}${item.url}`
             const unread = unreadByToken[item.id] ?? 0
@@ -137,122 +128,128 @@ export function PortalInboxPage() {
                   minute: '2-digit',
                 })
               : null
+            const isOpen = expandedId === item.id
 
             return (
-              <Card
-                key={item.id}
-                style={{
-                  padding: '12px 16px',
-                  borderLeft: `3px solid ${unread > 0 ? '#3b82f6' : '#e5e7eb'}`,
-                  opacity: item.active ? 1 : 0.65,
-                }}
-              >
-                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexDirection: 'column' }}>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', width: '100%' }}>
-                  {/* Unread badge / icon */}
-                  <div style={{ paddingTop: 2, flexShrink: 0 }}>
+              <div key={item.id} className={`proj-row${isOpen ? ' proj-row--open' : ''}`}>
+                <div
+                  className="proj-row__header"
+                  onClick={() => setExpandedId(isOpen ? null : item.id)}
+                >
+                  {/* Unread badge */}
+                  <div style={{ flexShrink: 0 }}>
                     {unread > 0 ? (
                       <span style={{
-                        background: '#3b82f6',
-                        color: '#fff',
-                        fontWeight: 700,
-                        fontSize: 12,
-                        borderRadius: 20,
-                        minWidth: 26,
-                        height: 26,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '0 6px',
+                        background: 'var(--color-brand)',
+                        color: '#fff', fontWeight: 700, fontSize: 11,
+                        borderRadius: 20, minWidth: 22, height: 22,
+                        display: 'inline-flex', alignItems: 'center',
+                        justifyContent: 'center', padding: '0 5px',
                       }}>
                         {unread > 99 ? '99+' : unread}
                       </span>
                     ) : (
                       <span style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 20,
-                        background: '#f3f4f6',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        width: 22, height: 22, borderRadius: 20,
+                        background: 'var(--color-border-light, #f3f4f6)',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       }}>
-                        <MessageSquare size={13} color="#9ca3af" />
+                        <MessageSquare size={12} color="#9ca3af" />
                       </span>
                     )}
                   </div>
 
-                  {/* Main info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontWeight: 600, fontSize: 15, color: '#111827' }}>
-                        {item.client_name}
-                      </span>
-                      <Badge variant={item.active ? 'success' : 'danger'}>
-                        {item.active ? 'aktywny' : 'wyłączony'}
-                      </Badge>
-                    </div>
-
-                    <div style={{ fontSize: 13, color: '#374151', marginBottom: 4 }}>
-                      <span style={{ fontWeight: 500, color: '#6b7280' }}>{item.estimate_number}</span>
+                  {/* Info */}
+                  <div className="proj-row__info">
+                    <span className="proj-row__name">{item.client_name}</span>
+                    <div className="proj-row__meta">
+                      <span className="proj-row__number">{item.estimate_number}</span>
                       {item.estimate_name ? (
-                        <span style={{ color: '#374151' }}> – {item.estimate_name}</span>
+                        <span className="proj-row__client">{item.estimate_name}</span>
                       ) : null}
-                    </div>
-
-                    {last ? (
-                      <div style={{ fontSize: 12, color: '#6b7280', display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 500, color: last.sender === 'client' ? '#2563eb' : '#9ca3af', flexShrink: 0 }}>
-                          {last.sender === 'client' ? '← klient:' : '→ ty:'}
+                      {last && (
+                        <span style={{ fontSize: 12, color: '#9ca3af' }}>
+                          {last.sender === 'client' ? '← ' : '→ '}
+                          <span style={{
+                            maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap', display: 'inline-block', verticalAlign: 'middle',
+                          }}>
+                            {last.content.replace(/\[img:data:image\/[^\]]{0,20}[^\]]*\]/g, '[zdjęcie]')}
+                          </span>
+                          {lastTimeLabel ? ` · ${lastTimeLabel}` : ''}
                         </span>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>
-                          {last.content.replace(/\[img:data:image\/[^\]]{0,20}[^\]]*\]/g, '[zdjęcie]')}
-                        </span>
-                        {lastTimeLabel ? (
-                          <span style={{ color: '#9ca3af', flexShrink: 0 }}>· {lastTimeLabel}</span>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: 12, color: '#9ca3af' }}>Brak wiadomości</div>
-                    )}
-
-                    <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
-                      Wygasa: {expiresLabel}
+                      )}
                     </div>
                   </div>
-                  </div>{/* end top row */}
 
-                  {/* Actions — full width row below text */}
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', width: '100%' }}>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      icon={<Copy size={13} />}
-                      onClick={async () => {
-                        await navigator.clipboard?.writeText(fullUrl)
-                        toast.info('Skopiowano link portalu')
-                      }}
+                  {/* Right: status + chevron */}
+                  <div className="proj-row__right">
+                    <span className={`proj-status ${item.active ? 'proj-status--active' : 'proj-status--cancelled'}`}>
+                      {item.active ? 'aktywny' : 'wyłączony'}
+                    </span>
+                    <span
+                      className="proj-row__chevron"
+                      style={{ transform: isOpen ? 'rotate(180deg)' : undefined, transition: 'transform 0.2s' }}
                     >
-                      Kopiuj link
-                    </Button>
-                    <a href={fullUrl} target="_blank" rel="noreferrer">
-                      <Button variant="secondary" size="sm" icon={<ExternalLink size={13} />}>
-                        Otwórz
-                      </Button>
-                    </a>
-                    {item.active && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={deactivate.isPending && deactivate.variables === item.id}
-                        onClick={() => deactivate.mutate(item.id)}
-                      >
-                        Dezaktywuj
-                      </Button>
-                    )}
+                      <ChevronDown size={16} />
+                    </span>
                   </div>
                 </div>
-              </Card>
+
+                {isOpen && (
+                  <div className="proj-row__detail">
+                    <div style={{ fontSize: 13, color: '#374151', marginBottom: 14, display: 'grid', gap: 6 }}>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <span style={{ color: '#6b7280', minWidth: 70 }}>Link:</span>
+                        <a
+                          href={fullUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: 'var(--color-brand)', wordBreak: 'break-all', flex: 1 }}
+                        >
+                          {fullUrl}
+                        </a>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <span style={{ color: '#6b7280', minWidth: 70 }}>Wygasa:</span>
+                        <span>{expiresLabel}</span>
+                      </div>
+                      {!last && (
+                        <div style={{ color: '#9ca3af', fontSize: 12 }}>Brak wiadomości w tym portalu.</div>
+                      )}
+                    </div>
+                    <div className="proj-row__actions" style={{ gap: 8 }}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon={<Copy size={13} />}
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          await navigator.clipboard?.writeText(fullUrl)
+                          toast.info('Skopiowano link portalu')
+                        }}
+                      >
+                        Kopiuj link
+                      </Button>
+                      <a href={fullUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="secondary" size="sm" icon={<ExternalLink size={13} />}>
+                          Otwórz
+                        </Button>
+                      </a>
+                      {item.active && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={deactivate.isPending && deactivate.variables === item.id}
+                          onClick={(e) => { e.stopPropagation(); deactivate.mutate(item.id) }}
+                        >
+                          Dezaktywuj
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>

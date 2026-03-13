@@ -9,7 +9,7 @@ import { buildEstimatePreview } from '@/services/pdf/documentPreview'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
-import { PortalLinksCard } from '@/features/portal/components/PortalLinksCard'
+import { EstimateNextActions } from './EstimateNextActions'
 import { useCreateProjectFromEstimate } from '@/features/projects/hooks/useProjects'
 
 function variant(status: Estimate['status']) { if (status === 'accepted') return 'success'; if (status === 'rejected') return 'danger'; if (status === 'sent') return 'warning'; return 'default' }
@@ -41,7 +41,7 @@ export function EstimateCard({ estimate, onDelete, onCreateContract, onEdit }: {
           {onDelete ? <Button variant="danger" onClick={() => onDelete(estimate.id)}>Usuń</Button> : null}
         </div>
         <div style={{ marginTop: 12 }}>
-          <PortalLinksCard estimate={estimate} />
+          <EstimateNextActions estimate={estimate} />
         </div>
       </Card>
       <DocumentPreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} title={`${estimate.number} · Podgląd dokumentu`} tabs={tabs} />

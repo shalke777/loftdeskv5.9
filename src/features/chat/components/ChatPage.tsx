@@ -17,8 +17,9 @@
 //   - portal_messages — stary model, NIE wyświetlany tutaj
 //   Oba modele legacy pozostają w bazie bez migracji danych.
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSearch } from '@tanstack/react-router'
 import { Search } from 'lucide-react'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
@@ -42,6 +43,12 @@ export function ChatPage() {
   const [filter, setFilter]               = useState<FilterMode>('all')
   const [projectFilter, setProjectFilter] = useState<string>('all')
   const [search, setSearch]               = useState('')
+
+  // Obsługa ?threadId= — otwiera konkretny wątek po nawigacji z wyceny/projektu
+  const { threadId: searchThreadId } = useSearch({ from: '/_auth/chat' as any }) as { threadId?: string }
+  useEffect(() => {
+    if (searchThreadId && !activeId) setActiveId(searchThreadId)
+  }, [searchThreadId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: allThreads, isLoading } = useQuery({
     queryKey:        ['inbox-threads', companyId],

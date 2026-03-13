@@ -592,7 +592,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .chat-layout {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 340px 1fr;
   height: calc(100vh - var(--topbar-height, 64px));
   overflow: hidden;
   background: var(--color-bg);
@@ -1141,7 +1141,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 @media (max-width: 900px) {
   .chat-layout {
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: 300px 1fr;
   }
 }
 
@@ -1206,6 +1206,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .exp-mobile-actions button:active {
     opacity: 0.75;
   }
+}
+
+@media (max-width: 640px) {
+  .exp-upload-zone { display: none; }
 }
 
 .exp-upload-zone {
@@ -1832,6 +1836,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .proj-row__detail {
   padding: 20px 20px 24px;
   border-top: 1px solid var(--color-border);
+  animation: accordion-open 180ms ease;
 }
 
 /* ── Responsive ──────────────────────────────────────────────────── */
@@ -1851,4 +1856,57 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .proj-row__name {
     white-space: normal;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MICRO-INTERACTIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes accordion-open {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: .6; }
+  50%       { opacity: .2; }
+}
+
+@keyframes toast-enter {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes modal-enter {
+  from { opacity: 0; transform: scale(.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+
+/* Skeleton loading utility */
+.skeleton {
+  border-radius: 6px;
+  background: var(--color-border-light, #e5e7eb);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* Button press state */
+.btn:active:not(:disabled),
+.quick-action:active,
+.proj-row__header:active {
+  transform: scale(0.985);
+  transition: transform 0.08s;
+}
+
+/* Hover lift for cards */
+.kpi-card {
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }

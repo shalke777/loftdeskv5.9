@@ -351,7 +351,7 @@ export const expensesApi = {
 
 export type ExpenseSourceType    = 'camera' | 'gallery' | 'pdf' | 'manual'
 export type ExpenseCostType      = 'material' | 'service' | 'equipment' | 'labor' | 'transport' | 'other'
-export type ExpenseApprovalStatus = 'pending' | 'approved' | 'rejected' | 'not_required'
+export type ExpenseApprovalStatus = 'not_sent' | 'pending_client' | 'accepted' | 'rejected' | 'questioned'
 
 /** Extended ExpenseInvoice — adds Etap 1 new columns (all optional for backward compat) */
 export interface ExpenseInvoiceV4 extends ExpenseInvoice {
@@ -443,7 +443,7 @@ const demoProjectExpenses: ExpenseInvoiceV4[] = [
     duplicate_of: null,
     source_type: 'pdf',
     cost_type: 'material',
-    approval_status: 'approved',
+    approval_status: 'accepted',
     extraction_confidence: 82,
     extraction_warnings: [],
     requires_user_confirmation: false,
@@ -499,7 +499,7 @@ export const projectExpensesApi = {
         duplicate_of: null,
         source_type: input.source_type,
         cost_type: input.cost_type ?? null,
-        approval_status: 'pending',
+        approval_status: 'not_sent',
         extraction_confidence: input.extraction_confidence ?? null,
         extraction_warnings: input.extraction_warnings ?? null,
         requires_user_confirmation: input.requires_user_confirmation ?? null,
@@ -549,7 +549,7 @@ export const projectExpensesApi = {
         status: 'review',
         source_type:   input.source_type,
         cost_type:     input.cost_type ?? null,
-        approval_status: 'pending',
+        approval_status: 'not_sent',
         extraction_confidence:      input.extraction_confidence ?? null,
         extraction_warnings:        input.extraction_warnings ?? null,
         requires_user_confirmation: input.requires_user_confirmation ?? null,

@@ -11,7 +11,6 @@ import { useToast } from '@/shared/hooks/useToast'
 import { PLAN_DEFS } from '@/shared/lib/constants'
 import { CompanyProfileCard } from '@/features/settings/components/CompanyProfileCard'
 import { TeamMembersCard } from '@/features/settings/components/TeamMembersCard'
-import { TeamInvitationsCard } from '@/features/settings/components/TeamInvitationsCard'
 import { useSettings } from '@/features/settings/hooks/useSettings'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { WorkspaceReadinessCard } from '@/features/settings/components/WorkspaceReadinessCard'
@@ -93,7 +92,6 @@ export function SettingsPage() {
         <WorkspaceReadinessCard />
         <WorkspaceLimitsCard />
         <TeamMembersCard />
-        <TeamInvitationsCard />
 
         <LegalCenterCard />
 

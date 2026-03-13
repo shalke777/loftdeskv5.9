@@ -202,6 +202,30 @@ export const threadsApi = {
   },
 
   /**
+   * Pobiera istniejący lub tworzy nowy wątek client_shared dla projektu.
+   *
+   * Stosowany przy przepływie Wycena → Portal → Chat: kliknięcie "Otwórz chat
+   * z klientem" na karcie wyceny automatycznie zakłada jeden (i tylko jeden)
+   * wątek ogólny widoczny dla klienta, jeśli jeszcze nie istnieje.
+   */
+  async getOrCreateClientSharedThread(
+    projectId: string,
+    clientId: string | null,
+    title: string,
+    companyId?: string,
+  ): Promise<ProjectThread> {
+    const existing = await threadsApi.listThreads(projectId, companyId)
+    const found = existing.find(
+      (t) => t.visibility === 'client_shared' && t.type === 'general',
+    )
+    if (found) return found
+    return threadsApi.createThread(
+      { project_id: projectId, type: 'general', visibility: 'client_shared', title, client_id: clientId ?? undefined },
+      companyId,
+    )
+  },
+
+  /**
    * Tworzy nowy wątek dla projektu.
    *
    * Zasady:
