@@ -105,7 +105,7 @@ export function ExpensesPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadStep, setUploadStep] = useState<string>('Przesyłanie...')
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [parseInfo, setParseInfo] = useState<string | null>(null) // parse diagnostics
+  const [parseStatus, setParseStatus] = useState<{ level: 'success'|'partial'|'empty'|'error'|'ocr-unavailable', message: string } | null>(null)
 
   // modal: 'add' or 'edit'
   const [modal, setModal] = useState<{ type: 'add'; fileUrl: string; fileName: string; parsed: ParsedExpenseData; previewBlobUrl?: string } | { type: 'edit'; expense: ExpenseInvoice } | null>(null)
@@ -121,7 +121,7 @@ export function ExpensesPage() {
     setUploading(true)
     setUploadStep('Przesyłanie pliku...')
     setUploadError(null)
-    setParseInfo(null)
+    setParseStatus(null)
     try {
       // ── Step 1: upload to storage ─────────────────────────────
       const { url, name } = await expensesApi.uploadFile(file, companyId)
@@ -171,27 +171,27 @@ export function ExpensesPage() {
           const confidence   = result.extraction_confidence
           const filledFields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
           if (filledFields.length > 0 && confidence >= 50) {
-            setParseInfo(`✅ OCR rozpoznał: ${filledFields.join(', ')}`)
+            setParseStatus({ level: 'success', message: `Odczytano: ${filledFields.join(', ')}` })
           } else if (filledFields.length > 0) {
-            setParseInfo(`⚠️ Częściowe rozpoznanie (${confidence}%) — sprawdź i uzupełnij brakujące pola`)
+            setParseStatus({ level: 'partial', message: 'Odczytano część danych — uzupełnij brakujące pola' })
           } else {
-            setParseInfo('⚠️ Nie udało się odczytać danych — uzupełnij pola ręcznie')
+            setParseStatus({ level: 'empty', message: 'Nie udało się odczytać danych — wpisz pola ręcznie' })
           }
         } catch (ocrErr: unknown) {
           const msg = ocrErr instanceof Error ? ocrErr.message : ''
           if (msg.includes('Serwer OCR') || msg.includes('niedostępny')) {
-            setParseInfo(`⚠️ ${msg.split('.')[0]}.`)
+            setParseStatus({ level: 'ocr-unavailable', message: 'Serwer OCR niedostępny — uzupełnij pola ręcznie' })
           } else {
-            setParseInfo('⚠️ Błąd odczytu OCR — uzupełnij pola ręcznie')
+            setParseStatus({ level: 'error', message: 'Błąd odczytu — uzupełnij pola ręcznie' })
           }
         }
       } else {
         // Local PDF parser succeeded
         const fields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
-        setParseInfo(
+        setParseStatus(
           fields.length > 0
-            ? `✅ Parser rozpoznał: ${fields.join(', ')}`
-            : '⚠️ Parser uruchomiony, ale nie rozpoznał pól — sprawdź ręcznie'
+            ? { level: 'success', message: `Odczytano: ${fields.join(', ')}` }
+            : { level: 'empty', message: 'Parser uruchomiony, ale nie odczytał pól — wpisz ręcznie' }
         )
       }
 
@@ -259,7 +259,7 @@ export function ExpensesPage() {
       }
       setModal(null)
       setDuplicateWarning(null)
-      setParseInfo(null)
+      setParseStatus(null)
     } catch (err: any) {
       setUploadError(err?.message ?? 'Błąd zapisu')
     } finally {
@@ -478,7 +478,7 @@ export function ExpensesPage() {
           title={modal.type === 'add' ? 'Dodaj fakturę kosztową' : 'Edytuj fakturę'}
           onClose={() => {
             if (modal?.type === 'add' && modal.previewBlobUrl) URL.revokeObjectURL(modal.previewBlobUrl)
-            setModal(null); setDuplicateWarning(null); setParseInfo(null)
+            setModal(null); setDuplicateWarning(null); setParseStatus(null)
           }}
         >
           {/* Two-column layout when a file preview is available */}
@@ -486,29 +486,23 @@ export function ExpensesPage() {
             {modal.type === 'add' && modal.fileUrl && (
               <div className="exp-modal-split__preview">
                 {/\.pdf$/i.test(modal.fileName) ? (
-                  // No iframe — Supabase URLs set X-Frame-Options/CSP which cascade into
-                  // chrome-error://chromewebdata frame errors; use a safe info card instead
-                  <div style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    justifyContent: 'center', gap: 12, height: '100%', minHeight: 220,
-                    border: '1px solid var(--color-border, #e5e7eb)', borderRadius: 8,
-                    background: 'var(--color-surface-soft, #f9fafb)',
-                  }}>
-                    <span style={{ fontSize: 56, lineHeight: 1 }}>📄</span>
-                    <div style={{ textAlign: 'center', padding: '0 12px' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{modal.fileName}</div>
-                      <a
-                        href={modal.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ fontSize: 12, color: 'var(--color-primary, #2563eb)', marginTop: 6, display: 'inline-block' }}
-                      >
-                        Otwórz PDF ↗
-                      </a>
+                  // No iframe — Supabase URLs set X-Frame-Options/CSP
+                  <div className="exp-pdf-preview-card">
+                    <span className="exp-pdf-preview-card__icon">&#128196;</span>
+                    <div className="exp-pdf-preview-card__info">
+                      <span className="exp-pdf-preview-card__name">{modal.fileName}</span>
+                      <span className="exp-pdf-preview-card__meta">PDF</span>
                     </div>
+                    <a
+                      href={modal.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="exp-pdf-preview-card__open btn btn-ghost"
+                    >
+                      Otwórz ↗
+                    </a>
                   </div>
                 ) : (
-                  // previewBlobUrl = local blob URL created from File → no auth/CORS issues
                   <img
                     src={modal.type === 'add' && modal.previewBlobUrl ? modal.previewBlobUrl : modal.fileUrl}
                     alt="Podgląd faktury"
@@ -525,9 +519,9 @@ export function ExpensesPage() {
               </div>
             )}
 
-            {parseInfo && (
-              <div className="exp-form__parse-info">
-                {parseInfo}
+            {parseStatus && (
+              <div className={`exp-parse-status exp-parse-status--${parseStatus.level}`}>
+                <span className="exp-parse-status__msg">{parseStatus.message}</span>
               </div>
             )}
 
@@ -635,7 +629,7 @@ export function ExpensesPage() {
             <div className="exp-form__actions">
               <Button variant="secondary" onClick={() => {
                 if (modal?.type === 'add' && modal.previewBlobUrl) URL.revokeObjectURL(modal.previewBlobUrl)
-                setModal(null); setDuplicateWarning(null); setParseInfo(null)
+                setModal(null); setDuplicateWarning(null); setParseStatus(null)
               }}>
                 Anuluj
               </Button>
@@ -645,7 +639,7 @@ export function ExpensesPage() {
                 disabled={saving}
                 icon={saving ? <Spinner /> : duplicateWarning ? <AlertTriangle size={14} /> : <CheckCircle size={14} />}
               >
-                {saving ? 'Zapisuję...' : duplicateWarning ? 'Zapisz mimo to' : 'Zapisz'}
+                {saving ? 'Zapisuję...' : duplicateWarning ? 'Zapisz mimo to' : 'Zapisz koszt'}
               </Button>
             </div>
           </div>

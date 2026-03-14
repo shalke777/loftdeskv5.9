@@ -5,58 +5,40 @@ interface Props {
   warnings?:  ParseInvoiceResult['extraction_warnings']
 }
 
+const CONFIG = {
+  high:    { icon: '✅', cls: 'exp-ocr-badge exp-ocr-badge--high',    label: 'Dane odczytane — sprawdź i zapisz' },
+  partial: { icon: '🔍', cls: 'exp-ocr-badge exp-ocr-badge--partial', label: 'Częściowe rozpoznanie — uzupełnij brakujące pola' },
+  empty:   { icon: '✏️', cls: 'exp-ocr-badge exp-ocr-badge--empty',   label: 'Wpisz dane ręcznie — OCR nie odczytał wystarczająco' },
+}
+
 export function ExpenseConfidenceBadge({ confidence, warnings }: Props) {
-  const level =
+  const level: keyof typeof CONFIG =
     confidence >= 70 ? 'high'
-    : confidence >= 40 ? 'medium'
-    : 'low'
+    : confidence >= 30 ? 'partial'
+    : 'empty'
 
-  const label =
-    level === 'high'   ? 'Wysoka pewność'
-    : level === 'medium' ? 'Średnia pewność'
-    : 'Niska pewność'
+  const { icon, cls, label } = CONFIG[level]
 
-  const color =
-    level === 'high'   ? 'var(--color-success, #16a34a)'
-    : level === 'medium' ? 'var(--color-warning, #ca8a04)'
-    : 'var(--color-danger, #dc2626)'
+  // Filter out only non-obvious warnings (skip the generic field-missing ones that
+  // duplicate what the empty field already communicates visually in the form).
+  const notable = (warnings ?? []).filter(w =>
+    !w.startsWith('Nie rozpoznano') &&
+    !w.includes('uzupełnij dane ręcznie')
+  )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '3px 10px', borderRadius: 99,
-            fontSize: 12, fontWeight: 600, letterSpacing: 0.2,
-            color, border: `1px solid ${color}`,
-          }}
-        >
-          <span
-            style={{
-              display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
-              background: color,
-            }}
-          />
-          {label} — {confidence}%
-        </span>
-
-        {level === 'low' && (
-          <span style={{ fontSize: 12, color: 'var(--color-text-muted, #6b7280)' }}>
-            Sprawdź dane przed zapisem
-          </span>
+    <div className={cls}>
+      <span className="exp-ocr-badge__icon">{icon}</span>
+      <div className="exp-ocr-badge__body">
+        <span className="exp-ocr-badge__label">{label}</span>
+        {notable.length > 0 && (
+          <ul className="exp-ocr-badge__warnings">
+            {notable.map((w, i) => <li key={i}>{w}</li>)}
+          </ul>
         )}
       </div>
-
-      {warnings && warnings.length > 0 && (
-        <ul style={{ margin: 0, padding: '4px 0 0 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {warnings.map((w, i) => (
-            <li key={i} style={{ fontSize: 12, color: 'var(--color-warning, #ca8a04)' }}>
-              {w}
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
+  )
+}
   )
 }

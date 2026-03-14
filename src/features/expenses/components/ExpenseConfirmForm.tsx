@@ -48,6 +48,12 @@ function emptyState() {
 
 type FormState = ReturnType<typeof emptyState>
 
+// Fields that can be auto-filled from OCR result
+const AUTOFILL_FIELDS: (keyof FormState)[] = [
+  'vendor_name', 'vendor_nip', 'invoice_number', 'issue_date',
+  'sale_date', 'net_amount', 'vat_amount', 'gross_amount', 'currency', 'payment_due_date',
+]
+
 export function ExpenseConfirmForm({
   projectId,
   parseResult,
@@ -58,11 +64,13 @@ export function ExpenseConfirmForm({
   saving,
 }: Props) {
   const [form, setForm] = useState<FormState>(emptyState())
+  // Track which fields were populated from the parse result (for autofill badge)
+  const [autofilled, setAutofilled] = useState<Set<keyof FormState>>(new Set())
 
   // Pre-fill from parse result
   useEffect(() => {
     if (!parseResult) return
-    setForm({
+    const next: FormState = {
       vendor_name:      parseResult.vendor_name      ?? '',
       vendor_nip:       parseResult.vendor_nip        ?? '',
       invoice_number:   parseResult.invoice_number   ?? '',
@@ -76,7 +84,16 @@ export function ExpenseConfirmForm({
       category:         '',
       payment_due_date: parseResult.payment_due_date ?? '',
       notes:            parseResult.notes             ?? '',
-    })
+    }
+    setForm(next)
+    // Mark which fields actually got a value from the parser
+    const filled = new Set<keyof FormState>(
+      AUTOFILL_FIELDS.filter((k) => {
+        const v = next[k]
+        return v !== '' && v !== 'PLN' // PLN is default, not an extracted value
+      })
+    )
+    setAutofilled(filled)
   }, [parseResult])
 
   function set(field: keyof FormState, value: string) {
@@ -129,10 +146,25 @@ export function ExpenseConfirmForm({
     color: 'var(--color-text, #111)',
   }
   const labelStyle: React.CSSProperties = {
-    display: 'block', fontSize: 12, fontWeight: 600,
+    display: 'flex', alignItems: 'center', gap: 6,
+    fontSize: 12, fontWeight: 600,
     color: 'var(--color-text-muted, #6b7280)', marginBottom: 4,
   }
   const fieldStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column' }
+
+  // Returns extra style for autofilled inputs (subtle left-border tint)
+  function autoStyle(field: keyof FormState): React.CSSProperties {
+    return autofilled.has(field)
+      ? { ...inputStyle, borderLeftColor: 'var(--color-success, #16a34a)', borderLeftWidth: 3 }
+      : inputStyle
+  }
+
+  // Small "auto" chip shown beside label when field was autofilled
+  function AutoChip({ field }: { field: keyof FormState }) {
+    return autofilled.has(field)
+      ? <span className="exp-label-auto">auto</span>
+      : null
+  }
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -152,9 +184,9 @@ export function ExpenseConfirmForm({
         </legend>
 
         <div style={fieldStyle}>
-          <label style={labelStyle}>Nazwa sprzedawcy *</label>
+          <label style={labelStyle}>Nazwa sprzedawcy * <AutoChip field="vendor_name" /></label>
           <input
-            style={inputStyle}
+            style={autoStyle('vendor_name')}
             value={form.vendor_name}
             onChange={(e) => set('vendor_name', e.target.value)}
             placeholder="np. ABC Sp. z o.o."
@@ -163,9 +195,9 @@ export function ExpenseConfirmForm({
         </div>
 
         <div style={fieldStyle}>
-          <label style={labelStyle}>NIP sprzedawcy</label>
+          <label style={labelStyle}>NIP sprzedawcy <AutoChip field="vendor_nip" /></label>
           <input
-            style={inputStyle}
+            style={autoStyle('vendor_nip')}
             value={form.vendor_nip}
             onChange={(e) => set('vendor_nip', e.target.value)}
             placeholder="10 cyfr"
@@ -182,9 +214,9 @@ export function ExpenseConfirmForm({
         </legend>
 
         <div style={fieldStyle}>
-          <label style={labelStyle}>Numer faktury</label>
+          <label style={labelStyle}>Numer faktury <AutoChip field="invoice_number" /></label>
           <input
-            style={inputStyle}
+            style={autoStyle('invoice_number')}
             value={form.invoice_number}
             onChange={(e) => set('invoice_number', e.target.value)}
             placeholder="np. FV/2026/001"
@@ -193,9 +225,9 @@ export function ExpenseConfirmForm({
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div style={fieldStyle}>
-            <label style={labelStyle}>Data wystawienia</label>
+            <label style={labelStyle}>Data wystawienia <AutoChip field="issue_date" /></label>
             <input
-              style={inputStyle}
+              style={autoStyle('issue_date')}
               type="date"
               value={form.issue_date}
               onChange={(e) => set('issue_date', e.target.value)}
@@ -231,9 +263,9 @@ export function ExpenseConfirmForm({
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
           <div style={fieldStyle}>
-            <label style={labelStyle}>Netto</label>
+            <label style={labelStyle}>Netto <AutoChip field="net_amount" /></label>
             <input
-              style={inputStyle}
+              style={autoStyle('net_amount')}
               type="number"
               step="0.01"
               min="0"
@@ -243,9 +275,9 @@ export function ExpenseConfirmForm({
             />
           </div>
           <div style={fieldStyle}>
-            <label style={labelStyle}>VAT</label>
+            <label style={labelStyle}>VAT <AutoChip field="vat_amount" /></label>
             <input
-              style={inputStyle}
+              style={autoStyle('vat_amount')}
               type="number"
               step="0.01"
               min="0"
@@ -255,9 +287,9 @@ export function ExpenseConfirmForm({
             />
           </div>
           <div style={fieldStyle}>
-            <label style={labelStyle}>Brutto</label>
+            <label style={labelStyle}>Brutto <AutoChip field="gross_amount" /></label>
             <input
-              style={inputStyle}
+              style={autoStyle('gross_amount')}
               type="number"
               step="0.01"
               min="0"
