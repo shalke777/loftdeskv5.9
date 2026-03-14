@@ -89,12 +89,6 @@ export function DashboardPage() {
         </Card>
 
         <Card className="subtle-panel">
-          <div className="toolbar" style={{ marginBottom: 12 }}>
-            <div>
-              <h3>Szybkie akcje</h3>
-              <p className="field__label">Najczęstsze ruchy z pulpitu.</p>
-            </div>
-          </div>
           <div className="quick-actions-grid">
             {quickActions.map((action) => {
               const Icon = action.icon

@@ -351,6 +351,9 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 @media (max-width: 1200px) {
   .stats-grid, .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .landing-grid--3, .dashboard-hero, .hero, .section-block--split { grid-template-columns: 1fr; }
+  /* Quick-action tiles first, hero banner second on tablet/mobile */
+  .highlight-card { order: 2; }
+  .subtle-panel    { order: 1; }
 }
 @media (max-width: 1024px) {
   .app-shell { grid-template-columns: 1fr; }
