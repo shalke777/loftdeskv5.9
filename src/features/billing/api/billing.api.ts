@@ -100,7 +100,7 @@ export const billingApi = {
       }
       const currentPlan = ((company?.plan as BillingPlan | null) ?? 'free')
       return {
-        companyName: company?.name ?? 'LoftDesk Workspace',
+        companyName: (company?.name as string | null | undefined) ?? 'LoftDesk Workspace',
         companyId: scope.companyId,
         currentPlan,
         ksefReady: Boolean(company?.ksef_token),
