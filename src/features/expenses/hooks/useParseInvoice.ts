@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import type { ParseInvoiceResult, ExpenseSourceType } from '@/features/expenses/api/expenses.api'
+import type { ParseInvoiceResult, ExpenseSourceType, ParsedExpenseData } from '@/features/expenses/api/expenses.api'
 
 const MAX_FILE_SIZE  = 5 * 1024 * 1024 // 5 MB
 const MAX_OCR_WIDTH  = 1800             // px — keeps detail, reduces payload
@@ -155,4 +155,94 @@ export function useParseInvoice() {
     mutationFn: ({ file, sourceType }: { file: File; sourceType: ExpenseSourceType }) =>
       callParseInvoice(file, sourceType),
   })
+}
+
+// ── AI fallback helpers ───────────────────────────────────────────────────────
+
+/**
+ * Detect if raw OCR/PDF text looks like a receipt rather than an invoice.
+ */
+export function detectDocumentType(text: string): 'invoice' | 'receipt' | 'unknown' {
+  const t = text.toLowerCase()
+  const receiptHits = ['paragon', 'fiskalny', 'fiskalna', 'kasa fisk', 'ptu', 'suma pln', 'nr paragonu']
+    .filter(kw => t.includes(kw)).length
+  const invoiceHits = ['faktura', 'fvat', 'numer faktury', 'nr faktury']
+    .filter(kw => t.includes(kw)).length
+  if (receiptHits >= 2 || (receiptHits >= 1 && invoiceHits === 0)) return 'receipt'
+  if (invoiceHits >= 1) return 'invoice'
+  return 'unknown'
+}
+
+/**
+ * Decide whether AI fallback is needed based on local parse quality.
+ */
+export function shouldUseAI(
+  confidence: number,
+  parsed: ParsedExpenseData,
+  docType: 'invoice' | 'receipt' | 'unknown',
+): boolean {
+  if (docType === 'receipt') return true
+  if (confidence < 70) return true
+  const keyFilled = [parsed.vendor, parsed.invoice_number, parsed.issue_date, parsed.amount_gross]
+    .filter(v => v != null && v !== '' && v !== 0).length
+  if (keyFilled < 3) return true
+  return false
+}
+
+/**
+ * Merge AI ParseInvoiceResult into existing ParsedExpenseData.
+ * Local values take priority; AI fills missing / empty fields.
+ */
+export function mergeIntoExpenseData(
+  local: ParsedExpenseData,
+  ai: ParseInvoiceResult,
+): ParsedExpenseData {
+  function pickStr(localVal: string | undefined, aiVal: string | null): string | undefined {
+    if (localVal && localVal.trim()) return localVal
+    return aiVal ?? undefined
+  }
+  function pickNum(localVal: number | undefined, aiVal: number | null): number | undefined {
+    if (localVal != null && localVal > 0) return localVal
+    return aiVal ?? undefined
+  }
+  return {
+    vendor:         pickStr(local.vendor,         ai.vendor_name),
+    vendor_nip:     pickStr(local.vendor_nip,     ai.vendor_nip),
+    invoice_number: pickStr(local.invoice_number, ai.invoice_number),
+    issue_date:     pickStr(local.issue_date,     ai.issue_date),
+    amount_net:     pickNum(local.amount_net,     ai.net_amount),
+    amount_vat:     pickNum(local.amount_vat,     ai.vat_amount),
+    amount_gross:   pickNum(local.amount_gross,   ai.gross_amount),
+    description:    pickStr(local.description,    ai.notes),
+  }
+}
+
+/**
+ * Call the parse-invoice-ai Netlify function.
+ * Accepts either extracted text or a base64 image.
+ */
+export async function callParseInvoiceAI(params: {
+  textContent?: string
+  imageBase64?: string
+  imageType?: string
+}): Promise<ParseInvoiceResult> {
+  let resp: Response
+  try {
+    resp = await fetch('/.netlify/functions/parse-invoice-ai', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text_content: params.textContent,
+        image_base64: params.imageBase64,
+        image_type:   params.imageType,
+      }),
+    })
+  } catch {
+    throw new Error('AI fallback niedostępny')
+  }
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({})) as Record<string, unknown>
+    throw new Error(String(err.message ?? err.error ?? `AI HTTP ${resp.status}`))
+  }
+  return resp.json() as Promise<ParseInvoiceResult>
 }

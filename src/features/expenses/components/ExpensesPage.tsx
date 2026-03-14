@@ -3,7 +3,7 @@ import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks/useExpenses'
 import { expensesApi, ExpenseInvoice, ParsedExpenseData, parseInvoiceFromText } from '../api/expenses.api'
 import type { ParseInvoiceResult, ExpenseSourceType } from '../api/expenses.api'
-import { callParseInvoice } from '../hooks/useParseInvoice'
+import { callParseInvoice, callParseInvoiceAI, detectDocumentType, shouldUseAI, mergeIntoExpenseData } from '../hooks/useParseInvoice'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Button } from '@/shared/ui/Button/Button'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
@@ -105,7 +105,7 @@ export function ExpensesPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadStep, setUploadStep] = useState<string>('Przesyłanie...')
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [parseStatus, setParseStatus] = useState<{ level: 'success'|'partial'|'empty'|'error'|'ocr-unavailable', message: string } | null>(null)
+  const [parseStatus, setParseStatus] = useState<{ level: 'success'|'partial'|'empty'|'error'|'ocr-unavailable', message: string, parserSource?: 'ai'|'regex'|'manual' } | null>(null)
 
   // modal: 'add' or 'edit'
   const [modal, setModal] = useState<{ type: 'add'; fileUrl: string; fileName: string; parsed: ParsedExpenseData; previewBlobUrl?: string } | { type: 'edit'; expense: ExpenseInvoice } | null>(null)
@@ -127,16 +127,19 @@ export function ExpensesPage() {
       const { url, name } = await expensesApi.uploadFile(file, companyId)
 
       // ── Step 2: choose extraction path ────────────────────────
-      const isPDF   = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+      const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
       let parsed: ParsedExpenseData = {}
       let usedLocalParser = false
+      let rawText = ''
+      let ocrResult: ParseInvoiceResult | null = null
+      let ocrErrorLevel: 'ocr-unavailable' | 'error' | null = null
 
       setUploadStep('Odczytuję tekst...')
 
       // For digitally-generated PDFs: try fast local text extraction first
       if (isPDF) {
         try {
-          const rawText = await extractRawPdfText(file)
+          rawText = await extractRawPdfText(file)
           const PDF_KEYWORDS = ['faktura', 'fvat', 'nip', 'netto', 'brutto', 'zaplat', 'termin']
           const hasGoodText  = rawText.trim().length >= 80 &&
             PDF_KEYWORDS.some(kw => rawText.toLowerCase().includes(kw))
@@ -154,52 +157,77 @@ export function ExpensesPage() {
         setUploadStep('Analizuję dane faktury...')
         try {
           const sourceType: ExpenseSourceType = isPDF ? 'pdf' : 'gallery'
-          const result: ParseInvoiceResult    = await callParseInvoice(file, sourceType)
-
-          // Map ParseInvoiceResult → ParsedExpenseData (local form shape)
+          ocrResult = await callParseInvoice(file, sourceType)
           parsed = {
-            invoice_number: result.invoice_number ?? undefined,
-            vendor:         result.vendor_name    ?? undefined,
-            vendor_nip:     result.vendor_nip     ?? undefined,
-            issue_date:     result.issue_date     ?? undefined,
-            amount_net:     result.net_amount     ?? undefined,
-            amount_vat:     result.vat_amount     ?? undefined,
-            amount_gross:   result.gross_amount   ?? undefined,
-            description:    result.notes          ?? undefined,
-          }
-
-          const confidence   = result.extraction_confidence
-          const filledFields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
-          if (filledFields.length > 0 && confidence >= 70) {
-            setParseStatus({ level: 'success', message: `Dane odczytane (${filledFields.length} pola) — sprawdź i zapisz` })
-          } else if (filledFields.length > 0) {
-            setParseStatus({ level: 'partial', message: 'Odczytano część danych — uzupełnij brakujące pola' })
-          } else {
-            setParseStatus({ level: 'empty', message: 'Nie udało się odczytać danych — wpisz pola ręcznie' })
+            invoice_number: ocrResult.invoice_number ?? undefined,
+            vendor:         ocrResult.vendor_name    ?? undefined,
+            vendor_nip:     ocrResult.vendor_nip     ?? undefined,
+            issue_date:     ocrResult.issue_date     ?? undefined,
+            amount_net:     ocrResult.net_amount     ?? undefined,
+            amount_vat:     ocrResult.vat_amount     ?? undefined,
+            amount_gross:   ocrResult.gross_amount   ?? undefined,
+            description:    ocrResult.notes          ?? undefined,
           }
         } catch (ocrErr: unknown) {
           const msg = ocrErr instanceof Error ? ocrErr.message : ''
-          if (msg.includes('Serwer OCR') || msg.includes('niedostępny')) {
-            setParseStatus({ level: 'ocr-unavailable', message: 'Serwer OCR niedostępny — uzupełnij pola ręcznie' })
-          } else {
-            setParseStatus({ level: 'error', message: 'Błąd odczytu — uzupełnij pola ręcznie' })
-          }
+          ocrErrorLevel = (msg.includes('Serwer OCR') || msg.includes('niedostępny'))
+            ? 'ocr-unavailable' : 'error'
         }
+      }
+
+      // ── Step 2c: AI fallback ──────────────────────────────────
+      // Skip AI only when OCR server is unreachable (our functions are also down).
+      // Otherwise try AI whenever local quality is low or document is a receipt.
+      const localConfidence = ocrResult?.extraction_confidence ?? estimateParsedConfidence(parsed)
+      const docType         = detectDocumentType(rawText)
+      let usedAI = false
+
+      if (ocrErrorLevel !== 'ocr-unavailable' && shouldUseAI(localConfidence, parsed, docType)) {
+        setUploadStep('Analiza AI...')
+        try {
+          const hasUsableText = rawText.trim().length > 80
+          const aiResult = await callParseInvoiceAI({
+            textContent: hasUsableText ? rawText : undefined,
+            imageBase64: !hasUsableText ? await fileToBase64ForAI(file) : undefined,
+            imageType:   !hasUsableText ? (file.type || 'image/jpeg') : undefined,
+          })
+          parsed   = mergeIntoExpenseData(parsed, aiResult)
+          usedAI   = true
+          // Override with a higher synthetic confidence so AI results aren't
+          // flagged partial when the merge produced all key fields.
+          ocrResult = ocrResult
+            ? { ...ocrResult, extraction_confidence: Math.max(ocrResult.extraction_confidence, aiResult.extraction_confidence) }
+            : aiResult
+        } catch {
+          // AI failed silently — continue with whatever local parser produced
+        }
+      }
+
+      // ── Step 2d: set status banner ────────────────────────────
+      if (ocrErrorLevel && !usedAI) {
+        setParseStatus({
+          level:   ocrErrorLevel,
+          message: ocrErrorLevel === 'ocr-unavailable'
+            ? 'Serwer OCR niedostępny — uzupełnij pola ręcznie'
+            : 'Błąd odczytu — uzupełnij pola ręcznie',
+        })
       } else {
-        // Local PDF parser succeeded
-        const fields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
-        setParseStatus(
-          fields.length > 0
-            ? { level: 'success', message: `Dane odczytane (${fields.length} pola) — sprawdź i zapisz` }
-            : { level: 'empty', message: 'Parser uruchomiony, ale nie odczytał pól — wpisz ręcznie' }
-        )
+        const filledFields    = Object.entries(parsed).filter(([, v]) => v != null && v !== '').map(([k]) => k)
+        const finalConfidence = ocrResult?.extraction_confidence ?? estimateParsedConfidence(parsed)
+        const source: 'ai' | 'regex' | 'manual' = usedAI ? 'ai' : (usedLocalParser ? 'manual' : 'regex')
+
+        if (filledFields.length > 0 && (usedAI || finalConfidence >= 70)) {
+          setParseStatus({ level: 'success', message: `Dane odczytane (${filledFields.length} pola) — sprawdź i zapisz`, parserSource: source })
+        } else if (filledFields.length > 0) {
+          setParseStatus({ level: 'partial', message: 'Odczytano część danych — uzupełnij brakujące pola', parserSource: source })
+        } else {
+          setParseStatus({ level: 'empty', message: 'Nie udało się odczytać danych — wpisz pola ręcznie' })
+        }
       }
 
       // ── Step 3: open modal with pre-filled form ───────────────
       setUploadStep('Uzupełniam formularz...')
       setForm({ ...emptyForm(), ...parsedToForm(parsed) })
-      // Use local blob URL for image preview — reliably available immediately,
-      // works in demo mode and in production regardless of Supabase bucket visibility.
       const isImgFile = file.type.startsWith('image/') || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(file.name)
       const previewBlobUrl = isImgFile ? URL.createObjectURL(file) : undefined
       setModal({ type: 'add', fileUrl: url, fileName: name, parsed, previewBlobUrl })
@@ -522,6 +550,9 @@ export function ExpensesPage() {
             {parseStatus && (
               <div className={`exp-parse-status exp-parse-status--${parseStatus.level}`}>
                 <span className="exp-parse-status__msg">{parseStatus.message}</span>
+                {parseStatus.parserSource === 'ai' && (
+                  <span className="exp-ai-chip">✦ AI</span>
+                )}
               </div>
             )}
 
@@ -678,6 +709,25 @@ export function ExpensesPage() {
  * Falls through to Netlify OCR for: modern software invoices (iFirma, Comarch, Word)
  * whose text content streams are FlateDecode-compressed.
  */
+function estimateParsedConfidence(p: ParsedExpenseData): number {
+  let score = 0
+  if (p.vendor)         score += 20
+  if (p.invoice_number) score += 25
+  if (p.issue_date)     score += 20
+  if (p.amount_gross)   score += 25
+  if (p.vendor_nip)     score += 10
+  return score
+}
+
+function fileToBase64ForAI(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '')
+    reader.onerror = () => reject(new Error('FileReader error'))
+    reader.readAsDataURL(file)
+  })
+}
+
 async function extractRawPdfText(file: File): Promise<string> {
   const ab = await file.arrayBuffer()
   const latin = new TextDecoder('latin1').decode(new Uint8Array(ab))

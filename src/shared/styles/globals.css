@@ -1467,6 +1467,22 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 }
 .exp-parse-status__msg { flex: 1; line-height: 1.4; }
 
+/* AI source chip — shown next to status banner when AI extraction was used */
+.exp-ai-chip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #c4b5fd;
+  user-select: none;
+}
+
 /* ── Autofill chip ──────────────────────────────────────────── */
 .exp-label-auto {
   display: inline-block;
