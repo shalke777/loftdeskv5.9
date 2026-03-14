@@ -1740,6 +1740,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .toolbar__actions, .actions-row { width: 100%; }
   .toolbar__actions > *, .actions-row > * { flex: 1 1 100%; }
   .list-row { align-items: stretch; }
+  /* OCR expense module — compact on mobile */
+  .exp-parse-status { font-size: 12px; padding: 7px 10px; }
+  .exp-ocr-badge { padding: 8px 10px; }
+  .exp-label-auto { display: none; }
 }
 
 /* ====================================================================

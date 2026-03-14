@@ -97,6 +97,8 @@ export function ExpenseConfirmForm({
   }, [parseResult])
 
   function set(field: keyof FormState, value: string) {
+    // Once the user edits a field, remove the "auto" indicator — the value is no longer purely from OCR.
+    setAutofilled(prev => { const next = new Set(prev); next.delete(field); return next })
     setForm((prev) => {
       const next = { ...prev, [field]: value }
 

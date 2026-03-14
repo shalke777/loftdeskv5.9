@@ -40,5 +40,3 @@ export function ExpenseConfidenceBadge({ confidence, warnings }: Props) {
     </div>
   )
 }
-  )
-}

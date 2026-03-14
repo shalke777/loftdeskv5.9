@@ -170,8 +170,8 @@ export function ExpensesPage() {
 
           const confidence   = result.extraction_confidence
           const filledFields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
-          if (filledFields.length > 0 && confidence >= 50) {
-            setParseStatus({ level: 'success', message: `Odczytano: ${filledFields.join(', ')}` })
+          if (filledFields.length > 0 && confidence >= 70) {
+            setParseStatus({ level: 'success', message: `Dane odczytane (${filledFields.length} pola) — sprawdź i zapisz` })
           } else if (filledFields.length > 0) {
             setParseStatus({ level: 'partial', message: 'Odczytano część danych — uzupełnij brakujące pola' })
           } else {
@@ -190,7 +190,7 @@ export function ExpensesPage() {
         const fields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
         setParseStatus(
           fields.length > 0
-            ? { level: 'success', message: `Odczytano: ${fields.join(', ')}` }
+            ? { level: 'success', message: `Dane odczytane (${fields.length} pola) — sprawdź i zapisz` }
             : { level: 'empty', message: 'Parser uruchomiony, ale nie odczytał pól — wpisz ręcznie' }
         )
       }
