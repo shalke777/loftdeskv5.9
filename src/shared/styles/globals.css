@@ -622,10 +622,21 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 /* ── Layout ─────────────────────────────────────────────────────── */
 
+/* chat-root: full-height wrapper, accounts for desktop topbar */
+.chat-root {
+  height: calc(100vh - var(--topbar-height, 64px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* break out of shell-content 28px padding on desktop */
+  margin: -28px;
+  width: calc(100% + 56px);
+}
+
 .chat-layout {
   display: grid;
   grid-template-columns: 340px 1fr;
-  height: calc(100vh - var(--topbar-height, 64px));
+  flex: 1;
   overflow: hidden;
   background: var(--color-bg);
 }
@@ -916,6 +927,23 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+  min-height: 56px;
+}
+
+/* Back button — mobile only, shown in thread header */
+.chat-thread__back-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  padding: 4px 8px 4px 0;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.chat-thread__back-btn:hover {
+  color: var(--color-brand);
 }
 
 .chat-thread__name {
@@ -1177,16 +1205,35 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   }
 }
 
-@media (max-width: 640px) {
+/* Mobile: single-pane (sidebar OR thread, never both stacked) */
+@media (max-width: 1024px) {
+  .chat-root {
+    /* height = full viewport minus mobile nav bar */
+    height: calc(100dvh - 56px - env(safe-area-inset-bottom, 0px));
+    /* break out of shell-content mobile padding */
+    margin: -16px -16px 0;
+    width: calc(100% + 32px);
+  }
+
   .chat-layout {
     grid-template-columns: 1fr;
-    height: auto;
+    flex: 1;
+    overflow: hidden;
   }
 
   .chat-sidebar {
     border-right: none;
-    border-bottom: 1px solid var(--color-border);
-    max-height: 45vh;
+    border-bottom: none;
+    max-height: none;
+    height: 100%;
+  }
+
+  .chat-thread {
+    height: 100%;
+  }
+
+  .chat-thread__header {
+    padding: 10px 16px;
   }
 
   .chat-bubble-wrap {
