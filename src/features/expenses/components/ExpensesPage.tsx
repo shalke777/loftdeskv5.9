@@ -103,6 +103,7 @@ export function ExpensesPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const [uploading, setUploading] = useState(false)
+  const [isParsingDocument, setIsParsingDocument] = useState(false)
   const [uploadStep, setUploadStep] = useState<string>('Przesyłanie...')
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [parseStatus, setParseStatus] = useState<{ level: 'success'|'partial'|'empty'|'error'|'ocr-unavailable', message: string, parserSource?: 'ai'|'regex'|'manual' } | null>(null)
@@ -184,7 +185,8 @@ export function ExpensesPage() {
       let aiAttemptedButFailed = false
 
       if (ocrErrorLevel !== 'ocr-unavailable' && shouldUseAI(localConfidence, parsed, docType)) {
-        setUploadStep('Analiza AI...')
+        setUploadStep('Analizuję dokument...')
+        setIsParsingDocument(true)
         try {
           const hasUsableText = rawText.trim().length > 10
           const isMediaImage  = file.type.startsWith('image/') ||
@@ -278,6 +280,8 @@ export function ExpensesPage() {
             hasOcrResult: !!ocrResult,
             hasAiCallParams: null,
           })
+        } finally {
+          setIsParsingDocument(false)
         }
       }
 
@@ -485,7 +489,16 @@ export function ExpensesPage() {
         {uploading ? (
           <div className="exp-upload-zone__inner">
             <Spinner />
-            <span>{uploadStep}</span>
+            <span style={{
+              fontWeight: isParsingDocument ? 600 : 400,
+              color: isParsingDocument ? 'var(--color-brand)' : undefined,
+              fontSize: 14,
+            }}>{uploadStep}</span>
+            {isParsingDocument && (
+              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                Odczytuję dane — może potrwać kilka sekund
+              </span>
+            )}
           </div>
         ) : (
           <div className="exp-upload-zone__inner">

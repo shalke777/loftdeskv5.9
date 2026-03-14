@@ -52,12 +52,22 @@ function err(statusCode: number, error: string, message: string, meta?: { aiMode
 const ns = { anyOf: [{ type: 'string' }, { type: 'null' }] }  // nullable string
 const nn = { anyOf: [{ type: 'number' }, { type: 'null' }] }  // nullable number
 
-// Responses API text.format shape (flat — NOT Chat Completions response_format):
-//   { type: 'json_schema', name, strict, schema }
-//
-// Chat Completions uses a wrapper:  { type: 'json_schema', json_schema: { name, strict, schema } }
-// Responses API does NOT — name/strict/schema live directly under format.
-// Error "Missing required parameter: 'text.format.name'" = json_schema wrapper was present.
+const LINE_ITEM_SCHEMA = {
+  type: 'object',
+  properties: {
+    name:         ns,
+    quantity:     nn,
+    unit:         ns,
+    unit_net:     nn,
+    vat_rate:     nn,
+    net_amount:   nn,
+    vat_amount:   nn,
+    gross_amount: nn,
+  },
+  required: ['name', 'quantity', 'unit', 'unit_net', 'vat_rate', 'net_amount', 'vat_amount', 'gross_amount'],
+  additionalProperties: false,
+}
+
 const INVOICE_SCHEMA_FORMAT = {
   type:   'json_schema',
   name:   'invoice_extraction',
@@ -65,9 +75,10 @@ const INVOICE_SCHEMA_FORMAT = {
   schema: {
     type: 'object',
     properties: {
-      document_type:    { type: 'string', enum: ['invoice', 'receipt', 'unknown'] },
+      document_type:    { type: 'string', enum: ['invoice', 'receipt', 'bill', 'other'] },
       vendor_name:      ns,
       vendor_nip:       ns,
+      vendor_address:   ns,
       document_number:  ns,
       issue_date:       ns,
       sale_date:        ns,
@@ -79,15 +90,18 @@ const INVOICE_SCHEMA_FORMAT = {
       gross_amount:     nn,
       buyer_name:       ns,
       buyer_nip:        ns,
+      buyer_address:    ns,
+      line_items:       { type: 'array', items: LINE_ITEM_SCHEMA },
       notes:            ns,
       confidence:       { type: 'number' },
       warnings:         { type: 'array', items: { type: 'string' } },
     },
     required: [
-      'document_type', 'vendor_name', 'vendor_nip', 'document_number',
+      'document_type', 'vendor_name', 'vendor_nip', 'vendor_address', 'document_number',
       'issue_date', 'sale_date', 'payment_due_date', 'payment_method',
       'currency', 'net_amount', 'vat_amount', 'gross_amount',
-      'buyer_name', 'buyer_nip', 'notes', 'confidence', 'warnings',
+      'buyer_name', 'buyer_nip', 'buyer_address', 'line_items',
+      'notes', 'confidence', 'warnings',
     ],
     additionalProperties: false,
   },
@@ -95,36 +109,57 @@ const INVOICE_SCHEMA_FORMAT = {
 
 // ─── System instructions ──────────────────────────────────────────────────────
 
-const INSTRUCTIONS = `You are a general-purpose purchase-document parser for Polish and EU invoices, receipts, and cost documents.
+const INSTRUCTIONS = `You are a general-purpose purchase-document parser for Polish and EU invoices, receipts, bills, and scanned cost documents.
 Extract structured accounting data from many document layouts, not from one fixed template.
 Return ONLY valid JSON matching the provided schema — no extra text.
 
-Rules:
-- Identify the seller / issuer entity only.
-- Do NOT include bank name, IBAN, SWIFT, BIC, bank account number, payment method, payment deadline, or amount due inside vendor_name or any seller field.
-- Do NOT confuse buyer with seller.
-- Prefer explicit labeled values over guesses.
-- Prefer null over hallucination.
-- If the document has low OCR quality, return the cleanest partial result possible.
-- Work across different invoice, receipt, and cost-document formats.
-- Use semantic understanding of document layout, labels, proximity, and accounting meaning.
-- For totals: map gross_amount to the final payable total when clearly indicated.
-- Return warnings (array of strings) for any ambiguous or uncertain fields.
+Extract:
+- seller / issuer details (name, address, tax ID)
+- buyer details (name, address, tax ID)
+- document number
+- issue date, sale date, due date (if present)
+- currency
+- line items (name, quantity, unit, unit net price, VAT rate, amounts)
+- total net, VAT, and gross amounts
+- document type and confidence
 
-Seller extraction rules:
-- Extract only the seller / issuer identity block (company name, optionally address).
-- NEVER include bank account details, IBAN, SWIFT, BIC, bank name, payment method, payment deadline, or amount due in vendor_name.
-- If seller data is adjacent to payment details, stop at the end of the seller identity block.
-- Prefer a shorter clean seller value over a longer mixed value.
-- If both buyer and seller exist, choose seller / issuer only.
+Rules:
+- Identify seller / issuer and buyer as SEPARATE entities. Never merge them into one field.
+- Do NOT include bank name, bank account number, IBAN, SWIFT, BIC, payment method, payment deadline, or amount due inside vendor_name, vendor_address, buyer_name, or buyer_address.
+- Extract line items from table-like sections or line groups visible in the document.
+- Prefer explicit labeled values over guesses.
+- Prefer null over hallucination. Return a clean partial result if OCR quality is poor.
+- Use semantic understanding of document layout, labels, grouping, and accounting context.
+- Map gross_amount to the final payable total when clearly indicated.
+- Return warnings (array of strings) for any ambiguous or uncertain fields.
+- If line_items are not clearly present, return an empty array [].
+
+Seller / vendor rules:
+- Seller = the issuer / supplier / sprzedawca / wystawca / dostawca.
+- Extract only the identity block: company name, optionally legal form and address.
+- NEVER include bank account, IBAN, SWIFT, BIC, payment method, or amount due in vendor_name or vendor_address.
+- If seller block is adjacent to payment details, stop at the end of the seller identity section.
+- Prefer a shorter, clean value over a longer mixed value.
+
+Buyer rules:
+- Buyer = nabywca / odbiorca / customer / purchaser.
+- Extract separately from seller. Do not merge.
+- Same sanitisation rules as seller: no bank/payment data in buyer fields.
+
+Line item rules:
+- Extract each visible document item / position / pozycja.
+- For each item provide: name, quantity (if available), unit (if available), unit net price, VAT rate (as number, e.g. 23 for 23%), and amounts.
+- If quantity or unit is unclear, return null for those fields.
+- Do not invent items that are not clearly visible.
+- For receipts: items may not have explicit net/vat breakdown; extract what is visible.
 
 Field rules:
-- document_type: "invoice" for invoices (faktura VAT), "receipt" for receipts (paragon / kasa fiskalna / PTU / NR PARAGONU), "unknown" for others.
+- document_type: "invoice" for faktura VAT; "receipt" for paragon/kasa fiskalna/NR PARAGONU; "bill" for rachunki/proforma/zaliczka; "other" for anything else.
 - issue_date, sale_date, payment_due_date: ISO YYYY-MM-DD; convert from DD.MM.YYYY or MM/DD/YYYY.
-- vendor_nip: exactly 10 digits, no dashes or spaces, or null if unavailable.
+- vendor_nip / buyer_nip: exactly 10 digits, no dashes/spaces, or null.
 - currency: default "PLN" if not specified.
-- net_amount, vat_amount, gross_amount: decimal with dot separator (e.g. 1234.56), never a string.
-- confidence: 0–100 (100 = all key fields read with certainty).
+- Amounts: decimal with dot separator (e.g. 1234.56), never a string.
+- confidence: 0–100, where 100 = all key fields read with full certainty.
 - For receipts: document_number may be null.
 - If rawText is provided as supplementary context: treat it as a hint; the image (if present) is the primary source.`
 
@@ -206,6 +241,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
   type InputItem = { type: string; text?: string; image_url?: string }
   const content: InputItem[] = []
 
+  const rawTextLength = textContent?.length ?? 0
+  const ocrTextLength = 0  // resolved by caller; we receive final text
+
   if (useVision) {
     content.push({
       type:      'input_image',
@@ -216,16 +254,38 @@ export const handler: Handler = async (event: HandlerEvent) => {
       : ''
     content.push({
       type: 'input_text',
-      text: `Wyekstrahuj dane z tego dokumentu.${hint}`,
+      text: `Extract all data from this document.${hint}`,
     })
+    console.info('AI_INPUT_SOURCE_SELECTED', JSON.stringify({
+      docKind,
+      isScannedPdf:       false,
+      usedImageInput:     true,
+      usedFullRawText:    !!hint,
+      usedFullOcrText:    false,
+      usedSyntheticText:  false,
+      rawTextLength,
+      ocrTextLength,
+      syntheticTextLength: 0,
+    }))
   } else {
-    // Text mode: use textContent OR degrade gracefully when imageBase64 is PDF
     const txt = textContent?.trim()
       ? textContent.slice(0, 12_000)
       : 'Brak wyodrębnionego tekstu — proszę podać dane dokumentu.'
+    const usedFull = !!textContent?.trim()
+    console.info('AI_INPUT_SOURCE_SELECTED', JSON.stringify({
+      docKind,
+      isScannedPdf:       false,
+      usedImageInput:     false,
+      usedFullRawText:    usedFull,
+      usedFullOcrText:    false,
+      usedSyntheticText:  !usedFull,
+      rawTextLength,
+      ocrTextLength,
+      syntheticTextLength: usedFull ? 0 : txt.length,
+    }))
     content.push({
       type: 'input_text',
-      text: `Wyekstrahuj dane z poniższego tekstu dokumentu:\n\n${txt}`,
+      text: `Extract all data from the following document text:\n\n${txt}`,
     })
   }
 
@@ -246,7 +306,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         // FIX 1: text.format must include type:'json_schema' as a top-level property
         // FIX 4: name/strict/schema must be nested under json_schema key
         text:  { format: INVOICE_SCHEMA_FORMAT },
-        max_output_tokens: 1_500,
+        max_output_tokens: 2_500,
       }),
     })
 
@@ -367,8 +427,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return v
   }
 
-  // ── General vendor text sanitizer — removes payment/bank noise lines ────────
-  function cleanVendorText(value?: string | null): string | null {
+  // ── General party text sanitizer — removes payment/bank noise lines ────────
+  function cleanPartyText(value?: string | null): string | null {
     if (!value) return null
     const forbidden = [
       /\bbank\b/i,
@@ -420,8 +480,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
   }
 
-  const rawVendor     = toStr(ai.vendor_name)
-  const cleanedVendor = cleanVendorText(rawVendor)
+  const rawVendor        = toStr(ai.vendor_name)
+  const rawVendorAddress = toStr(ai.vendor_address)
+  const rawBuyerName     = toStr(ai.buyer_name)
+  const rawBuyerAddress  = toStr(ai.buyer_address)
+
+  const cleanedVendor        = cleanPartyText(rawVendor)
+  const cleanedVendorAddress = cleanPartyText(rawVendorAddress)
+  const cleanedBuyerName     = cleanPartyText(rawBuyerName)
+  const cleanedBuyerAddress  = cleanPartyText(rawBuyerAddress)
+
   const docType   = toStr(ai.document_type) ?? 'unknown'
   let   aiConf    = typeof ai.confidence === 'number' ? Math.min(100, Math.max(0, ai.confidence)) : 50
   const warnings  = [...(Array.isArray(ai.warnings) ? (ai.warnings as unknown[]).map(String) : []), ...extraWarnings]
@@ -429,20 +497,48 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // Lower confidence when critical fields failed validation
   const validVendorVal = sanitizedVendor(cleanedVendor)
   const validNipVal    = validatedNip(nipRaw)
+  const validBuyerNip  = validatedNip(toStr(ai.buyer_nip))
 
-  console.info('AI_VENDOR_SANITIZE', JSON.stringify({
-    beforeName:    rawVendor ?? null,
-    afterName:     cleanedVendor ?? null,
-    beforeAddress: null,
-    afterAddress:  null,
+  console.info('AI_PARTY_SANITIZE', JSON.stringify({
+    beforeVendorName:    rawVendor ?? null,
+    afterVendorName:     cleanedVendor ?? null,
+    beforeVendorAddress: rawVendorAddress ?? null,
+    afterVendorAddress:  cleanedVendorAddress ?? null,
+    beforeBuyerName:     rawBuyerName ?? null,
+    afterBuyerName:      cleanedBuyerName ?? null,
+    beforeBuyerAddress:  rawBuyerAddress ?? null,
+    afterBuyerAddress:   cleanedBuyerAddress ?? null,
   }))
 
   if (!validVendorVal) { aiConf = Math.min(aiConf, 60); warnings.push('Nazwa sprzedawcy odrzucona (podejrzana wartość)') }
   if (nipRaw && !validNipVal) warnings.push(`NIP "${nipRaw}" odrzucony — niepoprawna suma kontrolna`)
 
+  // Normalize line items
+  const aiLineItems = Array.isArray(ai.line_items) ? ai.line_items as unknown[] : []
+  const lineItems = aiLineItems
+    .map((item) => {
+      const it = item as Record<string, unknown>
+      return {
+        name:         toStr(it.name),
+        quantity:     toNum(it.quantity),
+        unit:         toStr(it.unit),
+        unit_net:     sanityAmount(toNum(it.unit_net)),
+        vat_rate:     toNum(it.vat_rate),
+        net_amount:   sanityAmount(toNum(it.net_amount)),
+        vat_amount:   sanityAmount(toNum(it.vat_amount)),
+        gross_amount: sanityAmount(toNum(it.gross_amount)),
+      }
+    })
+    .filter((it) => it.name != null)
+
   const result: ParseInvoiceResult = {
     vendor_name:                validVendorVal,
     vendor_nip:                 validNipVal,
+    vendor_address:             cleanedVendorAddress,
+    buyer_name:                 cleanedBuyerName,
+    buyer_nip:                  validBuyerNip,
+    buyer_address:              cleanedBuyerAddress,
+    line_items:                 lineItems,
     invoice_number:             toStr(ai.document_number),
     issue_date:                 normDate(ai.issue_date),
     sale_date:                  normDate(ai.sale_date),
@@ -461,11 +557,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
   console.info('OPENAI_AI_DONE', JSON.stringify({
     model,
     docKind,
-    confidence: aiConf,
-    hasVendor:  !!result.vendor_name,
-    hasGross:   result.gross_amount != null,
-    hasNip:     !!result.vendor_nip,
-    warningCount: warnings.length,
+    confidence:    aiConf,
+    hasVendor:     !!result.vendor_name,
+    hasGross:      result.gross_amount != null,
+    hasNip:        !!result.vendor_nip,
+    hasBuyer:      !!result.buyer_name,
+    lineItemCount: lineItems.length,
+    warningCount:  warnings.length,
   }))
   return ok(result, { aiModelUsed: model })
 }
