@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ParseInvoiceResult } from '@/features/expenses/api/expenses.api'
 
 const OCR_STEPS = [
@@ -17,8 +17,8 @@ interface Props {
 const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/heic', 'image/heif', 'image/webp', 'image/gif']
 
 export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
-  const objectUrlRef = useRef<string | null>(null)
-  const imgRef       = useRef<HTMLImageElement>(null)
+  // useState (not useRef) so React re-renders when the blob URL is ready
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [ocrStep, setOcrStep] = useState(0)
 
   // Cycle through OCR step messages while parsing is in progress
@@ -28,13 +28,12 @@ export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
     return () => clearInterval(id)
   }, [parsing])
 
-  // Create and revoke object URL to avoid memory leaks
+  // Create and revoke object URL — stored in state so JSX re-renders when ready
   useEffect(() => {
-    if (!file) return
+    if (!file) { setBlobUrl(null); return }
     const url = URL.createObjectURL(file)
-    objectUrlRef.current = url
-    if (imgRef.current) imgRef.current.src = url
-    return () => { URL.revokeObjectURL(url) }
+    setBlobUrl(url)
+    return () => { URL.revokeObjectURL(url); setBlobUrl(null) }
   }, [file])
 
   if (!file && !parsing) return null
@@ -55,10 +54,10 @@ export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
         Podgląd dokumentu
       </p>
 
-      {/* File preview */}
-      {file && isImage && (
+      {/* Image preview — src set via state blobUrl to guarantee re-render */}
+      {file && isImage && blobUrl && (
         <img
-          ref={imgRef}
+          src={blobUrl}
           alt={file.name}
           style={{
             maxWidth: '100%', maxHeight: 320,
@@ -68,15 +67,23 @@ export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
         />
       )}
 
-      {file && isPDF && objectUrlRef.current && (
-        <iframe
-          src={objectUrlRef.current}
-          title={file.name}
-          style={{
-            width: '100%', height: 320, border: 'none',
-            borderRadius: 6, background: '#fff',
-          }}
-        />
+      {/* PDF preview — file info card (no iframe to avoid CSP / chrome-error cascade) */}
+      {file && isPDF && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 14,
+          padding: '14px 16px', background: '#fff', borderRadius: 6,
+          border: '1px solid var(--color-border, #e5e7eb)',
+        }}>
+          <span style={{ fontSize: 40, flexShrink: 0, lineHeight: 1 }}>📄</span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {file.name}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted, #6b7280)', marginTop: 3 }}>
+              {(file.size / 1024).toFixed(0)} KB · PDF
+            </div>
+          </div>
+        </div>
       )}
 
       {file && !isImage && !isPDF && (
