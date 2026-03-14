@@ -103,13 +103,30 @@ export async function parseInvoiceFromText(text: string): Promise<ParsedExpenseD
   // ── Normalize whitespace (PDF text is often token-per-space) ────────────
   const t = text.replace(/\s+/g, ' ')
 
-  // ── Invoice number ────────────────────────────────────────────────────────
-  // Match typical Polish invoice patterns: FV/2026/001, FVAT-2026-001, FS/001/2026, VAT/001/2026
-  // Anchor to known invoice-type prefixes to avoid false positives
-  const numMatch = t.match(
-    /(?:(?:nr|numer|faktura(?:\s+(?:nr|numer|vat))?|fv(?:at)?|fs(?:vat)?|rachun(?:ek|ku))[\s:#/]*)((?:[A-Z0-9]{1,6}[\/\-]){1,3}[A-Z0-9]{1,8})/i
+  // ── Invoice number — 4-pass (mirrors server-side parse-invoice.ts) ──────
+  // Pass 1: compound label "Numer faktury:", "Nr faktury:", "Faktura VAT Nr"
+  const numMatch1 = t.match(
+    /(?:numer\s+faktury|nr\.?\s+faktury|faktura(?:\s+(?:vat|korektora?|nr|numer))*)[^A-Z0-9\n]{0,20}((?:[A-Z0-9]{1,6}[\/\-]){1,3}[A-Z0-9]{1,10})/i
   )
-  if (numMatch) result.invoice_number = numMatch[1].trim().toUpperCase()
+  if (numMatch1) result.invoice_number = numMatch1[1].trim().toUpperCase()
+
+  // Pass 2: simple "Nr:" / "Nr FV/..."
+  if (!result.invoice_number) {
+    const numMatch2 = t.match(/(?<![A-Z])nr[:\s.]+([A-Z][A-Z0-9]{0,5}(?:[\/\-][A-Z0-9]{1,8}){1,3})/i)
+    if (numMatch2) result.invoice_number = numMatch2[1].trim().toUpperCase()
+  }
+
+  // Pass 3: standalone FV/FA/FS/FZ prefix — FV/2026/001, FVAT-001-2026
+  if (!result.invoice_number) {
+    const numMatch3 = t.match(/\b((?:FV|FA|FS|FZ|RF|RV)(?:AT)?(?:[\/\-\s][A-Z0-9]{1,8}){2,4})\b/i)
+    if (numMatch3) result.invoice_number = numMatch3[1].trim().replace(/\s+/g, '/').toUpperCase()
+  }
+
+  // Pass 4: generic X…X/NNN/NNN
+  if (!result.invoice_number) {
+    const numMatch4 = t.match(/\b([A-Z]{1,5}[\/\-][0-9]{1,8}[\/\-][0-9]{1,6})\b/)
+    if (numMatch4) result.invoice_number = numMatch4[1].trim().toUpperCase()
+  }
 
   // ── NIP (handles 10 digits, with or without dashes/spaces) ───────────────
   const nipMatch = t.match(/NIP[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/i)
@@ -133,6 +150,16 @@ export async function parseInvoiceFromText(text: string): Promise<ParsedExpenseD
     if (companyMatch) result.vendor = companyMatch[1].trim().replace(/\s{2,}/g, ' ')
   }
 
+  // Last-resort: scan first 15 non-empty lines for any company-like content
+  if (!result.vendor) {
+    const SKIP_LINE = /^(?:faktura|fv|fa|fs|fz|vat|nip[:\s]|pesel[:\s]|data[\s:]|nr[\s:.]|numer|suma|brutto|netto|razem|wystawiono|termin|zaliczka|orygi|kopia|\d{4}[\-.\/]\d{2}|\d{1,2}[\-.\/]\d{1,2}[\-.\/]\d{4})/i
+    const candidateLines = text.split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 4 && /[a-zA-ZąęółśźćńĄĘÓŁŚŹĆŃ]{3}/.test(l) && !SKIP_LINE.test(l))
+      .slice(0, 15)
+    if (candidateLines.length > 0) result.vendor = candidateLines[0].slice(0, 80)
+  }
+
   // ── Issue date ────────────────────────────────────────────────────────────
   // Matches: data wystawienia, data, data FV, wystawiono, data sprzedaży
   const dateMatch = t.match(
@@ -140,6 +167,16 @@ export async function parseInvoiceFromText(text: string): Promise<ParsedExpenseD
   )
   if (dateMatch) {
     result.issue_date = normalizeDatePl(dateMatch[1])
+  }
+  // Fallback: any ISO date in the text (2026-MM-DD)
+  if (!result.issue_date) {
+    const isoDate = t.match(/\b(202\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]))\b/)
+    if (isoDate) result.issue_date = isoDate[1]
+  }
+  // Fallback: Polish DD.MM.YYYY / DD-MM-YYYY without a label
+  if (!result.issue_date) {
+    const plDate = t.match(/\b((?:0?[1-9]|[12]\d|3[01])[.\-\/](?:0?[1-9]|1[0-2])[.\-\/]202\d)\b/)
+    if (plDate) result.issue_date = normalizeDatePl(plDate[1])
   }
 
   // ── Amounts (gross / net) — currency suffix is optional ──────────────────
