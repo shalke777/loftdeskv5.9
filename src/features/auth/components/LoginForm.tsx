@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Button } from '@/shared/ui/Button/Button'
 import { Card } from '@/shared/ui/Card/Card'
 import { Input } from '@/shared/ui/Input/Input'
-import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { authApi } from '@/features/auth/api/auth.api'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useToast } from '@/shared/hooks/useToast'
@@ -28,14 +27,14 @@ export function LoginForm() {
 
   return (
     <Card className="auth-card">
-      <PageHeader title="Wejdź do LoftDesk" subtitle="Zaloguj się do swojego konta firmowego." />
-      <div className="grid-2">
+      <div style={{ display: 'grid', gap: 10 }}>
         <Input label="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="twoj@email.pl" />
         <Input label="Hasło" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
       </div>
-      <div className="actions-row">
+      <div style={{ marginTop: 14 }}>
         <Button
           loading={loading}
+          style={{ width: '100%' }}
           onClick={async () => {
             if (!email || !password) { toast.error('Uzupełnij dane', 'Podaj e-mail i hasło.'); return }
             try {
