@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquare,
+  MoreHorizontal,
   Receipt,
   Settings,
   Shield,
@@ -47,12 +48,17 @@ const mainNavItems: MainNavItem[] = [
   { to: '/settings', label: 'Ustawienia', icon: Settings },
 ]
 
-const mobileNav: MainNavItem[] = [
-  { to: '/dashboard', label: 'Tablica', icon: LayoutDashboard },
-  { to: '/projects',  label: 'Projekty', icon: FolderKanban },
-  { to: '/chat',      label: 'Chat',     icon: MessageSquare },
-  { to: '/expenses',  label: 'Koszty',   icon: Wallet },
-  { to: '/invoices',  label: 'Faktura',  icon: Receipt },
+// ── Primary bar (5 items always visible) — order per spec ──────────────────
+const mobileNavPrimary: MainNavItem[] = [
+  { to: '/projects',  label: 'Projekty',   icon: FolderKanban },
+  { to: '/clients',   label: 'Kontrahent', icon: Users },
+  { to: '/estimates', label: 'Wycena',     icon: Calculator },
+  { to: '/contracts', label: 'Umowa',      icon: FileText },
+  { to: '/chat',      label: 'Chat',       icon: MessageSquare },
+]
+// ── More drawer (overflow items + Portal if enabled) ─────────────────────────
+const mobileNavMore: MainNavItem[] = [
+  { to: '/invoices',  label: 'Faktura',    icon: Receipt },
   { to: '/settings',  label: 'Ustawienia', icon: Settings },
 ]
 
@@ -69,6 +75,9 @@ export function AuthLayout() {
   const { notifications, unreadCount, markAllRead, dbUnreadCount } = usePortalNotifications(user?.id ?? null)
   const [showNotifications, setShowNotifications] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [navVisible, setNavVisible] = useState(true)
+  const lastScrollYRef = useRef(0)
 
   useEffect(() => {
     if (!showNotifications) return
@@ -81,6 +90,17 @@ export function AuthLayout() {
     return () => document.removeEventListener('mousedown', handle)
   }, [showNotifications])
 
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY
+      if (y > lastScrollYRef.current + 8) { setNavVisible(false); setMoreOpen(false) }
+      else if (y < lastScrollYRef.current - 4) setNavVisible(true)
+      lastScrollYRef.current = y
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   if (loading) return <div className="page-loading">Ładowanie sesji...</div>
   if (!user) return <AuthScreen />
 
@@ -89,7 +109,10 @@ export function AuthLayout() {
 
   const featureFlags = { ksef: canUseKsef } as const
   const visibleMainNav = mainNavItems.filter((item) => !item.feature || featureFlags[item.feature])
-  const visibleMobileNav = mobileNav.filter((item) => !item.feature || featureFlags[item.feature])
+  const visibleMobileNavPrimary = mobileNavPrimary.filter((item) => !item.feature || featureFlags[item.feature])
+  const visibleMobileNavMore = mobileNavMore.filter((item) => !item.feature || featureFlags[item.feature])
+  const moreActive = visibleMobileNavMore.some((item) => isActive(pathname, item)) ||
+    (canUsePortal && pathname.startsWith('/portal-inbox'))
 
   return (
     <>
@@ -208,24 +231,58 @@ export function AuthLayout() {
           </div>
         </header>
         <main className="shell-content"><Outlet /></main>
-        <nav className="mobile-nav">
-          {visibleMobileNav.map((item) => {
+        {/* ── Fixed bottom nav bar — mobile only ───────────────────────── */}
+        <nav className={`mobile-nav${navVisible ? '' : ' mobile-nav--hidden'}`}>
+          {visibleMobileNavPrimary.map((item) => {
             const Icon = item.icon
             const active = isActive(pathname, item)
             return (
-              <Link key={item.to} to={item.to} className={active ? 'mobile-nav__link mobile-nav__link--active' : 'mobile-nav__link'}>
-                <Icon size={18} />
+              <Link key={item.to} to={item.to} onClick={() => setMoreOpen(false)}
+                className={active ? 'mobile-nav__link mobile-nav__link--active' : 'mobile-nav__link'}>
+                <Icon size={20} />
                 <span>{item.label}</span>
               </Link>
             )
           })}
-          {canUsePortal ? (
-            <Link to="/portal-inbox" className={pathname.startsWith('/portal-inbox') ? 'mobile-nav__link mobile-nav__link--active' : 'mobile-nav__link'}>
-              <MessageSquare size={18} />
-              <span>Portal</span>
-            </Link>
-          ) : null}
+          <button
+            className={`mobile-nav__more-btn${moreActive ? ' mobile-nav__link--active' : ''}`}
+            onClick={() => setMoreOpen((v) => !v)}
+            aria-label="Więcej"
+          >
+            <MoreHorizontal size={20} />
+            <span>Więcej</span>
+          </button>
         </nav>
+
+        {/* ── Więcej bottom sheet ──────────────────────────────────────── */}
+        {moreOpen && (
+          <>
+            <div className="mobile-more-backdrop" onClick={() => setMoreOpen(false)} />
+            <div className="mobile-more-sheet">
+              <div className="mobile-more-sheet__handle" />
+              <div className="mobile-more-sheet__grid">
+                {visibleMobileNavMore.map((item) => {
+                  const Icon = item.icon
+                  const active = isActive(pathname, item)
+                  return (
+                    <Link key={item.to} to={item.to} onClick={() => setMoreOpen(false)}
+                      className={active ? 'mobile-more-sheet__link mobile-more-sheet__link--active' : 'mobile-more-sheet__link'}>
+                      <Icon size={24} />
+                      <span>{item.label}</span>
+                    </Link>
+                  )
+                })}
+                {canUsePortal && (
+                  <Link to="/portal-inbox" onClick={() => setMoreOpen(false)}
+                    className={pathname.startsWith('/portal-inbox') ? 'mobile-more-sheet__link mobile-more-sheet__link--active' : 'mobile-more-sheet__link'}>
+                    <ExternalLink size={24} />
+                    <span>Portal</span>
+                  </Link>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </section>
     </div>
     </>
