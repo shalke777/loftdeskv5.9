@@ -95,30 +95,38 @@ const INVOICE_SCHEMA_FORMAT = {
 
 // ─── System instructions ──────────────────────────────────────────────────────
 
-const INSTRUCTIONS = `Jesteś parserem dokumentów kosztowych dla polskiej aplikacji SaaS.
-Masz przeanalizować obraz faktury lub paragonu i zwrócić WYŁĄCZNIE poprawny JSON zgodny ze schemą.
+const INSTRUCTIONS = `You are a general-purpose purchase-document parser for Polish and EU invoices, receipts, and cost documents.
+Extract structured accounting data from many document layouts, not from one fixed template.
+Return ONLY valid JSON matching the provided schema — no extra text.
 
-Rozpoznaj:
-- typ dokumentu: invoice / receipt / unknown
-- sprzedawcę i jego NIP
-- numer dokumentu
-- datę wystawienia i datę sprzedaży
-- termin płatności i metodę płatności
-- walutę
-- kwotę netto, VAT, brutto
-- nabywcę i jego NIP (jeśli podany)
-- uwagi, jeśli relevantne
+Rules:
+- Identify the seller / issuer entity only.
+- Do NOT include bank name, IBAN, SWIFT, BIC, bank account number, payment method, payment deadline, or amount due inside vendor_name or any seller field.
+- Do NOT confuse buyer with seller.
+- Prefer explicit labeled values over guesses.
+- Prefer null over hallucination.
+- If the document has low OCR quality, return the cleanest partial result possible.
+- Work across different invoice, receipt, and cost-document formats.
+- Use semantic understanding of document layout, labels, proximity, and accounting meaning.
+- For totals: map gross_amount to the final payable total when clearly indicated.
+- Return warnings (array of strings) for any ambiguous or uncertain fields.
 
-Zasady:
-- preferuj dokładność nad zgadywaniem — jeśli nie jesteś pewny, zostaw pole null
-- kwoty jako liczby dziesiętne z kropką (np. 1234.56), nigdy jako string
-- daty w formacie ISO YYYY-MM-DD (konwertuj z DD.MM.YYYY lub MM/DD/YYYY)
-- vendor_nip: dokładnie 10 cyfr, bez myślników ani spacji
-- document_type: "receipt" gdy widzisz paragon / kasa fiskalna / PTU / NR PARAGONU
-- currency domyślnie "PLN" jeśli nie widać innej
-- confidence: 0–100 (100 = wszystkie kluczowe pola odczytane pewnie)
-- dla paragonów document_number może być null
-- jeśli masz rawText jako kontekst pomocniczy — traktuj go jako wskazówkę, obraz jest źródłem nadrzędnym`
+Seller extraction rules:
+- Extract only the seller / issuer identity block (company name, optionally address).
+- NEVER include bank account details, IBAN, SWIFT, BIC, bank name, payment method, payment deadline, or amount due in vendor_name.
+- If seller data is adjacent to payment details, stop at the end of the seller identity block.
+- Prefer a shorter clean seller value over a longer mixed value.
+- If both buyer and seller exist, choose seller / issuer only.
+
+Field rules:
+- document_type: "invoice" for invoices (faktura VAT), "receipt" for receipts (paragon / kasa fiskalna / PTU / NR PARAGONU), "unknown" for others.
+- issue_date, sale_date, payment_due_date: ISO YYYY-MM-DD; convert from DD.MM.YYYY or MM/DD/YYYY.
+- vendor_nip: exactly 10 digits, no dashes or spaces, or null if unavailable.
+- currency: default "PLN" if not specified.
+- net_amount, vat_amount, gross_amount: decimal with dot separator (e.g. 1234.56), never a string.
+- confidence: 0–100 (100 = all key fields read with certainty).
+- For receipts: document_number may be null.
+- If rawText is provided as supplementary context: treat it as a hint; the image (if present) is the primary source.`
 
 // ─── OpenAI Responses API types ───────────────────────────────────────────────
 
@@ -165,9 +173,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
     /^image\/(jpeg|jpg|png|webp|gif|heic|heif)$/i.test(imageType)
 
   const useVision = !!isValidImageMime
-  // Allow forced model override for diagnostics (set OPENAI_DEBUG_FORCE_MODEL in Netlify env)
-  const model = process.env.OPENAI_DEBUG_FORCE_MODEL
-    ?? (useVision ? 'gpt-4o' : 'gpt-4o-mini')
+
+  const DEFAULT_OPENAI_MODEL = 'gpt-5.4-2026-03-05'
+  const model =
+    process.env.OPENAI_DEBUG_FORCE_MODEL?.trim() ||
+    process.env.OPENAI_MODEL?.trim() ||
+    DEFAULT_OPENAI_MODEL
+
+  console.info('OPENAI_MODEL_SELECTED', JSON.stringify({
+    model,
+    defaultModel:  DEFAULT_OPENAI_MODEL,
+    forcedByEnv:   !!process.env.OPENAI_DEBUG_FORCE_MODEL?.trim(),
+    envModel:      process.env.OPENAI_MODEL?.trim() || null,
+  }))
 
   const docKind = useVision ? 'image' : 'text'
 
@@ -349,6 +367,39 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return v
   }
 
+  // ── General vendor text sanitizer — removes payment/bank noise lines ────────
+  function cleanVendorText(value?: string | null): string | null {
+    if (!value) return null
+    const forbidden = [
+      /\bbank\b/i,
+      /\biban\b/i,
+      /\bswift\b/i,
+      /\bbic\b/i,
+      /\bkonto\b/i,
+      /\brachunek\b/i,
+      /\bnr rachunku\b/i,
+      /\bnumer rachunku\b/i,
+      /\bp.atno.{0,4}\b/i,
+      /\bforma p.atno.ci\b/i,
+      /\btermin p.atno.ci\b/i,
+      /\bdo zap.aty\b/i,
+      /\bPL\d{2}[A-Z0-9]{10,}\b/i,
+      /\b\d{26}\b/,
+    ]
+    const cleaned = value
+      .split(/\r?\n|,/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .filter((line) => !forbidden.some((rx) => rx.test(line)))
+      .join(', ')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s+,/g, ',')
+      .replace(/,+/g, ',')
+      .replace(/^,\s*|\s*,\s*$/g, '')
+      .trim()
+    return cleaned || null
+  }
+
   const nipRaw  = toStr(ai.vendor_nip)
   let   netAmt  = sanityAmount(toNum(ai.net_amount))
   let   vatAmt  = sanityAmount(toNum(ai.vat_amount))
@@ -369,14 +420,23 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
   }
 
-  const rawVendor = toStr(ai.vendor_name)
+  const rawVendor     = toStr(ai.vendor_name)
+  const cleanedVendor = cleanVendorText(rawVendor)
   const docType   = toStr(ai.document_type) ?? 'unknown'
   let   aiConf    = typeof ai.confidence === 'number' ? Math.min(100, Math.max(0, ai.confidence)) : 50
   const warnings  = [...(Array.isArray(ai.warnings) ? (ai.warnings as unknown[]).map(String) : []), ...extraWarnings]
 
   // Lower confidence when critical fields failed validation
-  const validVendorVal = sanitizedVendor(rawVendor)
+  const validVendorVal = sanitizedVendor(cleanedVendor)
   const validNipVal    = validatedNip(nipRaw)
+
+  console.info('AI_VENDOR_SANITIZE', JSON.stringify({
+    beforeName:    rawVendor ?? null,
+    afterName:     cleanedVendor ?? null,
+    beforeAddress: null,
+    afterAddress:  null,
+  }))
+
   if (!validVendorVal) { aiConf = Math.min(aiConf, 60); warnings.push('Nazwa sprzedawcy odrzucona (podejrzana wartość)') }
   if (nipRaw && !validNipVal) warnings.push(`NIP "${nipRaw}" odrzucony — niepoprawna suma kontrolna`)
 
