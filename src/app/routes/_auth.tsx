@@ -50,6 +50,7 @@ const mainNavItems: MainNavItem[] = [
 
 // ── Primary bar (4 items + Więcej button) — order per spec ──────────────────
 const mobileNavPrimary: MainNavItem[] = [
+  { to: '/dashboard', label: 'Tablica',    icon: LayoutDashboard },
   { to: '/projects',  label: 'Projekty',   icon: FolderKanban },
   { to: '/clients',   label: 'Kontrahent', icon: Users },
   { to: '/estimates', label: 'Wycena',     icon: Calculator },
