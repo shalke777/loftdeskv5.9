@@ -186,28 +186,34 @@ export function ExpensesPage() {
       if (ocrErrorLevel !== 'ocr-unavailable' && shouldUseAI(localConfidence, parsed, docType)) {
         setUploadStep('Analiza AI...')
         try {
-          // Determine AI input mode — raw PDF bytes must NEVER go to vision endpoint.
-          // Threshold for text mode lowered to 10 chars (80 was local-parser minimum,
-          // AI can work with even sparse text layers).
           const hasUsableText = rawText.trim().length > 10
           const isMediaImage  = file.type.startsWith('image/') ||
             /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name)
 
+          // ── DIAGNOSTIC: state at AI entry point ─────────────────────────
+          const _diagBase = {
+            docType,
+            fileType:      file.type,
+            mimeType:      file.type,
+            rawTextLength: rawText.trim().length,
+            isMediaImage,
+            hasOcrResult:  !!ocrResult,
+            isPDF,
+            ocrErrorLevel,
+          }
+          console.info('AI_CALL_REQUEST_START', { ..._diagBase, hasAiCallParams: '(pending)' })
+
           let aiCallParams: { textContent?: string; imageBase64?: string; imageType?: string } | null = null
 
           if (hasUsableText) {
-            // Text-layer PDF or any extracted text → cheap text mode (gpt-4o-mini)
             aiCallParams = { textContent: rawText }
           } else if (isMediaImage) {
-            // Camera photo / JPG / PNG → vision mode (gpt-4o)
+            console.info('AI_CALL_REQUEST_URL', { ..._diagBase, path: '/.netlify/functions/parse-invoice-ai', mode: 'vision', hasAiCallParams: true })
             aiCallParams = {
               imageBase64: await fileToBase64ForAI(file),
               imageType:   file.type || 'image/jpeg',
             }
           } else if (ocrResult) {
-            // Scanned PDF: no text layer, not an image.
-            // Build a synthetic text from whatever Tesseract OCR recovered —
-            // allows AI text mode to validate / fill the missing fields.
             const parts: string[] = ['Wynik OCR (niepewny, wymaga weryfikacji):']
             if (ocrResult.invoice_number) parts.push(`Numer faktury: ${ocrResult.invoice_number}`)
             if (ocrResult.vendor_name)    parts.push(`Sprzedawca: ${ocrResult.vendor_name}`)
@@ -217,25 +223,41 @@ export function ExpensesPage() {
             if (ocrResult.net_amount)     parts.push(`Netto: ${ocrResult.net_amount}`)
             if (ocrResult.vat_amount)     parts.push(`VAT: ${ocrResult.vat_amount}`)
             if (parts.length > 1) {
+              console.info('AI_FALLBACK_SYNTHETIC_TEXT', { ..._diagBase, fields: parts.length - 1 })
               aiCallParams = { textContent: parts.join('\n') }
-              console.info('AI_FALLBACK_SYNTHETIC_TEXT', { fields: parts.length - 1 })
+            } else {
+              // ocrResult exists but every field is null — synthetic text would be empty
+              console.warn('AI_CALL_ABORTED_NO_INPUT', {
+                reason:       'ocr_result_all_fields_null',
+                ..._diagBase,
+                hasAiCallParams: false,
+              })
             }
-          }
-
-          // ── DIAGNOSTIC: log why AI call was skipped ──────────────────────
-          if (!aiCallParams) {
-            console.warn('AI_CALL_SKIPPED', {
-              reason:        'no_suitable_input',
-              rawTextLength: rawText.trim().length,
-              hasUsableText,
-              isMediaImage,
-              isPDF,
-              hasOcrResult:  !!ocrResult,
-              fileMime:      file.type,
+          } else {
+            // Not an image, no usable text layer, no ocrResult at all
+            console.warn('AI_CALL_ABORTED_UNSUPPORTED_DOC', {
+              reason:       'no_text_no_image_no_ocr',
+              ..._diagBase,
+              hasAiCallParams: false,
+              hint: 'scanned PDF with failed OCR or unknown file type',
             })
           }
 
-          if (aiCallParams) {
+          if (!aiCallParams) {
+            // Catch-all in case a branch above didn't log (safety net)
+            console.warn('AI_CALL_ABORTED_NO_PARAMS', {
+              reason:          'aiCallParams_null',
+              ..._diagBase,
+              hasAiCallParams: false,
+            })
+          } else {
+            console.info('AI_CALL_REQUEST_URL', {
+              path:            '/.netlify/functions/parse-invoice-ai',
+              mode:            aiCallParams.imageBase64 ? 'vision' : 'text',
+              textLen:         aiCallParams.textContent?.length ?? 0,
+              ..._diagBase,
+              hasAiCallParams: true,
+            })
             const aiResult = await callParseInvoiceAI(aiCallParams)
             parsed   = mergeIntoExpenseData(parsed, aiResult)
             usedAI   = true
@@ -245,8 +267,17 @@ export function ExpensesPage() {
           }
         } catch (aiErr: unknown) {
           aiAttemptedButFailed = true
-          console.warn('[AI fallback] failed:', aiErr instanceof Error ? aiErr.message : aiErr)
-          // Continue with local partial result — do NOT reset form or throw
+          console.warn('AI_CALL_SKIPPED', {
+            reason:       'exception_in_ai_block',
+            errorMessage: aiErr instanceof Error ? aiErr.message : String(aiErr),
+            docType,
+            fileType:     file.type,
+            mimeType:     file.type,
+            rawTextLength: rawText.trim().length,
+            isMediaImage: file.type.startsWith('image/'),
+            hasOcrResult: !!ocrResult,
+            hasAiCallParams: null,
+          })
         }
       }
 
