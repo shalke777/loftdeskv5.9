@@ -134,7 +134,7 @@ export function ExpensesPage() {
       let ocrResult: ParseInvoiceResult | null = null
       let ocrErrorLevel: 'ocr-unavailable' | 'error' | null = null
 
-      setUploadStep('Odczytuję tekst...')
+      setUploadStep('Odczyt lokalny...')
 
       // For digitally-generated PDFs: try fast local text extraction first
       if (isPDF) {
@@ -217,9 +217,9 @@ export function ExpensesPage() {
         const source: 'ai' | 'regex' | 'manual' = usedAI ? 'ai' : (usedLocalParser ? 'manual' : 'regex')
 
         if (filledFields.length > 0 && (usedAI || finalConfidence >= 70)) {
-          setParseStatus({ level: 'success', message: `Dane odczytane (${filledFields.length} pola) — sprawdź i zapisz`, parserSource: source })
+          setParseStatus({ level: 'success', message: 'Dane odczytane — sprawdź i zapisz', parserSource: source })
         } else if (filledFields.length > 0) {
-          setParseStatus({ level: 'partial', message: 'Odczytano część danych — uzupełnij brakujące pola', parserSource: source })
+          setParseStatus({ level: 'partial', message: 'Częściowe dane — sprawdź przed zapisem', parserSource: source })
         } else {
           setParseStatus({ level: 'empty', message: 'Nie udało się odczytać danych — wpisz pola ręcznie' })
         }
@@ -551,7 +551,7 @@ export function ExpensesPage() {
               <div className={`exp-parse-status exp-parse-status--${parseStatus.level}`}>
                 <span className="exp-parse-status__msg">{parseStatus.message}</span>
                 {parseStatus.parserSource === 'ai' && (
-                  <span className="exp-ai-chip">✦ AI</span>
+                  <span className="exp-ai-chip">Analiza rozszerzona</span>
                 )}
               </div>
             )}

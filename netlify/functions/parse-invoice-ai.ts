@@ -1,16 +1,17 @@
 // =============================================================================
-// Netlify Function: parse-invoice-ai
+// Netlify Function: parse-invoice-ai  (v2 — OpenAI Responses API)
 // =============================================================================
-// AI-powered (GPT-4o / GPT-4o-mini) extraction of invoice and receipt data.
-// Called as a fallback from the client when local OCR + regex gives a weak
-// result (confidence < 70, fewer than 3 key fields, or document is a receipt).
+// AI extraction of invoice/receipt data via OpenAI Responses API with:
+//   • Structured JSON output (json_schema, strict mode)
+//   • Vision input for images / scanned PDFs (gpt-4o)
+//   • Text input for PDF text layer / Tesseract output (gpt-4o-mini)
 //
 // Request (POST /.netlify/functions/parse-invoice-ai):
 //   Content-Type: application/json
 //   {
 //     text_content?: string   // raw text from PDF or Tesseract OCR
-//     image_base64?: string   // base64-encoded image (JPEG/PNG) — for vision mode
-//     image_type?:  string    // MIME type of the image, e.g. "image/jpeg"
+//     image_base64?: string   // base64-encoded image (JPEG/PNG/WEBP) — vision mode
+//     image_type?:  string    // MIME type, e.g. "image/jpeg"
 //   }
 //
 // Response 200: ParseInvoiceResult (parser_source = 'ai')
@@ -29,42 +30,79 @@ function json(statusCode: number, body: Record<string, unknown>) {
   return { statusCode, headers: CORS_HEADERS, body: JSON.stringify(body) }
 }
 
-// ─── System prompt ────────────────────────────────────────────────────────────
+// ─── JSON Schema for Structured Output ───────────────────────────────────────
+// Used with Responses API text.format — enforces strict, well-typed output.
 
-const SYSTEM_PROMPT = `Jesteś asystentem do odczytu polskich dokumentów finansowych — faktur VAT i paragonów fiskalnych.
-Twoim jedynym zadaniem jest wyekstrahować ustrukturyzowane dane z dostarczonego tekstu lub obrazu dokumentu.
-Zawsze zwracaj TYLKO poprawny obiekt JSON. Nie dodawaj żadnych wyjaśnień ani tekstu poza JSON.
-
-Schemat odpowiedzi:
-{
-  "document_type": "invoice" | "receipt" | "unknown",
-  "vendor_name": string | null,
-  "vendor_nip": string | null,
-  "document_number": string | null,
-  "issue_date": string | null,
-  "sale_date": string | null,
-  "payment_due_date": string | null,
-  "payment_method": string | null,
-  "currency": string,
-  "net_amount": number | null,
-  "vat_amount": number | null,
-  "gross_amount": number | null,
-  "buyer_name": string | null,
-  "buyer_nip": string | null,
-  "notes": string | null,
-  "confidence": number,
-  "warnings": string[]
+const INVOICE_JSON_SCHEMA = {
+  name:   'invoice_extraction',
+  strict: true,
+  schema: {
+    type: 'object',
+    properties: {
+      document_type:    { type: 'string', enum: ['invoice', 'receipt', 'unknown'] },
+      vendor_name:      { type: ['string', 'null'] },
+      vendor_nip:       { type: ['string', 'null'] },
+      document_number:  { type: ['string', 'null'] },
+      issue_date:       { type: ['string', 'null'] },
+      sale_date:        { type: ['string', 'null'] },
+      payment_due_date: { type: ['string', 'null'] },
+      payment_method:   { type: ['string', 'null'] },
+      currency:         { type: 'string' },
+      net_amount:       { type: ['number', 'null'] },
+      vat_amount:       { type: ['number', 'null'] },
+      gross_amount:     { type: ['number', 'null'] },
+      buyer_name:       { type: ['string', 'null'] },
+      buyer_nip:        { type: ['string', 'null'] },
+      notes:            { type: ['string', 'null'] },
+      confidence:       { type: 'number' },
+      warnings:         { type: 'array', items: { type: 'string' } },
+    },
+    required: [
+      'document_type', 'vendor_name', 'vendor_nip', 'document_number',
+      'issue_date', 'sale_date', 'payment_due_date', 'payment_method',
+      'currency', 'net_amount', 'vat_amount', 'gross_amount',
+      'buyer_name', 'buyer_nip', 'notes', 'confidence', 'warnings',
+    ],
+    additionalProperties: false,
+  },
 }
 
+// ─── System instructions ──────────────────────────────────────────────────────
+
+const INSTRUCTIONS = `Jesteś parserem dokumentów kosztowych dla polskiej aplikacji SaaS.
+Masz przeanalizować obraz faktury lub paragonu i zwrócić WYŁĄCZNIE poprawny JSON zgodny ze schemą.
+
+Rozpoznaj:
+- typ dokumentu: invoice / receipt / unknown
+- sprzedawcę i jego NIP
+- numer dokumentu
+- datę wystawienia i datę sprzedaży
+- termin płatności i metodę płatności
+- walutę
+- kwotę netto, VAT, brutto
+- nabywcę i jego NIP (jeśli podany)
+- uwagi, jeśli relevantne
+
 Zasady:
-- Kwoty jako liczby dziesiętne (np. 1234.56), nie jako string. Separator dziesiętny: kropka.
-- Daty w formacie ISO: YYYY-MM-DD. Konwertuj z DD.MM.YYYY lub innych formatów.
-- vendor_nip: tylko 10 cyfr bez separatorów (myślników, spacji).
-- document_type: ustaw "receipt" jeśli w tekście/obrazie widać: paragon, fiskalny, PTU, kasa fiskalna, NR PARAGONU.
-- confidence: 0–100. 100 = wszystkie kluczowe pola odczytane. 0 = brak danych.
-- Jeśli pola brakuje lub jest nieczytelne — użyj null.
-- gross_amount: kwota "do zapłaty" / "razem brutto" / suma na paragonie.
-- Dla paragonu: document_number może być pusty lub być numerem paragonu fiskalnego.`
+- preferuj dokładność nad zgadywaniem — jeśli nie jesteś pewny, zostaw pole null
+- kwoty jako liczby dziesiętne z kropką (np. 1234.56), nigdy jako string
+- daty w formacie ISO YYYY-MM-DD (konwertuj z DD.MM.YYYY lub MM/DD/YYYY)
+- vendor_nip: dokładnie 10 cyfr, bez myślników ani spacji
+- document_type: "receipt" gdy widzisz paragon / kasa fiskalna / PTU / NR PARAGONU
+- currency domyślnie "PLN" jeśli nie widać innej
+- confidence: 0–100 (100 = wszystkie kluczowe pola odczytane pewnie)
+- dla paragonów document_number może być null
+- jeśli masz rawText jako kontekst pomocniczy — traktuj go jako wskazówkę, obraz jest źródłem nadrzędnym`
+
+// ─── OpenAI Responses API types ───────────────────────────────────────────────
+
+interface ResponsesAPIResult {
+  output?: Array<{
+    type: string
+    content?: Array<{ type: string; text?: string }>
+  }>
+  error?: { message: string; code?: string }
+}
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
@@ -92,37 +130,39 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return json(400, { error: 'missing_input', message: 'Wymagany text_content lub image_base64' })
   }
 
-  // ── Build OpenAI request content ──────────────────────────────────────────
-  // Vision mode for images (gpt-4o); text mode for extracted text (gpt-4o-mini).
+  // ── Build Responses API input ─────────────────────────────────────────────
+  // Vision mode (gpt-4o)  : image input + optional rawText as context hint
+  // Text mode (gpt-4o-mini): text input only — cheaper for PDF text layer / OCR
 
-  let userContent: unknown
-  let model: string
+  const model = imageBase64 ? 'gpt-4o' : 'gpt-4o-mini'
+
+  type InputItem = { type: string; text?: string; image_url?: string }
+  const content: InputItem[] = []
 
   if (imageBase64) {
-    model = 'gpt-4o'
-    userContent = [
-      {
-        type: 'image_url',
-        image_url: {
-          url:    `data:${imageType};base64,${imageBase64}`,
-          detail: 'high',
-        },
-      },
-      {
-        type: 'text',
-        text: 'Wyekstrahuj dane z tego dokumentu zgodnie z instrukcją systemową. Zwróć tylko JSON.',
-      },
-    ]
+    content.push({
+      type:      'input_image',
+      image_url: `data:${imageType};base64,${imageBase64}`,
+    })
+    const hint = textContent?.trim()
+      ? `\n\nDodatkowy tekst z lokalnego OCR (traktuj jako wskazówkę):\n${textContent.slice(0, 3_000)}`
+      : ''
+    content.push({
+      type: 'input_text',
+      text: `Wyekstrahuj dane z tego dokumentu.${hint}`,
+    })
   } else {
-    model = 'gpt-4o-mini'
-    userContent = `Wyekstrahuj dane z poniższego tekstu dokumentu. Zwróć tylko JSON.\n\n${(textContent ?? '').slice(0, 12_000)}`
+    content.push({
+      type: 'input_text',
+      text: `Wyekstrahuj dane z poniższego tekstu dokumentu:\n\n${(textContent ?? '').slice(0, 12_000)}`,
+    })
   }
 
-  // ── Call OpenAI ───────────────────────────────────────────────────────────
+  // ── Call OpenAI Responses API ─────────────────────────────────────────────
 
   let aiRaw: string
   try {
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const resp = await fetch('https://api.openai.com/v1/responses', {
       method:  'POST',
       headers: {
         'Content-Type':  'application/json',
@@ -130,13 +170,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
       },
       body: JSON.stringify({
         model,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user',   content: userContent },
-        ],
-        response_format: { type: 'json_object' },
-        max_tokens:  900,
-        temperature: 0,
+        instructions: INSTRUCTIONS,
+        input: [{ role: 'user', content }],
+        text:  { format: INVOICE_JSON_SCHEMA },
+        max_output_tokens: 1_000,
       }),
     })
 
@@ -148,8 +185,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
       throw new Error(`OpenAI ${resp.status}: ${String(errMsg)}`)
     }
 
-    const data = await resp.json() as { choices: { message: { content: string } }[] }
-    aiRaw = data.choices?.[0]?.message?.content ?? '{}'
+    const data = await resp.json() as ResponsesAPIResult
+    // Responses API: output[0].content[0].text
+    aiRaw = data.output?.[0]?.content?.find(c => c.type === 'output_text')?.text ?? '{}'
   } catch (e: unknown) {
     return json(502, {
       error:   'ai_call_failed',

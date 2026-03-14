@@ -175,6 +175,8 @@ export function detectDocumentType(text: string): 'invoice' | 'receipt' | 'unkno
 
 /**
  * Decide whether AI fallback is needed based on local parse quality.
+ * Triggers when: receipt, confidence < 70, < 4 of 7 key fields filled,
+ * or any of the three most critical fields (vendor, gross, invoice number) are missing.
  */
 export function shouldUseAI(
   confidence: number,
@@ -183,9 +185,19 @@ export function shouldUseAI(
 ): boolean {
   if (docType === 'receipt') return true
   if (confidence < 70) return true
-  const keyFilled = [parsed.vendor, parsed.invoice_number, parsed.issue_date, parsed.amount_gross]
-    .filter(v => v != null && v !== '' && v !== 0).length
-  if (keyFilled < 3) return true
+  // Count how many of the 7 key fields are populated
+  const keyFilled = [
+    parsed.vendor,
+    parsed.vendor_nip,
+    parsed.invoice_number,
+    parsed.issue_date,
+    parsed.amount_gross,
+    parsed.amount_net,
+    parsed.amount_vat,
+  ].filter(v => v != null && v !== '' && v !== 0).length
+  if (keyFilled < 4) return true
+  // Always use AI when the most critical fields are still missing
+  if (!parsed.vendor || !parsed.amount_gross) return true
   return false
 }
 
