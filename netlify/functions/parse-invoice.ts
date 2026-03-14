@@ -65,6 +65,8 @@ export interface ParseInvoiceResult {
   extraction_warnings:      string[]
   requires_user_confirmation: boolean
   parser_source:            'ai' | 'regex' | 'manual'
+  // raw text extracted server-side (used as AI input for PDFs on the client)
+  extracted_text?:          string
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -549,13 +551,20 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const confidence = calcConfidence(parsed)
   const warnings   = [...baseWarnings, ...buildWarnings(parsed)]
 
-  return json(200, {
+  // Return extracted_text for PDFs so the client can pass it to the AI fallback
+  // (the client-side PDF text extractor only handles uncompressed streams, so for
+  // all FlateDecode-compressed PDFs the client rawText is empty while we may have
+  // useful text here from zlib decompression or embedded-JPEG OCR).
+  const responseBody: ParseInvoiceResult = {
     ...parsed,
     parser_source: parserSource,
     extraction_confidence:    confidence,
     extraction_warnings:      warnings,
     requires_user_confirmation: confidence < 70 || warnings.length > 0,
-  } satisfies ParseInvoiceResult)
+    ...(isPDF && extractedText ? { extracted_text: extractedText.slice(0, 50_000) } : {}),
+  }
+
+  return json(200, responseBody as unknown as Record<string, unknown>)
 }
 
 function emptyResult(): Omit<ParseInvoiceResult, 'extraction_confidence' | 'extraction_warnings' | 'requires_user_confirmation' | 'parser_source'> {

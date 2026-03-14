@@ -177,18 +177,24 @@ export function ExpensesPage() {
       }
 
       // ── Step 2c: AI fallback ──────────────────────────────────
-      // Skip AI only when OCR server is unreachable (our functions are also down).
-      // Otherwise try AI whenever local quality is low or document is a receipt.
+      // PDFs always go through AI: the server-side OCR/regex is not reliable enough
+      // for compressed (FlateDecode) PDF streams — AI on the extracted text is far better.
+      // For images: apply AI when OCR server is reachable and quality is low.
       const localConfidence = ocrResult?.extraction_confidence ?? estimateParsedConfidence(parsed)
-      const docType         = detectDocumentType(rawText)
+      const docType         = detectDocumentType(rawText || ocrResult?.extracted_text || '')
       let usedAI = false
       let aiAttemptedButFailed = false
 
-      if (ocrErrorLevel !== 'ocr-unavailable' && shouldUseAI(localConfidence, parsed, docType)) {
+      // For PDFs: always try AI (regex on PDF is unreliable; extracted_text from server is available).
+      // For images: only when OCR returns low-quality result.
+      const shouldRunAI = isPDF
+        ? ocrErrorLevel !== 'ocr-unavailable'
+        : ocrErrorLevel !== 'ocr-unavailable' && shouldUseAI(localConfidence, parsed, docType)
+
+      if (shouldRunAI) {
         setUploadStep('Analizuję dokument...')
         setIsParsingDocument(true)
         try {
-          const hasUsableText = rawText.trim().length > 10
           const isMediaImage  = file.type.startsWith('image/') ||
             /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name)
 
@@ -197,7 +203,8 @@ export function ExpensesPage() {
             docType,
             fileType:      file.type,
             mimeType:      file.type,
-            rawTextLength: rawText.trim().length,
+            rawTextLength:           rawText.trim().length,
+            serverExtractedTextLen:  ocrResult?.extracted_text?.trim().length ?? 0,
             isMediaImage,
             hasOcrResult:  !!ocrResult,
             isPDF,
@@ -207,8 +214,18 @@ export function ExpensesPage() {
 
           let aiCallParams: { textContent?: string; imageBase64?: string; imageType?: string } | null = null
 
-          if (hasUsableText) {
-            aiCallParams = { textContent: rawText }
+          // For PDFs: prefer the server-extracted text (covers FlateDecode-compressed streams
+          // that the client-side extractor cannot decompress). Fall back to embedded-JPEG OCR
+          // text if available, then the field-level synthetic text, then a minimal hint.
+          const serverExtractedText = isPDF ? (ocrResult?.extracted_text ?? '') : ''
+          const effectiveTextForAI  = rawText.trim().length > 10
+            ? rawText
+            : serverExtractedText.trim().length > 10
+              ? serverExtractedText
+              : ''
+
+          if (effectiveTextForAI.length > 10) {
+            aiCallParams = { textContent: effectiveTextForAI }
           } else if (isMediaImage) {
             console.info('AI_CALL_REQUEST_URL', { ..._diagBase, path: '/.netlify/functions/parse-invoice-ai', mode: 'vision', hasAiCallParams: true })
             aiCallParams = {

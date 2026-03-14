@@ -445,6 +445,8 @@ export interface ParseInvoiceResult {
   extraction_warnings:        string[]
   requires_user_confirmation: boolean
   parser_source:              'ai' | 'regex' | 'manual'
+  // raw text extracted server-side (used as AI input for PDFs)
+  extracted_text?:            string
 }
 
 /** Input to create an expense and link it to a project */
