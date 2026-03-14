@@ -123,6 +123,7 @@ Zasady:
 // ─── OpenAI Responses API types ───────────────────────────────────────────────
 
 interface ResponsesAPIResult {
+  model?:  string
   output?: Array<{
     type: string
     content?: Array<{ type: string; text?: string }>
@@ -261,9 +262,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
 
     const data = JSON.parse(rawBody) as ResponsesAPIResult
+    const requestId = resp.headers.get('x-request-id') ?? resp.headers.get('cf-ray') ?? null
+    console.info('OPENAI_PROVIDER_CONFIRM', JSON.stringify({
+      requestedModel: model,
+      returnedModel:  data.model ?? null,
+      requestId,
+      status:         resp.status,
+      ok:             true,
+      docKind,
+    }))
     // Responses API: output[0].content[] where type=='output_text'
     aiRaw = data.output?.[0]?.content?.find(c => c.type === 'output_text')?.text ?? '{}'
-    console.info('[parse-invoice-ai] AI raw response len=' + aiRaw.length)
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error('OPENAI_AI_ERROR', JSON.stringify({ model, docKind, errorMessage: msg }))
