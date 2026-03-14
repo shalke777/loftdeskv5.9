@@ -123,6 +123,7 @@ export function ExpensesPage() {
     setUploadStep('Przesyłanie pliku...')
     setUploadError(null)
     setParseStatus(null)
+    console.info('EXPENSE_PARSE_LOADING_START')
     try {
       // ── Step 1: upload to storage ─────────────────────────────
       const { url, name } = await expensesApi.uploadFile(file, companyId)
@@ -334,12 +335,14 @@ export function ExpensesPage() {
     } catch (err: any) {
       setUploadError(err?.message ?? 'Błąd przesyłania pliku')
     } finally {
+      console.info('EXPENSE_PARSE_LOADING_END')
       setUploading(false)
     }
   }
 
   function onFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
+    console.info('EXPENSE_FILE_INPUT_CHANGE', { name: file?.name ?? null, type: file?.type ?? null, size: file?.size ?? null })
     if (file) handleFileSelected(file)
     e.target.value = ''
   }
@@ -455,26 +458,70 @@ export function ExpensesPage() {
     <div className="page">
       <PageHeader title="Koszty" subtitle="Skanuj i ewidencjonuj faktury kosztowe" />
 
-      {/* ── Mobile quick-action bar (hidden on desktop) ──────────────── */}
-      <div className="exp-mobile-actions">
-        <button type="button" onClick={() => cameraInputRef.current?.click()}>
-          <Camera size={22} />
-          Zdjęcie
-        </button>
-        <button type="button" onClick={() => fileInputRef.current?.click()}>
-          <Upload size={22} />
-          Galeria / PDF
-        </button>
-        <button type="button" onClick={() => {
-          setForm(emptyForm())
-          setModal({ type: 'add', fileUrl: '', fileName: '', parsed: {} })
-        }}>
-          <FileText size={22} />
-          Ręcznie
-        </button>
-      </div>
+      {/* Hidden file inputs — placed OUTSIDE the upload zone so that programmatic
+          .click() events don't bubble back through the zone's onClick handler
+          (which was causing the file picker to open twice on desktop). */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        style={{ display: 'none' }}
+        onChange={onFileInput}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={onFileInput}
+      />
 
-      {/* Upload zone */}
+      {/* ── Mobile: quick-action buttons OR parsing overlay ──────────────
+           The upload zone is hidden on mobile via CSS, so we replicate the
+           loading indicator here as a dedicated overlay.              */}
+      {uploading ? (
+        <div className="exp-parse-overlay">
+          <Spinner />
+          <span className="exp-parse-overlay__step">{uploadStep}</span>
+          {isParsingDocument && (
+            <span className="exp-parse-overlay__hint">Może potrwać kilka sekund</span>
+          )}
+        </div>
+      ) : (
+        <div className="exp-mobile-actions">
+          <button
+            type="button"
+            className="exp-mobile-actions__camera"
+            onClick={() => { console.info('EXPENSE_CAMERA_CLICK'); cameraInputRef.current?.click() }}
+          >
+            <Camera size={22} />
+            Zdjęcie
+          </button>
+          <button
+            type="button"
+            className="exp-mobile-actions__gallery"
+            onClick={() => { console.info('EXPENSE_GALLERY_CLICK'); fileInputRef.current?.click() }}
+          >
+            <Upload size={22} />
+            Galeria / PDF
+          </button>
+          <button
+            type="button"
+            className="exp-mobile-actions__manual"
+            onClick={() => {
+              console.info('EXPENSE_MANUAL_CLICK')
+              setForm(emptyForm())
+              setModal({ type: 'add', fileUrl: '', fileName: '', parsed: {} })
+            }}
+          >
+            <FileText size={22} />
+            Ręcznie
+          </button>
+        </div>
+      )}
+
+      {/* Upload zone (desktop only — hidden on mobile via CSS) */}
       <div
         className="exp-upload-zone"
         onClick={() => fileInputRef.current?.click()}
@@ -487,21 +534,6 @@ export function ExpensesPage() {
           if (file) handleFileSelected(file)
         }}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,.pdf"
-          style={{ display: 'none' }}
-          onChange={onFileInput}
-        />
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style={{ display: 'none' }}
-          onChange={onFileInput}
-        />
 
         {uploading ? (
           <div className="exp-upload-zone__inner">
@@ -635,6 +667,7 @@ export function ExpensesPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="exp-pdf-preview-card__open btn btn-ghost"
+                      onClick={() => console.info('EXPENSE_OPEN_FILE_CLICK', { expenseId: null, fileName: modal.fileName })}
                     >
                       Otwórz ↗
                     </a>

@@ -1196,11 +1196,28 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
     transition: background 0.12s, border-color 0.12s;
   }
 
-  /* First button (camera) — branded */
-  .exp-mobile-actions button:first-child {
-    border-color: var(--color-brand, #dc2626);
-    background: var(--color-brand-light, #fef2f2);
-    color: var(--color-brand, #dc2626);
+  /* Camera — brand green */
+  .exp-mobile-actions button:first-child,
+  .exp-mobile-actions .exp-mobile-actions__camera {
+    border-color: var(--color-brand);
+    background: var(--color-brand-light);
+    color: var(--color-brand);
+  }
+
+  /* Gallery / PDF — accent amber-brown */
+  .exp-mobile-actions button:nth-child(2),
+  .exp-mobile-actions .exp-mobile-actions__gallery {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  /* Manual entry — neutral warm */
+  .exp-mobile-actions button:nth-child(3),
+  .exp-mobile-actions .exp-mobile-actions__manual {
+    border-color: var(--color-border-dark);
+    background: var(--color-surface-soft);
+    color: var(--color-primary-light);
   }
 
   .exp-mobile-actions button:active {
@@ -1210,6 +1227,37 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 @media (max-width: 640px) {
   .exp-upload-zone { display: none; }
+}
+
+/* Mobile upload-in-progress overlay — shown instead of action buttons while processing */
+.exp-parse-overlay {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .exp-parse-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 24px 16px;
+    background: var(--color-surface);
+    border: 2px solid var(--color-brand-border);
+    border-radius: 14px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .exp-parse-overlay__step {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-brand);
+  }
+
+  .exp-parse-overlay__hint {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
 }
 
 .exp-upload-zone {
