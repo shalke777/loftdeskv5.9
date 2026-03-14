@@ -59,6 +59,7 @@ const mobileNavPrimary: MainNavItem[] = [
 const mobileNavMore: MainNavItem[] = [
   { to: '/contracts', label: 'Umowa',      icon: FileText },
   { to: '/invoices',  label: 'Faktura',    icon: Receipt },
+  { to: '/expenses',  label: 'Koszty',     icon: Wallet },
   { to: '/settings',  label: 'Ustawienia', icon: Settings },
 ]
 
