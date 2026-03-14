@@ -79,7 +79,25 @@ export const billingApi = {
     ])
 
     if (scope.mode === 'multi-tenant') {
-      const { data: company } = await supabase.from('companies').select('name, plan, ksef_token, subscription_status, trial_ends_at, subscription_current_period_end').eq('id', scope.companyId).maybeSingle()
+      // Try full billing query first; if billing columns aren't in the DB yet
+      // (migration 036 pending), fall back to core columns so the dashboard
+      // doesn't 400 and crash.
+      let company: Record<string, unknown> | null = null
+      const { data: fullCompany, error: billingErr } = await supabase
+        .from('companies')
+        .select('name, plan, ksef_token, subscription_status, trial_ends_at, subscription_current_period_end')
+        .eq('id', scope.companyId)
+        .maybeSingle()
+      if (!billingErr) {
+        company = fullCompany as Record<string, unknown> | null
+      } else {
+        const { data: coreCompany } = await supabase
+          .from('companies')
+          .select('name, plan, ksef_token')
+          .eq('id', scope.companyId)
+          .maybeSingle()
+        company = coreCompany as Record<string, unknown> | null
+      }
       const currentPlan = ((company?.plan as BillingPlan | null) ?? 'free')
       return {
         companyName: company?.name ?? 'LoftDesk Workspace',

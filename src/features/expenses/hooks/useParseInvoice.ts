@@ -126,7 +126,14 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
     throw new Error(String(err.message ?? err.error ?? `HTTP ${resp.status}`))
   }
 
-  return resp.json() as Promise<ParseInvoiceResult>
+  try {
+    return await resp.json() as ParseInvoiceResult
+  } catch {
+    // Server returned non-JSON (e.g. HTML 404 page from SPA redirect in dev without `netlify dev`)
+    throw new Error(
+      'Serwer OCR niedostępny. W trybie dev uruchom: netlify dev (port 8888). W produkcji sprawdź logi Netlify.'
+    )
+  }
 }
 
 /**
