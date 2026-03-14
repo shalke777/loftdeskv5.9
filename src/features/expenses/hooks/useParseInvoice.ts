@@ -203,31 +203,154 @@ export function shouldUseAI(
 
 /**
  * Merge AI ParseInvoiceResult into existing ParsedExpenseData.
- * Local values take priority; AI fills missing / empty fields.
+ *
+ * Rules (applied per field):
+ *  - Local value wins if it is non-empty and passes quality checks.
+ *  - AI fills genuinely missing fields.
+ *  - AI wins when it produces a more complete value (e.g. longer invoice number
+ *    with recognisable prefix, full company name vs. fragment).
+ *  - Sanity checks guard against hallucinated amounts or bad dates.
  */
 export function mergeIntoExpenseData(
   local: ParsedExpenseData,
   ai: ParseInvoiceResult,
 ): ParsedExpenseData {
-  function pickStr(localVal: string | undefined, aiVal: string | null): string | undefined {
-    if (localVal && localVal.trim()) return localVal
-    return aiVal ?? undefined
+
+  // ── Date validator ──────────────────────────────────────────────────────────
+  function validDate(v: string | null | undefined): string | undefined {
+    if (!v) return undefined
+    // Accept ISO YYYY-MM-DD only after normDate normalisation already ran in the backend
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return undefined
+    const d = new Date(v)
+    if (isNaN(d.getTime())) return undefined
+    const year = d.getFullYear()
+    if (year < 2000 || year > 2035) return undefined   // sanity range
+    return v
   }
-  function pickNum(localVal: number | undefined, aiVal: number | null): number | undefined {
-    if (localVal != null && localVal > 0) return localVal
-    return aiVal ?? undefined
+
+  // ── Invoice number scorer — returns numeric quality score 0-3 ──────────────
+  // Higher = more trustworthy:  3 = known prefix + long  2 = long  1 = short  0 = empty/junk
+  function invoiceNumberScore(v: string | null | undefined): number {
+    if (!v || v.trim().length < 2) return 0
+    const upper = v.trim().toUpperCase()
+    // Reject values that look like field labels, not numbers
+    if (/^(FAKTURA|PARAGON|NIP|DATA|BRUTTO|NETTO|VAT|RAZEM)/.test(upper)) return 0
+    const hasPrefix = /^(FV|FA|FS|FZ|FVAT|F\/|FK|FR|VAT)/.test(upper)
+    const len = upper.length
+    if (hasPrefix && len >= 8) return 3
+    if (hasPrefix) return 2
+    if (len >= 6) return 1
+    return 0
   }
+
+  // ── Vendor name validator ───────────────────────────────────────────────────
+  // Rejects obvious hallucinations: document headers, field labels, NIP lines.
+  const BAD_VENDOR_PATTERNS = [
+    /^faktura/i, /^paragon/i, /^nip$/i, /^data wystawienia/i,
+    /^data sprzeda/i, /^termin/i, /^razem/i, /^brutto/i,
+    /^netto/i, /^do zap/i, /^suma/i, /^nr faktury/i, /^nr dok/i,
+  ]
+  function validVendor(v: string | null | undefined): string | undefined {
+    if (!v || v.trim().length < 2) return undefined
+    const t = v.trim()
+    if (BAD_VENDOR_PATTERNS.some(re => re.test(t))) return undefined
+    // Reject if value looks purely numeric (e.g. hallucinated NIP as vendor)
+    if (/^\d+$/.test(t.replace(/[\s\-]/g, ''))) return undefined
+    return t
+  }
+
+  // ── NIP validator (Polish 10-digit tax ID) ──────────────────────────────────
+  function validNip(v: string | null | undefined): string | undefined {
+    if (!v) return undefined
+    const digits = v.replace(/\D/g, '')
+    if (digits.length !== 10) return undefined
+    // NIP checksum
+    const weights = [6, 5, 7, 2, 3, 4, 5, 6, 7]
+    const sum = weights.reduce((acc, w, i) => acc + w * parseInt(digits[i]), 0)
+    if (sum % 11 !== parseInt(digits[9])) return undefined
+    return digits
+  }
+
+  // ── Amount sanity checks ───────────────────────────────────────────────────
+  function validAmount(v: number | null | undefined): number | undefined {
+    if (v == null) return undefined
+    if (!isFinite(v) || v < 0 || v > 10_000_000) return undefined   // > 10M PLN is suspect
+    return Math.round(v * 100) / 100
+  }
+
+  // ── Pick best invoice number ────────────────────────────────────────────────
+  const localInvScore = invoiceNumberScore(local.invoice_number)
+  const aiInvScore    = invoiceNumberScore(ai.invoice_number)
+  const bestInvoiceNumber = (
+    aiInvScore > localInvScore ? ai.invoice_number :
+    localInvScore > 0          ? local.invoice_number :
+    ai.invoice_number          // both zero — take AI (it might be a receipt)
+  ) ?? undefined
+
+  // ── Pick best vendor ────────────────────────────────────────────────────────
+  const localVendor = validVendor(local.vendor)
+  const aiVendor    = validVendor(ai.vendor_name)
+  let bestVendor = localVendor   // local wins by default
+  if (!localVendor && aiVendor) {
+    bestVendor = aiVendor
+  } else if (localVendor && aiVendor) {
+    // Prefer the longer, more complete name
+    bestVendor = aiVendor.length > localVendor.length + 3 ? aiVendor : localVendor
+  }
+
+  // ── Pick best NIP ───────────────────────────────────────────────────────────
+  const localNip = validNip(local.vendor_nip) ?? (local.vendor_nip || undefined)
+  const aiNip    = validNip(ai.vendor_nip)
+  // If local NIP passes checksum but AI does not, always keep local
+  const bestNip  = validNip(local.vendor_nip)
+    ? local.vendor_nip
+    : (aiNip ?? local.vendor_nip ?? undefined)
+
+  // ── Pick best dates ─────────────────────────────────────────────────────────
+  const bestIssueDate = validDate(local.issue_date) ?? validDate(ai.issue_date)
+
+  // ── Pick best amounts ───────────────────────────────────────────────────────
+  const localNet   = validAmount(local.amount_net)
+  const localVat   = validAmount(local.amount_vat)
+  const localGross = validAmount(local.amount_gross)
+  const aiNet      = validAmount(ai.net_amount)
+  const aiVat      = validAmount(ai.vat_amount)
+  const aiGross    = validAmount(ai.gross_amount)
+
+  // Local wins for any already-set amount; AI fills gaps only
+  let bestNet   = localNet   ?? aiNet
+  let bestVat   = localVat   ?? aiVat
+  let bestGross = localGross ?? aiGross
+
+  // Amounts sanity cross-check: net + vat ≈ gross (within 5%)
+  if (bestNet != null && bestVat != null && bestGross != null) {
+    const derived = Math.round((bestNet + bestVat) * 100) / 100
+    const tolerance = Math.max(0.10, bestGross * 0.05)
+    if (Math.abs(derived - bestGross) > tolerance) {
+      // Inconsistency — trust gross (user sees it first), try to derive vat
+      bestVat = Math.round((bestGross - bestNet) * 100) / 100
+    }
+  } else if (bestNet != null && bestVat != null && bestGross == null) {
+    bestGross = Math.round((bestNet + bestVat) * 100) / 100
+  }
+
+  // ── Pick description ────────────────────────────────────────────────────────
+  const localDesc = local.description?.trim() || undefined
+  const aiNotes   = ai.notes?.trim() || undefined
+  const bestDesc  = localDesc ?? aiNotes
+
   return {
-    vendor:         pickStr(local.vendor,         ai.vendor_name),
-    vendor_nip:     pickStr(local.vendor_nip,     ai.vendor_nip),
-    invoice_number: pickStr(local.invoice_number, ai.invoice_number),
-    issue_date:     pickStr(local.issue_date,     ai.issue_date),
-    amount_net:     pickNum(local.amount_net,     ai.net_amount),
-    amount_vat:     pickNum(local.amount_vat,     ai.vat_amount),
-    amount_gross:   pickNum(local.amount_gross,   ai.gross_amount),
-    description:    pickStr(local.description,    ai.notes),
+    invoice_number: bestInvoiceNumber,
+    vendor:         bestVendor,
+    vendor_nip:     bestNip,
+    issue_date:     bestIssueDate,
+    amount_net:     bestNet,
+    amount_vat:     bestVat,
+    amount_gross:   bestGross,
+    description:    bestDesc,
   }
 }
+
 
 /**
  * Call the parse-invoice-ai Netlify function.
