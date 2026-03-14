@@ -48,16 +48,16 @@ const mainNavItems: MainNavItem[] = [
   { to: '/settings', label: 'Ustawienia', icon: Settings },
 ]
 
-// ── Primary bar (5 items always visible) — order per spec ──────────────────
+// ── Primary bar (4 items + Więcej button) — order per spec ──────────────────
 const mobileNavPrimary: MainNavItem[] = [
   { to: '/projects',  label: 'Projekty',   icon: FolderKanban },
   { to: '/clients',   label: 'Kontrahent', icon: Users },
   { to: '/estimates', label: 'Wycena',     icon: Calculator },
-  { to: '/contracts', label: 'Umowa',      icon: FileText },
   { to: '/chat',      label: 'Chat',       icon: MessageSquare },
 ]
-// ── More drawer (overflow items + Portal if enabled) ─────────────────────────
+// ── More drawer items (Umowa + overflow) ─────────────────────────────────────
 const mobileNavMore: MainNavItem[] = [
+  { to: '/contracts', label: 'Umowa',      icon: FileText },
   { to: '/invoices',  label: 'Faktura',    icon: Receipt },
   { to: '/settings',  label: 'Ustawienia', icon: Settings },
 ]
@@ -236,10 +236,18 @@ export function AuthLayout() {
           {visibleMobileNavPrimary.map((item) => {
             const Icon = item.icon
             const active = isActive(pathname, item)
+            const isChat = item.to === '/chat'
             return (
               <Link key={item.to} to={item.to} onClick={() => setMoreOpen(false)}
                 className={active ? 'mobile-nav__link mobile-nav__link--active' : 'mobile-nav__link'}>
-                <Icon size={20} />
+                <span className="mobile-nav__icon-wrap">
+                  <Icon size={20} />
+                  {isChat && dbUnreadCount > 0 && (
+                    <span className="mobile-nav__badge">
+                      {dbUnreadCount > 99 ? '99+' : dbUnreadCount}
+                    </span>
+                  )}
+                </span>
                 <span>{item.label}</span>
               </Link>
             )
