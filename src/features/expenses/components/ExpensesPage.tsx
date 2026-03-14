@@ -101,6 +101,9 @@ export function ExpensesPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  // Tracks which input triggered the file picker so we can skip Tesseract for
+  // camera shots and go straight to GPT vision (better accuracy, no cold-start).
+  const pendingSourceRef = useRef<ExpenseSourceType>('gallery')
 
   const [uploading, setUploading] = useState(false)
   const [isParsingDocument, setIsParsingDocument] = useState(false)
@@ -119,6 +122,9 @@ export function ExpensesPage() {
 
   async function handleFileSelected(file: File) {
     if (!file) return
+    // Capture source at the moment the file is picked (pendingSourceRef was set by the
+    // button click handler before triggering the file picker).
+    const fileSource = pendingSourceRef.current
     setUploading(true)
     setUploadStep('Przesyłanie pliku...')
     setUploadError(null)
@@ -130,6 +136,11 @@ export function ExpensesPage() {
 
       // ── Step 2: choose extraction path ────────────────────────
       const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+      // Camera shots go straight to GPT vision — skipping Tesseract entirely.
+      // Reasons: Tesseract struggles with shadows / perspective / low contrast that
+      // are typical on phone camera photos; GPT vision is significantly more accurate
+      // and avoids the Netlify cold-start overhead of loading Tesseract WASM.
+      const isCamera = fileSource === 'camera'
       let parsed: ParsedExpenseData = {}
       let usedLocalParser = false
       let rawText = ''
@@ -154,8 +165,10 @@ export function ExpensesPage() {
         }
       }
 
-      // For images OR scanned PDFs without usable text layer: use Netlify OCR
-      if (!usedLocalParser) {
+      // For images OR scanned PDFs without usable text layer: use Netlify OCR.
+      // EXCEPTION: camera shots skip Tesseract entirely and go straight to GPT vision
+      // (see isCamera flag; handled below in the AI step).
+      if (!usedLocalParser && !isCamera) {
         setUploadStep('Analizuję dane faktury...')
         try {
           const sourceType: ExpenseSourceType = isPDF ? 'pdf' : 'gallery'
@@ -187,8 +200,9 @@ export function ExpensesPage() {
       let aiAttemptedButFailed = false
 
       // For PDFs: always try AI (regex on PDF is unreliable; extracted_text from server is available).
-      // For images: only when OCR returns low-quality result.
-      const shouldRunAI = isPDF
+      // For camera: always try AI (Tesseract was skipped; GPT vision is the only extractor).
+      // For gallery images: only when OCR returns low-quality result.
+      const shouldRunAI = (isPDF || isCamera)
         ? ocrErrorLevel !== 'ocr-unavailable'
         : ocrErrorLevel !== 'ocr-unavailable' && shouldUseAI(localConfidence, parsed, docType)
 
@@ -493,7 +507,7 @@ export function ExpensesPage() {
           <button
             type="button"
             className="exp-mobile-actions__camera"
-            onClick={() => { console.info('EXPENSE_CAMERA_CLICK'); cameraInputRef.current?.click() }}
+            onClick={() => { console.info('EXPENSE_CAMERA_CLICK'); pendingSourceRef.current = 'camera'; cameraInputRef.current?.click() }}
           >
             <Camera size={22} />
             Zdjęcie
@@ -501,7 +515,7 @@ export function ExpensesPage() {
           <button
             type="button"
             className="exp-mobile-actions__gallery"
-            onClick={() => { console.info('EXPENSE_GALLERY_CLICK'); fileInputRef.current?.click() }}
+            onClick={() => { console.info('EXPENSE_GALLERY_CLICK'); pendingSourceRef.current = 'gallery'; fileInputRef.current?.click() }}
           >
             <Upload size={22} />
             Galeria / PDF
@@ -558,7 +572,7 @@ export function ExpensesPage() {
               <Button variant="secondary" size="sm" icon={<Upload size={14} />} onClick={() => fileInputRef.current?.click()}>
                 Wybierz plik
               </Button>
-              <Button variant="secondary" size="sm" icon={<Camera size={14} />} onClick={() => cameraInputRef.current?.click()}>
+              <Button variant="secondary" size="sm" icon={<Camera size={14} />} onClick={() => { pendingSourceRef.current = 'camera'; cameraInputRef.current?.click() }}>
                 Zdjęcie
               </Button>
               <Button variant="secondary" size="sm" icon={<FileText size={14} />} onClick={() => {

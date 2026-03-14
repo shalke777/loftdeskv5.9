@@ -93,9 +93,13 @@ async function extractViaOCR(
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore — tesseract.js is installed in netlify/functions/node_modules, not root
     const { createWorker } = await import('tesseract.js')
-    const worker = await createWorker(['pol', 'eng'], 1, {
+    const worker = await createWorker(['pol'], 1, {
       logger: () => {}, // suppress progress output in function logs
     })
+    // PSM 6: Assume a single uniform block of text.
+    // Better than the default PSM 3 (full auto) for Polish invoices with a
+    // predictable layout — reduces misidentification of columns as separate pages.
+    await worker.setParameters({ tessedit_pageseg_mode: '6' as any })
     const buffer = Buffer.from(fileBase64, 'base64')
     const { data: { text } } = await worker.recognize(buffer)
     await worker.terminate()

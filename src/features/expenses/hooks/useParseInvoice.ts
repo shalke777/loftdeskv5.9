@@ -39,12 +39,38 @@ async function preprocessForOCR(file: File): Promise<File> {
 
     ctx.drawImage(img, 0, 0, w, h)
 
-    // Convert to grayscale + mild contrast boost (improves OCR edge detection)
+    // Step 1: 3×3 median blur to suppress noise before contrast boost.
+    // Without this step, amplifying contrast on a grainy photo turns background
+    // noise into phantom "letters" that confuse Tesseract (e.g. random NIP digits,
+    // garbled vendor name from a textured paper background).
     const id = ctx.getImageData(0, 0, w, h)
     const d  = id.data
+    const tmp = new Uint8ClampedArray(d.length)
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4
+        // Collect 3×3 neighbourhood values (clamp to edges)
+        const vals: number[] = []
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = Math.min(w - 1, Math.max(0, x + dx))
+            const ny = Math.min(h - 1, Math.max(0, y + dy))
+            const ni = (ny * w + nx) * 4
+            // Use luminance of the original pixel
+            vals.push(0.299 * d[ni] + 0.587 * d[ni + 1] + 0.114 * d[ni + 2])
+          }
+        }
+        vals.sort((a, b) => a - b)
+        tmp[i] = tmp[i + 1] = tmp[i + 2] = vals[4] // median (middle of 9)
+        tmp[i + 3] = d[i + 3]
+      }
+    }
+    // Copy median-filtered grayscale back
+    for (let i = 0; i < d.length; i++) d[i] = tmp[i]
+
+    // Step 2: Mild contrast boost on the already-denoised grayscale image.
     for (let i = 0; i < d.length; i += 4) {
-      const gray    = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
-      const boosted = Math.min(255, Math.max(0, (gray - 128) * 1.3 + 128))
+      const boosted = Math.min(255, Math.max(0, (d[i] - 128) * 1.3 + 128))
       d[i] = d[i + 1] = d[i + 2] = boosted
       // d[i+3] (alpha) unchanged
     }
