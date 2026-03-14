@@ -46,6 +46,18 @@ export function DashboardPage() {
 
   const pipelineProjects: { id: string; name: string; number: string; status: string; clientName: string; contractValue: number; estimateValue: number; invoicedTotal: number; paidTotal: number }[] = (data as any).pipelineProjects ?? []
 
+  const hasData = onboarding ? !onboarding.isEmpty : false
+  const shouldShowChecklist = onboarding != null && !onboarding.isComplete
+
+  console.info('DASHBOARD_GETTING_STARTED_VISIBILITY', {
+    shouldShowChecklist,
+    isEmpty: onboarding?.isEmpty,
+    isComplete: onboarding?.isComplete,
+    done: onboarding?.done,
+    total: onboarding?.total,
+    hasData,
+  })
+
   const stats = [
     { label: 'Pipeline projektów', value: formatCurrency(data.pipeline) },
     { label: 'Aktywne projekty', value: String(data.activeProjects) },
@@ -62,8 +74,8 @@ export function DashboardPage() {
         <WelcomeBanner companyName={data.companyName} onDismiss={dismissWelcome} />
       )}
 
-      {/* ── Onboarding checklist: shown until all steps done ──────────────── */}
-      {!onboarding?.isEmpty && <OnboardingChecklist />}
+      {/* ── Onboarding checklist: shown until all core steps done ─────────── */}
+      {shouldShowChecklist && <OnboardingChecklist />}
 
       <section className="dashboard-hero">
         <Card className="highlight-card">

@@ -64,8 +64,8 @@ const STEP_META: Record<string, { label: string; description: string; href: stri
   },
 }
 
-// Ordered steps displayed to user (simplified subset of full onboarding)
-const ORDERED_STEPS = ['companyProfile', 'firstClient', 'firstEstimate', 'projects', 'portal']
+// Ordered steps displayed to user (portal is optional — excluded from core completion)
+const ORDERED_STEPS = ['companyProfile', 'firstClient', 'firstEstimate', 'projects']
 
 export function useOnboardingProgress() {
   const companyId = useCompanyId()
