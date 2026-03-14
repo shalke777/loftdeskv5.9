@@ -27,20 +27,20 @@ const CORS_HEADERS = {
   'Content-Type': 'application/json',
 }
 
-function ok(result: ParseInvoiceResult) {
+function ok(result: ParseInvoiceResult, meta: { aiModelUsed: string }) {
   return {
     statusCode: 200,
     headers: CORS_HEADERS,
-    body: JSON.stringify({ ok: true, result }),
+    body: JSON.stringify({ ok: true, aiAttempted: true, aiModelUsed: meta.aiModelUsed, result }),
   }
 }
 
-function err(statusCode: number, error: string, message: string) {
+function err(statusCode: number, error: string, message: string, meta?: { aiModelUsed?: string; aiAttempted?: boolean }) {
   console.error(`[parse-invoice-ai] ${error}: ${message}`)
   return {
     statusCode,
     headers: CORS_HEADERS,
-    body: JSON.stringify({ ok: false, error, message }),
+    body: JSON.stringify({ ok: false, error, message, aiAttempted: meta?.aiAttempted ?? false, aiModelUsed: meta?.aiModelUsed ?? null }),
   }
 }
 
@@ -138,7 +138,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    return err(503, 'ai_not_configured', 'OPENAI_API_KEY is not set in Netlify environment variables')
+    return err(503, 'ai_not_configured', 'OPENAI_API_KEY is not set in Netlify environment variables', { aiAttempted: false })
   }
 
   let body: Record<string, unknown>
@@ -153,7 +153,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const imageType   = String(body.image_type ?? 'image/jpeg')
 
   if (!textContent && !imageBase64) {
-    return err(400, 'missing_input', 'Provide text_content or image_base64')
+    return err(400, 'missing_input', 'Provide text_content or image_base64', { aiAttempted: false })
   }
 
   // ── Validate image MIME — never accept PDF in vision path ────────────────
@@ -164,9 +164,23 @@ export const handler: Handler = async (event: HandlerEvent) => {
     /^image\/(jpeg|jpg|png|webp|gif|heic|heif)$/i.test(imageType)
 
   const useVision = !!isValidImageMime
-  const model     = useVision ? 'gpt-4o' : 'gpt-4o-mini'
+  // Allow forced model override for diagnostics (set OPENAI_DEBUG_FORCE_MODEL in Netlify env)
+  const model = process.env.OPENAI_DEBUG_FORCE_MODEL
+    ?? (useVision ? 'gpt-4o' : 'gpt-4o-mini')
 
-  console.log(`[parse-invoice-ai] doc_kind=${useVision ? 'image' : 'text'} mime=${imageType} text_len=${textContent?.length ?? 0} b64_len=${imageBase64?.length ?? 0} model=${model}`)
+  const docKind = useVision ? 'image' : 'text'
+
+  // ── DIAGNOSTIC LOG ────────────────────────────────────────────────────────
+  console.info('OPENAI_AI_START', JSON.stringify({
+    model,
+    docKind,
+    mimeType:      imageType,
+    hasImage:      !!imageBase64,
+    hasRawText:    !!textContent,
+    rawTextLength: textContent?.length ?? 0,
+    requestSource: 'expenses-ai-fallback',
+    forcedModel:   !!process.env.OPENAI_DEBUG_FORCE_MODEL,
+  }))
 
   // ── Build Responses API input ─────────────────────────────────────────────
 
@@ -198,8 +212,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   // ── Call OpenAI Responses API ─────────────────────────────────────────────
 
-  console.log(`[parse-invoice-ai] Sending request to OpenAI Responses API, model=${model}`)
-
   let aiRaw: string
   try {
     const resp = await fetch('https://api.openai.com/v1/responses', {
@@ -220,12 +232,30 @@ export const handler: Handler = async (event: HandlerEvent) => {
     })
 
     const rawBody = await resp.text()
-    console.log(`[parse-invoice-ai] OpenAI status=${resp.status} body_len=${rawBody.length}`)
+
+    // ── DIAGNOSTIC LOG ──────────────────────────────────────────────────────
+    if (resp.ok) {
+      console.info('OPENAI_AI_RESPONSE', JSON.stringify({
+        model,
+        status:     resp.status,
+        ok:         true,
+        bodyLength: rawBody.length,
+        docKind,
+      }))
+    } else {
+      console.error('OPENAI_AI_ERROR', JSON.stringify({
+        model,
+        status:       resp.status,
+        ok:           false,
+        docKind,
+        bodyPreview:  rawBody.slice(0, 300),
+      }))
+    }
 
     if (!resp.ok) {
       let oaiErr: Record<string, unknown> = {}
       try { oaiErr = JSON.parse(rawBody) as Record<string, unknown> } catch { /* noop */ }
-      const errObj   = oaiErr.error as Record<string, unknown> | undefined
+      const errObj    = oaiErr.error as Record<string, unknown> | undefined
       const errDetail = errObj?.message ?? errObj?.code ?? rawBody.slice(0, 200)
       throw new Error(`OpenAI ${resp.status}: ${String(errDetail)}`)
     }
@@ -233,10 +263,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const data = JSON.parse(rawBody) as ResponsesAPIResult
     // Responses API: output[0].content[] where type=='output_text'
     aiRaw = data.output?.[0]?.content?.find(c => c.type === 'output_text')?.text ?? '{}'
-    console.log(`[parse-invoice-ai] AI raw response len=${aiRaw.length}`)
+    console.info('[parse-invoice-ai] AI raw response len=' + aiRaw.length)
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
-    return err(502, 'ai_call_failed', msg)
+    console.error('OPENAI_AI_ERROR', JSON.stringify({ model, docKind, errorMessage: msg }))
+    return err(502, 'ai_call_failed', msg, { aiModelUsed: model, aiAttempted: true })
   }
 
   // ── Parse AI response ─────────────────────────────────────────────────────
@@ -245,8 +276,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
   try {
     ai = JSON.parse(aiRaw) as Record<string, unknown>
   } catch {
-    console.error(`[parse-invoice-ai] Failed to parse JSON: ${aiRaw.slice(0, 300)}`)
-    return err(502, 'ai_invalid_json', 'AI returned non-JSON response')
+    console.error('OPENAI_AI_ERROR', JSON.stringify({ model, docKind, errorMessage: 'ai_invalid_json', preview: aiRaw.slice(0, 300) }))
+    return err(502, 'ai_invalid_json', 'AI returned non-JSON response', { aiModelUsed: model, aiAttempted: true })
   }
 
   // ── Normalize helpers ─────────────────────────────────────────────────────
@@ -350,7 +381,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
     parser_source:              'ai',
   }
 
-  console.log(`[parse-invoice-ai] Done confidence=${aiConf} vendor=${result.vendor_name} gross=${result.gross_amount}`)
-  return ok(result)
+  console.info('OPENAI_AI_DONE', JSON.stringify({
+    model,
+    docKind,
+    confidence: aiConf,
+    hasVendor:  !!result.vendor_name,
+    hasGross:   result.gross_amount != null,
+    hasNip:     !!result.vendor_nip,
+    warningCount: warnings.length,
+  }))
+  return ok(result, { aiModelUsed: model })
 }
 

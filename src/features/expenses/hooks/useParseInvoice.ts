@@ -183,9 +183,33 @@ export function shouldUseAI(
   parsed: ParsedExpenseData,
   docType: 'invoice' | 'receipt' | 'unknown',
 ): boolean {
-  if (docType === 'receipt') return true
-  if (confidence < 70) return true
-  // Count how many of the 7 key fields are populated
+  // ── Determine reason for (or against) AI fallback ──────────────────────────
+  let reason: string | null = null
+
+  if (docType === 'receipt') {
+    reason = 'receipt_detected'
+  } else if (confidence < 70) {
+    reason = 'low_confidence'
+  } else {
+    const keyFilled = [
+      parsed.vendor,
+      parsed.vendor_nip,
+      parsed.invoice_number,
+      parsed.issue_date,
+      parsed.amount_gross,
+      parsed.amount_net,
+      parsed.amount_vat,
+    ].filter(v => v != null && v !== '' && v !== 0).length
+
+    if (keyFilled < 4) {
+      reason = 'missing_fields'
+    } else if (!parsed.vendor) {
+      reason = 'missing_vendor'
+    } else if (!parsed.amount_gross) {
+      reason = 'missing_gross'
+    }
+  }
+
   const keyFilled = [
     parsed.vendor,
     parsed.vendor_nip,
@@ -195,10 +219,22 @@ export function shouldUseAI(
     parsed.amount_net,
     parsed.amount_vat,
   ].filter(v => v != null && v !== '' && v !== 0).length
-  if (keyFilled < 4) return true
-  // Always use AI when the most critical fields are still missing
-  if (!parsed.vendor || !parsed.amount_gross) return true
-  return false
+
+  const decision = reason !== null
+
+  // ── DIAGNOSTIC LOG (tymczasowe) ────────────────────────────────────────────
+  console.info('AI_FALLBACK_DECISION', {
+    shouldUseAI:  decision,
+    reason:       reason ?? 'not_needed',
+    confidence,
+    filledFields: keyFilled,
+    docType,
+    hasVendor:    !!parsed.vendor,
+    hasGross:     !!parsed.amount_gross,
+    hasInvNum:    !!parsed.invoice_number,
+  })
+
+  return decision
 }
 
 /**
@@ -387,6 +423,15 @@ export async function callParseInvoiceAI(params: {
   } catch {
     throw new Error(`AI HTTP ${resp.status}: niepoprawna odpowiedź serwera`)
   }
+
+  // ── DIAGNOSTIC LOG (tymczasowe) ────────────────────────────────────────────
+  console.info('AI_FALLBACK_RESPONSE', {
+    httpStatus:   resp.status,
+    ok:           data.ok,
+    aiAttempted:  data.aiAttempted,
+    aiModelUsed:  data.aiModelUsed,
+    error:        data.error ?? null,
+  })
 
   if (!data.ok) {
     throw new Error(String(data.message ?? data.error ?? `AI HTTP ${resp.status}`))
