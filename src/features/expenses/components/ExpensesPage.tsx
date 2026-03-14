@@ -181,25 +181,44 @@ export function ExpensesPage() {
       const localConfidence = ocrResult?.extraction_confidence ?? estimateParsedConfidence(parsed)
       const docType         = detectDocumentType(rawText)
       let usedAI = false
+      let aiAttemptedButFailed = false
 
       if (ocrErrorLevel !== 'ocr-unavailable' && shouldUseAI(localConfidence, parsed, docType)) {
         setUploadStep('Analiza AI...')
         try {
+          // FIX: Determine AI input mode by file type.
+          // Raw PDF must NOT be sent to the vision endpoint — OpenAI rejects it.
           const hasUsableText = rawText.trim().length > 80
-          const aiResult = await callParseInvoiceAI({
-            textContent: hasUsableText ? rawText : undefined,
-            imageBase64: !hasUsableText ? await fileToBase64ForAI(file) : undefined,
-            imageType:   !hasUsableText ? (file.type || 'image/jpeg') : undefined,
-          })
-          parsed   = mergeIntoExpenseData(parsed, aiResult)
-          usedAI   = true
-          // Override with a higher synthetic confidence so AI results aren't
-          // flagged partial when the merge produced all key fields.
-          ocrResult = ocrResult
-            ? { ...ocrResult, extraction_confidence: Math.max(ocrResult.extraction_confidence, aiResult.extraction_confidence) }
-            : aiResult
-        } catch {
-          // AI failed silently — continue with whatever local parser produced
+          const isMediaImage  = file.type.startsWith('image/') ||
+            /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name)
+
+          let aiCallParams: { textContent?: string; imageBase64?: string; imageType?: string } | null = null
+
+          if (hasUsableText) {
+            // Text-layer PDF → cheap text mode (gpt-4o-mini)
+            aiCallParams = { textContent: rawText }
+          } else if (isMediaImage) {
+            // Camera photo / JPG / PNG → vision mode (gpt-4o) with correct image MIME
+            aiCallParams = {
+              imageBase64: await fileToBase64ForAI(file),
+              imageType:   file.type || 'image/jpeg',
+            }
+          }
+          // else: scanned PDF without a text layer — cannot send raw PDF bytes to
+          // vision endpoint. Skip AI; keep whatever Tesseract extracted locally.
+
+          if (aiCallParams) {
+            const aiResult = await callParseInvoiceAI(aiCallParams)
+            parsed   = mergeIntoExpenseData(parsed, aiResult)
+            usedAI   = true
+            ocrResult = ocrResult
+              ? { ...ocrResult, extraction_confidence: Math.max(ocrResult.extraction_confidence, aiResult.extraction_confidence) }
+              : aiResult
+          }
+        } catch (aiErr: unknown) {
+          aiAttemptedButFailed = true
+          console.warn('[AI fallback] failed:', aiErr instanceof Error ? aiErr.message : aiErr)
+          // Continue with local partial result — do NOT reset form or throw
         }
       }
 
@@ -215,11 +234,12 @@ export function ExpensesPage() {
         const filledFields    = Object.entries(parsed).filter(([, v]) => v != null && v !== '').map(([k]) => k)
         const finalConfidence = ocrResult?.extraction_confidence ?? estimateParsedConfidence(parsed)
         const source: 'ai' | 'regex' | 'manual' = usedAI ? 'ai' : (usedLocalParser ? 'manual' : 'regex')
+        const aiFailNote = aiAttemptedButFailed ? ' · Analiza AI nie powiodła się' : ''
 
         if (filledFields.length > 0 && (usedAI || finalConfidence >= 70)) {
-          setParseStatus({ level: 'success', message: 'Dane odczytane — sprawdź i zapisz', parserSource: source })
+          setParseStatus({ level: 'success', message: `Dane odczytane — sprawdź i zapisz${aiFailNote}`, parserSource: source })
         } else if (filledFields.length > 0) {
-          setParseStatus({ level: 'partial', message: 'Częściowe dane — sprawdź przed zapisem', parserSource: source })
+          setParseStatus({ level: 'partial', message: `Częściowe dane — sprawdź przed zapisem${aiFailNote}`, parserSource: source })
         } else {
           setParseStatus({ level: 'empty', message: 'Nie udało się odczytać danych — wpisz pola ręcznie' })
         }

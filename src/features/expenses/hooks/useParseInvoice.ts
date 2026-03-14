@@ -231,7 +231,11 @@ export function mergeIntoExpenseData(
 
 /**
  * Call the parse-invoice-ai Netlify function.
- * Accepts either extracted text or a base64 image.
+ * Accepts either extracted text or a base64 image (JPEG/PNG/WEBP — NOT raw PDF).
+ * NOTE: For scanned PDFs without a text layer, skip this call entirely on the
+ *       frontend — sending raw PDF bytes to the vision endpoint causes 400/502.
+ *
+ * Response contract: { ok: true, result: ParseInvoiceResult } | { ok: false, error, message }
  */
 export async function callParseInvoiceAI(params: {
   textContent?: string
@@ -250,11 +254,20 @@ export async function callParseInvoiceAI(params: {
       }),
     })
   } catch {
-    throw new Error('AI fallback niedostępny')
+    throw new Error('AI fallback niedostępny — brak połączenia z funkcją')
   }
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({})) as Record<string, unknown>
-    throw new Error(String(err.message ?? err.error ?? `AI HTTP ${resp.status}`))
+
+  // Always parse JSON — the function now returns { ok, result } or { ok, error, message }
+  let data: Record<string, unknown>
+  try {
+    data = await resp.json() as Record<string, unknown>
+  } catch {
+    throw new Error(`AI HTTP ${resp.status}: niepoprawna odpowiedź serwera`)
   }
-  return resp.json() as Promise<ParseInvoiceResult>
+
+  if (!data.ok) {
+    throw new Error(String(data.message ?? data.error ?? `AI HTTP ${resp.status}`))
+  }
+
+  return data.result as ParseInvoiceResult
 }
