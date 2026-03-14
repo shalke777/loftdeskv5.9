@@ -45,9 +45,9 @@ function MessageBubble({ msg }: BubbleProps) {
             padding:      '4px 12px',
             borderRadius: 999,
             fontSize:     11,
-            color:        '#64748b',
-            background:   '#f1f5f9',
-            border:       '1px solid #e2e8f0',
+            color:        '#5c6b6a',
+            background:   '#eef5fb',
+            border:       '1px solid #c3d8ed',
           }}
         >
           {msg.body}
@@ -63,16 +63,16 @@ function MessageBubble({ msg }: BubbleProps) {
       <div
         className={`chat-bubble${isOperator ? ' chat-bubble--operator' : ''}${isInternal ? ' chat-bubble--note' : ''}`}
         style={{
-          // Wiadomości wewnętrzne — żółtawy odcień
+          // Wiadomości wewnętrzne — pastelowy żółty / krem
           ...(isInternal && !isClient ? {
-            background:   '#fef9c3',
-            border:       '1px solid #fde047',
-            color:        '#713f12',
+            background:   '#fef8de',
+            border:       '1px solid #ead35a',
+            color:        '#7a5010',
           } : {}),
-          // Wiadomości klienta — jasnoszare
+          // Wiadomości klienta — ciepły off-white
           ...(isClient ? {
-            background:   '#f1f5f9',
-            color:        '#1a202c',
+            background:   '#fdf9f4',
+            color:        '#2c2218',
             borderRadius: '16px 16px 16px 4px',
             padding:      '10px 14px',
             fontSize:     14,
@@ -159,7 +159,7 @@ export function ThreadView({ threadId, projectId, visibility }: ThreadViewProps)
         <div style={{ fontSize: 48, lineHeight: 1 }}>💬</div>
         <div style={{ textAlign: 'center' }}>
           <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Chat projektowy</p>
-          <p style={{ margin: '6px 0 0', fontSize: 13, color: '#9ca3af', maxWidth: 280, lineHeight: 1.5 }}>
+          <p style={{ margin: '6px 0 0', fontSize: 13, color: '#a09585', maxWidth: 280, lineHeight: 1.5 }}>
             Chat zbiera wiadomości z projektów.
             Aby pisać z klientem, uruchom portal klienta w projekcie.
           </p>
@@ -211,7 +211,7 @@ export function ThreadView({ threadId, projectId, visibility }: ThreadViewProps)
           {visibility === 'client_shared' && list.every(m => m.sender_type !== 'client') && (
             <div style={{
               textAlign: 'center', margin: '16px 8px 4px',
-              fontSize: 12, color: '#9ca3af',
+              fontSize: 12, color: '#a09585',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}>
               <span>⏳</span> Oczekiwanie na odpowiedź klienta z portalu projektu
