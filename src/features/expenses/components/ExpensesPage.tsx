@@ -186,26 +186,54 @@ export function ExpensesPage() {
       if (ocrErrorLevel !== 'ocr-unavailable' && shouldUseAI(localConfidence, parsed, docType)) {
         setUploadStep('Analiza AI...')
         try {
-          // FIX: Determine AI input mode by file type.
-          // Raw PDF must NOT be sent to the vision endpoint — OpenAI rejects it.
-          const hasUsableText = rawText.trim().length > 80
+          // Determine AI input mode — raw PDF bytes must NEVER go to vision endpoint.
+          // Threshold for text mode lowered to 10 chars (80 was local-parser minimum,
+          // AI can work with even sparse text layers).
+          const hasUsableText = rawText.trim().length > 10
           const isMediaImage  = file.type.startsWith('image/') ||
             /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name)
 
           let aiCallParams: { textContent?: string; imageBase64?: string; imageType?: string } | null = null
 
           if (hasUsableText) {
-            // Text-layer PDF → cheap text mode (gpt-4o-mini)
+            // Text-layer PDF or any extracted text → cheap text mode (gpt-4o-mini)
             aiCallParams = { textContent: rawText }
           } else if (isMediaImage) {
-            // Camera photo / JPG / PNG → vision mode (gpt-4o) with correct image MIME
+            // Camera photo / JPG / PNG → vision mode (gpt-4o)
             aiCallParams = {
               imageBase64: await fileToBase64ForAI(file),
               imageType:   file.type || 'image/jpeg',
             }
+          } else if (ocrResult) {
+            // Scanned PDF: no text layer, not an image.
+            // Build a synthetic text from whatever Tesseract OCR recovered —
+            // allows AI text mode to validate / fill the missing fields.
+            const parts: string[] = ['Wynik OCR (niepewny, wymaga weryfikacji):']
+            if (ocrResult.invoice_number) parts.push(`Numer faktury: ${ocrResult.invoice_number}`)
+            if (ocrResult.vendor_name)    parts.push(`Sprzedawca: ${ocrResult.vendor_name}`)
+            if (ocrResult.vendor_nip)     parts.push(`NIP: ${ocrResult.vendor_nip}`)
+            if (ocrResult.issue_date)     parts.push(`Data wystawienia: ${ocrResult.issue_date}`)
+            if (ocrResult.gross_amount)   parts.push(`Brutto: ${ocrResult.gross_amount}`)
+            if (ocrResult.net_amount)     parts.push(`Netto: ${ocrResult.net_amount}`)
+            if (ocrResult.vat_amount)     parts.push(`VAT: ${ocrResult.vat_amount}`)
+            if (parts.length > 1) {
+              aiCallParams = { textContent: parts.join('\n') }
+              console.info('AI_FALLBACK_SYNTHETIC_TEXT', { fields: parts.length - 1 })
+            }
           }
-          // else: scanned PDF without a text layer — cannot send raw PDF bytes to
-          // vision endpoint. Skip AI; keep whatever Tesseract extracted locally.
+
+          // ── DIAGNOSTIC: log why AI call was skipped ──────────────────────
+          if (!aiCallParams) {
+            console.warn('AI_CALL_SKIPPED', {
+              reason:        'no_suitable_input',
+              rawTextLength: rawText.trim().length,
+              hasUsableText,
+              isMediaImage,
+              isPDF,
+              hasOcrResult:  !!ocrResult,
+              fileMime:      file.type,
+            })
+          }
 
           if (aiCallParams) {
             const aiResult = await callParseInvoiceAI(aiCallParams)
