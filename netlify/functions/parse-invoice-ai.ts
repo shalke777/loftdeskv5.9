@@ -258,6 +258,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
       try { oaiErr = JSON.parse(rawBody) as Record<string, unknown> } catch { /* noop */ }
       const errObj    = oaiErr.error as Record<string, unknown> | undefined
       const errDetail = errObj?.message ?? errObj?.code ?? rawBody.slice(0, 200)
+
+      // Propagate quota/billing errors with a meaningful status (not 502)
+      if (resp.status === 429) {
+        const msg = 'OpenAI quota exceeded or billing is not active for the current API project.'
+        console.error('OPENAI_AI_ERROR', JSON.stringify({ model, docKind, status: 429, errorMessage: msg, detail: String(errDetail) }))
+        return err(429, 'openai_quota_exceeded', msg, { aiModelUsed: model, aiAttempted: true })
+      }
+
       throw new Error(`OpenAI ${resp.status}: ${String(errDetail)}`)
     }
 
