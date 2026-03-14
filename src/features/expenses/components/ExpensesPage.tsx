@@ -177,8 +177,13 @@ export function ExpensesPage() {
           } else {
             setParseInfo('⚠️ Nie udało się odczytać danych — uzupełnij pola ręcznie')
           }
-        } catch {
-          setParseInfo('⚠️ Błąd odczytu OCR — uzupełnij pola ręcznie')
+        } catch (ocrErr: unknown) {
+          const msg = ocrErr instanceof Error ? ocrErr.message : ''
+          if (msg.includes('Serwer OCR') || msg.includes('niedostępny')) {
+            setParseInfo(`⚠️ ${msg.split('.')[0]}.`)
+          } else {
+            setParseInfo('⚠️ Błąd odczytu OCR — uzupełnij pola ręcznie')
+          }
         }
       } else {
         // Local PDF parser succeeded

@@ -279,6 +279,16 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
     const companyMatch = t.match(/([A-ZŁÓŚĄŹĆĘŃ][A-Za-ząęółśźćń\s\.\-"]{3,50}(?:Sp\.\s*z\s*o\.o\.|S\.A\.|Sp\.\s*j\.|Ltd\.|GmbH|s\.c\.))/i)
     if (companyMatch) result.vendor_name = companyMatch[1].trim()
   }
+  // Vendor last-resort: scan first 15 non-empty lines for any company-like content.
+  // Skips headings (FAKTURA/VAT), dates, NIP lines, numeric junk and very short strings.
+  if (!result.vendor_name) {
+    const SKIP_LINE = /^(?:faktura|fv|fa|fs|fz|vat|nip[:\s]|pesel[:\s]|data[\s:]|nr[\s:.]|numer|suma|brutto|netto|razem|wystawiono|termin|zaliczka|orygi|kopia|\d{4}[\-.\/]\d{2}|\d{1,2}[\-.\/]\d{1,2}[\-.\/]\d{4})/i
+    const candidateLines = text.split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 4 && /[a-zA-ZąęółśźćńĄĘÓŁŚŹĆŃ]{3}/.test(l) && !SKIP_LINE.test(l))
+      .slice(0, 15)
+    if (candidateLines.length > 0) result.vendor_name = candidateLines[0].slice(0, 80)
+  }
 
   // Issue date
   const dateMatch = t.match(/(?:data\s+(?:wystawienia|sprzeda[żz]y|faktury|wyst\.?)|wystawiono|data\s+fv|data)[:\s]+(\d{4}-\d{2}-\d{2}|\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4}|\d{4}[.\/-]\d{1,2}[.\/-]\d{1,2})/i)
@@ -286,6 +296,11 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
   if (!result.issue_date) {
     const isoDate = t.match(/\b(202\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]))\b/)
     if (isoDate) result.issue_date = isoDate[1]
+  }
+  // Last-resort date fallback: Polish formats without a label (DD.MM.YYYY / DD-MM-YYYY)
+  if (!result.issue_date) {
+    const plDate = t.match(/\b((?:0?[1-9]|[12]\d|3[01])[.\-\/](?:0?[1-9]|1[0-2])[.\-\/]202\d)\b/)
+    if (plDate) result.issue_date = normalizeDatePl(plDate[1])
   }
   // Sale date
   const saleDateMatch = t.match(/(?:data\s+sprzeda[żz]y|data\s+dostawy|data\s+wykonania)[:\s]+(\d{4}-\d{2}-\d{2}|\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4})/i)

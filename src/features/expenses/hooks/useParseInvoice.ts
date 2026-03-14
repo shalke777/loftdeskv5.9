@@ -110,16 +110,22 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
 
   const file_base64 = await fileToBase64(processedFile)
 
-  const resp = await fetch('/.netlify/functions/parse-invoice', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      file_base64,
-      file_name:   processedFile.name,
-      file_type:   processedFile.type,
-      source_type: sourceType,
-    }),
-  })
+  let resp: Response
+  try {
+    resp = await fetch('/.netlify/functions/parse-invoice', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_base64,
+        file_name:   processedFile.name,
+        file_type:   processedFile.type,
+        source_type: sourceType,
+      }),
+    })
+  } catch {
+    // Network-level failure: proxy configured but backend not running, or no internet
+    throw new Error('Serwer OCR niedostępny. W trybie dev uruchom: netlify dev (port 8888). W produkcji sprawdź logi Netlify.')
+  }
 
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({})) as Record<string, unknown>
