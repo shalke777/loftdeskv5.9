@@ -114,7 +114,7 @@ export function DashboardPage() {
       </div>
 
       {pipelineProjects.length > 0 && (
-        <Card style={{ marginTop: 16 }}>
+        <Card style={{ marginTop: 16, minWidth: 0, overflow: 'hidden' }}>
           <div className="toolbar" style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <TrendingUp size={20} />
@@ -122,7 +122,8 @@ export function DashboardPage() {
             </div>
             <span className="field__label">{pipelineProjects.length} {pipelineProjects.length === 1 ? 'pozycja' : 'pozycji'}</span>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+          <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
                 <th style={{ padding: '8px 12px' }}>Nazwa</th>
@@ -146,6 +147,7 @@ export function DashboardPage() {
               ))}
             </tbody>
           </table>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 12px 0', gap: 24, fontSize: 14, fontWeight: 700 }}>
             <span>Suma pipeline: {formatCurrency(data.pipeline)}</span>
           </div>

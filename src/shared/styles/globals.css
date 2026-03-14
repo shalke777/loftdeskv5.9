@@ -155,6 +155,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   border-radius: 20px;
   box-shadow: var(--shadow-md);
   padding: 28px 24px;
+  min-width: 0;
+  overflow: hidden;
 }
 .card--soft { background: var(--color-surface-soft); box-shadow: var(--shadow-sm); }
 
