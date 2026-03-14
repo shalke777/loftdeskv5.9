@@ -52,40 +52,44 @@ function err(statusCode: number, error: string, message: string) {
 const ns = { anyOf: [{ type: 'string' }, { type: 'null' }] }  // nullable string
 const nn = { anyOf: [{ type: 'number' }, { type: 'null' }] }  // nullable number
 
+// BUG 4 FIX: Responses API (and Chat Completions) require name/strict/schema
+// to be nested under a `json_schema` key inside `format`:
+//   { type: 'json_schema', json_schema: { name, strict, schema } }
+// Previously these were placed at the top level — OpenAI returned 400.
 const INVOICE_SCHEMA_FORMAT = {
-  // This is the full `text.format` value for the Responses API call.
-  // `type: 'json_schema'` is REQUIRED — without it OpenAI returns 400.
-  type:   'json_schema',
-  name:   'invoice_extraction',
-  strict: true,
-  schema: {
-    type: 'object',
-    properties: {
-      document_type:    { type: 'string', enum: ['invoice', 'receipt', 'unknown'] },
-      vendor_name:      ns,
-      vendor_nip:       ns,
-      document_number:  ns,
-      issue_date:       ns,
-      sale_date:        ns,
-      payment_due_date: ns,
-      payment_method:   ns,
-      currency:         { type: 'string' },
-      net_amount:       nn,
-      vat_amount:       nn,
-      gross_amount:     nn,
-      buyer_name:       ns,
-      buyer_nip:        ns,
-      notes:            ns,
-      confidence:       { type: 'number' },
-      warnings:         { type: 'array', items: { type: 'string' } },
+  type: 'json_schema',
+  json_schema: {
+    name:   'invoice_extraction',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        document_type:    { type: 'string', enum: ['invoice', 'receipt', 'unknown'] },
+        vendor_name:      ns,
+        vendor_nip:       ns,
+        document_number:  ns,
+        issue_date:       ns,
+        sale_date:        ns,
+        payment_due_date: ns,
+        payment_method:   ns,
+        currency:         { type: 'string' },
+        net_amount:       nn,
+        vat_amount:       nn,
+        gross_amount:     nn,
+        buyer_name:       ns,
+        buyer_nip:        ns,
+        notes:            ns,
+        confidence:       { type: 'number' },
+        warnings:         { type: 'array', items: { type: 'string' } },
+      },
+      required: [
+        'document_type', 'vendor_name', 'vendor_nip', 'document_number',
+        'issue_date', 'sale_date', 'payment_due_date', 'payment_method',
+        'currency', 'net_amount', 'vat_amount', 'gross_amount',
+        'buyer_name', 'buyer_nip', 'notes', 'confidence', 'warnings',
+      ],
+      additionalProperties: false,
     },
-    required: [
-      'document_type', 'vendor_name', 'vendor_nip', 'document_number',
-      'issue_date', 'sale_date', 'payment_due_date', 'payment_method',
-      'currency', 'net_amount', 'vat_amount', 'gross_amount',
-      'buyer_name', 'buyer_nip', 'notes', 'confidence', 'warnings',
-    ],
-    additionalProperties: false,
   },
 }
 
@@ -209,8 +213,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
         instructions: INSTRUCTIONS,
         input: [{ role: 'user', content }],
         // FIX 1: text.format must include type:'json_schema' as a top-level property
+        // FIX 4: name/strict/schema must be nested under json_schema key
         text:  { format: INVOICE_SCHEMA_FORMAT },
-        max_output_tokens: 1_000,
+        max_output_tokens: 1_500,
       }),
     })
 

@@ -13,6 +13,9 @@
 [functions."parse-invoice"]
   timeout = 26
 
+[functions."parse-invoice-ai"]
+  timeout = 26
+
 [build.processing]
   skip_processing = true
 
