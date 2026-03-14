@@ -39,6 +39,16 @@ export default defineConfig({
       '@docs-legal': path.resolve(__dirname, './docs/legal'),
     },
   },
+  // Proxy Netlify Functions so OCR works in dev mode (requires `netlify dev` on :8888)
+  server: {
+    proxy: {
+      '/.netlify/functions': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
   build: {
     sourcemap: true,
     rollupOptions: {

@@ -108,7 +108,7 @@ export function ExpensesPage() {
   const [parseInfo, setParseInfo] = useState<string | null>(null) // parse diagnostics
 
   // modal: 'add' or 'edit'
-  const [modal, setModal] = useState<{ type: 'add'; fileUrl: string; fileName: string; parsed: ParsedExpenseData } | { type: 'edit'; expense: ExpenseInvoice } | null>(null)
+  const [modal, setModal] = useState<{ type: 'add'; fileUrl: string; fileName: string; parsed: ParsedExpenseData; previewBlobUrl?: string } | { type: 'edit'; expense: ExpenseInvoice } | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm())
   const [saving, setSaving] = useState(false)
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null)
@@ -136,7 +136,7 @@ export function ExpensesPage() {
       // For digitally-generated PDFs: try fast local text extraction first
       if (isPDF) {
         try {
-          const rawText = await extractPdfText(file)
+          const rawText = await extractRawPdfText(file)
           const PDF_KEYWORDS = ['faktura', 'fvat', 'nip', 'netto', 'brutto', 'zaplat', 'termin']
           const hasGoodText  = rawText.trim().length >= 80 &&
             PDF_KEYWORDS.some(kw => rawText.toLowerCase().includes(kw))
@@ -193,7 +193,11 @@ export function ExpensesPage() {
       // ── Step 3: open modal with pre-filled form ───────────────
       setUploadStep('Uzupełniam formularz...')
       setForm({ ...emptyForm(), ...parsedToForm(parsed) })
-      setModal({ type: 'add', fileUrl: url, fileName: name, parsed })
+      // Use local blob URL for image preview — reliably available immediately,
+      // works in demo mode and in production regardless of Supabase bucket visibility.
+      const isImgFile = file.type.startsWith('image/') || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(file.name)
+      const previewBlobUrl = isImgFile ? URL.createObjectURL(file) : undefined
+      setModal({ type: 'add', fileUrl: url, fileName: name, parsed, previewBlobUrl })
     } catch (err: any) {
       setUploadError(err?.message ?? 'Błąd przesyłania pliku')
     } finally {
@@ -467,21 +471,41 @@ export function ExpensesPage() {
         <Modal
           open={true}
           title={modal.type === 'add' ? 'Dodaj fakturę kosztową' : 'Edytuj fakturę'}
-          onClose={() => { setModal(null); setDuplicateWarning(null); setParseInfo(null) }}
+          onClose={() => {
+            if (modal?.type === 'add' && modal.previewBlobUrl) URL.revokeObjectURL(modal.previewBlobUrl)
+            setModal(null); setDuplicateWarning(null); setParseInfo(null)
+          }}
         >
           {/* Two-column layout when a file preview is available */}
           <div className={modal.type === 'add' && modal.fileUrl ? 'exp-modal-split' : undefined}>
             {modal.type === 'add' && modal.fileUrl && (
               <div className="exp-modal-split__preview">
                 {/\.pdf$/i.test(modal.fileName) ? (
-                  <iframe
-                    src={modal.fileUrl}
-                    title="Podgląd faktury"
-                    className="exp-modal-split__iframe"
-                  />
+                  // No iframe — Supabase URLs set X-Frame-Options/CSP which cascade into
+                  // chrome-error://chromewebdata frame errors; use a safe info card instead
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    justifyContent: 'center', gap: 12, height: '100%', minHeight: 220,
+                    border: '1px solid var(--color-border, #e5e7eb)', borderRadius: 8,
+                    background: 'var(--color-surface-soft, #f9fafb)',
+                  }}>
+                    <span style={{ fontSize: 56, lineHeight: 1 }}>📄</span>
+                    <div style={{ textAlign: 'center', padding: '0 12px' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{modal.fileName}</div>
+                      <a
+                        href={modal.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: 12, color: 'var(--color-primary, #2563eb)', marginTop: 6, display: 'inline-block' }}
+                      >
+                        Otwórz PDF ↗
+                      </a>
+                    </div>
+                  </div>
                 ) : (
+                  // previewBlobUrl = local blob URL created from File → no auth/CORS issues
                   <img
-                    src={modal.fileUrl}
+                    src={modal.type === 'add' && modal.previewBlobUrl ? modal.previewBlobUrl : modal.fileUrl}
                     alt="Podgląd faktury"
                     className="exp-modal-split__img"
                   />
@@ -604,7 +628,10 @@ export function ExpensesPage() {
             </div>
 
             <div className="exp-form__actions">
-              <Button variant="secondary" onClick={() => { setModal(null); setDuplicateWarning(null); setParseInfo(null) }}>
+              <Button variant="secondary" onClick={() => {
+                if (modal?.type === 'add' && modal.previewBlobUrl) URL.revokeObjectURL(modal.previewBlobUrl)
+                setModal(null); setDuplicateWarning(null); setParseInfo(null)
+              }}>
                 Anuluj
               </Button>
               <Button
@@ -638,84 +665,38 @@ export function ExpensesPage() {
   )
 }
 
-// ── PDF text extraction (browser-native, works for digitally-generated PDFs) —————
+// ── PDF text extraction (literal streams only — NO DecompressionStream) ─────────
 
 /**
- * Extracts embedded text from a PDF file.
- * Works for most software-generated PDFs (iFirma, Fakturownia, Comarch, LibreOffice, Word).
- * Does NOT work for scanned PDFs (images embedded in PDF).
+ * Extracts text from a PDF by scanning only non-compressed content streams.
+ *
+ * Deliberately SKIPS all FlateDecode / LZW / DCT / etc. encoded streams to avoid
+ * calling DecompressionStream, which always writes to console.error on bad input
+ * EVEN WHEN the JS try/catch handles the rejection — making console spam impossible
+ * to suppress.
+ *
+ * Works well for: PDFs with uncompressed text streams (some legacy tools, raw exports).
+ * Falls through to Netlify OCR for: modern software invoices (iFirma, Comarch, Word)
+ * whose text content streams are FlateDecode-compressed.
  */
-async function extractPdfText(file: File): Promise<string> {
+async function extractRawPdfText(file: File): Promise<string> {
   const ab = await file.arrayBuffer()
-  const bytes = new Uint8Array(ab)
-  const latin = new TextDecoder('latin1').decode(bytes)
+  const latin = new TextDecoder('latin1').decode(new Uint8Array(ab))
+  const chunks: string[] = []
 
-  const textChunks: string[] = []
-
-  // Walk all stream...endstream blocks
-  const streamMarker = /stream\r?\n/g
+  const streamRe = /stream\r?\n([\s\S]{0,30000}?)endstream/g
   let m: RegExpExecArray | null
-  while ((m = streamMarker.exec(latin)) !== null) {
-    const streamStart = m.index + m[0].length
-    const streamEnd = latin.indexOf('endstream', streamStart)
-    if (streamEnd === -1) continue
-
-    // Check what filter this stream uses (look back into the dictionary)
-    const dict = latin.substring(Math.max(0, m.index - 300), m.index)
-    const isFlate = /FlateDecode|Fl\b/.test(dict)
-    const isASCII = /ASCIIHexDecode|ASCII85Decode/.test(dict)
-    if (isASCII) continue // skip non-text encoded streams
-
-    let streamText: string
-    if (isFlate) {
-      try {
-        const compressed = bytes.slice(streamStart, streamEnd)
-        const decompressed = await decompressDeflate(compressed)
-        streamText = new TextDecoder('latin1').decode(decompressed)
-      } catch {
-        continue // decompress failed — skip this stream
-      }
-    } else {
-      streamText = latin.substring(streamStart, streamEnd)
+  while ((m = streamRe.exec(latin)) !== null) {
+    const dict = latin.substring(Math.max(0, m.index - 400), m.index)
+    // Skip every kind of encoded stream — no DecompressionStream calls at all
+    if (/FlateDecode|LZWDecode|RunLengthDecode|CCITTFaxDecode|JBIG2Decode|DCTDecode|JPXDecode|ASCIIHexDecode|ASCII85Decode/i.test(dict)) {
+      continue
     }
-
-    const extracted = extractTjOperators(streamText)
-    if (extracted) textChunks.push(extracted)
+    const text = extractTjOperators(m[1])
+    if (text) chunks.push(text)
   }
 
-  return textChunks.join(' ')
-}
-
-/** Decompress a deflate-compressed byte array using the browser's DecompressionStream */
-async function decompressDeflate(data: Uint8Array): Promise<Uint8Array> {
-  // PDFs use raw deflate (zlib without gzip header), try both
-  for (const format of ['deflate', 'raw'] as const) {
-    try {
-      const ds = new DecompressionStream(format === 'raw' ? 'deflate-raw' : 'deflate')
-      const writer = ds.writable.getWriter()
-      void writer.write(data as unknown as ArrayBuffer)
-      void writer.close()
-      const reader = ds.readable.getReader()
-      const chunks: Uint8Array[] = []
-      for (;;) {
-        const { value, done } = await reader.read()
-        if (done) break
-        chunks.push(value)
-      }
-      return mergeUint8Arrays(chunks)
-    } catch {
-      // try next format
-    }
-  }
-  throw new Error('decompression failed')
-}
-
-function mergeUint8Arrays(chunks: Uint8Array[]): Uint8Array {
-  const total = chunks.reduce((n, c) => n + c.length, 0)
-  const out = new Uint8Array(total)
-  let offset = 0
-  for (const c of chunks) { out.set(c, offset); offset += c.length }
-  return out
+  return chunks.join(' ').slice(0, 30_000)
 }
 
 /**
