@@ -25,10 +25,12 @@ VALUES (
 ON CONFLICT (id) DO NOTHING;
 
 -- Public read — URLs are shared with clients / embedded in PDFs
+DROP POLICY IF EXISTS "company_files_read" ON storage.objects;
 CREATE POLICY "company_files_read" ON storage.objects
   FOR SELECT USING (bucket_id = 'company-files');
 
 -- Authenticated users may upload into their own company folder
+DROP POLICY IF EXISTS "company_files_insert" ON storage.objects;
 CREATE POLICY "company_files_insert" ON storage.objects
   FOR INSERT WITH CHECK (
     bucket_id = 'company-files'
@@ -36,6 +38,7 @@ CREATE POLICY "company_files_insert" ON storage.objects
   );
 
 -- Authenticated users may delete their own uploads
+DROP POLICY IF EXISTS "company_files_delete" ON storage.objects;
 CREATE POLICY "company_files_delete" ON storage.objects
   FOR DELETE USING (
     bucket_id = 'company-files'

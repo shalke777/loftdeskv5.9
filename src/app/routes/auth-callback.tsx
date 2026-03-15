@@ -13,11 +13,13 @@ export function AuthCallbackRoutePage() {
     && new URLSearchParams(window.location.search).get('mode') === 'client'
 
   useEffect(() => {
-    console.info('CLIENT_PORTAL_AUTH_CALLBACK', {
-      mode: isClientMode ? 'client' : 'operator',
-      hasCode: typeof window !== 'undefined' && Boolean(new URLSearchParams(window.location.search).get('code')),
-      url: typeof window !== 'undefined' ? window.location.href.replace(/code=[^&]+/, 'code=***') : '',
-    })
+    if (import.meta.env.DEV) {
+      console.info('CLIENT_PORTAL_AUTH_CALLBACK', {
+        mode: isClientMode ? 'client' : 'operator',
+        hasCode: typeof window !== 'undefined' && Boolean(new URLSearchParams(window.location.search).get('code')),
+        url: typeof window !== 'undefined' ? window.location.href.replace(/code=[^&]+/, 'code=***') : '',
+      })
+    }
     if (!supabase) {
       window.location.assign('/login')
       return
@@ -129,7 +131,9 @@ export function AuthCallbackRoutePage() {
           <Button
             onClick={() => {
               const target = hasSession ? (isClientMode ? '/client/dashboard' : '/dashboard') : '/login'
-              console.info('CLIENT_PORTAL_REDIRECT', { mode: isClientMode ? 'client' : 'operator', target, hasSession })
+              if (import.meta.env.DEV) {
+                console.info('CLIENT_PORTAL_REDIRECT', { mode: isClientMode ? 'client' : 'operator', target, hasSession })
+              }
               window.location.assign(target)
             }}
             style={{ width: '100%', fontSize: 16, padding: '12px 0' }}

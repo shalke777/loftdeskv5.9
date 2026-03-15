@@ -39,7 +39,9 @@ export async function getDataScope(companyIdHint?: string): Promise<DataScope> {
 
   if (memberRow?.company_id) {
     const safeCompanyId = String(memberRow.company_id).trim()
-    console.info('COMPANY_QUERY_ID', { raw: memberRow.company_id, safe: safeCompanyId })
+    if (import.meta.env.DEV) {
+      console.info('COMPANY_QUERY_ID', { raw: memberRow.company_id, safe: safeCompanyId })
+    }
     return {
       mode: 'multi-tenant',
       userId,

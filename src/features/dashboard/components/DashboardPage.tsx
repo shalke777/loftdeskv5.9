@@ -35,11 +35,13 @@ export function DashboardPage() {
   // This catches any edge cases where role was resolved incorrectly.
   useEffect(() => {
     if (user?.role === 'client') {
-      console.info('CLIENT_PORTAL_GUARD_REDIRECTED_FROM_DASHBOARD', {
-        userId: user.id,
-        currentRoute: '/dashboard',
-        targetRoute: '/client/dashboard',
-      })
+      if (import.meta.env.DEV) {
+        console.info('CLIENT_PORTAL_GUARD_REDIRECTED_FROM_DASHBOARD', {
+          userId: user.id,
+          currentRoute: '/dashboard',
+          targetRoute: '/client/dashboard',
+        })
+      }
       void navigate({ to: '/client/dashboard', replace: true })
     }
   }, [user?.role, navigate])
@@ -65,14 +67,16 @@ export function DashboardPage() {
   const hasData = onboarding ? !onboarding.isEmpty : false
   const shouldShowChecklist = onboarding != null && !onboarding.isComplete
 
-  console.info('DASHBOARD_GETTING_STARTED_VISIBILITY', {
-    shouldShowChecklist,
-    isEmpty: onboarding?.isEmpty,
-    isComplete: onboarding?.isComplete,
-    done: onboarding?.done,
-    total: onboarding?.total,
-    hasData,
-  })
+  if (import.meta.env.DEV) {
+    console.info('DASHBOARD_GETTING_STARTED_VISIBILITY', {
+      shouldShowChecklist,
+      isEmpty: onboarding?.isEmpty,
+      isComplete: onboarding?.isComplete,
+      done: onboarding?.done,
+      total: onboarding?.total,
+      hasData,
+    })
+  }
 
   const stats = [
     { label: 'Pipeline projektów', value: formatCurrency(data.pipeline) },

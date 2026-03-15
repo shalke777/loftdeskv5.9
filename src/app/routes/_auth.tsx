@@ -74,7 +74,12 @@ export function AuthLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const canUsePortal = useFeatureAccess('portal')
   const canUseKsef = useFeatureAccess('ksef')
-  const { notifications, unreadCount, markAllRead, dbUnreadCount } = usePortalNotifications(user?.id ?? null)
+  // Client portal users have no access to portal_messages (company ops table).
+  // Passing null disables the query, preventing 400 errors from the legacy table.
+  const isClientRole = user?.role === 'client'
+  const { notifications, unreadCount, markAllRead, dbUnreadCount } = usePortalNotifications(
+    isClientRole ? null : (user?.id ?? null),
+  )
   const [showNotifications, setShowNotifications] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
   const [moreOpen, setMoreOpen] = useState(false)

@@ -113,13 +113,15 @@ export function ClientsPage() {
                     )}
                   </div>
 
-                  {/* Secondary: contact person */}
-                  {client.contact_person && (
-                    <div className="clients-row__cell clients-row__cell--contact">
-                      <span className="clients-row__label">Kontakt</span>
-                      <span className="clients-row__value">{client.contact_person}</span>
-                    </div>
-                  )}
+                  {/* Secondary: contact person — always rendered to keep columns aligned */}
+                  <div className="clients-row__cell clients-row__cell--contact">
+                    {client.contact_person ? (
+                      <>
+                        <span className="clients-row__label">Kontakt</span>
+                        <span className="clients-row__value">{client.contact_person}</span>
+                      </>
+                    ) : null}
+                  </div>
 
                   {/* Email + phone */}
                   <div className="clients-row__cell clients-row__cell--comms">
@@ -127,12 +129,12 @@ export function ClientsPage() {
                     {client.phone && <span className="clients-row__value clients-row__phone">{client.phone}</span>}
                   </div>
 
-                  {/* Address */}
-                  {addressFull && (
-                    <div className="clients-row__cell clients-row__cell--addr">
+                  {/* Address — always rendered to keep actions column aligned */}
+                  <div className="clients-row__cell clients-row__cell--addr">
+                    {addressFull ? (
                       <span className="clients-row__value clients-row__value--muted">{addressFull}</span>
-                    </div>
-                  )}
+                    ) : null}
+                  </div>
 
                   {/* Actions */}
                   <div className="clients-row__actions">

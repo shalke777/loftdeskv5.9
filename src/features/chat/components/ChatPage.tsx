@@ -160,8 +160,6 @@ export function ChatPage() {
     [allThreads],
   )
 
-  console.info('CHAT_LAYOUT_MODE', { isMobile, mobileView, selectedThreadId: activeId })
-
   // On mobile: conditionally show one pane at a time
   const showSidebar = !isMobile || mobileView === 'list'
   const showThread  = !isMobile || mobileView === 'thread'

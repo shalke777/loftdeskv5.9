@@ -31,7 +31,9 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
     .maybeSingle()
 
   if (clientAccount) {
-    console.info('CLIENT_PORTAL_AUTH_CALLBACK', { method: 'auth_user_id', userId: authUser.id })
+    if (import.meta.env.DEV) {
+      console.info('CLIENT_PORTAL_AUTH_CALLBACK', { method: 'auth_user_id', userId: authUser.id })
+    }
     return {
       user: {
         id: authUser.id,
@@ -68,7 +70,9 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
         .maybeSingle()
 
       if (clientByEmail) {
-        console.info('CLIENT_PORTAL_AUTH_CALLBACK', { method: 'email_fallback', userId: authUser.id })
+        if (import.meta.env.DEV) {
+          console.info('CLIENT_PORTAL_AUTH_CALLBACK', { method: 'email_fallback', userId: authUser.id })
+        }
         // Repair: link auth_user_id so future lookups resolve via auth_user_id directly
         void supabase
           .from('client_accounts')

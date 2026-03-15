@@ -304,7 +304,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
         )}
 
         {/* Show last invite status from localStorage */}
-        {lastInvite && (
+        {lastInvite ? (
           <div style={{ marginBottom: 12 }}>
             {lastInvite.status === 'sent' ? (
               <div style={{ fontSize: 12, color: '#15803d', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 6, padding: '8px 12px' }}>
@@ -316,6 +316,10 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
                 <br />Wygeneruj nowy link, aby spróbować ponownie.
               </div>
             )}
+          </div>
+        ) : (
+          <div style={{ marginBottom: 12, fontSize: 12, color: '#718096', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 12px' }}>
+            ℹ️ Klient nie został jeszcze zaproszony przez email. Wygeneruj nowy link, aby wysłać zaproszenie.
           </div>
         )}
 
@@ -339,7 +343,13 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
             onClick={() => { generate.mutate(); console.info('CLIENT_PORTAL_RESEND_CLICK', { projectId }) }}
             disabled={generate.isPending}
           >
-            {generate.isPending ? 'Generowanie…' : lastInvite?.status === 'failed' ? '🔄 Zaproś ponownie' : 'Generuj nowy link'}
+            {generate.isPending
+              ? 'Generowanie…'
+              : lastInvite?.status === 'sent'
+                ? '🔄 Generuj nowy link'
+                : lastInvite?.status === 'failed'
+                  ? '🔄 Zaproś ponownie'
+                  : '📧 Zaproś klienta przez email'}
           </Button>
           <Button
             variant="ghost"
