@@ -157,10 +157,10 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
 
       {/* ── Podsumowanie ── */}
       {items.length > 0 && (
-        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 18px' }}>
-          <div style={{ fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 10 }}>Podsumowanie</div>
+        <div style={{ background: 'var(--color-surface-soft)', border: '1px solid var(--color-border-light)', borderRadius: 10, padding: '14px 18px' }}>
+          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)', marginBottom: 10 }}>Podsumowanie</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '5px 24px', fontSize: 13 }}>
-            <span style={{ color: '#6b7280' }}>Netto</span>
+            <span style={{ color: 'var(--color-text-secondary)' }}>Netto</span>
             <span style={{ fontWeight: 500, textAlign: 'right' }}>{totals.net.toFixed(2)} zł</span>
             {vatBreakdown.map(({ rate, amount }) => (
               <Fragment key={rate}>
@@ -168,8 +168,8 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
                 <span style={{ fontWeight: 500, textAlign: 'right' }}>{amount.toFixed(2)} zł</span>
               </Fragment>
             ))}
-            <span style={{ color: '#111827', fontWeight: 700, borderTop: '1px solid #e2e8f0', paddingTop: 8, marginTop: 2 }}>Brutto</span>
-            <span style={{ fontWeight: 700, textAlign: 'right', borderTop: '1px solid #e2e8f0', paddingTop: 8, marginTop: 2 }}>{totals.gross.toFixed(2)} zł</span>
+            <span style={{ color: 'var(--color-text-primary)', fontWeight: 700, borderTop: '1px solid var(--color-border)', paddingTop: 8, marginTop: 2 }}>Brutto</span>
+            <span style={{ fontWeight: 700, textAlign: 'right', borderTop: '1px solid var(--color-border)', paddingTop: 8, marginTop: 2 }}>{totals.gross.toFixed(2)} zł</span>
           </div>
         </div>
       )}

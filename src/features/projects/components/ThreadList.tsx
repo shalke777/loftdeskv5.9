@@ -4,7 +4,7 @@
 // Przyjmuje tablicę wątków i wyświetla je jako listę.
 // Reużywany w ProjectThreadsTab (jeden projekt) i ChatPage (global inbox).
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { ProjectThread } from '@/features/portal/model/project-portal.types'
 import type { InboxThread } from '@/features/projects/api/threads.api'
@@ -77,48 +77,92 @@ export function ThreadListItem({ thread, active, showProject, onClick, onDelete 
   const unread      = thread.unread_count_operator
   const inboxThread = thread as InboxThread
 
-  // ── Swipe-to-delete state ────────────────────────────────────────────────
+  // ── Swipe-to-delete ──────────────────────────────────────────────────────
+  type SwipeState = 'idle' | 'swiping' | 'armedToDelete' | 'deleting'
+
   const [swipeX,     setSwipeX]     = useState(0)
-  const [swipeState, setSwipeState] = useState<'idle' | 'swiping' | 'armedToDelete' | 'deleting'>('idle')
-  const startXRef = useRef(0)
-  const movedRef  = useRef(false)
+  const [swipeState, setSwipeState] = useState<SwipeState>('idle')
+
+  // Refs to read current values inside event handlers without stale closures
+  const swipeStateRef = useRef<SwipeState>('idle')
+  const startXRef     = useRef(0)
+  const startYRef     = useRef(0)
+  const isHorizRef    = useRef(false)  // confirmed horizontal gesture
+  const movedRef      = useRef(false)
   const ARMED_THRESHOLD = 80
 
+  // Mount diagnostic — confirms this component instance is active
+  useEffect(() => {
+    console.info('CHAT_SWIPE_COMPONENT_ACTIVE', { threadId: thread.id })
+  }, [thread.id])
+
+  function syncState(s: SwipeState) {
+    swipeStateRef.current = s
+    setSwipeState(s)
+  }
+
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    startXRef.current = e.clientX
-    movedRef.current  = false
-    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-    console.info('CHAT_SWIPE_START', { threadId: thread.id })
+    if (swipeStateRef.current === 'deleting') return
+    startXRef.current  = e.clientX
+    startYRef.current  = e.clientY
+    isHorizRef.current = false
+    movedRef.current   = false
+    // DON'T capture yet — wait until we confirm the gesture is horizontal
+    // so that vertical scroll in the list still works normally
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    const dx = startXRef.current - e.clientX   // positive = swiped left
-    if (dx < 3) return
+    if (swipeStateRef.current === 'deleting') return
+
+    const dx = startXRef.current - e.clientX         // positive = swipe left
+    const dy = Math.abs(e.clientY - startYRef.current)
+
+    if (!isHorizRef.current) {
+      // Not yet determined — wait for enough movement to classify
+      if (Math.abs(dx) < 5 && dy < 5) return
+      // If vertical movement dominates → not our gesture, let parent scroll
+      if (dy > Math.abs(dx) * 1.1) return
+      // Horizontal gesture confirmed — take pointer capture now
+      isHorizRef.current = true
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      console.info('CHAT_SWIPE_START', { threadId: thread.id })
+    }
+
+    if (dx < 0) {
+      // Swiped back to the right — cancel
+      setSwipeX(0)
+      syncState('idle')
+      return
+    }
+
     movedRef.current = true
-    const clamped = Math.max(0, Math.min(dx, ARMED_THRESHOLD + 20))
+    const clamped    = Math.min(dx, ARMED_THRESHOLD + 24)
     setSwipeX(clamped)
-    setSwipeState(prev => {
-      if (clamped >= ARMED_THRESHOLD && prev !== 'armedToDelete') {
-        console.info('CHAT_SWIPE_ARMED_DELETE', { threadId: thread.id })
-        return 'armedToDelete'
-      }
-      if (clamped < ARMED_THRESHOLD && prev === 'armedToDelete') return 'swiping'
-      if (prev === 'idle') return 'swiping'
-      return prev
-    })
+    console.info('CHAT_SWIPE_MOVE', { threadId: thread.id, deltaX: Math.round(clamped) })
+
+    const cur = swipeStateRef.current
+    if (clamped >= ARMED_THRESHOLD && cur !== 'armedToDelete') {
+      syncState('armedToDelete')
+      console.info('CHAT_SWIPE_ARMED_DELETE', { threadId: thread.id })
+    } else if (clamped < ARMED_THRESHOLD && cur === 'armedToDelete') {
+      syncState('swiping')
+    } else if (cur === 'idle') {
+      syncState('swiping')
+    }
   }
 
   function onPointerUp() {
-    if (swipeState === 'armedToDelete') {
+    if (!isHorizRef.current) return   // was not a horizontal gesture — ignore
+    if (swipeStateRef.current === 'armedToDelete') {
       triggerDelete()
     } else {
       setSwipeX(0)
-      setSwipeState('idle')
+      syncState('idle')
     }
   }
 
   function triggerDelete() {
-    setSwipeState('deleting')
+    syncState('deleting')
     setSwipeX(ARMED_THRESHOLD)
     console.info('CHAT_DELETE_REQUEST', { threadId: thread.id })
     setTimeout(() => {
@@ -126,14 +170,18 @@ export function ThreadListItem({ thread, active, showProject, onClick, onDelete 
         onDelete?.(thread.id)
         console.info('CHAT_DELETE_SUCCESS', { threadId: thread.id })
       } catch (err) {
-        console.info('CHAT_DELETE_ERROR', { threadId: thread.id, message: String(err) })
+        console.info('CHAT_DELETE_ERROR', {
+          threadId: thread.id,
+          message: err instanceof Error ? err.message : String(err),
+        })
         setSwipeX(0)
-        setSwipeState('idle')
+        syncState('idle')
       }
     }, 300)
   }
 
   function handleClick() {
+    // Only open if the user didn't swipe (movedRef stays false for a plain tap)
     if (!movedRef.current) onClick()
   }
 

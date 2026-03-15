@@ -142,7 +142,7 @@ export function DashboardPage() {
             </thead>
             <tbody>
               {pipelineProjects.map((proj) => (
-                <tr key={proj.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <tr key={proj.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                   <td style={{ padding: '10px 12px' }}><strong>{proj.name}</strong><div className="field__label">{proj.number}</div></td>
                   <td style={{ padding: '10px 12px' }}>{proj.clientName || '—'}</td>
                   <td style={{ padding: '10px 12px' }}><span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: proj.status === 'active' ? '#dcfce7' : proj.status === 'done' ? '#f3f4f6' : proj.status === 'offer' ? '#fef3c7' : '#fee2e2', color: proj.status === 'active' ? '#166534' : proj.status === 'done' ? '#374151' : proj.status === 'offer' ? '#92400e' : '#991b1b' }}>{proj.status === 'active' ? 'W toku' : proj.status === 'done' ? 'Zakończony' : proj.status === 'offer' ? 'Oferta' : 'Anulowany'}</span></td>
