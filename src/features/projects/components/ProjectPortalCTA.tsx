@@ -75,7 +75,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
   }, [projectId])
 
   useEffect(() => {
-    console.info('CLIENT_PORTAL_OPEN', { projectId, projectName })
+    if (import.meta.env.DEV) console.info('CLIENT_PORTAL_OPEN', { projectId, projectName })
   }, [projectId, projectName])
 
   // Pobierz aktywne tokeny dla projektu
@@ -105,7 +105,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
       setInviteFullName('')
       setInviteError(null)
       queryClient.invalidateQueries({ queryKey: ['portal-tokens', projectId] })
-      console.info('CLIENT_PORTAL_CREATE_SUCCESS', { projectId })
+      if (import.meta.env.DEV) console.info('CLIENT_PORTAL_CREATE_SUCCESS', { projectId })
     },
   })
 
@@ -128,7 +128,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
     if (!inviteEmail.trim() || !newRawToken) return
     setInviteStatus('sending')
     setInviteError(null)
-    console.info('CLIENT_PORTAL_INVITE_SUBMIT', { projectId, email: inviteEmail.trim() })
+    if (import.meta.env.DEV) console.info('CLIENT_PORTAL_INVITE_SUBMIT', { projectId, email: inviteEmail.trim() })
     try {
       const res = await fetch(IDENTIFY_ENDPOINT, {
         method: 'POST',
@@ -147,13 +147,13 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
         const record: PersistedInvite = { email: inviteEmail.trim(), status: 'failed', timestamp: new Date().toISOString(), error: errMsg }
         saveInvite(projectId, record)
         setLastInvite(record)
-        console.info('CLIENT_PORTAL_EMAIL_SEND_ERROR', { projectId, error: errMsg })
+        if (import.meta.env.DEV) console.info('CLIENT_PORTAL_EMAIL_SEND_ERROR', { projectId, error: errMsg })
       } else {
         setInviteStatus('sent')
         const record: PersistedInvite = { email: inviteEmail.trim(), status: 'sent', timestamp: new Date().toISOString() }
         saveInvite(projectId, record)
         setLastInvite(record)
-        console.info('CLIENT_PORTAL_EMAIL_SEND_SUCCESS', { projectId, email: inviteEmail.trim() })
+        if (import.meta.env.DEV) console.info('CLIENT_PORTAL_EMAIL_SEND_SUCCESS', { projectId, email: inviteEmail.trim() })
       }
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : 'Błąd połączenia'
@@ -162,7 +162,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
       const record: PersistedInvite = { email: inviteEmail.trim(), status: 'failed', timestamp: new Date().toISOString(), error: errMsg }
       saveInvite(projectId, record)
       setLastInvite(record)
-      console.info('CLIENT_PORTAL_EMAIL_SEND_ERROR', { projectId, error: errMsg })
+      if (import.meta.env.DEV) console.info('CLIENT_PORTAL_EMAIL_SEND_ERROR', { projectId, error: errMsg })
     }
   }
 
@@ -340,7 +340,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button
-            onClick={() => { generate.mutate(); console.info('CLIENT_PORTAL_RESEND_CLICK', { projectId }) }}
+            onClick={() => { generate.mutate(); if (import.meta.env.DEV) console.info('CLIENT_PORTAL_RESEND_CLICK', { projectId }) }}
             disabled={generate.isPending}
           >
             {generate.isPending

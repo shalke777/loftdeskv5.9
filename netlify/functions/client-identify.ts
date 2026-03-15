@@ -46,6 +46,15 @@ function sbAdmin() {
   return createClient(url, key, { auth: { persistSession: false } })
 }
 
+// Public client (anon key) — used for signInWithOtp which actually sends the email.
+// admin.generateLink() only generates a link without sending; signInWithOtp triggers Supabase mailer.
+function sbPublic() {
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
+  const key = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
+  if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY')
+  return createClient(url, key, { auth: { persistSession: false } })
+}
+
 function getBaseUrl(): string {
   return process.env.URL ?? process.env.DEPLOY_URL ?? 'https://app.loftdesk.pl'
 }
@@ -192,18 +201,21 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
   }
 
-  // ── Wyślij magic link ────────────────────────────────────────────────────────
+  // ── Wyślij magic link przez OTP — signInWithOtp faktycznie wysyła emaila ────
+  // UWAGA: admin.generateLink() generuje link po cichu (dla custom email providers),
+  // ale NIE wysyła żadnej wiadomości. Używamy signInWithOtp (anon key), który
+  // wyzwala wbudowany mailer Supabase i realnie wysyła email do klienta.
   const redirectTo = `${getBaseUrl()}/auth/callback?mode=client`
 
-  const { error: magicLinkError } = await sb.auth.admin.generateLink({
-    type: 'magiclink',
+  const { error: magicLinkError } = await sbPublic().auth.signInWithOtp({
     email,
     options: {
-      redirectTo,
+      emailRedirectTo: redirectTo,
       data: {
         client_account_id: account.id,
         company_id,
       },
+      shouldCreateUser: true,
     },
   })
 
