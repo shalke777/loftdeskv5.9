@@ -932,11 +932,15 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   font-size: 11px;
   font-weight: 700;
   border-radius: 0 16px 16px 0;
-  transition: background .15s;
-  pointer-events: none;
+  transition: background .2s;
 }
-.chat-swipe-row--armed .chat-swipe-delete-bg {
-  background: #8B1E18;
+/* Darker red when fully open / ready to delete */
+.chat-swipe-row--opened .chat-swipe-delete-bg {
+  background: #b91c1c;
+}
+/* Even darker when delete in progress */
+.chat-swipe-row--deleting .chat-swipe-delete-bg {
+  background: #7f1d1d;
 }
 
 .chat-swipe-item {
@@ -950,6 +954,16 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 }
 .chat-swipe-item--dragging {
   transition: none;
+}
+
+/* Proportional red tint overlay — driven by inline opacity */
+.chat-swipe-item__tint {
+  position: absolute;
+  inset: 0;
+  background: var(--color-error, #dc2626);
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
 }
 
 /* ── Right thread panel ─────────────────────────────────────────── */

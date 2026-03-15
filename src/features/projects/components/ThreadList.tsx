@@ -4,7 +4,7 @@
 // Przyjmuje tablicę wątków i wyświetla je jako listę.
 // Reużywany w ProjectThreadsTab (jeden projekt) i ChatPage (global inbox).
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { ProjectThread } from '@/features/portal/model/project-portal.types'
 import type { InboxThread } from '@/features/projects/api/threads.api'
@@ -78,124 +78,121 @@ export function ThreadListItem({ thread, active, showProject, onClick, onDelete 
   const inboxThread = thread as InboxThread
 
   // ── Swipe-to-delete ──────────────────────────────────────────────────────
-  type SwipeState = 'idle' | 'swiping' | 'armedToDelete' | 'deleting'
+  // States: closed → swiping → (release) → openedDelete | closed
+  //         openedDelete → (right swipe) → closed
+  //         openedDelete → (click delete) → deleting → onDelete()
+  type SwipeState = 'closed' | 'swiping' | 'openedDelete' | 'deleting'
 
   const [swipeX,     setSwipeX]     = useState(0)
-  const [swipeState, setSwipeState] = useState<SwipeState>('idle')
+  const [swipeState, setSwipeState] = useState<SwipeState>('closed')
 
-  // Refs to read current values inside event handlers without stale closures
-  const swipeStateRef = useRef<SwipeState>('idle')
-  const startXRef     = useRef(0)
-  const startYRef     = useRef(0)
-  const isHorizRef    = useRef(false)  // confirmed horizontal gesture
-  const movedRef      = useRef(false)
-  const ARMED_THRESHOLD = 80
+  const swipeStateRef  = useRef<SwipeState>('closed')
+  const swipeXRef      = useRef(0)
+  const startXRef      = useRef(0)
+  const startYRef      = useRef(0)
+  const baseSwipeXRef  = useRef(0)   // swipeX at pointer-down (supports drag-from-open)
+  const isHorizRef     = useRef(false)
+  const movedRef       = useRef(false)
 
-  // Mount diagnostic — confirms this component instance is active
-  useEffect(() => {
-    console.info('CHAT_SWIPE_COMPONENT_ACTIVE', { threadId: thread.id })
-  }, [thread.id])
+  const THRESHOLD = 60   // px — snap-open / snap-close threshold
+  const OPEN_X    = 80   // px — snapped-open position (delete panel width)
 
   function syncState(s: SwipeState) {
     swipeStateRef.current = s
     setSwipeState(s)
   }
 
+  function syncX(x: number) {
+    swipeXRef.current = x
+    setSwipeX(x)
+  }
+
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (swipeStateRef.current === 'deleting') return
-    startXRef.current  = e.clientX
-    startYRef.current  = e.clientY
-    isHorizRef.current = false
-    movedRef.current   = false
-    // DON'T capture yet — wait until we confirm the gesture is horizontal
-    // so that vertical scroll in the list still works normally
+    startXRef.current     = e.clientX
+    startYRef.current     = e.clientY
+    baseSwipeXRef.current = swipeStateRef.current === 'openedDelete' ? OPEN_X : 0
+    isHorizRef.current    = false
+    movedRef.current      = false
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (swipeStateRef.current === 'deleting') return
 
-    const dx = startXRef.current - e.clientX         // positive = swipe left
-    const dy = Math.abs(e.clientY - startYRef.current)
+    const rawDx = startXRef.current - e.clientX   // positive = swiped left
+    const dy    = Math.abs(e.clientY - startYRef.current)
 
     if (!isHorizRef.current) {
-      // Not yet determined — wait for enough movement to classify
-      if (Math.abs(dx) < 5 && dy < 5) return
-      // If vertical movement dominates → not our gesture, let parent scroll
-      if (dy > Math.abs(dx) * 1.1) return
-      // Horizontal gesture confirmed — take pointer capture now
+      if (Math.abs(rawDx) < 5 && dy < 5) return
+      if (dy > Math.abs(rawDx) * 1.1) return
       isHorizRef.current = true
       ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-      console.info('CHAT_SWIPE_START', { threadId: thread.id })
     }
 
-    if (dx < 0) {
-      // Swiped back to the right — cancel
-      setSwipeX(0)
-      syncState('idle')
-      return
-    }
-
+    // Current position = base (0 or OPEN_X) offset by drag delta, clamped [0, OPEN_X+overdrag]
+    const effective = Math.max(0, Math.min(baseSwipeXRef.current + rawDx, OPEN_X + 20))
     movedRef.current = true
-    const clamped    = Math.min(dx, ARMED_THRESHOLD + 24)
-    setSwipeX(clamped)
-    console.info('CHAT_SWIPE_MOVE', { threadId: thread.id, deltaX: Math.round(clamped) })
-
-    const cur = swipeStateRef.current
-    if (clamped >= ARMED_THRESHOLD && cur !== 'armedToDelete') {
-      syncState('armedToDelete')
-      console.info('CHAT_SWIPE_ARMED_DELETE', { threadId: thread.id })
-    } else if (clamped < ARMED_THRESHOLD && cur === 'armedToDelete') {
-      syncState('swiping')
-    } else if (cur === 'idle') {
-      syncState('swiping')
-    }
+    syncX(effective)
+    syncState(effective > 0 ? 'swiping' : 'closed')
   }
 
   function onPointerUp() {
-    if (!isHorizRef.current) return   // was not a horizontal gesture — ignore
-    if (swipeStateRef.current === 'armedToDelete') {
-      triggerDelete()
+    if (!isHorizRef.current) return
+    if (swipeStateRef.current === 'deleting') return
+
+    const x = swipeXRef.current
+    if (x >= THRESHOLD) {
+      // Snap open — stay in openedDelete, wait for explicit tap to delete
+      syncX(OPEN_X)
+      syncState('openedDelete')
     } else {
-      setSwipeX(0)
-      syncState('idle')
+      // Snap closed
+      syncX(0)
+      syncState('closed')
     }
   }
 
-  function triggerDelete() {
+  function handleDeleteClick(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (swipeStateRef.current !== 'openedDelete') return
     syncState('deleting')
-    setSwipeX(ARMED_THRESHOLD)
-    console.info('CHAT_DELETE_REQUEST', { threadId: thread.id })
     setTimeout(() => {
-      try {
-        onDelete?.(thread.id)
-        console.info('CHAT_DELETE_SUCCESS', { threadId: thread.id })
-      } catch (err) {
-        console.info('CHAT_DELETE_ERROR', {
-          threadId: thread.id,
-          message: err instanceof Error ? err.message : String(err),
-        })
-        setSwipeX(0)
-        syncState('idle')
-      }
-    }, 300)
+      onDelete?.(thread.id)
+    }, 250)
   }
 
   function handleClick() {
-    // Only open if the user didn't swipe (movedRef stays false for a plain tap)
+    if (swipeStateRef.current === 'openedDelete') {
+      // Tap on foreground while open → close without deleting
+      syncX(0)
+      syncState('closed')
+      return
+    }
     if (!movedRef.current) onClick()
   }
 
-  const isArmed = swipeState === 'armedToDelete' || swipeState === 'deleting'
+  const rowClass = [
+    'chat-swipe-row',
+    swipeState === 'swiping'      ? 'chat-swipe-row--swiping'  : '',
+    swipeState === 'openedDelete' ? 'chat-swipe-row--opened'   : '',
+    swipeState === 'deleting'     ? 'chat-swipe-row--deleting' : '',
+  ].filter(Boolean).join(' ')
+
+  const tintOpacity = swipeX > 0 ? Math.min(swipeX / OPEN_X, 1) * 0.14 : 0
 
   return (
-    <div className={['chat-swipe-row', isArmed ? 'chat-swipe-row--armed' : ''].filter(Boolean).join(' ')}>
-      {/* Red delete panel revealed behind */}
-      <div className="chat-swipe-delete-bg" aria-hidden>
+    <div className={rowClass}>
+      {/* Red delete panel revealed behind — clickable only when open */}
+      <div
+        className="chat-swipe-delete-bg"
+        style={{ pointerEvents: swipeState === 'openedDelete' ? 'auto' : 'none', cursor: 'pointer' }}
+        onClick={handleDeleteClick}
+      >
         <Trash2 size={16} />
         <span>{swipeState === 'deleting' ? 'Usuwanie…' : 'Usuń'}</span>
       </div>
 
-      {/* Sliding item content */}
+      {/* Sliding foreground item */}
       <div
         className={[
           'chat-conv-item-wrap',
@@ -209,6 +206,13 @@ export function ThreadListItem({ thread, active, showProject, onClick, onDelete 
         onPointerCancel={onPointerUp}
         onClick={handleClick}
       >
+        {/* Proportional red tint — opacity grows as swipe progresses */}
+        <div
+          className="chat-swipe-item__tint"
+          style={{ opacity: tintOpacity }}
+          aria-hidden
+        />
+
         <button
           className={[
             'chat-conv-item',
