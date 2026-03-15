@@ -4,7 +4,7 @@
 // Przyjmuje tablicę wątków i wyświetla je jako listę.
 // Reużywany w ProjectThreadsTab (jeden projekt) i ChatPage (global inbox).
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { ProjectThread } from '@/features/portal/model/project-portal.types'
 import type { InboxThread } from '@/features/projects/api/threads.api'
@@ -74,101 +74,146 @@ interface ThreadListItemProps {
 }
 
 export function ThreadListItem({ thread, active, showProject, onClick, onDelete }: ThreadListItemProps) {
-  const unread = thread.unread_count_operator
+  const unread      = thread.unread_count_operator
   const inboxThread = thread as InboxThread
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
-  function handleDeleteClick(e: React.MouseEvent) {
-    e.stopPropagation()
-    setConfirmDelete(true)
+  // ── Swipe-to-delete state ────────────────────────────────────────────────
+  const [swipeX,     setSwipeX]     = useState(0)
+  const [swipeState, setSwipeState] = useState<'idle' | 'swiping' | 'armedToDelete' | 'deleting'>('idle')
+  const startXRef = useRef(0)
+  const movedRef  = useRef(false)
+  const ARMED_THRESHOLD = 80
+
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    startXRef.current = e.clientX
+    movedRef.current  = false
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    console.info('CHAT_SWIPE_START', { threadId: thread.id })
   }
 
-  function handleConfirmYes(e: React.MouseEvent) {
-    e.stopPropagation()
-    setConfirmDelete(false)
-    onDelete?.(thread.id)
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const dx = startXRef.current - e.clientX   // positive = swiped left
+    if (dx < 3) return
+    movedRef.current = true
+    const clamped = Math.max(0, Math.min(dx, ARMED_THRESHOLD + 20))
+    setSwipeX(clamped)
+    setSwipeState(prev => {
+      if (clamped >= ARMED_THRESHOLD && prev !== 'armedToDelete') {
+        console.info('CHAT_SWIPE_ARMED_DELETE', { threadId: thread.id })
+        return 'armedToDelete'
+      }
+      if (clamped < ARMED_THRESHOLD && prev === 'armedToDelete') return 'swiping'
+      if (prev === 'idle') return 'swiping'
+      return prev
+    })
   }
 
-  function handleConfirmNo(e: React.MouseEvent) {
-    e.stopPropagation()
-    setConfirmDelete(false)
+  function onPointerUp() {
+    if (swipeState === 'armedToDelete') {
+      triggerDelete()
+    } else {
+      setSwipeX(0)
+      setSwipeState('idle')
+    }
   }
+
+  function triggerDelete() {
+    setSwipeState('deleting')
+    setSwipeX(ARMED_THRESHOLD)
+    console.info('CHAT_DELETE_REQUEST', { threadId: thread.id })
+    setTimeout(() => {
+      try {
+        onDelete?.(thread.id)
+        console.info('CHAT_DELETE_SUCCESS', { threadId: thread.id })
+      } catch (err) {
+        console.info('CHAT_DELETE_ERROR', { threadId: thread.id, message: String(err) })
+        setSwipeX(0)
+        setSwipeState('idle')
+      }
+    }, 300)
+  }
+
+  function handleClick() {
+    if (!movedRef.current) onClick()
+  }
+
+  const isArmed = swipeState === 'armedToDelete' || swipeState === 'deleting'
 
   return (
-    <div style={{ position: 'relative' }} className="chat-conv-item-wrap">
-      <button
-        onClick={onClick}
+    <div className={['chat-swipe-row', isArmed ? 'chat-swipe-row--armed' : ''].filter(Boolean).join(' ')}>
+      {/* Red delete panel revealed behind */}
+      <div className="chat-swipe-delete-bg" aria-hidden>
+        <Trash2 size={16} />
+        <span>{swipeState === 'deleting' ? 'Usuwanie…' : 'Usuń'}</span>
+      </div>
+
+      {/* Sliding item content */}
+      <div
         className={[
-          'chat-conv-item',
-          active   ? 'chat-conv-item--active'  : '',
-          unread > 0 ? 'chat-conv-item--unread' : '',
+          'chat-conv-item-wrap',
+          'chat-swipe-item',
+          swipeState === 'swiping' ? 'chat-swipe-item--dragging' : '',
         ].filter(Boolean).join(' ')}
-        style={{ width: '100%', textAlign: 'left' }}
+        style={{ transform: `translateX(-${swipeX}px)` }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onClick={handleClick}
       >
-        {/* Avatar / ikona wątku */}
-        <div className="chat-conv-item__avatar">
-          {THREAD_TYPE_LABELS[thread.type]?.[0] ?? '?'}
-        </div>
-
-        <div className="chat-conv-item__body">
-          <div className="chat-conv-item__header">
-            <span className="chat-conv-item__name">
-              {thread.title ?? THREAD_TYPE_LABELS[thread.type] ?? thread.type}
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-              <VisibilityChip visibility={thread.visibility} />
-              <span className="chat-conv-item__time">
-                {formatRelative(thread.last_message_at)}
-              </span>
-            </div>
-          </div>
-
-          {/* Projekt — tylko w global inbox */}
-          {showProject && inboxThread.project_name && (
-            <div className="chat-conv-item__project" style={{ marginBottom: 2 }}>
-              📁 {inboxThread.project_number ? `${inboxThread.project_number} · ` : ''}{inboxThread.project_name}
-            </div>
-          )}
-
-          {/* Typ wątku + preview */}
-          <div className="chat-conv-item__preview">
-            {thread.last_message_sender === 'client' && (
-              <span className="chat-conv-item__from-client">Klient: </span>
-            )}
-            {thread.last_message_preview ?? (
-              <span style={{ fontStyle: 'italic', opacity: 0.6 }}>Brak wiadomości</span>
-            )}
-          </div>
-        </div>
-
-        {/* Unread badge */}
-        {unread > 0 && (
-          <span className="chat-conv-item__badge">
-            {unread > 99 ? '99+' : unread}
-          </span>
-        )}
-      </button>
-
-      {/* Delete button — visible on hover */}
-      {onDelete && !confirmDelete && (
         <button
-          className="chat-conv-item__delete-btn"
-          onClick={handleDeleteClick}
-          aria-label="Usuń wątek"
-          title="Usuń wątek"
+          className={[
+            'chat-conv-item',
+            active     ? 'chat-conv-item--active' : '',
+            unread > 0 ? 'chat-conv-item--unread' : '',
+          ].filter(Boolean).join(' ')}
+          style={{ width: '100%', textAlign: 'left', pointerEvents: 'none' }}
+          tabIndex={-1}
         >
-          <Trash2 size={13} />
-        </button>
-      )}
+          {/* Avatar / ikona wątku */}
+          <div className="chat-conv-item__avatar">
+            {THREAD_TYPE_LABELS[thread.type]?.[0] ?? '?'}
+          </div>
 
-      {/* Inline confirm overlay */}
-      {confirmDelete && (
-        <div className="chat-conv-item__confirm" onClick={e => e.stopPropagation()}>
-          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Usuń wątek?</span>
-          <button className="chat-conv-item__confirm-yes" onClick={handleConfirmYes}>Tak</button>
-          <button className="chat-conv-item__confirm-no"  onClick={handleConfirmNo}>Nie</button>
-        </div>
-      )}
+          <div className="chat-conv-item__body">
+            <div className="chat-conv-item__header">
+              <span className="chat-conv-item__name">
+                {thread.title ?? THREAD_TYPE_LABELS[thread.type] ?? thread.type}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                <VisibilityChip visibility={thread.visibility} />
+                <span className="chat-conv-item__time">
+                  {formatRelative(thread.last_message_at)}
+                </span>
+              </div>
+            </div>
+
+            {/* Projekt — tylko w global inbox */}
+            {showProject && inboxThread.project_name && (
+              <div className="chat-conv-item__project" style={{ marginBottom: 2 }}>
+                📁 {inboxThread.project_number ? `${inboxThread.project_number} · ` : ''}{inboxThread.project_name}
+              </div>
+            )}
+
+            {/* Typ wątku + preview */}
+            <div className="chat-conv-item__preview">
+              {thread.last_message_sender === 'client' && (
+                <span className="chat-conv-item__from-client">Klient: </span>
+              )}
+              {thread.last_message_preview ?? (
+                <span style={{ fontStyle: 'italic', opacity: 0.6 }}>Brak wiadomości</span>
+              )}
+            </div>
+          </div>
+
+          {/* Unread badge */}
+          {unread > 0 && (
+            <span className="chat-conv-item__badge">
+              {unread > 99 ? '99+' : unread}
+            </span>
+          )}
+        </button>
+      </div>
     </div>
   )
 }
