@@ -201,12 +201,46 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
   }
 
-  // ── Wyślij magic link przez OTP — signInWithOtp faktycznie wysyła emaila ────
-  // UWAGA: admin.generateLink() generuje link po cichu (dla custom email providers),
-  // ale NIE wysyła żadnej wiadomości. Używamy signInWithOtp (anon key), który
-  // wyzwala wbudowany mailer Supabase i realnie wysyła email do klienta.
+  // ── Wymuś połączenie auth_user_id przed wysyłką OTP ──────────────────────────
+  // Kluczowy fix dla błędu: klient widzi LegalAcceptanceGate zamiast /client/dashboard.
+  //
+  // Root cause: client_accounts.auth_user_id może być NULL gdy:
+  //   a) Poprzednie zaproszenia używały generateLink przed wdrożeniem triggera (migr. 042)
+  //   b) Trigger AFTER INSERT ON auth.users nie odpalił się dla istniejących auth userów
+  // Gdy auth_user_id IS NULL:
+  //   - RLS policy "ca_client_select_own" evaluuje: NULL = auth.uid() = FALSE
+  //   - Rekord jest niewidoczny dla klienta w przeglądarce
+  //   - resolveSupabaseSession() odpada do bootstrap_my_company → role:'owner'
+  //
+  // Fix: admin.generateLink() creates-or-gets the auth user synchronously
+  // and returns user.id. We use it ONLY to retrieve that ID — signInWithOtp
+  // below sends the actual email and invalidates this link automatically.
   const redirectTo = `${getBaseUrl()}/auth/callback?mode=client`
 
+  if (!account.auth_user_id) {
+    const { data: authLinkData } = await sb.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+      options: {
+        redirectTo,
+        data: { client_account_id: account.id, company_id },
+      },
+    })
+    const newAuthUserId = authLinkData?.user?.id
+    if (newAuthUserId) {
+      // admin client bypasses RLS — always succeeds
+      await sb
+        .from('client_accounts')
+        .update({ auth_user_id: newAuthUserId, updated_at: new Date().toISOString() })
+        .eq('id', account.id)
+    }
+  }
+
+  // ── Wyślij magic link przez OTP — signInWithOtp faktycznie wysyła emaila ────
+  // UWAGA: admin.generateLink() powyżej (jeśli wywołany) generuje link po cichu
+  // i nie wysyła maila — służy tylko do pobrania auth_user_id.
+  // signInWithOtp wyzwala wbudowany mailer Supabase, unieważnia poprzedni token
+  // i wysyła realny mail do klienta.
   const { error: magicLinkError } = await sbPublic().auth.signInWithOtp({
     email,
     options: {

@@ -23,16 +23,32 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   if (!authUser) return { user: null }
 
   // ── Sprawdź czy to konto klienta (v6.0) ─────────────────────────────────
-  const { data: clientAccount } = await supabase
-    .from('client_accounts')
-    .select('id, company_id, email, full_name')
-    .eq('auth_user_id', authUser.id)
-    .limit(1)
+  // Primary: SECURITY DEFINER RPC (migration 045+). Bypasses RLS — finds
+  // client_accounts rows even when auth_user_id IS NULL. The direct query
+  // below cannot see those rows: RLS policy "ca_client_select_own" evaluates
+  // auth_user_id = auth.uid() = NULL = <uid> = false for unlinked accounts.
+  const { data: clientByRpc, error: rpcError } = await supabase
+    .rpc('resolve_my_client_account')
     .maybeSingle()
+
+  // Fallback: direct query (works when auth_user_id is already set —
+  // guaranteed for all new invites after client-identify.ts fix).
+  const clientAccount = (!rpcError && clientByRpc)
+    ? clientByRpc
+    : await supabase
+        .from('client_accounts')
+        .select('id, company_id, email, full_name')
+        .eq('auth_user_id', authUser.id)
+        .limit(1)
+        .maybeSingle()
+        .then(r => r.data)
 
   if (clientAccount) {
     if (import.meta.env.DEV) {
-      console.info('CLIENT_PORTAL_AUTH_CALLBACK', { method: 'auth_user_id', userId: authUser.id })
+      console.info('CLIENT_PORTAL_AUTH_CALLBACK', {
+        method: (!rpcError && clientByRpc) ? 'rpc' : 'auth_user_id_direct',
+        userId: authUser.id,
+      })
     }
     return {
       user: {
@@ -55,41 +71,17 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
     .maybeSingle()
 
   if (!memberRow) {
-    // ── Fallback: client whose auth_user_id wasn't linked yet ────────────────
-    // Handles the case where migration 042 trigger hasn't been applied to
-    // production (migrations aren't auto-deployed). We look up by email with
-    // auth_user_id IS NULL to avoid matching operators whose email accidentally
-    // appears in client_accounts. If found, we repair the link for next time.
-    if (authUser.email) {
-      const { data: clientByEmail } = await supabase
-        .from('client_accounts')
-        .select('id, company_id, email, full_name')
-        .eq('email', authUser.email.toLowerCase())
-        .is('auth_user_id', null)
-        .limit(1)
-        .maybeSingle()
-
-      if (clientByEmail) {
-        if (import.meta.env.DEV) {
-          console.info('CLIENT_PORTAL_AUTH_CALLBACK', { method: 'email_fallback', userId: authUser.id })
-        }
-        // Repair: link auth_user_id so future lookups resolve via auth_user_id directly
-        void supabase
-          .from('client_accounts')
-          .update({ auth_user_id: authUser.id })
-          .eq('id', clientByEmail.id)
-        return {
-          user: {
-            id: authUser.id,
-            email: authUser.email ?? clientByEmail.email ?? '',
-            companyId: clientByEmail.company_id,
-            companyName: 'Portal klienta',
-            role: 'client' as const,
-            plan: 'free' as const,
-            fullName: clientByEmail.full_name ?? authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Klient',
-          },
-        }
+    // ── Metadata guard: blokada bootstrap dla zaproszeń klienckich ─────────────
+    // signInWithOtp przekazuje client_account_id w options.data, co Supabase
+    // zapisuje w user_metadata. Jeśli to pole jest ustawione, ale ani RPC ani
+    // bezpośrednie zapytanie nie znalazło client_accounts (migration 045 jeszcze
+    // nie wgrana na produkcji + stare dane z NULL auth_user_id), zwracamy null
+    // zamiast tworzyć błędny rekord firmy przez bootstrap_my_company.
+    if (authUser.user_metadata?.client_account_id) {
+      if (import.meta.env.DEV) {
+        console.warn('[backend] CLIENT_PORTAL_AUTH_CALLBACK metadata_guard — klient bez rekordu; uruchom migration 045', { userId: authUser.id })
       }
+      return { user: null }
     }
 
     try {
