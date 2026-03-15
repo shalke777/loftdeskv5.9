@@ -5,18 +5,15 @@
 // Mieści się w karcie Card, nie fullscreen.
 
 import { useState, useMemo, useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/shared/ui/Button/Button'
+import { useQuery } from '@tanstack/react-query'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { ThreadList } from './ThreadList'
 import { ThreadView } from './ThreadView'
 import { MessageComposer } from './MessageComposer'
-import { useThreads, threadsKey } from '@/features/projects/hooks/useThreads'
-import { threadsApi, type CreateThreadInput } from '@/features/projects/api/threads.api'
-import { useCompanyId } from '@/features/auth/hooks/useAuth'
+import { useThreads } from '@/features/projects/hooks/useThreads'
 import { listProjectPortalTokens } from '@/features/portal/api/portal-project.api'
-import type { ProjectThread, ThreadType, ThreadVisibility } from '@/features/portal/model/project-portal.types'
+import type { ProjectThread } from '@/features/portal/model/project-portal.types'
 
 const THREAD_TYPE_LABELS: Record<string, string> = {
   general:   'Ogólny',
@@ -31,95 +28,6 @@ const VISIBILITY_LABELS: Record<string, string> = {
   internal:      'Wewnętrzny',
   client_shared: 'Klient',
   approval:      'Akceptacje',
-}
-
-interface NewThreadFormProps {
-  projectId: string
-  onCreated: (thread: ProjectThread) => void
-  onCancel:  () => void
-}
-
-function NewThreadForm({ projectId, onCreated, onCancel }: NewThreadFormProps) {
-  const companyId   = useCompanyId()
-  const queryClient = useQueryClient()
-  const [title,      setTitle]      = useState('')
-  const [type,       setType]       = useState<ThreadType>('general')
-  const [visibility, setVisibility] = useState<ThreadVisibility>('client_shared')
-  const [loading,    setLoading]    = useState(false)
-  const [err,        setErr]        = useState<string | null>(null)
-
-  const handleCreate = async () => {
-    if (!title.trim()) { setErr('Podaj tytuł wątku'); return }
-    setLoading(true)
-    setErr(null)
-    try {
-      const input: CreateThreadInput = {
-        project_id: projectId,
-        type,
-        visibility,
-        title: title.trim(),
-      }
-      const thread = await threadsApi.createThread(input, companyId)
-      await queryClient.invalidateQueries({ queryKey: threadsKey(projectId) })
-      onCreated(thread)
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : 'Błąd tworzenia wątku')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div
-      style={{
-        padding:      16,
-        borderBottom: '1px solid var(--color-border)',
-        display:      'flex',
-        flexDirection: 'column',
-        gap:          10,
-      }}
-    >
-      <div style={{ fontWeight: 600, fontSize: 13 }}>Nowy wątek</div>
-
-      <input
-        value={title}
-        onChange={e => setTitle(e.target.value)}
-        placeholder="Tytuł wątku"
-        className="input"
-        style={{ fontSize: 13, padding: '8px 12px' }}
-        onKeyDown={e => e.key === 'Enter' && void handleCreate()}
-      />
-
-      <div style={{ display: 'flex', gap: 8 }}>
-        <select
-          value={type}
-          onChange={e => setType(e.target.value as ThreadType)}
-          style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13 }}
-        >
-          {Object.entries(THREAD_TYPE_LABELS).map(([v, l]) => (
-            <option key={v} value={v}>{l}</option>
-          ))}
-        </select>
-
-        <select
-          value={visibility}
-          onChange={e => setVisibility(e.target.value as ThreadVisibility)}
-          style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13 }}
-        >
-          {Object.entries(VISIBILITY_LABELS).map(([v, l]) => (
-            <option key={v} value={v}>{l}</option>
-          ))}
-        </select>
-      </div>
-
-      {err && <div style={{ fontSize: 12, color: 'var(--color-error)' }}>{err}</div>}
-
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <Button variant="ghost" onClick={onCancel} disabled={loading}>Anuluj</Button>
-        <Button onClick={handleCreate} disabled={loading} loading={loading}>Utwórz</Button>
-      </div>
-    </div>
-  )
 }
 
 // ─── ProjectThreadsTab ────────────────────────────────────────────────────────
@@ -146,13 +54,11 @@ export function ProjectThreadsTab({ projectId }: Props) {
     return valid
   }, [rawThreads, projectId])
 
-  const [activeId,       setActiveId]       = useState<string | null>(null)
-  const [showNewForm,    setShowNewForm]     = useState(false)
+  const [activeId, setActiveId] = useState<string | null>(null)
 
   // Reset active thread when project changes
   useEffect(() => {
     setActiveId(null)
-    setShowNewForm(false)
   }, [projectId])
 
   // Reset activeId if the thread it points to is no longer in the filtered list
@@ -220,31 +126,13 @@ export function ProjectThreadsTab({ projectId }: Props) {
               <span className="chat-sidebar__badge">{totalUnread}</span>
             )}
           </span>
-          <Button
-            variant="ghost"
-            onClick={() => setShowNewForm(v => !v)}
-            style={{ fontSize: 12, padding: '4px 8px', minHeight: 28 }}
-          >
-            + Nowy
-          </Button>
         </div>
-
-        {showNewForm && (
-          <NewThreadForm
-            projectId={projectId}
-            onCreated={(t) => { setActiveId(t.id); setShowNewForm(false) }}
-            onCancel={() => setShowNewForm(false)}
-          />
-        )}
 
         <ThreadList
           threads={threads ?? []}
           activeId={activeId}
-          emptyLabel="Brak wątków — utwórz pierwszy"
-          onSelect={t => {
-            setActiveId(t.id)
-            setShowNewForm(false)
-          }}
+          emptyLabel="Brak wątków przypisanych do tego projektu"
+          onSelect={t => setActiveId(t.id)}
         />
       </div>
 

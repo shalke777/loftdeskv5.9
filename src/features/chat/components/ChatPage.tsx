@@ -5,18 +5,35 @@
 // =============================================================================
 
 import { useMemo, useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearch } from '@tanstack/react-router'
 import { ArrowLeft, Search } from 'lucide-react'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { Badge } from '@/shared/ui/Badge/Badge'
+import { Button } from '@/shared/ui/Button/Button'
 import { ThreadList } from '@/features/projects/components/ThreadList'
 import { ThreadView } from '@/features/projects/components/ThreadView'
 import { MessageComposer } from '@/features/projects/components/MessageComposer'
-import { threadsApi, type InboxThread } from '@/features/projects/api/threads.api'
+import { threadsApi, type InboxThread, type CreateThreadInput } from '@/features/projects/api/threads.api'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useDeleteThread } from '@/features/projects/hooks/useDeleteThread'
-import type { ProjectThread } from '@/features/portal/model/project-portal.types'
+import { useProjects } from '@/features/projects/hooks/useProjects'
+import type { ProjectThread, ThreadType, ThreadVisibility } from '@/features/portal/model/project-portal.types'
+
+const CHAT_THREAD_TYPE_LABELS: Record<string, string> = {
+  general:   'Ogólny',
+  approvals: 'Akceptacje',
+  documents: 'Dokumenty',
+  payments:  'Płatności',
+  technical: 'Techniczny',
+  internal:  'Wewnętrzny',
+}
+
+const CHAT_VISIBILITY_LABELS: Record<string, string> = {
+  internal:      'Wewnętrzny',
+  client_shared: 'Klient',
+  approval:      'Akceptacje',
+}
 
 type FilterMode = 'all' | 'unread'
 type MobileView = 'list' | 'thread'
@@ -31,6 +48,16 @@ export function ChatPage() {
   const [search, setSearch]               = useState('')
   const [mobileView, setMobileView]       = useState<MobileView>('list')
   const [isMobile, setIsMobile]           = useState(() => typeof window !== 'undefined' && window.innerWidth < MOBILE_BP)
+
+  const queryClient = useQueryClient()
+  const { data: allProjects } = useProjects()
+  const [newThreadOpen, setNewThreadOpen]   = useState(false)
+  const [newProjectId, setNewProjectId]     = useState('')
+  const [newType, setNewType]               = useState<ThreadType>('general')
+  const [newVisibility, setNewVisibility]   = useState<ThreadVisibility>('client_shared')
+  const [newTitle, setNewTitle]             = useState('')
+  const [newLoading, setNewLoading]         = useState(false)
+  const [newErr, setNewErr]                 = useState<string | null>(null)
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < MOBILE_BP)
@@ -58,6 +85,29 @@ export function ChatPage() {
   function backToList() {
     setMobileView('list')
     console.info('CHAT_BACK_TO_LIST')
+  }
+
+  async function handleCreateThread() {
+    if (!newProjectId) { setNewErr('Wybierz projekt'); return }
+    if (!newTitle.trim()) { setNewErr('Podaj tytuł wątku'); return }
+    setNewLoading(true)
+    setNewErr(null)
+    console.info('CHAT_NEW_THREAD_SUBMIT', { projectId: newProjectId, type: newType, visibility: newVisibility })
+    try {
+      const input: CreateThreadInput = { project_id: newProjectId, type: newType, visibility: newVisibility, title: newTitle.trim() }
+      const thread = await threadsApi.createThread(input, companyId)
+      await queryClient.invalidateQueries({ queryKey: ['inbox-threads', companyId] })
+      setActiveId(thread.id)
+      setNewThreadOpen(false)
+      setNewTitle(''); setNewProjectId(''); setNewType('general'); setNewVisibility('client_shared')
+      console.info('CHAT_NEW_THREAD_SUCCESS', { threadId: thread.id })
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Błąd tworzenia wątku'
+      setNewErr(msg)
+      console.info('CHAT_NEW_THREAD_ERROR', { error: msg })
+    } finally {
+      setNewLoading(false)
+    }
   }
 
   const deleteThread = useDeleteThread()
@@ -130,6 +180,13 @@ export function ChatPage() {
                   <span className="chat-sidebar__badge">{totalUnread}</span>
                 )}
               </span>
+              <Button
+                variant="ghost"
+                onClick={() => { setNewThreadOpen(true); console.info('CHAT_NEW_THREAD_OPEN') }}
+                style={{ fontSize: 12, padding: '4px 8px', minHeight: 28, flexShrink: 0 }}
+              >
+                + Nowy
+              </Button>
             </div>
 
             <div className="chat-sidebar__search">
@@ -183,7 +240,7 @@ export function ChatPage() {
                 emptyLabel={
                   filter === 'unread'
                     ? 'Brak nieprzeczytanych'
-                    : 'Brak wątków — utwórz je w projekcie → zakładka Wątki'
+                    : 'Brak wątków — kliknij + Nowy, aby utworzyć'
                 }
                 onSelect={openThread}
                 onDelete={handleDeleteThread}
@@ -233,6 +290,66 @@ export function ChatPage() {
         )}
 
       </div>
+
+      {/* ── New Thread Modal ───────────────────────────────────────────── */}
+      {newThreadOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={e => { if (e.target === e.currentTarget) setNewThreadOpen(false) }}
+        >
+          <div style={{ width: 340, background: 'var(--color-surface)', borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>Nowy wątek</div>
+
+            <select
+              value={newProjectId}
+              onChange={e => setNewProjectId(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, background: 'var(--color-bg)' }}
+            >
+              <option value="">— Wybierz projekt —</option>
+              {(allProjects ?? []).map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+
+            <input
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
+              placeholder="Tytuł wątku"
+              className="input"
+              style={{ fontSize: 13, padding: '8px 12px' }}
+              onKeyDown={e => e.key === 'Enter' && void handleCreateThread()}
+            />
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <select
+                value={newType}
+                onChange={e => setNewType(e.target.value as ThreadType)}
+                style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, background: 'var(--color-bg)' }}
+              >
+                {Object.entries(CHAT_THREAD_TYPE_LABELS).map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+              <select
+                value={newVisibility}
+                onChange={e => setNewVisibility(e.target.value as ThreadVisibility)}
+                style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, background: 'var(--color-bg)' }}
+              >
+                {Object.entries(CHAT_VISIBILITY_LABELS).map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+            </div>
+
+            {newErr && <div style={{ fontSize: 12, color: 'var(--color-error, #ef4444)' }}>{newErr}</div>}
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button variant="ghost" onClick={() => setNewThreadOpen(false)} disabled={newLoading}>Anuluj</Button>
+              <Button onClick={() => void handleCreateThread()} disabled={newLoading} loading={newLoading}>Utwórz</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
