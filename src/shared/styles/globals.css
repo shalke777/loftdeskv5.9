@@ -2020,6 +2020,162 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   box-shadow: var(--shadow-sm);
 }
 
+/* ── Kontrahenci — search + card-list ────────────────────────────── */
+.clients-search-wrap {
+  position: relative;
+  max-width: 360px;
+  margin-bottom: 14px;
+}
+.clients-search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+.clients-search-input {
+  padding-left: 34px !important;
+}
+.clients-no-results {
+  padding: 44px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.clients-list {
+  margin-top: 0;
+}
+.clients-row__inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  min-height: 62px;
+}
+.clients-row:hover .clients-row__inner {
+  background: var(--color-bg-hover);
+}
+
+/* Avatar initials */
+.clients-row__avatar {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--color-surface-soft);
+  border: 1.5px solid var(--color-border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  letter-spacing: .02em;
+}
+
+/* Primary — name + NIP */
+.clients-row__primary {
+  flex: 2;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.clients-row__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.clients-row__nip {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Generic cell */
+.clients-row__cell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.clients-row__cell--contact { flex: 1.2; }
+.clients-row__cell--comms   { flex: 1.5; }
+.clients-row__cell--addr    { flex: 1.8; }
+
+.clients-row__label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--color-text-muted);
+}
+.clients-row__value {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.clients-row__phone {
+  font-variant-numeric: tabular-nums;
+}
+.clients-row__value--muted {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+/* Action icon buttons */
+.clients-row__actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.clients-row:hover .clients-row__actions {
+  opacity: 1;
+}
+.clients-row__action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-light);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.clients-row__action-btn:hover {
+  background: var(--color-surface-soft);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+.clients-row__action-btn--danger:hover {
+  background: var(--color-error-soft);
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+/* Mobile: hide secondary columns, make actions always visible */
+@media (max-width: 640px) {
+  .clients-row__cell--contact,
+  .clients-row__cell--addr { display: none; }
+
+  .clients-row__cell--comms { flex: 1; }
+
+  .clients-row__actions { opacity: 1; }
+}
+
 /* Single row */
 .proj-row {
   border-bottom: 1px solid var(--color-border-light);
