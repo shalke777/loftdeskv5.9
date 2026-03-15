@@ -4,7 +4,7 @@
 // Layout: dwie kolumny (lista wątków | widok wiadomości + composer)
 // Mieści się w karcie Card, nie fullscreen.
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/shared/ui/Button/Button'
 import { Badge } from '@/shared/ui/Badge/Badge'
@@ -129,9 +129,31 @@ interface Props {
 }
 
 export function ProjectThreadsTab({ projectId }: Props) {
-  const { data: threads, isLoading } = useThreads(projectId)
+  const { data: rawThreads, isLoading } = useThreads(projectId)
+
+  // Defensive client-side guard: even if the server returns threads belonging
+  // to another project (cache stale, wrong RLS, etc.), we never render them.
+  const threads = useMemo(() => {
+    const all = rawThreads ?? []
+    const valid = all.filter(t => t.project_id === projectId)
+    const invalid = all.filter(t => t.project_id !== projectId)
+    console.info('PROJECT_THREADS_FILTER', {
+      currentProjectId:         projectId,
+      totalThreads:             all.length,
+      visibleThreads:           valid.length,
+      invalidThreadProjectIds:  invalid.map(t => t.project_id),
+    })
+    return valid
+  }, [rawThreads, projectId])
+
   const [activeId,       setActiveId]       = useState<string | null>(null)
   const [showNewForm,    setShowNewForm]     = useState(false)
+
+  // Reset active thread when project changes
+  useEffect(() => {
+    setActiveId(null)
+    setShowNewForm(false)
+  }, [projectId])
 
   const activeThread = useMemo(
     () => threads?.find(t => t.id === activeId) ?? null,
