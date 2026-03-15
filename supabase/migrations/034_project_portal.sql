@@ -208,9 +208,17 @@ CREATE TABLE IF NOT EXISTS public.project_threads (
 );
 
 -- Constraint: wątek type='internal' nie może mieć visibility!='internal'
-ALTER TABLE public.project_threads
-  ADD CONSTRAINT chk_thread_internal_visibility
-    CHECK (NOT (type = 'internal' AND visibility != 'internal'));
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'chk_thread_internal_visibility'
+      AND table_name = 'project_threads'
+  ) THEN
+    ALTER TABLE public.project_threads
+      ADD CONSTRAINT chk_thread_internal_visibility
+        CHECK (NOT (type = 'internal' AND visibility != 'internal'));
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_threads_project
   ON public.project_threads (project_id, last_message_at DESC NULLS LAST)
