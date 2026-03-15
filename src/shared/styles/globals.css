@@ -5,9 +5,9 @@
 :root {
   /* LoftDesk Premium — Psychology-Based Warm Forest Palette */
   --color-bg: #F5F0E8;
-  --color-surface: #FFFFFF;
+  --color-surface: #FDFAF5;
   --color-surface-soft: #EAE4D6;
-  --color-card: #FFFFFF;
+  --color-card: #FDFAF5;
   --color-primary: #1E1D18;
   --color-primary-light: #4A473A;
   --color-primary-dark: #1A2E1A;
@@ -134,12 +134,12 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .sidebar__link:hover, .sidebar__link--active {
   color: var(--color-brand); background: var(--color-brand-light); box-shadow: inset 0 0 0 1px var(--color-brand-border), 0 8px 24px rgba(0,0,0,.06);
 }
-.auth-shell { background: #f8fafc; }
+.auth-shell { background: var(--color-bg); }
 .sidebar__footer { margin-top: auto; display: grid; gap: 10px; background: var(--color-sidebar-bg); }
 .shell-main { display: flex; flex-direction: column; min-width: 0; }
 .shell-topbar {
   position: sticky; top: 0; z-index: 6; display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: 18px 24px; backdrop-filter: blur(18px); background: rgba(255,255,255,.88); border-bottom: 1px solid rgba(17,24,39,.06);
+  padding: 18px 24px; backdrop-filter: blur(18px); background: rgba(253,250,245,.88); border-bottom: 1px solid rgba(17,24,39,.06);
 }
 .shell-topbar__left, .shell-topbar__right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .shell-pill { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 999px; background: var(--color-surface-soft); border: 1px solid var(--color-border); color: var(--color-text-secondary); transition: background .2s, border-color .2s; }
@@ -649,7 +649,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .chat-sidebar {
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--color-surface);
   border-right: 1px solid var(--color-border-light);
   overflow: hidden;
 }
@@ -903,6 +903,54 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   margin-left: 2px;
 }
 
+/* delete button — visible on hover of the item wrapper */
+.chat-conv-item-wrap { position: relative; }
+.chat-conv-item__delete-btn {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  opacity: 0;
+  transition: opacity .15s, color .15s;
+  padding: 4px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.chat-conv-item-wrap:hover .chat-conv-item__delete-btn { opacity: 1; }
+.chat-conv-item__delete-btn:hover { color: var(--color-error); background: var(--color-error-soft); }
+
+/* inline delete confirm strip */
+.chat-conv-item__confirm {
+  position: absolute;
+  inset: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  z-index: 2;
+}
+.chat-conv-item__confirm-yes,
+.chat-conv-item__confirm-no {
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.chat-conv-item__confirm-yes { background: var(--color-error); color: #fff; }
+.chat-conv-item__confirm-no  { background: var(--color-surface-soft); color: var(--color-text-secondary); }
+
 /* ── Right thread panel ─────────────────────────────────────────── */
 
 .chat-thread {
@@ -925,7 +973,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .chat-thread__header {
   padding: 14px 22px;
   border-bottom: 1px solid var(--color-border-light);
-  background: #fff;
+  background: var(--color-surface);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1007,7 +1055,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .chat-thread__composer {
   border-top: 1px solid var(--color-border-light);
-  background: #fff;
+  background: var(--color-surface);
   padding: 14px 18px;
   flex-shrink: 0;
 }
@@ -1046,7 +1094,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .chat-textarea:focus {
   border-color: var(--color-brand);
-  background: #fff;
+  background: var(--color-surface);
   box-shadow: 0 0 0 3px rgba(26, 92, 50, 0.09);
 }
 
@@ -1123,7 +1171,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   font-size: 13.5px;
   line-height: 1.55;
   word-break: break-word;
-  background: #fff;
+  background: var(--color-surface);
   border: 1px solid var(--color-border-light);
   box-shadow: var(--shadow-xs);
   display: inline-block;

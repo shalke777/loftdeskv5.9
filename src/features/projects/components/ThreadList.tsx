@@ -4,6 +4,8 @@
 // Przyjmuje tablicę wątków i wyświetla je jako listę.
 // Reużywany w ProjectThreadsTab (jeden projekt) i ChatPage (global inbox).
 
+import { useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import type { ProjectThread } from '@/features/portal/model/project-portal.types'
 import type { InboxThread } from '@/features/projects/api/threads.api'
 
@@ -68,65 +70,106 @@ interface ThreadListItemProps {
   active:        boolean
   showProject?:  boolean   // dla global inbox
   onClick:       () => void
+  onDelete?:     (threadId: string) => void
 }
 
-export function ThreadListItem({ thread, active, showProject, onClick }: ThreadListItemProps) {
+export function ThreadListItem({ thread, active, showProject, onClick, onDelete }: ThreadListItemProps) {
   const unread = thread.unread_count_operator
   const inboxThread = thread as InboxThread
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  function handleDeleteClick(e: React.MouseEvent) {
+    e.stopPropagation()
+    setConfirmDelete(true)
+  }
+
+  function handleConfirmYes(e: React.MouseEvent) {
+    e.stopPropagation()
+    setConfirmDelete(false)
+    onDelete?.(thread.id)
+  }
+
+  function handleConfirmNo(e: React.MouseEvent) {
+    e.stopPropagation()
+    setConfirmDelete(false)
+  }
 
   return (
-    <button
-      onClick={onClick}
-      className={[
-        'chat-conv-item',
-        active   ? 'chat-conv-item--active'  : '',
-        unread > 0 ? 'chat-conv-item--unread' : '',
-      ].filter(Boolean).join(' ')}
-      style={{ width: '100%', textAlign: 'left' }}
-    >
-      {/* Avatar / ikona wątku */}
-      <div className="chat-conv-item__avatar">
-        {THREAD_TYPE_LABELS[thread.type]?.[0] ?? '?'}
-      </div>
+    <div style={{ position: 'relative' }} className="chat-conv-item-wrap">
+      <button
+        onClick={onClick}
+        className={[
+          'chat-conv-item',
+          active   ? 'chat-conv-item--active'  : '',
+          unread > 0 ? 'chat-conv-item--unread' : '',
+        ].filter(Boolean).join(' ')}
+        style={{ width: '100%', textAlign: 'left' }}
+      >
+        {/* Avatar / ikona wątku */}
+        <div className="chat-conv-item__avatar">
+          {THREAD_TYPE_LABELS[thread.type]?.[0] ?? '?'}
+        </div>
 
-      <div className="chat-conv-item__body">
-        <div className="chat-conv-item__header">
-          <span className="chat-conv-item__name">
-            {thread.title ?? THREAD_TYPE_LABELS[thread.type] ?? thread.type}
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-            <VisibilityChip visibility={thread.visibility} />
-            <span className="chat-conv-item__time">
-              {formatRelative(thread.last_message_at)}
+        <div className="chat-conv-item__body">
+          <div className="chat-conv-item__header">
+            <span className="chat-conv-item__name">
+              {thread.title ?? THREAD_TYPE_LABELS[thread.type] ?? thread.type}
             </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+              <VisibilityChip visibility={thread.visibility} />
+              <span className="chat-conv-item__time">
+                {formatRelative(thread.last_message_at)}
+              </span>
+            </div>
+          </div>
+
+          {/* Projekt — tylko w global inbox */}
+          {showProject && inboxThread.project_name && (
+            <div className="chat-conv-item__project" style={{ marginBottom: 2 }}>
+              📁 {inboxThread.project_number ? `${inboxThread.project_number} · ` : ''}{inboxThread.project_name}
+            </div>
+          )}
+
+          {/* Typ wątku + preview */}
+          <div className="chat-conv-item__preview">
+            {thread.last_message_sender === 'client' && (
+              <span className="chat-conv-item__from-client">Klient: </span>
+            )}
+            {thread.last_message_preview ?? (
+              <span style={{ fontStyle: 'italic', opacity: 0.6 }}>Brak wiadomości</span>
+            )}
           </div>
         </div>
 
-        {/* Projekt — tylko w global inbox */}
-        {showProject && inboxThread.project_name && (
-          <div className="chat-conv-item__project" style={{ marginBottom: 2 }}>
-            📁 {inboxThread.project_number ? `${inboxThread.project_number} · ` : ''}{inboxThread.project_name}
-          </div>
+        {/* Unread badge */}
+        {unread > 0 && (
+          <span className="chat-conv-item__badge">
+            {unread > 99 ? '99+' : unread}
+          </span>
         )}
+      </button>
 
-        {/* Typ wątku + preview */}
-        <div className="chat-conv-item__preview">
-          {thread.last_message_sender === 'client' && (
-            <span className="chat-conv-item__from-client">Klient: </span>
-          )}
-          {thread.last_message_preview ?? (
-            <span style={{ fontStyle: 'italic', opacity: 0.6 }}>Brak wiadomości</span>
-          )}
-        </div>
-      </div>
-
-      {/* Unread badge */}
-      {unread > 0 && (
-        <span className="chat-conv-item__badge">
-          {unread > 99 ? '99+' : unread}
-        </span>
+      {/* Delete button — visible on hover */}
+      {onDelete && !confirmDelete && (
+        <button
+          className="chat-conv-item__delete-btn"
+          onClick={handleDeleteClick}
+          aria-label="Usuń wątek"
+          title="Usuń wątek"
+        >
+          <Trash2 size={13} />
+        </button>
       )}
-    </button>
+
+      {/* Inline confirm overlay */}
+      {confirmDelete && (
+        <div className="chat-conv-item__confirm" onClick={e => e.stopPropagation()}>
+          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Usuń wątek?</span>
+          <button className="chat-conv-item__confirm-yes" onClick={handleConfirmYes}>Tak</button>
+          <button className="chat-conv-item__confirm-no"  onClick={handleConfirmNo}>Nie</button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -138,6 +181,7 @@ interface ThreadListProps {
   showProject?:  boolean
   emptyLabel?:   string
   onSelect:      (thread: ProjectThread | InboxThread) => void
+  onDelete?:     (threadId: string) => void
 }
 
 export function ThreadList({
@@ -146,6 +190,7 @@ export function ThreadList({
   showProject,
   emptyLabel = 'Brak wątków',
   onSelect,
+  onDelete,
 }: ThreadListProps) {
   if (threads.length === 0) {
     return (
@@ -166,6 +211,7 @@ export function ThreadList({
           active={thread.id === activeId}
           showProject={showProject}
           onClick={() => onSelect(thread)}
+          onDelete={onDelete}
         />
       ))}
     </div>

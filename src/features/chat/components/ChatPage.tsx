@@ -15,6 +15,7 @@ import { ThreadView } from '@/features/projects/components/ThreadView'
 import { MessageComposer } from '@/features/projects/components/MessageComposer'
 import { threadsApi, type InboxThread } from '@/features/projects/api/threads.api'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
+import { useDeleteThread } from '@/features/projects/hooks/useDeleteThread'
 import type { ProjectThread } from '@/features/portal/model/project-portal.types'
 
 type FilterMode = 'all' | 'unread'
@@ -57,6 +58,16 @@ export function ChatPage() {
   function backToList() {
     setMobileView('list')
     console.info('CHAT_BACK_TO_LIST')
+  }
+
+  const deleteThread = useDeleteThread()
+
+  function handleDeleteThread(threadId: string) {
+    if (activeId === threadId) {
+      setActiveId(null)
+      backToList()
+    }
+    deleteThread.mutate(threadId)
   }
 
   const { data: allThreads, isLoading } = useQuery({
@@ -175,6 +186,7 @@ export function ChatPage() {
                     : 'Brak wątków — utwórz je w projekcie → zakładka Wątki'
                 }
                 onSelect={openThread}
+                onDelete={handleDeleteThread}
               />
             )}
           </div>
