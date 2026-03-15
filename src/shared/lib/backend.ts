@@ -31,6 +31,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
     .maybeSingle()
 
   if (clientAccount) {
+    console.info('CLIENT_PORTAL_AUTH_CALLBACK', { method: 'auth_user_id', userId: authUser.id })
     return {
       user: {
         id: authUser.id,
@@ -52,6 +53,41 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
     .maybeSingle()
 
   if (!memberRow) {
+    // ── Fallback: client whose auth_user_id wasn't linked yet ────────────────
+    // Handles the case where migration 042 trigger hasn't been applied to
+    // production (migrations aren't auto-deployed). We look up by email with
+    // auth_user_id IS NULL to avoid matching operators whose email accidentally
+    // appears in client_accounts. If found, we repair the link for next time.
+    if (authUser.email) {
+      const { data: clientByEmail } = await supabase
+        .from('client_accounts')
+        .select('id, company_id, email, full_name')
+        .eq('email', authUser.email.toLowerCase())
+        .is('auth_user_id', null)
+        .limit(1)
+        .maybeSingle()
+
+      if (clientByEmail) {
+        console.info('CLIENT_PORTAL_AUTH_CALLBACK', { method: 'email_fallback', userId: authUser.id })
+        // Repair: link auth_user_id so future lookups resolve via auth_user_id directly
+        void supabase
+          .from('client_accounts')
+          .update({ auth_user_id: authUser.id })
+          .eq('id', clientByEmail.id)
+        return {
+          user: {
+            id: authUser.id,
+            email: authUser.email ?? clientByEmail.email ?? '',
+            companyId: clientByEmail.company_id,
+            companyName: 'Portal klienta',
+            role: 'client' as const,
+            plan: 'free' as const,
+            fullName: clientByEmail.full_name ?? authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Klient',
+          },
+        }
+      }
+    }
+
     try {
       const { data: companyId } = await supabase.rpc('bootstrap_my_company', { company_name: '', company_nip: '' })
       if (companyId) {

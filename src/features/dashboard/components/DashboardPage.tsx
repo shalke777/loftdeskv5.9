@@ -9,6 +9,7 @@ import { useDashboardStats } from '@/features/dashboard/hooks/useDashboardStats'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { PLAN_DEFS } from '@/shared/lib/constants'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
 import { OnboardingChecklist } from '@/features/onboarding/components/OnboardingChecklist'
@@ -26,7 +27,22 @@ const quickActions = [
 
 export function DashboardPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const companyId = useCompanyId()
+
+  // Safety guard: if a client somehow reaches the operator dashboard, redirect them.
+  // The primary guard is in AuthLayout (user.role === 'client' → ClientShell).
+  // This catches any edge cases where role was resolved incorrectly.
+  useEffect(() => {
+    if (user?.role === 'client') {
+      console.info('CLIENT_PORTAL_GUARD_REDIRECTED_FROM_DASHBOARD', {
+        userId: user.id,
+        currentRoute: '/dashboard',
+        targetRoute: '/client/dashboard',
+      })
+      void navigate({ to: '/client/dashboard', replace: true })
+    }
+  }, [user?.role, navigate])
   const canUsePortal = useFeatureAccess('portal')
   const { data: portalTokens } = usePortalTokens(companyId ?? '')
   const firstPortalUrl = canUsePortal ? (portalTokens ?? []).find((t) => t.active)?.url ?? null : null
