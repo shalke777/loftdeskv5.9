@@ -155,6 +155,19 @@ export function ProjectThreadsTab({ projectId }: Props) {
     setShowNewForm(false)
   }, [projectId])
 
+  // Reset activeId if the thread it points to is no longer in the filtered list
+  // (e.g. deleted, archived, or filtered out after project change)
+  useEffect(() => {
+    if (activeId && !threads.some(t => t.id === activeId)) {
+      console.info('PROJECT_THREADS_ACTIVE_RESET', {
+        currentProjectId: projectId,
+        activeId,
+        visibleThreadIds: threads.map(t => t.id),
+      })
+      setActiveId(null)
+    }
+  }, [activeId, threads, projectId])
+
   const activeThread = useMemo(
     () => threads?.find(t => t.id === activeId) ?? null,
     [threads, activeId],
