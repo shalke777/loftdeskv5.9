@@ -308,9 +308,17 @@ CREATE TABLE IF NOT EXISTS public.project_messages (
 );
 
 -- Constraint: klient może pisać tylko do wątków client_shared / approval
-ALTER TABLE public.project_messages
-  ADD CONSTRAINT chk_message_client_visibility
-    CHECK (NOT (sender_type = 'client' AND visibility = 'internal'));
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'chk_message_client_visibility'
+      AND table_name = 'project_messages'
+  ) THEN
+    ALTER TABLE public.project_messages
+      ADD CONSTRAINT chk_message_client_visibility
+        CHECK (NOT (sender_type = 'client' AND visibility = 'internal'));
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_messages_thread
   ON public.project_messages (thread_id, created_at ASC);
