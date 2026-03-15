@@ -773,8 +773,11 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .chat-sidebar__list {
   flex: 1;
   overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior-x: contain;
+  overflow-x: hidden;
+  overscroll-behavior-x: contain;
+  padding: 4px 0;
+}
+
 .chat-sidebar__empty {
   padding: 40px 20px;
   text-align: center;
