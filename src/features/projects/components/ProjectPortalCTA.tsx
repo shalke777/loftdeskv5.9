@@ -53,6 +53,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
   const [status,     setStatus]     = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
   const [errorMsg,   setErrorMsg]   = useState<string | null>(null)
   const [magicLink,  setMagicLink]  = useState<string | null>(null)
+  const [emailSent,  setEmailSent]  = useState(false)
   const [copied,     setCopied]     = useState(false)
   const [lastInvite, setLastInvite] = useState<PersistedInvite | null>(() => loadInvite(projectId))
 
@@ -63,6 +64,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
     setFullName('')
     setErrorMsg(null)
     setMagicLink(null)
+    setEmailSent(false)
     setCopied(false)
   }, [projectId])
 
@@ -104,7 +106,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
         }),
       })
 
-      const body = await res.json() as { ok?: boolean; error?: string; magic_link?: string }
+      const body = await res.json() as { ok?: boolean; error?: string; magic_link?: string; email_sent?: boolean }
 
       if (!res.ok) {
         const msg = body?.error ?? 'Nie udało się wysłać zaproszenia'
@@ -117,6 +119,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
       } else {
         setStatus('sent')
         setMagicLink(body?.magic_link ?? null)
+        setEmailSent(body?.email_sent ?? false)
         const rec: PersistedInvite = { email: email.trim(), status: 'sent', timestamp: new Date().toISOString() }
         saveInvite(projectId, rec)
         setLastInvite(rec)
@@ -166,7 +169,12 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
           <div style={{ fontWeight: 600, color: '#15803d', marginBottom: 6 }}>
             ✅ Dostęp nadany dla {email}
           </div>
-          {magicLink ? (
+          {emailSent ? (
+            <p style={{ fontSize: 13, color: '#166534', margin: 0, lineHeight: 1.6 }}>
+              📧 Email z linkiem logowania został wysłany automatycznie.
+              Klient powinien go otrzymać w ciągu kilku minut.
+            </p>
+          ) : magicLink ? (
             <>
               <p style={{ fontSize: 13, color: '#166534', margin: '0 0 10px', lineHeight: 1.6 }}>
                 Skopiuj link i wyślij do klienta (email, SMS, itp.).
@@ -193,7 +201,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
             </p>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={() => { setStatus('idle'); setEmail(''); setMagicLink(null); setCopied(false) }}>
+        <Button variant="ghost" size="sm" onClick={() => { setStatus('idle'); setEmail(''); setMagicLink(null); setCopied(false); setEmailSent(false) }}>
           Wyślij kolejne zaproszenie
         </Button>
       </Card>

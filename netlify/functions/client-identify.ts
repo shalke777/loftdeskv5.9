@@ -29,6 +29,95 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Handler, HandlerEvent } from '@netlify/functions'
 
+// Resend — transakcyjne emaile z nazwą wykonawcy jako nadawca
+// Opcjonalne: jeśli RESEND_API_KEY nie ustawiony, wysyłka jest pomijana
+// i link jest zwracany do ręcznego przesłania (poprzednie zachowanie).
+async function sendInviteEmail(opts: {
+  to:          string
+  toName:      string | null
+  fromName:    string        // nazwa firmy wykonawcy
+  replyTo:     string | null // email operatora (klient odpisze do niego)
+  projectName: string
+  magicLink:   string
+  baseUrl:     string
+}): Promise<void> {
+  const key = process.env.RESEND_API_KEY
+  if (!key) return
+
+  const fromEmail = process.env.RESEND_FROM_EMAIL ?? 'noreply@resend.dev'
+  const fromLabel = opts.fromName ? `${opts.fromName} (przez LoftDesk)` : 'LoftDesk'
+  const greeting  = opts.toName ? `Cześć ${opts.toName.split(' ')[0]}` : 'Cześć'
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zaproszenie do projektu</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f0e8;font-family:'Segoe UI',Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;padding:32px 16px">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+        <tr><td style="background:#1a5c32;padding:24px 32px">
+          <span style="color:#fff;font-size:20px;font-weight:800;letter-spacing:-.5px">LoftDesk</span><br />
+          <span style="color:rgba(255,255,255,.75);font-size:13px">Portal klienta</span>
+        </td></tr>
+        <tr><td style="padding:32px">
+          <p style="font-size:16px;font-weight:700;color:#111;margin:0 0 8px">${greeting},</p>
+          <p style="font-size:15px;color:#374151;line-height:1.65;margin:0 0 24px">
+            <strong>${opts.fromName}</strong> zaprasza Cię do projektu:
+          </p>
+          <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 18px;margin-bottom:28px">
+            <p style="margin:0;font-size:15px;font-weight:700;color:#15803d">📁 ${opts.projectName}</p>
+          </div>
+          <p style="font-size:14px;color:#6b7280;margin:0 0 20px;line-height:1.6">
+            Kliknij poniższy przycisk, aby zalogować się jednym kliknięciem i przejść bezpośrednio do swojego projektu.
+            Link jest jednorazowy i wygasa po 24 godzinach.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px">
+            <tr><td style="background:#1a5c32;border-radius:12px;padding:14px 32px">
+              <a href="${opts.magicLink}" style="color:#fff;font-size:15px;font-weight:700;text-decoration:none">Przejdź do projektu →</a>
+            </td></tr>
+          </table>
+          <p style="font-size:12px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:16px;margin:0;line-height:1.6">
+            Jeśli przycisk nie działa, skopiuj i wklej ten adres w przeglądarce:<br />
+            <a href="${opts.magicLink}" style="color:#1a5c32;word-break:break-all;font-size:11px">${opts.magicLink}</a>
+          </p>
+        </td></tr>
+        <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb">
+          <p style="margin:0;font-size:12px;color:#9ca3af">
+            Zaproszenie wysłano przez <strong>${opts.fromName}</strong>.
+            ${opts.replyTo ? `W razie pytań odpowiedz na ten email lub napisz na <a href="mailto:${opts.replyTo}" style="color:#1a5c32">${opts.replyTo}</a>.` : ''}
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+
+  const payload = {
+    from:     `${fromLabel} <${fromEmail}>`,
+    to:       [opts.to],
+    reply_to: opts.replyTo ?? undefined,
+    subject:  `Zaproszenie do projektu: ${opts.projectName}`,
+    html,
+  }
+
+  const resp = await fetch('https://api.resend.com/emails', {
+    method:  'POST',
+    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  })
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => '')
+    console.error('[client-identify] Resend error:', resp.status, txt)
+    // Non-fatal — magic link is still returned to operator
+  }
+}
+
 // ── Konfiguracja ──────────────────────────────────────────────────────────────
 
 const HEADERS = {
@@ -147,9 +236,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const sb = sbAdmin()
 
   // ── Weryfikacja: operator jest członkiem firmy (role: owner/admin/manager) ──
+  // Pobieramy też email operatora i nazwę firmy do użycia jako Reply-To / From w emailu.
   const { data: member } = await sb
     .from('company_members')
-    .select('role')
+    .select('role, profiles(email, full_name), companies(name)')
     .eq('user_id', operatorUserId)
     .eq('company_id', companyId)
     .maybeSingle()
@@ -158,10 +248,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return json(403, { error: 'Brak uprawnień do zapraszania klientów dla tej firmy' })
   }
 
+  const operatorEmail  = (member as any)?.profiles?.email  ?? null
+  const companyName    = (member as any)?.companies?.name  ?? 'Wykonawca'
+
   // ── Weryfikacja: projekt należy do tej firmy ─────────────────────────────
   const { data: project } = await sb
     .from('projects')
-    .select('id')
+    .select('id, name')
     .eq('id', projectId)
     .eq('company_id', companyId)
     .is('deleted_at', null)
@@ -252,12 +345,39 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   const magicLink: string | null = (linkData as any)?.properties?.action_link ?? null
 
-  // Sukces — zwracamy link do ręcznego przesłania klientowi
+  // ── Wyślij email z linkiem ─────────────────────────────────────────────────
+  // Używa Resend jeśli RESEND_API_KEY jest ustawiony.
+  // Klient widzi: From = "<Firma> (przez LoftDesk) <noreply@twoja-domena.pl>"
+  //               Reply-To = <email operatora>
+  // Jeśli Resend nie jest skonfigurowany — link wraca do frontendu do ręcznego wysłania.
+  let emailSent = false
+  if (magicLink) {
+    try {
+      await sendInviteEmail({
+        to:          email,
+        toName:      fullName ?? null,
+        fromName:    companyName,
+        replyTo:     operatorEmail,
+        projectName: (project as any)?.name ?? projectId,
+        magicLink,
+        baseUrl:     getBaseUrl(),
+      })
+      emailSent = Boolean(process.env.RESEND_API_KEY)
+    } catch (e) {
+      console.error('[client-identify] sendInviteEmail threw:', e)
+      // Non-fatal
+    }
+  }
+
+  // Sukces — zwracamy link do ręcznego przesłania (+ informacja czy email poszedł)
   return json(200, {
     ok: true,
     magic_link: magicLink,
-    message: magicLink
-      ? 'Link logowania wygenerowany — skopiuj i wyślij do klienta.'
-      : 'Dostęp nadany.',
+    email_sent: emailSent,
+    message: emailSent
+      ? `Link logowania wysłany na ${email}.`
+      : magicLink
+        ? 'Link logowania wygenerowany — skopiuj i wyślij do klienta.'
+        : 'Dostęp nadany.',
   })
 }
