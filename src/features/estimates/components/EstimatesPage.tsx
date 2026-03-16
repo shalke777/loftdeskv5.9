@@ -78,7 +78,7 @@ export function EstimatesPage() {
   return (
     <div className="page">
       <div className="toolbar">
-        <PageHeader title="Wyceny" subtitle="Edytowalne pozycje, portal klienta i workflow do umów i faktur." />
+        <PageHeader title="Wyceny" subtitle="Edytowalne pozycje, portal klienta i workflow do umów i faktur." moduleColor="var(--color-chart-4)" />
         <div className="toolbar__actions">
           {canCreate && (
             <Button onClick={() => { setEditing(null); setOpen(true) }}>

@@ -17,10 +17,10 @@ import { useOnboardingProgress } from '@/features/onboarding/hooks/useOnboarding
 const WELCOME_DISMISSED_KEY = 'loftdesk-welcome-dismissed'
 
 const quickActions = [
-  { icon: Users,        title: 'Dodaj kontrahenta', text: 'Uzupełnij bazę inwestorów i wykonawców.',    href: '/clients'   },
-  { icon: FileText,     title: 'Nowa wycena',        text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates' },
-  { icon: Receipt,      title: 'Nowa faktura',       text: 'Wystaw dokument i przygotuj XML do KSeF.',   href: '/invoices'  },
-  { icon: FolderKanban, title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',     href: '/projects'  },
+  { icon: Users,        title: 'Dodaj klienta',  href: '/clients'   },
+  { icon: FileText,     title: 'Nowa wycena',    href: '/estimates' },
+  { icon: Receipt,      title: 'Nowa faktura',   href: '/invoices'  },
+  { icon: FolderKanban, title: 'Projekty',        href: '/projects'  },
 ]
 
 export function DashboardPage() {
@@ -113,11 +113,10 @@ export function DashboardPage() {
                   className="quick-action"
                   onClick={() => navigate({ to: action.href as any })}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div className="quick-action__icon"><Icon size={18} /></div>
                     <strong>{action.title}</strong>
                   </div>
-                  <div className="field__label">{action.text}</div>
                 </button>
               )
             })}

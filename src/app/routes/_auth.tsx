@@ -1,8 +1,6 @@
 import {
   Bell,
   Calculator,
-  CreditCard,
-  ExternalLink,
   FileText,
   FolderKanban,
   LayoutDashboard,
@@ -72,7 +70,6 @@ export function AuthLayout() {
   const { user, signOut, loading } = useAuth()
   const companyId = useCompanyId()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
-  const canUsePortal = useFeatureAccess('portal')
   const canUseKsef = useFeatureAccess('ksef')
   // Client portal users have no access to portal_messages (company ops table).
   // Passing null disables the query, preventing 400 errors from the legacy table.
@@ -118,8 +115,7 @@ export function AuthLayout() {
   const visibleMainNav = mainNavItems.filter((item) => !item.feature || featureFlags[item.feature])
   const visibleMobileNavPrimary = mobileNavPrimary.filter((item) => !item.feature || featureFlags[item.feature])
   const visibleMobileNavMore = mobileNavMore.filter((item) => !item.feature || featureFlags[item.feature])
-  const moreActive = visibleMobileNavMore.some((item) => isActive(pathname, item)) ||
-    (canUsePortal && pathname.startsWith('/portal-inbox'))
+  const moreActive = visibleMobileNavMore.some((item) => isActive(pathname, item))
 
   return (
     <>
@@ -147,19 +143,6 @@ export function AuthLayout() {
 			  </Link>
 			)
 		  })}
-		  {canUsePortal ? (
-			<Link to="/portal-inbox" className={pathname.startsWith('/portal-inbox') ? 'sidebar__link sidebar__link--active' : 'sidebar__link'}>
-			  <MessageSquare size={18} />
-			  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-				Portal
-				{dbUnreadCount > 0 && (
-				  <span style={{ background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 20, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
-					{dbUnreadCount > 99 ? '99+' : dbUnreadCount}
-				  </span>
-				)}
-			  </span>
-			</Link>
-		  ) : null}
 		</nav>
 
         <div className="sidebar__footer">
@@ -287,13 +270,6 @@ export function AuthLayout() {
                     </Link>
                   )
                 })}
-                {canUsePortal && (
-                  <Link to="/portal-inbox" onClick={() => setMoreOpen(false)}
-                    className={pathname.startsWith('/portal-inbox') ? 'mobile-more-sheet__link mobile-more-sheet__link--active' : 'mobile-more-sheet__link'}>
-                    <ExternalLink size={24} />
-                    <span>Portal</span>
-                  </Link>
-                )}
               </div>
             </div>
           </>

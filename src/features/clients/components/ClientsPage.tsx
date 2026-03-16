@@ -54,6 +54,7 @@ export function ClientsPage() {
         <PageHeader
           title="Kontrahenci"
           subtitle={data?.length ? `${data.length} ${data.length === 1 ? 'kontrahent' : data.length < 5 ? 'kontrahenci' : 'kontrahentów'}` : 'Pełne dane firmowe, NIP, adres, kontakt.'}
+          moduleColor="var(--color-chart-3)"
         />
         <div className="toolbar__actions">
           {canCreate ? (

@@ -270,6 +270,7 @@ export function ThreadListItem({ thread, active, showProject, onClick, onDelete 
         {onDelete && (
           <button
             className="chat-delete-btn"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onDelete(thread.id) }}
             title="Usuń wątek"
             aria-label="Usuń wątek"

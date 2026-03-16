@@ -55,6 +55,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
   const { profile } = useSettings()
   const companyIban = (profile as any)?.iban || ''
 
+  const [customNumber, setCustomNumber] = useState('')
   const [invoiceType, setInvoiceType] = useState('standard')
   const [issueDate, setIssueDate] = useState(todayStr())
   const [saleDate, setSaleDate] = useState(todayStr())
@@ -87,6 +88,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
   useEffect(() => {
     saveGuard.current = false
     if (initialInvoice) {
+      setCustomNumber(initialInvoice.number || '')
       setInvoiceType(initialInvoice.invoice_type || 'standard')
       setIssueDate(initialInvoice.issue_date || todayStr())
       setSaleDate(initialInvoice.sale_date || todayStr())
@@ -105,6 +107,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
     } else {
       const draft = loadDraft()
       if (draft) {
+        setCustomNumber((draft.customNumber as string) ?? '')
         setInvoiceType((draft.invoiceType as string) ?? 'standard')
         setIssueDate((draft.issueDate as string) ?? todayStr())
         setSaleDate((draft.saleDate as string) ?? todayStr())
@@ -123,6 +126,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
       } else {
         // fresh defaults
         const today = todayStr()
+        setCustomNumber('')
         setInvoiceType('standard')
         setIssueDate(today); setSaleDate(today)
         setDueDays('14'); setDueDate(addDays(today, 14))
@@ -157,8 +161,8 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
   // ── Persist draft on every change (new form only) ──────────────────────────
   useEffect(() => {
     if (!isNew || !saveGuard.current) return
-    saveDraft({ invoiceType, issueDate, saleDate, dueDays, dueDate, issuePlace, paymentMethod, bankAccount, clientId, contractId, advanceTotal, items, projectId, notes })
-  }, [invoiceType, issueDate, saleDate, dueDays, dueDate, issuePlace, paymentMethod, bankAccount, clientId, contractId, advanceTotal, items, projectId, notes, isNew])
+    saveDraft({ customNumber, invoiceType, issueDate, saleDate, dueDays, dueDate, issuePlace, paymentMethod, bankAccount, clientId, contractId, advanceTotal, items, projectId, notes })
+  }, [customNumber, invoiceType, issueDate, saleDate, dueDays, dueDate, issuePlace, paymentMethod, bankAccount, clientId, contractId, advanceTotal, items, projectId, notes, isNew])
 
   function applyTranche(trancheId: string) {
     setSelectedTrancheId(trancheId)
@@ -189,6 +193,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
     try {
       await onSubmit({
         company_id: companyId,
+        number: customNumber.trim() || undefined,
         client_id: clientId || null,
         project_id: projectId || null,
         contract_id: contractId || null,
@@ -215,6 +220,12 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
     <div style={{ display: 'grid', gap: 20 }}>
       {/* ── Sekcja nagłówkowa ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
+        <Input
+          label="Numer faktury"
+          value={customNumber}
+          onChange={(e) => setCustomNumber(e.target.value)}
+          placeholder={isNew ? 'Zostanie wygenerowany automatycznie' : ''}
+        />
         <Select label="Rodzaj faktury" value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)} options={INVOICE_TYPE_OPTIONS} />
         <Select label="Umowa" value={contractId} onChange={(e) => setContractId(e.target.value)} options={contractOptions} placeholder="Bez umowy" />
         {selectedContract?.tranches?.length ? (

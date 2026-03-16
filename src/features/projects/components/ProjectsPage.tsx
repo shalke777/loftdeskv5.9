@@ -83,7 +83,7 @@ export function ProjectsPage() {
     <div className="page">
       {/* Header */}
       <div className="toolbar">
-        <PageHeader title="Projekty" subtitle="Lista wszystkich realizacji i ofert." />
+        <PageHeader title="Projekty" subtitle="Lista wszystkich realizacji i ofert." moduleColor="var(--color-chart-5)" />
         <div className="toolbar__actions">
           {canCreate && (
             <Button onClick={() => { setEditing(null); setOpen(true) }}>

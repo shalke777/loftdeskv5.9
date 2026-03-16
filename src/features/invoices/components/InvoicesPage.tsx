@@ -70,7 +70,7 @@ export function InvoicesPage() {
   return (
     <div className="page">
       <div className="toolbar">
-        <PageHeader title="Faktury" subtitle="Edycja do momentu wysyłki do KSeF, transze z umowy, PDF/XML i pełne rozbicie VAT." />
+        <PageHeader title="Faktury" subtitle="Edycja do momentu wysyłki do KSeF, transze z umowy, PDF/XML i pełne rozbicie VAT." moduleColor="var(--color-primary-light)" />
         <div className="toolbar__actions">
           {canCreate && (
             <Button onClick={() => { setEditing(null); setOpen(true) }}>

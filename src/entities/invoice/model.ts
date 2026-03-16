@@ -48,6 +48,7 @@ export type Invoice = z.infer<typeof InvoiceSchema>
 export type InvoiceItem = z.infer<typeof InvoiceItemSchema>
 export type CreateInvoiceInput = Pick<Invoice, 'client_id' | 'project_id' | 'contract_id' | 'notes' | 'status'> & {
   company_id: string
+  number?: string          // optional manual override; omit for auto-generation
   items: InvoiceItem[]
   issue_date: string
   sale_date?: string | null
