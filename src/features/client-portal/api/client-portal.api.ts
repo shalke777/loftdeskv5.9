@@ -84,6 +84,7 @@ export const clientPortalApi = {
       .from('projects')
       .select('id, company_id, number, name, status, address, investment_address, start_date, end_date, created_at')
       .eq('company_id', companyId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
     if (error) throw error
     return (data ?? []) as ClientProject[]
@@ -97,6 +98,7 @@ export const clientPortalApi = {
       .select('id, company_id, number, name, status, address, investment_address, start_date, end_date, created_at')
       .eq('id', projectId)
       .eq('company_id', companyId)
+      .is('deleted_at', null)
       .maybeSingle()
     if (error) throw error
     return data as ClientProject | null
