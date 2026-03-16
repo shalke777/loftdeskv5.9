@@ -74,7 +74,7 @@ export function ChatPage() {
     }
   }, [searchThreadId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function openThread(t: InboxThread) {
+  function openThread(t: InboxThread | ProjectThread) {
     setActiveId(t.id)
     if (typeof window !== 'undefined' && window.innerWidth < MOBILE_BP) {
       setMobileView('thread')

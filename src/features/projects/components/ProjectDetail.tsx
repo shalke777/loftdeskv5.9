@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import type { Project } from '@/entities/project/model'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Card } from '@/shared/ui/Card/Card'
@@ -22,8 +23,9 @@ const ACCORDION_SECTIONS = [
 
 type SectionKey = typeof ACCORDION_SECTIONS[number]['key']
 
-export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: Project | null; onEdit?: (project: Project) => void; onCreateInvoice?: (id: string) => void }) {
+export function ProjectDetail({ project, onEdit, onCreateInvoice, onDelete }: { project: Project | null; onEdit?: (project: Project) => void; onCreateInvoice?: (id: string) => void; onDelete?: (id: string) => void }) {
   const [openSections, setOpenSections] = useState<Set<SectionKey>>(new Set())
+  const [confirmArchive, setConfirmArchive] = useState(false)
   if (!project) return null
 
   function toggleSection(key: SectionKey) {
@@ -55,6 +57,21 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
         <div className="actions-row">
           {onEdit ? <Button variant="secondary" onClick={() => onEdit(project)}>Edytuj projekt</Button> : null}
           {onCreateInvoice ? <Button onClick={() => onCreateInvoice(project.id)}>Generuj fakturę</Button> : null}
+          {onDelete ? (
+            <Button
+              variant="danger"
+              icon={<Trash2 size={14} />}
+              title={confirmArchive ? 'Kliknij ponownie, aby potwierdzić' : 'Archiwizuj projekt'}
+              onBlur={() => setConfirmArchive(false)}
+              onClick={() => {
+                if (!confirmArchive) { setConfirmArchive(true); return }
+                setConfirmArchive(false)
+                onDelete(project.id)
+              }}
+            >
+              {confirmArchive ? 'Potwierdź archiwizację' : 'Archiwizuj projekt'}
+            </Button>
+          ) : null}
         </div>
 
         {/* Przegląd — zawsze widoczny */}

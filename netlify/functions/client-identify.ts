@@ -1,28 +1,31 @@
 // =============================================================================
 // Netlify Function: client-identify
-// LoftDesk v6.0 — One App / Two Roles
+// LoftDesk — Phase 5: Canonical tokenless invite flow
 // =============================================================================
 // Flow:
-//   1. Klient otwiera portal (/portal/:token), wykonuje akcję (wiadomość / akceptacja)
-//   2. Widzi baner: "Chcesz dostęp do wszystkich projektów? Wpisz email"
-//   3. Frontend POST '/.netlify/functions/client-identify'
-//      Body: { token, email, full_name? }
-//   4. Tu:
-//      a) Waliduj token (project_portal_tokens.active = true)
-//      b) Znajdź lub utwórz client_accounts (company_id, email)
-//      c) Połącz token z client_account_id
+//   1. Operator wypełnia email + projekt w ProjectPortalCTA
+//   2. Frontend POST '/.netlify/functions/client-identify'
+//      Authorization: Bearer <operator_jwt>
+//      Body: { project_id, company_id, email, full_name? }
+//   3. Tu:
+//      a) Weryfikacja JWT operatora + przynależność do company_id
+//      b) Weryfikacja, że projekt należy do company_id
+//      c) Znajdź lub utwórz client_accounts (company_id, email)
 //      d) Upsert project_client_access (project_id ↔ client_account_id)
-//      e) Wyślij magic link przez supabase.auth.admin.generateLink
-//   5. Klient dostaje email z magic linkiem → /auth/callback?mode=client
+//      e) Zapewnij auth_user_id (admin.generateLink do pobrania ID)
+//      f) Wyślij magic link przez signInWithOtp
+//   4. Klient dostaje email z magic linkiem → /auth/callback?mode=client&project_id=... → /client/project/:id
 //
 // BEZPIECZEŃSTWO:
-//   - Używamy service_role TYLKO tutaj, nigdy w przeglądarce
-//   - Nie wyciekamy danych firmy / wykonawcy w odpowiedzi
+//   - service_role TYLKO tutaj, nigdy w przeglądarce
+//   - JWT operatora weryfikowany przed jakąkolwiek operacją
+//   - Company membership weryfikowane (role: owner/admin/manager)
+//   - Project ownership weryfikowane przed dostępem
 //   - Email normalizowany do lowercase
 //   - Idempotentny: wielokrotne wywołanie nie tworzy duplikatów
+//   - Brak tokenów URL — dostęp wyłącznie przez magic link → auth session
 // =============================================================================
 
-import { createHash } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 import type { Handler, HandlerEvent } from '@netlify/functions'
 
@@ -91,22 +94,44 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return json(405, { error: 'Method not allowed' })
   }
 
+  // ── Weryfikacja JWT operatora ─────────────────────────────────────────────
+  const auth = event.headers['authorization'] ?? event.headers['Authorization']
+  if (!auth?.startsWith('Bearer ')) {
+    return json(401, { error: 'Brak autoryzacji — wymagany JWT operatora' })
+  }
+  const jwt = auth.slice(7)
+  if (!jwt || jwt.length < 20) {
+    return json(401, { error: 'Brak autoryzacji — pusty token' })
+  }
+
+  let operatorUserId: string
+  try {
+    const anonClient = sbPublic()
+    const { data: { user }, error: authErr } = await anonClient.auth.getUser(jwt)
+    if (authErr || !user) return json(401, { error: 'Nieautoryzowane żądanie' })
+    operatorUserId = user.id
+  } catch {
+    return json(401, { error: 'Nieautoryzowane żądanie' })
+  }
+
   // ── Parsuj body ──────────────────────────────────────────────────────────────
-  let token: string
+  let projectId: string
+  let companyId: string
   let emailRaw: string
   let fullName: string | undefined
 
   try {
     const body = JSON.parse(event.body ?? '{}')
-    token    = (body.token   ?? '').trim()
-    emailRaw = (body.email   ?? '').trim()
-    fullName = typeof body.full_name === 'string' ? body.full_name.trim() : undefined
+    projectId  = (body.project_id  ?? '').trim()
+    companyId  = (body.company_id  ?? '').trim()
+    emailRaw   = (body.email       ?? '').trim()
+    fullName   = typeof body.full_name === 'string' ? body.full_name.trim() : undefined
   } catch {
     return json(400, { error: 'Nieprawidłowy format żądania' })
   }
 
-  if (!token || !emailRaw) {
-    return json(400, { error: 'Wymagane pola: token, email' })
+  if (!projectId || !companyId || !emailRaw) {
+    return json(400, { error: 'Wymagane pola: project_id, company_id, email' })
   }
 
   const email = emailRaw.toLowerCase()
@@ -121,38 +146,29 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   const sb = sbAdmin()
 
-  // ── SHA-256 hash tokenu — project_portal_tokens przechowuje token_hash, nie raw token ─────────
-  const tokenHash = createHash('sha256').update(token).digest('hex')
-
-  // ── Waliduj token portalu ────────────────────────────────────────────────────
-  // Szukamy w project_portal_tokens (nowy system — migr. 034) najpierw (po token_hash)
-  const { data: portalToken } = await sb
-    .from('project_portal_tokens')
-    .select('id, project_id, company_id, active, revoked_at')
-    .eq('token_hash', tokenHash)
-    .eq('active', true)
-    .is('revoked_at', null)
+  // ── Weryfikacja: operator jest członkiem firmy (role: owner/admin/manager) ──
+  const { data: member } = await sb
+    .from('company_members')
+    .select('role')
+    .eq('user_id', operatorUserId)
+    .eq('company_id', companyId)
     .maybeSingle()
-    .then(async (res) => {
-      if (res.data) return res
-      // Fallback: stary system client_tokens (migr. 004) — token przechowywany jawnie
-      return sb
-        .from('client_tokens')
-        .select('id, project_id, company_id, active')
-        .eq('token', token)
-        .eq('active', true)
-        .maybeSingle()
-    })
 
-  if (!portalToken) {
-    // Neutralny komunikat — nie wyciekamy informacji o istnieniu tokenu
-    return json(400, { error: 'Nieprawidłowy lub nieaktywny link dostępu' })
+  if (!member || !['owner', 'admin', 'manager'].includes(member.role as string)) {
+    return json(403, { error: 'Brak uprawnień do zapraszania klientów dla tej firmy' })
   }
 
-  const { company_id, project_id } = portalToken as { company_id: string; project_id: string | null }
+  // ── Weryfikacja: projekt należy do tej firmy ─────────────────────────────
+  const { data: project } = await sb
+    .from('projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .maybeSingle()
 
-  if (!company_id) {
-    return json(400, { error: 'Nieprawidłowy token — brak firmy' })
+  if (!project) {
+    return json(404, { error: 'Projekt nie istnieje lub nie należy do tej firmy' })
   }
 
   // ── Utwórz lub znajdź client_account ────────────────────────────────────────
@@ -160,7 +176,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     .from('client_accounts')
     .upsert(
       {
-        company_id,
+        company_id: companyId,
         email,
         full_name: fullName ?? null,
         updated_at: new Date().toISOString(),
@@ -175,30 +191,21 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return json(500, { error: 'Błąd serwera. Spróbuj ponownie.' })
   }
 
-  // ── Połącz token z client_account_id ────────────────────────────────────────
-  // Aktualizujemy w obu tabelach (obsługa obu systemów)
-  await Promise.allSettled([
-    sb.from('client_tokens').update({ client_account_id: account.id }).eq('token', token),
-    sb.from('project_portal_tokens').update({ client_account_id: account.id }).eq('token_hash', tokenHash),
-  ])
-
   // ── Nadaj dostęp do projektu ─────────────────────────────────────────────────
-  if (project_id) {
-    const { error: accessError } = await sb
-      .from('project_client_access')
-      .upsert(
-        {
-          project_id,
-          client_account_id: account.id,
-          granted_at: new Date().toISOString(),
-        },
-        { onConflict: 'project_id,client_account_id', ignoreDuplicates: true },
-      )
+  const { error: accessError } = await sb
+    .from('project_client_access')
+    .upsert(
+      {
+        project_id:        projectId,
+        client_account_id: account.id,
+        granted_at:        new Date().toISOString(),
+      },
+      { onConflict: 'project_id,client_account_id', ignoreDuplicates: true },
+    )
 
-    if (accessError) {
-      console.error('[client-identify] project_client_access upsert error:', accessError)
-      // Nie przerywamy — magic link wyślemy mimo to, dostęp można naprawić później
-    }
+  if (accessError) {
+    console.error('[client-identify] project_client_access upsert error:', accessError)
+    // Nie przerywamy — magic link wyślemy mimo to
   }
 
   // ── Wymuś połączenie auth_user_id przed wysyłką OTP ──────────────────────────
@@ -217,9 +224,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // below sends the actual email and invalidates this link automatically.
   // Pass project_id through the redirect so auth-callback can land the client
   // directly on the invited project instead of the generic dashboard.
-  const redirectTo = project_id
-    ? `${getBaseUrl()}/auth/callback?mode=client&project_id=${encodeURIComponent(project_id)}`
-    : `${getBaseUrl()}/auth/callback?mode=client`
+  const redirectTo = `${getBaseUrl()}/auth/callback?mode=client&project_id=${encodeURIComponent(projectId)}`
 
   if (!account.auth_user_id) {
     const { data: authLinkData } = await sb.auth.admin.generateLink({
@@ -227,7 +232,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
       email,
       options: {
         redirectTo,
-        data: { client_account_id: account.id, company_id },
+        data: { client_account_id: account.id, company_id: companyId },
       },
     })
     const newAuthUserId = authLinkData?.user?.id
@@ -240,18 +245,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
   }
 
-  // ── Wyślij magic link przez OTP — signInWithOtp faktycznie wysyła emaila ────
-  // UWAGA: admin.generateLink() powyżej (jeśli wywołany) generuje link po cichu
-  // i nie wysyła maila — służy tylko do pobrania auth_user_id.
-  // signInWithOtp wyzwala wbudowany mailer Supabase, unieważnia poprzedni token
-  // i wysyła realny mail do klienta.
+  // ── Wyślij magic link przez OTP ───────────────────────────────────────────
+  // admin.generateLink() powyżej (jeśli wywołany) służy tylko do pobrania auth_user_id.
+  // signInWithOtp wyzwala wbudowany mailer Supabase i wysyła realny mail do klienta.
   const { error: magicLinkError } = await sbPublic().auth.signInWithOtp({
     email,
     options: {
       emailRedirectTo: redirectTo,
       data: {
         client_account_id: account.id,
-        company_id,
+        company_id: companyId,
       },
       shouldCreateUser: true,
     },

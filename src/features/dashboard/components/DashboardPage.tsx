@@ -1,4 +1,4 @@
-import { ArrowRight, FileText, FolderKanban, MessageSquareText, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
+import { ArrowRight, FileText, FolderKanban, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Card } from '@/shared/ui/Card/Card'
@@ -10,8 +10,6 @@ import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { PLAN_DEFS } from '@/shared/lib/constants'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useAuth } from '@/features/auth/hooks/useAuth'
-import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
-import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
 import { OnboardingChecklist } from '@/features/onboarding/components/OnboardingChecklist'
 import { WelcomeBanner } from '@/features/onboarding/components/WelcomeBanner'
 import { useOnboardingProgress } from '@/features/onboarding/hooks/useOnboardingProgress'
@@ -45,9 +43,6 @@ export function DashboardPage() {
       void navigate({ to: '/client/dashboard', replace: true })
     }
   }, [user?.role, navigate])
-  const canUsePortal = useFeatureAccess('portal')
-  const { data: portalTokens } = usePortalTokens(companyId ?? '')
-  const firstPortalUrl = canUsePortal ? (portalTokens ?? []).find((t) => t.active)?.url ?? null : null
   const { data, isLoading } = useDashboardStats()
   const { data: onboarding } = useOnboardingProgress()
 
@@ -203,10 +198,9 @@ export function DashboardPage() {
         </Card>
         <Card>
           <h3>Portal klienta</h3>
-          <p>Klient dostaje link do konkretnego kosztorysu, może go zaakceptować i zostawić komentarz w jednym miejscu.</p>
+          <p>Klient dostaje zaproszenie emailowe i loguje się do dedykowanego portalu. Zarządzaj dostępem w widoku projektu.</p>
           <div className="actions-row">
-            <Button variant="secondary" onClick={() => navigate({ to: '/estimates' })}>Generuj link portalu</Button>
-            {firstPortalUrl ? <a href={firstPortalUrl} target="_blank" rel="noreferrer"><Button variant="ghost" icon={<MessageSquareText size={16} />}>Otwórz portal demo</Button></a> : null}
+            <Button variant="secondary" onClick={() => navigate({ to: '/projects' })}>Otwórz projekty</Button>
           </div>
         </Card>
       </div>

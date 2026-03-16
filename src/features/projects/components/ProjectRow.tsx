@@ -105,7 +105,7 @@ export function ProjectRow({
               <button
                 type="button"
                 className={`proj-action-btn proj-action-btn--danger${confirmDelete ? ' proj-action-btn--confirm' : ''}`}
-                title={confirmDelete ? 'Kliknij ponownie, aby potwierdzić' : 'Usuń projekt'}
+                title={confirmDelete ? 'Kliknij ponownie, aby potwierdzić' : 'Archiwizuj projekt'}
                 onClick={handleDelete}
                 onBlur={() => setConfirmDelete(false)}
               >
@@ -124,6 +124,7 @@ export function ProjectRow({
             project={project}
             onEdit={onEdit}
             onCreateInvoice={onCreateInvoice}
+            onDelete={canDelete ? onDelete : undefined}
           />
         </div>
       )}

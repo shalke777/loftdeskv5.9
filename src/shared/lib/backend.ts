@@ -33,7 +33,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
 
   // Fallback: direct query (works when auth_user_id is already set —
   // guaranteed for all new invites after client-identify.ts fix).
-  const clientAccount = (!rpcError && clientByRpc)
+  const clientAccount = ((!rpcError && clientByRpc)
     ? clientByRpc
     : await supabase
         .from('client_accounts')
@@ -41,7 +41,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
         .eq('auth_user_id', authUser.id)
         .limit(1)
         .maybeSingle()
-        .then(r => r.data)
+        .then(r => r.data)) as { id: string; company_id: string; email: string | null; full_name: string | null } | null
 
   if (clientAccount) {
     if (import.meta.env.DEV) {

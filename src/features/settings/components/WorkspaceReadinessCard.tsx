@@ -6,7 +6,6 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useEstimates } from '@/features/estimates/hooks/useEstimates'
 import { useInvoices } from '@/features/invoices/hooks/useInvoices'
 import { useProjects } from '@/features/projects/hooks/useProjects'
-import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
 
 export function WorkspaceReadinessCard() {
   const { user } = useAuth()
@@ -16,15 +15,15 @@ export function WorkspaceReadinessCard() {
   const { data: estimates, isLoading: estimatesLoading } = useEstimates()
   const { data: invoices, isLoading: invoicesLoading } = useInvoices()
   const { data: projects, isLoading: projectsLoading } = useProjects()
-  // usePortalTokens receives companyId explicitly; '' is safe -- query is disabled when falsy
-  const { data: portalTokens, isLoading: portalLoading } = usePortalTokens(user?.companyId ?? '')
+  // usePortalTokens removed — legacy client_tokens portal retired (Phase 3)
+  // portalLinks hardcoded to 0; WorkspaceReadiness portal check is now obsolete
 
   if (!user) return null
 
   // While ANY data source is still loading we suppress all computed statuses --
   // so we never show `uwaga` just because a hook returned undefined/[] before the
   // first successful response.
-  const isLoading = settingsLoading || estimatesLoading || invoicesLoading || projectsLoading || portalLoading
+  const isLoading = settingsLoading || estimatesLoading || invoicesLoading || projectsLoading
 
   const checks = buildWorkspaceReadiness({
     companyName: user.companyName,
@@ -34,8 +33,8 @@ export function WorkspaceReadinessCard() {
     // team / invitations are from Supabase via useSettings -- already scoped to companyId
     membersCount: isLoading ? 2 : team.length,
     pendingInvitations: isLoading ? 0 : invitations.filter((item: any) => item.status === 'pending').length,
-    // count only active portal tokens so expired/deactivated ones do not inflate the score
-    portalLinks: isLoading ? 1 : (portalTokens ?? []).filter((t) => t.active).length,
+    // legacy portal tokens gone — new email-based portal has no token URLs to count
+    portalLinks: 0,
     estimatesCount: isLoading ? 1 : (estimates ?? []).length,
     invoicesCount: isLoading ? 1 : (invoices ?? []).length,
     projectsCount: isLoading ? 1 : (projects ?? []).length,
