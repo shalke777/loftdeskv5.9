@@ -65,10 +65,11 @@ export interface ClientMessage {
 
 export interface ClientApproval {
   id: string
-  title: string
-  description?: string | null
+  snapshot_vendor?: string | null
+  snapshot_description?: string | null
+  snapshot_amount_gross?: number | null
+  message_to_client?: string | null
   status: string
-  amount?: number | null
   created_at: string
 }
 
@@ -147,7 +148,20 @@ export const clientPortalApi = {
 
   async sendMessage(projectId: string, companyId: string, body: string, senderName: string): Promise<void> {
     if (!supabase) return
+    // project_messages.thread_id is NOT NULL — find the client_shared thread first.
+    // Operator creates threads; client can SELECT but not INSERT them.
+    const { data: thread, error: threadError } = await supabase
+      .from('project_threads')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('visibility', 'client_shared')
+      .eq('archived', false)
+      .limit(1)
+      .maybeSingle()
+    if (threadError) throw threadError
+    if (!thread) throw new Error('Wykonawca nie otworzył jeszcze wątku czatu dla tego projektu. Spróbuj ponownie za chwilę lub skontaktuj się z wykonawcą.')
     const { error } = await supabase.from('project_messages').insert({
+      thread_id:      thread.id,
       project_id:     projectId,
       company_id:     companyId,
       body:           body.trim(),
@@ -163,7 +177,7 @@ export const clientPortalApi = {
     if (!supabase) return []
     const { data, error } = await supabase
       .from('cost_approvals')
-      .select('id, title, description, status, amount, created_at')
+      .select('id, snapshot_vendor, snapshot_description, snapshot_amount_gross, message_to_client, status, created_at')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
     if (error) throw error
