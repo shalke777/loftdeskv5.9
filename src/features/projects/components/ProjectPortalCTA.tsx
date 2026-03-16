@@ -52,6 +52,8 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
   const [fullName,   setFullName]   = useState('')
   const [status,     setStatus]     = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
   const [errorMsg,   setErrorMsg]   = useState<string | null>(null)
+  const [magicLink,  setMagicLink]  = useState<string | null>(null)
+  const [copied,     setCopied]     = useState(false)
   const [lastInvite, setLastInvite] = useState<PersistedInvite | null>(() => loadInvite(projectId))
 
   useEffect(() => {
@@ -60,6 +62,8 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
     setEmail('')
     setFullName('')
     setErrorMsg(null)
+    setMagicLink(null)
+    setCopied(false)
   }, [projectId])
 
   useEffect(() => {
@@ -100,7 +104,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
         }),
       })
 
-      const body = await res.json() as { ok?: boolean; error?: string }
+      const body = await res.json() as { ok?: boolean; error?: string; magic_link?: string }
 
       if (!res.ok) {
         const msg = body?.error ?? 'Nie udało się wysłać zaproszenia'
@@ -112,10 +116,11 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
         if (import.meta.env.DEV) console.info('CLIENT_PORTAL_INVITE_ERROR', { projectId, error: msg })
       } else {
         setStatus('sent')
+        setMagicLink(body?.magic_link ?? null)
         const rec: PersistedInvite = { email: email.trim(), status: 'sent', timestamp: new Date().toISOString() }
         saveInvite(projectId, rec)
         setLastInvite(rec)
-        if (import.meta.env.DEV) console.info('CLIENT_PORTAL_INVITE_SUCCESS', { projectId, email: email.trim() })
+        if (import.meta.env.DEV) console.info('CLIENT_PORTAL_INVITE_SUCCESS', { projectId, email: email.trim(), has_link: !!body?.magic_link })
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Błąd połączenia'
@@ -143,18 +148,52 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
 
   // ── Success state ─────────────────────────────────────────────────────────
   if (status === 'sent') {
+    async function copyLink() {
+      if (!magicLink) return
+      try {
+        await navigator.clipboard.writeText(magicLink)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2500)
+      } catch {
+        // fallback: select the text
+      }
+    }
+
     return (
       <Card>
         <h3 style={{ margin: '0 0 12px' }}>Portal klienta</h3>
         <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
           <div style={{ fontWeight: 600, color: '#15803d', marginBottom: 6 }}>
-            ✅ Zaproszenie wysłane na {email}
+            ✅ Dostęp nadany dla {email}
           </div>
-          <p style={{ fontSize: 13, color: '#166534', margin: 0, lineHeight: 1.6 }}>
-            Klient otrzyma email z linkiem logowania do Portalu klienta.
-          </p>
+          {magicLink ? (
+            <>
+              <p style={{ fontSize: 13, color: '#166534', margin: '0 0 10px', lineHeight: 1.6 }}>
+                Skopiuj link i wyślij do klienta (email, SMS, itp.).
+                Link jest jednorazowy — po użyciu klient może logować się ponownie przez email.
+              </p>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
+                <input
+                  readOnly
+                  value={magicLink}
+                  style={{ flex: 1, fontSize: 11, padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac', background: '#fff', color: '#374151', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  onFocus={e => e.currentTarget.select()}
+                />
+                <button
+                  onClick={() => void copyLink()}
+                  style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #16a34a', background: copied ? '#16a34a' : '#fff', color: copied ? '#fff' : '#16a34a', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s' }}
+                >
+                  {copied ? '✓ Skopiowano' : 'Kopiuj'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p style={{ fontSize: 13, color: '#166534', margin: 0, lineHeight: 1.6 }}>
+              Klient może zalogować się przez magic link na swój email.
+            </p>
+          )}
         </div>
-        <Button variant="ghost" size="sm" onClick={() => { setStatus('idle'); setEmail('') }}>
+        <Button variant="ghost" size="sm" onClick={() => { setStatus('idle'); setEmail(''); setMagicLink(null); setCopied(false) }}>
           Wyślij kolejne zaproszenie
         </Button>
       </Card>

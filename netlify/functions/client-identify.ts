@@ -219,52 +219,45 @@ export const handler: Handler = async (event: HandlerEvent) => {
   //   - Rekord jest niewidoczny dla klienta w przeglądarce
   //   - resolveSupabaseSession() odpada do bootstrap_my_company → role:'owner'
   //
-  // Fix: admin.generateLink() creates-or-gets the auth user synchronously
-  // and returns user.id. We use it ONLY to retrieve that ID — signInWithOtp
-  // below sends the actual email and invalidates this link automatically.
+  // Fix: admin.generateLink() creates-or-gets the auth user synchronously,
+  // generates a fresh one-time magic link, and returns the URL.
+  // Uses service_role key — no dependency on Supabase SMTP configuration.
+  // The link is returned to the operator who sends it to the client however
+  // they prefer (email, WhatsApp, etc.).
   // Pass project_id through the redirect so auth-callback can land the client
   // directly on the invited project instead of the generic dashboard.
   const redirectTo = `${getBaseUrl()}/auth/callback?mode=client&project_id=${encodeURIComponent(projectId)}`
 
-  if (!account.auth_user_id) {
-    const { data: authLinkData } = await sb.auth.admin.generateLink({
-      type: 'magiclink',
-      email,
-      options: {
-        redirectTo,
-        data: { client_account_id: account.id, company_id: companyId },
-      },
-    })
-    const newAuthUserId = authLinkData?.user?.id
-    if (newAuthUserId) {
-      // admin client bypasses RLS — always succeeds
-      await sb
-        .from('client_accounts')
-        .update({ auth_user_id: newAuthUserId, updated_at: new Date().toISOString() })
-        .eq('id', account.id)
-    }
-  }
-
-  // ── Wyślij magic link przez OTP ───────────────────────────────────────────
-  // admin.generateLink() powyżej (jeśli wywołany) służy tylko do pobrania auth_user_id.
-  // signInWithOtp wyzwala wbudowany mailer Supabase i wysyła realny mail do klienta.
-  const { error: magicLinkError } = await sbPublic().auth.signInWithOtp({
+  const { data: linkData, error: linkError } = await sb.auth.admin.generateLink({
+    type: 'magiclink',
     email,
     options: {
-      emailRedirectTo: redirectTo,
-      data: {
-        client_account_id: account.id,
-        company_id: companyId,
-      },
-      shouldCreateUser: true,
+      redirectTo,
+      data: { client_account_id: account.id, company_id: companyId },
     },
   })
 
-  if (magicLinkError) {
-    console.error('[client-identify] magic link error:', magicLinkError)
-    return json(500, { error: 'Błąd wysyłki wiadomości. Spróbuj ponownie.' })
+  if (linkError || !linkData?.user) {
+    console.error('[client-identify] generateLink error:', linkError)
+    return json(500, { error: 'Błąd generowania linku logowania. Spróbuj ponownie.' })
   }
 
-  // Sukces — NIE zwracamy żadnych danych firmy / wykonawcy
-  return json(200, { ok: true, message: 'Sprawdź skrzynkę email i kliknij link logowania.' })
+  // Update auth_user_id if not yet linked
+  if (!account.auth_user_id) {
+    await sb
+      .from('client_accounts')
+      .update({ auth_user_id: linkData.user.id, updated_at: new Date().toISOString() })
+      .eq('id', account.id)
+  }
+
+  const magicLink: string | null = (linkData as any)?.properties?.action_link ?? null
+
+  // Sukces — zwracamy link do ręcznego przesłania klientowi
+  return json(200, {
+    ok: true,
+    magic_link: magicLink,
+    message: magicLink
+      ? 'Link logowania wygenerowany — skopiuj i wyślij do klienta.'
+      : 'Dostęp nadany.',
+  })
 }
