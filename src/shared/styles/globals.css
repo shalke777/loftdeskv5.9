@@ -966,6 +966,48 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   z-index: 2;
 }
 
+/* ── Desktop hover-delete button ────────────────────────────────── */
+/* Visible on row hover on pointer devices; hidden on touch-only screens */
+
+.chat-delete-btn {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  z-index: 3;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 7px;
+  background: var(--color-error-soft, #fbeae8);
+  color: var(--color-error, #a83228);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, background 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+
+.chat-swipe-row:hover .chat-delete-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.chat-delete-btn:hover {
+  background: var(--color-error, #a83228);
+  color: #fff;
+}
+
+/* On touch-only devices (mobile): hide the button — swipe gesture is used instead */
+@media (hover: none) {
+  .chat-delete-btn {
+    display: none !important;
+  }
+}
+
 /* ── Right thread panel ─────────────────────────────────────────── */
 
 

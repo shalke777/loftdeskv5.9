@@ -265,6 +265,18 @@ export function ThreadListItem({ thread, active, showProject, onClick, onDelete 
             </span>
           )}
         </button>
+
+        {/* Desktop hover-delete button — hidden on touch devices via CSS */}
+        {onDelete && (
+          <button
+            className="chat-delete-btn"
+            onClick={(e) => { e.stopPropagation(); onDelete(thread.id) }}
+            title="Usuń wątek"
+            aria-label="Usuń wątek"
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
       </div>
     </div>
   )

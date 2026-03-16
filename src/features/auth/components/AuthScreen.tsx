@@ -4,7 +4,6 @@ import { Input } from '@/shared/ui/Input/Input'
 import { LoginForm } from '@/features/auth/components/LoginForm'
 import { RegisterForm } from '@/features/auth/components/RegisterForm'
 import { ForgotPasswordForm } from '@/features/auth/components/ForgotPasswordForm'
-import { supabase } from '@/shared/lib/supabase'
 
 const tabs = [
   { key: 'login',    label: 'Logowanie' },
@@ -16,6 +15,8 @@ const tabs = [
 type AuthTab = (typeof tabs)[number]['key']
 
 // ── Prosty formularz magic-link dla klientów ──────────────────────────────────
+// Używa /.netlify/functions/client-otp (admin.generateLink, bez SMTP).
+// Klient zostaje przekierowany bezpośrednio na wygenerowany link Supabase.
 function ClientMagicLinkForm() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -24,17 +25,37 @@ function ClientMagicLinkForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim() || !supabase) return
+    if (!email.trim()) return
     setLoading(true)
     setError('')
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email: email.toLowerCase().trim(),
-      options: { emailRedirectTo: `${baseUrl}/auth/callback?mode=client` },
-    })
-    setLoading(false)
-    if (err) { setError('Nie udało się wysłać linku. Sprawdź adres email.'); return }
-    setSent(true)
+
+    try {
+      const res = await fetch('/.netlify/functions/client-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.toLowerCase().trim() }),
+      })
+      const body = await res.json() as { ok?: boolean; error?: string; magic_link?: string | null }
+      setLoading(false)
+
+      if (!res.ok) {
+        setError(body?.error ?? 'Błąd serwera. Spróbuj ponownie.')
+        return
+      }
+
+      if (body?.magic_link) {
+        // Przekieruj bezpośrednio na magic link — Supabase weryfikuje i ustawia sesję
+        window.location.assign(body.magic_link)
+        return
+      }
+
+      // Brak magic_link: konto nie istnieje (lub konto nie jest klienckie).
+      // Pokazujemy neutralną wiadomość zamiast ujawniać, że email nie jest zarejestrowany.
+      setSent(true)
+    } catch {
+      setLoading(false)
+      setError('Błąd połączenia. Sprawdź internet i spróbuj ponownie.')
+    }
   }
 
   if (sent) {
@@ -43,11 +64,11 @@ function ClientMagicLinkForm() {
         <div style={{ fontSize: 48, marginBottom: 12 }}>📬</div>
         <h2 style={{ marginBottom: 8 }}>Sprawdź skrzynkę</h2>
         <p style={{ color: '#64748b', lineHeight: 1.6 }}>
-          Wysłaliśmy link logowania na <strong>{email}</strong>.<br />
-          Kliknij go, aby przejść do swoich projektów.
+          Jeśli masz przypisany dostęp do projektu, link logowania powinien dotrzeć na <strong>{email}</strong>.
+          <br />Sprawdź folder spam.
         </p>
         <Button variant="secondary" style={{ marginTop: 20 }} onClick={() => { setSent(false); setEmail('') }}>
-          Wyślij ponownie
+          Spróbuj ponownie
         </Button>
       </div>
     )
@@ -58,7 +79,7 @@ function ClientMagicLinkForm() {
       <h2 style={{ marginBottom: 6, fontSize: 20 }}>Dostęp do projektów</h2>
       <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, lineHeight: 1.5 }}>
         Jeśli wykonawca przydzielił Ci dostęp do projektu, wpisz swój adres email.<br />
-        Wyślemy Ci link logowania bez hasła.
+        Zostaniesz automatycznie zalogowany.
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 14 }}>
         <Input
@@ -71,7 +92,7 @@ function ClientMagicLinkForm() {
         />
         {error && <p style={{ color: '#dc2626', fontSize: 13, margin: 0 }}>{error}</p>}
         <Button type="submit" disabled={loading || !email.trim()}>
-          {loading ? 'Wysyłanie…' : 'Wyślij link logowania'}
+          {loading ? 'Łączenie…' : 'Zaloguj się'}
         </Button>
       </form>
       <p style={{ marginTop: 14, fontSize: 12, color: '#94a3b8', textAlign: 'center' }}>
