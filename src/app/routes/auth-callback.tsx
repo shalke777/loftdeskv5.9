@@ -11,6 +11,12 @@ export function AuthCallbackRoutePage() {
   const [errorMsg, setErrorMsg] = useState('')
   const isClientMode = typeof window !== 'undefined'
     && new URLSearchParams(window.location.search).get('mode') === 'client'
+  // project_id is appended by client-identify.ts for project-centric invites.
+  // When present, the callback redirects straight to that project instead of
+  // the generic /client/dashboard, so the client sees only the invited project.
+  const inviteProjectId = typeof window !== 'undefined'
+    ? (new URLSearchParams(window.location.search).get('project_id') ?? null)
+    : null
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -130,9 +136,12 @@ export function AuthCallbackRoutePage() {
 
           <Button
             onClick={() => {
-              const target = hasSession ? (isClientMode ? '/client/dashboard' : '/dashboard') : '/login'
+              const clientTarget = inviteProjectId
+                ? `/client/project/${inviteProjectId}`
+                : '/client/dashboard'
+              const target = hasSession ? (isClientMode ? clientTarget : '/dashboard') : '/login'
               if (import.meta.env.DEV) {
-                console.info('CLIENT_PORTAL_REDIRECT', { mode: isClientMode ? 'client' : 'operator', target, hasSession })
+                console.info('CLIENT_PORTAL_REDIRECT', { mode: isClientMode ? 'client' : 'operator', target, hasSession, inviteProjectId })
               }
               window.location.assign(target)
             }}

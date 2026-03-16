@@ -215,7 +215,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // Fix: admin.generateLink() creates-or-gets the auth user synchronously
   // and returns user.id. We use it ONLY to retrieve that ID — signInWithOtp
   // below sends the actual email and invalidates this link automatically.
-  const redirectTo = `${getBaseUrl()}/auth/callback?mode=client`
+  // Pass project_id through the redirect so auth-callback can land the client
+  // directly on the invited project instead of the generic dashboard.
+  const redirectTo = project_id
+    ? `${getBaseUrl()}/auth/callback?mode=client&project_id=${encodeURIComponent(project_id)}`
+    : `${getBaseUrl()}/auth/callback?mode=client`
 
   if (!account.auth_user_id) {
     const { data: authLinkData } = await sb.auth.admin.generateLink({
