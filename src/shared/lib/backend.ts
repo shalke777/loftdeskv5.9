@@ -22,61 +22,25 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   const authUser = authData.user
   if (!authUser) return { user: null }
 
-  // ── Sprawdź czy to konto klienta (v6.0) ─────────────────────────────────
-  // Primary: SECURITY DEFINER RPC (migration 045+). Bypasses RLS — finds
-  // client_accounts rows even when auth_user_id IS NULL. The direct query
-  // below cannot see those rows: RLS policy "ca_client_select_own" evaluates
-  // auth_user_id = auth.uid() = NULL = <uid> = false for unlinked accounts.
-  const { data: clientByRpc, error: rpcError } = await supabase
-    .rpc('resolve_my_client_account')
-    .maybeSingle()
+  // ── Sprawdź company_members i client_accounts RÓWNOLEGLE ─────────────────
+  // WAŻNE: operator (company_members) MA ZAWSZE PIERWSZEŃSTWO nad client_accounts.
+  // Jeśli użytkownik jest w obu tabelach (np. operator testował zaproszenie
+  // własnym mailem), musi wchodzić jako operator, nie jako klient.
+  const [memberResult, clientByRpc] = await Promise.all([
+    supabase
+      .from('company_members')
+      .select('company_id, role, companies(name, plan)')
+      .eq('user_id', authUser.id)
+      .limit(1)
+      .maybeSingle(),
+    supabase.rpc('resolve_my_client_account').maybeSingle(),
+  ])
 
-  // Fallback: direct query (works when auth_user_id is already set —
-  // guaranteed for all new invites after client-identify.ts fix).
-  const clientAccount = ((!rpcError && clientByRpc)
-    ? clientByRpc
-    : await supabase
-        .from('client_accounts')
-        .select('id, company_id, email, full_name')
-        .eq('auth_user_id', authUser.id)
-        .limit(1)
-        .maybeSingle()
-        .then(r => r.data)) as { id: string; company_id: string; email: string | null; full_name: string | null } | null
-
-  if (clientAccount) {
-    if (import.meta.env.DEV) {
-      console.info('CLIENT_PORTAL_AUTH_CALLBACK', {
-        method: (!rpcError && clientByRpc) ? 'rpc' : 'auth_user_id_direct',
-        userId: authUser.id,
-      })
-    }
-    return {
-      user: {
-        id: authUser.id,
-        email: authUser.email ?? clientAccount.email ?? '',
-        companyId: clientAccount.company_id,
-        companyName: 'Portal klienta',
-        role: 'client' as const,
-        plan: 'free' as const,
-        fullName: clientAccount.full_name ?? authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Klient',
-      },
-    }
-  }
-
-  let { data: memberRow } = await supabase
-    .from('company_members')
-    .select('company_id, role, companies(name, plan)')
-    .eq('user_id', authUser.id)
-    .limit(1)
-    .maybeSingle()
+  // Operator — company_members ma pierwszeństwo
+  let memberRow = memberResult.data
 
   if (!memberRow) {
     // ── Metadata guard: blokada bootstrap dla zaproszeń klienckich ─────────────
-    // signInWithOtp przekazuje client_account_id w options.data, co Supabase
-    // zapisuje w user_metadata. Jeśli to pole jest ustawione, ale ani RPC ani
-    // bezpośrednie zapytanie nie znalazło client_accounts (migration 045 jeszcze
-    // nie wgrana na produkcji + stare dane z NULL auth_user_id), zwracamy null
-    // zamiast tworzyć błędny rekord firmy przez bootstrap_my_company.
     if (authUser.user_metadata?.client_account_id) {
       if (import.meta.env.DEV) {
         console.warn('[backend] CLIENT_PORTAL_AUTH_CALLBACK metadata_guard — klient bez rekordu; uruchom migration 045', { userId: authUser.id })
@@ -101,6 +65,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   }
 
   if (memberRow) {
+    // Użytkownik jest operatorem — ignorujemy client_accounts całkowicie
     const companies = Array.isArray(memberRow.companies) ? memberRow.companies[0] : memberRow.companies
     return {
       user: {
@@ -111,6 +76,39 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
         role: (memberRow.role as DemoRole) ?? 'worker',
         plan: (companies?.plan as SessionUser['plan']) ?? 'free',
         fullName: authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Użytkownik',
+      },
+    }
+  }
+
+  // ── Nie znaleziono w company_members — sprawdź client_accounts ────────────
+  const { data: clientByRpcData, error: rpcError } = clientByRpc
+
+  const clientAccount = ((!rpcError && clientByRpcData)
+    ? clientByRpcData
+    : await supabase
+        .from('client_accounts')
+        .select('id, company_id, email, full_name')
+        .eq('auth_user_id', authUser.id)
+        .limit(1)
+        .maybeSingle()
+        .then(r => r.data)) as { id: string; company_id: string; email: string | null; full_name: string | null } | null
+
+  if (clientAccount) {
+    if (import.meta.env.DEV) {
+      console.info('CLIENT_PORTAL_AUTH_CALLBACK', {
+        method: (!rpcError && clientByRpcData) ? 'rpc' : 'auth_user_id_direct',
+        userId: authUser.id,
+      })
+    }
+    return {
+      user: {
+        id: authUser.id,
+        email: authUser.email ?? clientAccount.email ?? '',
+        companyId: clientAccount.company_id,
+        companyName: 'Portal klienta',
+        role: 'client' as const,
+        plan: 'free' as const,
+        fullName: clientAccount.full_name ?? authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Klient',
       },
     }
   }
