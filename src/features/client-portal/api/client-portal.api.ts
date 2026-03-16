@@ -74,26 +74,32 @@ export interface ClientApproval {
 }
 
 export const clientPortalApi = {
-  async listProjects(): Promise<ClientProject[]> {
-    if (!supabase) return []
-    // RLS na project_client_access filtruje automatycznie przez my_client_project_ids()
+  // SECURITY: pass companyId explicitly — never read from session inside API.
+  // This adds a defence-in-depth company_id filter on top of RLS so that:
+  //   a) a client whose email exists in multiple companies only sees their own company's projects
+  //   b) if migration 042 / my_client_project_ids() is absent, we still filter correctly
+  async listProjects(companyId: string): Promise<ClientProject[]> {
+    if (!supabase || !companyId || companyId === 'demo-company') return []
     const { data, error } = await supabase
       .from('projects')
       .select('id, company_id, number, name, status, address, investment_address, start_date, end_date, created_at')
+      .eq('company_id', companyId)
       .order('created_at', { ascending: false })
     if (error) throw error
     return (data ?? []) as ClientProject[]
   },
 
-  async getProject(projectId: string): Promise<ClientProject | null> {
-    if (!supabase) return null
+  // SECURITY: also scope getProject by company_id to prevent UUID-guessing attacks.
+  async getProject(projectId: string, companyId: string): Promise<ClientProject | null> {
+    if (!supabase || !companyId || companyId === 'demo-company') return null
     const { data, error } = await supabase
       .from('projects')
       .select('id, company_id, number, name, status, address, investment_address, start_date, end_date, created_at')
       .eq('id', projectId)
-      .single()
+      .eq('company_id', companyId)
+      .maybeSingle()
     if (error) throw error
-    return data as ClientProject
+    return data as ClientProject | null
   },
 
   async listEstimates(projectId: string): Promise<ClientEstimate[]> {

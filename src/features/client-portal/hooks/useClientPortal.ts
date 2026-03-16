@@ -1,9 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { clientPortalApi } from '@/features/client-portal/api/client-portal.api'
+import { useCompanyId } from '@/features/auth/hooks/useAuth'
+
+// Guard: companyId resolves to 'demo-company' when session is not yet loaded.
+// Never fire queries against the DB with that placeholder.
+function isRealCompanyId(id: string | null | undefined): id is string {
+  return Boolean(id) && id !== 'demo-company'
+}
 
 export const clientKeys = {
-  projects:   ['client-projects']     as const,
-  project:    (id: string) => ['client-project',   id] as const,
+  projects:   (companyId: string) => ['client-projects', companyId] as const,
+  project:    (id: string, companyId: string) => ['client-project', id, companyId] as const,
   estimates:  (id: string) => ['client-estimates',  id] as const,
   invoices:   (id: string) => ['client-invoices',   id] as const,
   contracts:  (id: string) => ['client-contracts',  id] as const,
@@ -13,18 +20,21 @@ export const clientKeys = {
 }
 
 export function useClientProjects() {
+  const companyId = useCompanyId()
   return useQuery({
-    queryKey: clientKeys.projects,
-    queryFn:  () => clientPortalApi.listProjects(),
+    queryKey: clientKeys.projects(companyId),
+    queryFn:  () => clientPortalApi.listProjects(companyId),
+    enabled:  isRealCompanyId(companyId),
     staleTime: 10_000,
   })
 }
 
 export function useClientProject(projectId: string) {
+  const companyId = useCompanyId()
   return useQuery({
-    queryKey: clientKeys.project(projectId),
-    queryFn:  () => clientPortalApi.getProject(projectId),
-    enabled:  Boolean(projectId),
+    queryKey: clientKeys.project(projectId, companyId),
+    queryFn:  () => clientPortalApi.getProject(projectId, companyId),
+    enabled:  Boolean(projectId) && isRealCompanyId(companyId),
     staleTime: 10_000,
   })
 }
