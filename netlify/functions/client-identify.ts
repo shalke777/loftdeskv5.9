@@ -51,53 +51,87 @@ async function sendInviteEmail(opts: {
   if (envFrom && !EMAIL_VAL_RE.test(envFrom)) {
     console.warn(`[client-identify] RESEND_FROM_EMAIL='${envFrom}' is not a valid email — using fallback '${FROM_FALLBACK}'`)
   }
-  const fromLabel = opts.fromName ? `${opts.fromName} (przez LoftDesk)` : 'LoftDesk'
-  const greeting  = opts.toName ? `Cze┼Ť─ç ${opts.toName.split(' ')[0]}` : 'Cze┼Ť─ç'
+  const fromLabel  = opts.fromName ? `${opts.fromName} (przez LoftDesk)` : 'LoftDesk'
+  const firstName  = opts.toName ? opts.toName.split(' ')[0] : null
+  // All Polish characters written as \uXXXX escapes to be 100% encoding-safe
+  // regardless of the source file codepage on the build machine.
+  const greeting   = firstName
+    ? `Dzie\u0144 dobry, ${firstName},`
+    : 'Dzie\u0144 dobry,'
+  const replyBlock = opts.replyTo
+    ? `W razie pyta\u0144 napisz bezpo\u015Brednio na: <a href="mailto:${opts.replyTo}" style="color:#1a5c32">${opts.replyTo}</a>.`
+    : ''
+  const subject    = `Masz dost\u0119p do portalu klienta \u2013 ${opts.fromName}`
+  const previewText = `${opts.fromName} udost\u0119pni\u0142a Ci dost\u0119p do realizacji: ${opts.projectName}`
 
-  const html = `
-<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Zaproszenie do projektu</title>
+  <title>${subject}</title>
 </head>
 <body style="margin:0;padding:0;background:#f5f0e8;font-family:'Segoe UI',Arial,sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;padding:32px 16px">
+  <span style="display:none;max-height:0;overflow:hidden;mso-hide:all">${previewText}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</span>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;padding:40px 16px">
     <tr><td align="center">
-      <table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
-        <tr><td style="background:#1a5c32;padding:24px 32px">
-          <span style="color:#fff;font-size:20px;font-weight:800;letter-spacing:-.5px">LoftDesk</span><br />
-          <span style="color:rgba(255,255,255,.75);font-size:13px">Portal klienta</span>
+      <table width="540" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,.08)">
+
+        <!-- Header -->
+        <tr><td style="background:#1a5c32;padding:22px 32px">
+          <table width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td><span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-.5px">LoftDesk</span></td>
+            <td align="right"><span style="color:rgba(255,255,255,.60);font-size:12px">Portal klienta</span></td>
+          </tr></table>
         </td></tr>
-        <tr><td style="padding:32px">
-          <p style="font-size:16px;font-weight:700;color:#111;margin:0 0 8px">${greeting},</p>
-          <p style="font-size:15px;color:#374151;line-height:1.65;margin:0 0 24px">
-            <strong>${opts.fromName}</strong> zaprasza Ci─Ö do projektu:
+
+        <!-- Body -->
+        <tr><td style="padding:36px 32px 28px">
+          <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 16px;line-height:1.4">${greeting}</p>
+          <p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 8px">
+            Firma <strong>${opts.fromName}</strong> udost\u0119pni\u0142a Ci dost\u0119p do portalu klienta LoftDesk.
           </p>
-          <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 18px;margin-bottom:28px">
-            <p style="margin:0;font-size:15px;font-weight:700;color:#15803d">­čôü ${opts.projectName}</p>
-          </div>
-          <p style="font-size:14px;color:#6b7280;margin:0 0 20px;line-height:1.6">
-            Kliknij poni┼╝szy przycisk, aby zalogowa─ç si─Ö jednym klikni─Öciem i przej┼Ť─ç bezpo┼Ťrednio do swojego projektu.
-            Link jest jednorazowy i wygasa po 24 godzinach.
+          <p style="font-size:14px;color:#6b7280;line-height:1.6;margin:0 0 24px">
+            Mo\u017Cesz \u015Bledzi\u0107 post\u0119p prac, przegl\u0105da\u0107 dokumenty i komunikowa\u0107 si\u0119 z wykonawc\u0105 w jednym miejscu.
           </p>
-          <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px">
-            <tr><td style="background:#1a5c32;border-radius:12px;padding:14px 32px">
-              <a href="${opts.magicLink}" style="color:#fff;font-size:15px;font-weight:700;text-decoration:none">Przejd┼║ do projektu Ôćĺ</a>
+
+          <!-- Project context -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px">
+            <tr><td style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 18px">
+              <p style="margin:0 0 3px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.6px">Realizacja</p>
+              <p style="margin:0;font-size:15px;font-weight:700;color:#15803d">${opts.projectName}</p>
             </td></tr>
           </table>
+
+          <p style="font-size:13px;color:#6b7280;margin:0 0 24px;line-height:1.6">
+            Kliknij przycisk poni\u017Cej, aby zalogowa\u0107 si\u0119 jednym klikni\u0119ciem.<br />
+            Link jest jednorazowy i wa\u017Cny przez&nbsp;24&nbsp;godziny.
+          </p>
+
+          <!-- CTA -->
+          <table cellpadding="0" cellspacing="0" style="margin:0 0 32px">
+            <tr><td style="background:#1a5c32;border-radius:12px;padding:14px 36px">
+              <a href="${opts.magicLink}" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;display:block">
+                Przejd\u017A do portalu klienta &rarr;
+              </a>
+            </td></tr>
+          </table>
+
+          <!-- Fallback link -->
           <p style="font-size:12px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:16px;margin:0;line-height:1.6">
-            Je┼Ťli przycisk nie dzia┼éa, skopiuj i wklej ten adres w przegl─ůdarce:<br />
+            Je\u015Bli przycisk nie dzia\u0142a, skopiuj ten adres i wklej w przegl\u0105dark\u0119:<br />
             <a href="${opts.magicLink}" style="color:#1a5c32;word-break:break-all;font-size:11px">${opts.magicLink}</a>
           </p>
         </td></tr>
+
+        <!-- Footer -->
         <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb">
-          <p style="margin:0;font-size:12px;color:#9ca3af">
-            Zaproszenie wys┼éano przez <strong>${opts.fromName}</strong>.
-            ${opts.replyTo ? `W razie pyta┼ä odpowiedz na ten email lub napisz na <a href="mailto:${opts.replyTo}" style="color:#1a5c32">${opts.replyTo}</a>.` : ''}
+          <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6">
+            Wiadomo\u015B\u0107 wys\u0142ana przez <strong>${opts.fromName}</strong> za po\u015Brednictwem LoftDesk.
+            ${replyBlock}
           </p>
         </td></tr>
+
       </table>
     </td></tr>
   </table>
@@ -108,7 +142,7 @@ async function sendInviteEmail(opts: {
     from:     `${fromLabel} <${fromEmail}>`,
     to:       [opts.to],
     reply_to: opts.replyTo ?? undefined,
-    subject:  `Zaproszenie do projektu: ${opts.projectName}`,
+    subject,
     html,
   }
 
