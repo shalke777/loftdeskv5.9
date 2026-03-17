@@ -94,9 +94,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (!documentName) return json(400, { ok: false, error: 'document_name_required' })
 
   // ── Send via Resend ───────────────────────────────────────────────────────
-  const resendKey  = process.env.RESEND_API_KEY
-  const fromEmail  = process.env.RESEND_FROM_EMAIL ?? 'noreply@resend.dev'
-  if (!resendKey) {
+  // IMPORTANT: RESEND_FROM_EMAIL must be set to an address on your Resend-verified domain
+  // (e.g. noreply@loftdesk.pl). Using @resend.dev causes 403 for all recipients
+  // outside the Resend account owner's own email. Set this in Netlify → Environment Variables.
+  const resendKey = process.env.RESEND_API_KEY
+  const fromEmail = process.env.RESEND_FROM_EMAIL
+  if (!resendKey || !fromEmail) {
+    console.error('[send-document] Missing RESEND_API_KEY or RESEND_FROM_EMAIL env vars')
     return json(200, { ok: false, email_sent: false, error: 'email_provider_not_configured' })
   }
 
