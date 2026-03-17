@@ -51,11 +51,15 @@ async function sendInviteEmail(opts: {
   if (envFrom && !EMAIL_VAL_RE.test(envFrom)) {
     console.warn(`[client-identify] RESEND_FROM_EMAIL='${envFrom}' is not a valid email — using fallback '${FROM_FALLBACK}'`)
   }
-  const fromLabel  = opts.fromName ? `${opts.fromName} (przez LoftDesk)` : 'LoftDesk'
-  const firstName  = opts.toName ? opts.toName.split(' ')[0] : null
+  // Escape HTML special chars to prevent malformed HTML if company/project name contains & < >
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const safeName    = esc(opts.fromName)
+  const safeProject = esc(opts.projectName)
+  const fromLabel   = opts.fromName ? `${opts.fromName} (przez LoftDesk)` : 'LoftDesk'
+  const firstName   = opts.toName ? opts.toName.split(' ')[0] : null
   // All Polish characters written as \uXXXX escapes to be 100% encoding-safe
   // regardless of the source file codepage on the build machine.
-  const greeting   = firstName
+  const greeting    = firstName
     ? `Dzie\u0144 dobry, ${firstName},`
     : 'Dzie\u0144 dobry,'
   const replyBlock = opts.replyTo
@@ -72,7 +76,7 @@ async function sendInviteEmail(opts: {
   <title>${subject}</title>
 </head>
 <body style="margin:0;padding:0;background:#f5f0e8;font-family:'Segoe UI',Arial,sans-serif">
-  <span style="display:none;max-height:0;overflow:hidden;mso-hide:all">${previewText}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</span>
+  <span style="display:none;max-height:0;overflow:hidden;mso-hide:all">${previewText}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</span>
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;padding:40px 16px">
     <tr><td align="center">
       <table width="540" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,.08)">
@@ -89,7 +93,7 @@ async function sendInviteEmail(opts: {
         <tr><td style="padding:36px 32px 28px">
           <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 16px;line-height:1.4">${greeting}</p>
           <p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 8px">
-            Firma <strong>${opts.fromName}</strong> udost\u0119pni\u0142a Ci dost\u0119p do portalu klienta LoftDesk.
+            Firma <strong>${safeName}</strong> udost\u0119pni\u0142a Ci dost\u0119p do portalu klienta LoftDesk.
           </p>
           <p style="font-size:14px;color:#6b7280;line-height:1.6;margin:0 0 24px">
             Mo\u017Cesz \u015Bledzi\u0107 post\u0119p prac, przegl\u0105da\u0107 dokumenty i komunikowa\u0107 si\u0119 z wykonawc\u0105 w jednym miejscu.
@@ -99,7 +103,7 @@ async function sendInviteEmail(opts: {
           <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px">
             <tr><td style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 18px">
               <p style="margin:0 0 3px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.6px">Realizacja</p>
-              <p style="margin:0;font-size:15px;font-weight:700;color:#15803d">${opts.projectName}</p>
+              <p style="margin:0;font-size:15px;font-weight:700;color:#15803d">${safeProject}</p>
             </td></tr>
           </table>
 
@@ -127,7 +131,7 @@ async function sendInviteEmail(opts: {
         <!-- Footer -->
         <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb">
           <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6">
-            Wiadomo\u015B\u0107 wys\u0142ana przez <strong>${opts.fromName}</strong> za po\u015Brednictwem LoftDesk.
+            Wiadomo\u015B\u0107 wys\u0142ana przez <strong>${safeName}</strong> za po\u015Brednictwem LoftDesk.
             ${replyBlock}
           </p>
         </td></tr>
