@@ -44,7 +44,13 @@ async function sendInviteEmail(opts: {
   const key = process.env.RESEND_API_KEY
   if (!key) return
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL ?? 'noreply@mail.loftdesk.pl'
+  const FROM_FALLBACK = 'noreply@mail.loftdesk.pl'
+  const EMAIL_VAL_RE  = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+  const envFrom   = process.env.RESEND_FROM_EMAIL ?? ''
+  const fromEmail = EMAIL_VAL_RE.test(envFrom) ? envFrom : FROM_FALLBACK
+  if (envFrom && !EMAIL_VAL_RE.test(envFrom)) {
+    console.warn(`[client-identify] RESEND_FROM_EMAIL='${envFrom}' is not a valid email — using fallback '${FROM_FALLBACK}'`)
+  }
   const fromLabel = opts.fromName ? `${opts.fromName} (przez LoftDesk)` : 'LoftDesk'
   const greeting  = opts.toName ? `Cze┼Ť─ç ${opts.toName.split(' ')[0]}` : 'Cze┼Ť─ç'
 

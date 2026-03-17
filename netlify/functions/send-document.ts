@@ -94,8 +94,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (!documentName) return json(400, { ok: false, error: 'document_name_required' })
 
   // ── Send via Resend ───────────────────────────────────────────────────────
+  const FROM_FALLBACK = 'noreply@mail.loftdesk.pl'
+  const EMAIL_VAL_RE  = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+  const envFrom   = process.env.RESEND_FROM_EMAIL ?? ''
+  const fromEmail = EMAIL_VAL_RE.test(envFrom) ? envFrom : FROM_FALLBACK
+  if (envFrom && !EMAIL_VAL_RE.test(envFrom)) {
+    console.warn(`[send-document] RESEND_FROM_EMAIL='${envFrom}' is not a valid email — using fallback '${FROM_FALLBACK}'`)
+  }
   const resendKey = process.env.RESEND_API_KEY
-  const fromEmail = process.env.RESEND_FROM_EMAIL ?? 'noreply@mail.loftdesk.pl'
   if (!resendKey) {
     console.error('[send-document] Missing RESEND_API_KEY env var')
     return json(200, { ok: false, email_sent: false, error: 'email_provider_not_configured' })
