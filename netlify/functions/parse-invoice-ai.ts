@@ -20,6 +20,7 @@
 
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import type { ParseInvoiceResult } from './parse-invoice'
+import { extractTextFromPDF, extractEmbeddedJpegsFromPdf } from './parse-invoice'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -192,12 +193,42 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return err(400, 'invalid_json', 'Request body must be valid JSON')
   }
 
-  const textContent = body.text_content as string | undefined
-  const imageBase64 = body.image_base64 as string | undefined
-  const imageType   = String(body.image_type ?? 'image/jpeg')
+  let textContent = body.text_content as string | undefined
+  let imageBase64 = body.image_base64 as string | undefined
+  let imageType   = String(body.image_type ?? 'image/jpeg')
+
+  // ── PDF input: extract text layer or embedded JPEGs server-side ──────────
+  // This enables the same AI quality for PDFs as for scanned images.
+  const pdfBase64 = body.pdf_base64 as string | undefined
+  if (pdfBase64) {
+    try {
+      const pdfBuffer = Buffer.from(pdfBase64, 'base64')
+
+      // 1. Try to extract text layer (works for all digitally-generated PDFs)
+      const extracted = await extractTextFromPDF(pdfBuffer)
+      if (extracted.trim().length >= 40) {
+        // Append to any locally-extracted text the caller may have passed
+        textContent = extracted + (textContent ? '\n\n' + textContent : '')
+        console.info('PDF_TEXT_EXTRACTED', JSON.stringify({ chars: extracted.length }))
+      } else {
+        // 2. Scanned PDF — extract embedded JPEG images and use first one for vision
+        const jpegs = extractEmbeddedJpegsFromPdf(pdfBuffer)
+        if (jpegs.length > 0) {
+          imageBase64 = jpegs[0].toString('base64')
+          imageType   = 'image/jpeg'
+          console.info('PDF_JPEG_EXTRACTED', JSON.stringify({ total: jpegs.length, usedIndex: 0, sizeBytes: jpegs[0].length }))
+        } else {
+          console.warn('PDF_NO_CONTENT', 'No text layer and no embedded JPEGs found in PDF')
+        }
+      }
+    } catch (pdfErr) {
+      console.error('PDF_EXTRACT_ERROR', String(pdfErr))
+      // Non-fatal — continue with whatever text_content was provided
+    }
+  }
 
   if (!textContent && !imageBase64) {
-    return err(400, 'missing_input', 'Provide text_content or image_base64', { aiAttempted: false })
+    return err(400, 'missing_input', 'Provide text_content, image_base64, or pdf_base64', { aiAttempted: false })
   }
 
   // ── Validate image MIME — never accept PDF in vision path ────────────────

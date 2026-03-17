@@ -152,6 +152,7 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
  */
 export async function callParseInvoiceAI(file: File, extractedText?: string): Promise<ParseInvoiceResult> {
   const isImage = IMAGE_MIME_SET.has(file.type) || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(file.name)
+  const isPDF   = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
 
   const body: Record<string, string> = {}
 
@@ -160,14 +161,16 @@ export async function callParseInvoiceAI(file: File, extractedText?: string): Pr
     const processedFile = await preprocessForOCR(file)
     body.image_base64 = await fileToBase64(processedFile)
     body.image_type   = 'image/jpeg'
+  } else if (isPDF) {
+    // Send raw PDF bytes — server extracts text layer or embedded JPEGs
+    body.pdf_base64 = await fileToBase64(file)
   }
 
   if (extractedText?.trim()) {
     body.text_content = extractedText.slice(0, 12_000)
   }
 
-  if (!body.image_base64 && !body.text_content) {
-    // Scanned PDF without a text layer — AI vision requires an image input
+  if (!body.image_base64 && !body.text_content && !body.pdf_base64) {
     return {
       vendor_name: null, vendor_nip: null, invoice_number: null,
       issue_date: null, sale_date: null, net_amount: null,

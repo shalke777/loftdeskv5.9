@@ -167,16 +167,22 @@ export function ExpensesPage() {
           ocrUnavailable = msg.includes('Serwer OCR') || msg.includes('niedostępny')
         }
 
-        // Step B: AI fallback — try when OCR failed for images, or OCR confidence is low
+        // Step B: AI fallback — try when OCR failed or confidence is low (PDFs included)
         const ocrConf = ocrResult?.extraction_confidence ?? 0
-        const needsAI = (ocrFailed && !isPDF) || (!ocrFailed && ocrConf < 50)
+        const needsAI = ocrFailed || ocrConf < 50
 
         if (needsAI) {
           setUploadStep('Analizuję przez AI...')
           try {
-            const aiResult = await callParseInvoiceAI(file)
+            // For PDFs, pass any locally-extracted raw text as a hint to the AI
+            let pdfHintText: string | undefined
+            if (isPDF) {
+              try { pdfHintText = await extractRawPdfText(file) } catch { /* non-fatal */ }
+            }
+            const aiResult = await callParseInvoiceAI(file, pdfHintText)
             const aiConf   = aiResult.extraction_confidence ?? 0
-            if (aiConf >= ocrConf) {
+            // Only take AI result if it actually extracted something useful
+            if (aiConf > 0 && aiConf >= ocrConf) {
               ocrResult = aiResult   // AI gave equal or better result
             }
           } catch {

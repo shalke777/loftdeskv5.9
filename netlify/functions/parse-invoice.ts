@@ -30,43 +30,23 @@ const inflateAsync    = promisify(zlib.inflate)
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export interface ParsedLineItem {
-  name:         string | null
-  quantity:     number | null
-  unit:         string | null
-  unit_net:     number | null
-  vat_rate:     number | null
-  net_amount:   number | null
-  vat_amount:   number | null
-  gross_amount: number | null
-}
-
 export interface ParseInvoiceResult {
-  vendor_name:     string | null
-  vendor_nip:      string | null
-  vendor_address?: string | null
-  invoice_number:  string | null
-  issue_date:      string | null
-  sale_date:       string | null
-  net_amount:      number | null
-  vat_amount:      number | null
-  gross_amount:    number | null
-  currency:        string
+  vendor_name:    string | null
+  vendor_nip:     string | null
+  invoice_number: string | null
+  issue_date:     string | null
+  sale_date:      string | null
+  net_amount:     number | null
+  vat_amount:     number | null
+  gross_amount:   number | null
+  currency:       string
   payment_due_date: string | null
-  notes:           string | null
-  // buyer
-  buyer_name?:     string | null
-  buyer_nip?:      string | null
-  buyer_address?:  string | null
-  // line items
-  line_items?:     ParsedLineItem[]
+  notes:          string | null
   // metadata
   extraction_confidence:    number   // 0–100
   extraction_warnings:      string[]
   requires_user_confirmation: boolean
   parser_source:            'ai' | 'regex' | 'manual'
-  // raw text extracted server-side (used as AI input for PDFs on the client)
-  extracted_text?:          string
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -93,13 +73,9 @@ async function extractViaOCR(
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore — tesseract.js is installed in netlify/functions/node_modules, not root
     const { createWorker } = await import('tesseract.js')
-    const worker = await createWorker(['pol'], 1, {
+    const worker = await createWorker(['pol', 'eng'], 1, {
       logger: () => {}, // suppress progress output in function logs
     })
-    // PSM 6: Assume a single uniform block of text.
-    // Better than the default PSM 3 (full auto) for Polish invoices with a
-    // predictable layout — reduces misidentification of columns as separate pages.
-    await worker.setParameters({ tessedit_pageseg_mode: '6' as any })
     const buffer = Buffer.from(fileBase64, 'base64')
     const { data: { text } } = await worker.recognize(buffer)
     await worker.terminate()
@@ -125,7 +101,7 @@ async function extractViaOCR(
  * (JPEG) image, so this works for the common "scanned PDF" case without needing
  * pdfjs-dist or the native `canvas` package.
  */
-function extractEmbeddedJpegsFromPdf(buffer: Buffer): Buffer[] {
+export function extractEmbeddedJpegsFromPdf(buffer: Buffer): Buffer[] {
   const jpegs: Buffer[] = []
   const SOI = Buffer.from([0xFF, 0xD8, 0xFF]) // JPEG start-of-image
   const EOI = Buffer.from([0xFF, 0xD9])        // JPEG end-of-image
@@ -196,7 +172,7 @@ function decodePdfStr(s: string): string {
  * Scanned PDFs (image-only) have no text streams — those return empty string
  * and fall through to the JPEG OCR extraction path.
  */
-async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   const chunks: string[] = []
   const str = buffer.toString('binary')
 
@@ -555,20 +531,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const confidence = calcConfidence(parsed)
   const warnings   = [...baseWarnings, ...buildWarnings(parsed)]
 
-  // Return extracted_text for PDFs so the client can pass it to the AI fallback
-  // (the client-side PDF text extractor only handles uncompressed streams, so for
-  // all FlateDecode-compressed PDFs the client rawText is empty while we may have
-  // useful text here from zlib decompression or embedded-JPEG OCR).
-  const responseBody: ParseInvoiceResult = {
+  return json(200, {
     ...parsed,
     parser_source: parserSource,
     extraction_confidence:    confidence,
     extraction_warnings:      warnings,
     requires_user_confirmation: confidence < 70 || warnings.length > 0,
-    ...(isPDF && extractedText ? { extracted_text: extractedText.slice(0, 50_000) } : {}),
-  }
-
-  return json(200, responseBody as unknown as Record<string, unknown>)
+  } satisfies ParseInvoiceResult)
 }
 
 function emptyResult(): Omit<ParseInvoiceResult, 'extraction_confidence' | 'extraction_warnings' | 'requires_user_confirmation' | 'parser_source'> {
