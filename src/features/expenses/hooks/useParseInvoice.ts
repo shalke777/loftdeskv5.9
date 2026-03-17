@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import type { ParseInvoiceResult, ExpenseSourceType, ParsedExpenseData } from '@/features/expenses/api/expenses.api'
+import type { ParseInvoiceResult, ExpenseSourceType } from '@/features/expenses/api/expenses.api'
 
 const MAX_FILE_SIZE  = 5 * 1024 * 1024 // 5 MB
 const MAX_OCR_WIDTH  = 1800             // px — keeps detail, reduces payload
@@ -39,38 +39,12 @@ async function preprocessForOCR(file: File): Promise<File> {
 
     ctx.drawImage(img, 0, 0, w, h)
 
-    // Step 1: 3×3 median blur to suppress noise before contrast boost.
-    // Without this step, amplifying contrast on a grainy photo turns background
-    // noise into phantom "letters" that confuse Tesseract (e.g. random NIP digits,
-    // garbled vendor name from a textured paper background).
+    // Convert to grayscale + mild contrast boost (improves OCR edge detection)
     const id = ctx.getImageData(0, 0, w, h)
     const d  = id.data
-    const tmp = new Uint8ClampedArray(d.length)
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const i = (y * w + x) * 4
-        // Collect 3×3 neighbourhood values (clamp to edges)
-        const vals: number[] = []
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            const nx = Math.min(w - 1, Math.max(0, x + dx))
-            const ny = Math.min(h - 1, Math.max(0, y + dy))
-            const ni = (ny * w + nx) * 4
-            // Use luminance of the original pixel
-            vals.push(0.299 * d[ni] + 0.587 * d[ni + 1] + 0.114 * d[ni + 2])
-          }
-        }
-        vals.sort((a, b) => a - b)
-        tmp[i] = tmp[i + 1] = tmp[i + 2] = vals[4] // median (middle of 9)
-        tmp[i + 3] = d[i + 3]
-      }
-    }
-    // Copy median-filtered grayscale back
-    for (let i = 0; i < d.length; i++) d[i] = tmp[i]
-
-    // Step 2: Mild contrast boost on the already-denoised grayscale image.
     for (let i = 0; i < d.length; i += 4) {
-      const boosted = Math.min(255, Math.max(0, (d[i] - 128) * 1.3 + 128))
+      const gray    = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
+      const boosted = Math.min(255, Math.max(0, (gray - 128) * 1.3 + 128))
       d[i] = d[i + 1] = d[i + 2] = boosted
       // d[i+3] (alpha) unchanged
     }
@@ -169,6 +143,67 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
 }
 
 /**
+ * Calls the parse-invoice-ai Netlify function (OpenAI Responses API).
+ * Use as fallback when OCR is unavailable or returns low confidence.
+ * Requires OPENAI_API_KEY in Netlify env vars — throws if not configured.
+ *
+ * @param file          The invoice file (image or PDF)
+ * @param extractedText Optional raw text already extracted (e.g. from PDF text layer)
+ */
+export async function callParseInvoiceAI(file: File, extractedText?: string): Promise<ParseInvoiceResult> {
+  const isImage = IMAGE_MIME_SET.has(file.type) || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(file.name)
+
+  const body: Record<string, string> = {}
+
+  if (isImage) {
+    // Preprocess and encode image for vision API
+    const processedFile = await preprocessForOCR(file)
+    body.image_base64 = await fileToBase64(processedFile)
+    body.image_type   = 'image/jpeg'
+  }
+
+  if (extractedText?.trim()) {
+    body.text_content = extractedText.slice(0, 12_000)
+  }
+
+  if (!body.image_base64 && !body.text_content) {
+    // Scanned PDF without a text layer — AI vision requires an image input
+    return {
+      vendor_name: null, vendor_nip: null, invoice_number: null,
+      issue_date: null, sale_date: null, net_amount: null,
+      vat_amount: null, gross_amount: null, currency: 'PLN',
+      payment_due_date: null, notes: null,
+      extraction_confidence: 0,
+      extraction_warnings: ['Brak danych wejściowych dla AI — wpisz pola ręcznie.'],
+      requires_user_confirmation: true,
+      parser_source: 'manual',
+    }
+  }
+
+  let resp: Response
+  try {
+    resp = await fetch('/.netlify/functions/parse-invoice-ai', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    })
+  } catch {
+    throw new Error('Serwer AI niedostępny.')
+  }
+
+  const data = await resp.json().catch(() => ({})) as Record<string, unknown>
+
+  if (!resp.ok) {
+    const errCode = String(data.error ?? '')
+    if (errCode === 'ai_not_configured')   throw new Error('AI nie jest skonfigurowane (brak OPENAI_API_KEY)')
+    if (errCode === 'openai_quota_exceeded') throw new Error('Quota OpenAI wyczerpana — sprawdź billing')
+    throw new Error(String(data.message ?? `HTTP ${resp.status}`))
+  }
+
+  return (data.result ?? data) as ParseInvoiceResult
+}
+
+/**
  * Hook that wraps the parse-invoice Netlify function as a React Query mutation.
  *
  * Usage:
@@ -181,287 +216,4 @@ export function useParseInvoice() {
     mutationFn: ({ file, sourceType }: { file: File; sourceType: ExpenseSourceType }) =>
       callParseInvoice(file, sourceType),
   })
-}
-
-// ── AI fallback helpers ───────────────────────────────────────────────────────
-
-/**
- * Detect if raw OCR/PDF text looks like a receipt rather than an invoice.
- */
-export function detectDocumentType(text: string): 'invoice' | 'receipt' | 'unknown' {
-  const t = text.toLowerCase()
-  const receiptHits = ['paragon', 'fiskalny', 'fiskalna', 'kasa fisk', 'ptu', 'suma pln', 'nr paragonu']
-    .filter(kw => t.includes(kw)).length
-  const invoiceHits = ['faktura', 'fvat', 'numer faktury', 'nr faktury']
-    .filter(kw => t.includes(kw)).length
-  if (receiptHits >= 2 || (receiptHits >= 1 && invoiceHits === 0)) return 'receipt'
-  if (invoiceHits >= 1) return 'invoice'
-  return 'unknown'
-}
-
-/**
- * Decide whether AI fallback is needed based on local parse quality.
- * Triggers when: receipt, confidence < 70, < 4 of 7 key fields filled,
- * or any of the three most critical fields (vendor, gross, invoice number) are missing.
- */
-export function shouldUseAI(
-  confidence: number,
-  parsed: ParsedExpenseData,
-  docType: 'invoice' | 'receipt' | 'unknown',
-): boolean {
-  // ── Determine reason for (or against) AI fallback ──────────────────────────
-  let reason: string | null = null
-
-  if (docType === 'receipt') {
-    reason = 'receipt_detected'
-  } else if (confidence < 70) {
-    reason = 'low_confidence'
-  } else {
-    const keyFilled = [
-      parsed.vendor,
-      parsed.vendor_nip,
-      parsed.invoice_number,
-      parsed.issue_date,
-      parsed.amount_gross,
-      parsed.amount_net,
-      parsed.amount_vat,
-    ].filter(v => v != null && v !== '' && v !== 0).length
-
-    if (keyFilled < 4) {
-      reason = 'missing_fields'
-    } else if (!parsed.vendor) {
-      reason = 'missing_vendor'
-    } else if (!parsed.amount_gross) {
-      reason = 'missing_gross'
-    }
-  }
-
-  const keyFilled = [
-    parsed.vendor,
-    parsed.vendor_nip,
-    parsed.invoice_number,
-    parsed.issue_date,
-    parsed.amount_gross,
-    parsed.amount_net,
-    parsed.amount_vat,
-  ].filter(v => v != null && v !== '' && v !== 0).length
-
-  const decision = reason !== null
-
-  // ── DIAGNOSTIC LOG (tymczasowe) ────────────────────────────────────────────
-  console.info('AI_FALLBACK_DECISION', {
-    shouldUseAI:  decision,
-    reason:       reason ?? 'not_needed',
-    confidence,
-    filledFields: keyFilled,
-    docType,
-    hasVendor:    !!parsed.vendor,
-    hasGross:     !!parsed.amount_gross,
-    hasInvNum:    !!parsed.invoice_number,
-  })
-
-  return decision
-}
-
-/**
- * Merge AI ParseInvoiceResult into existing ParsedExpenseData.
- *
- * Rules (applied per field):
- *  - Local value wins if it is non-empty and passes quality checks.
- *  - AI fills genuinely missing fields.
- *  - AI wins when it produces a more complete value (e.g. longer invoice number
- *    with recognisable prefix, full company name vs. fragment).
- *  - Sanity checks guard against hallucinated amounts or bad dates.
- */
-export function mergeIntoExpenseData(
-  local: ParsedExpenseData,
-  ai: ParseInvoiceResult,
-): ParsedExpenseData {
-
-  // ── Date validator ──────────────────────────────────────────────────────────
-  function validDate(v: string | null | undefined): string | undefined {
-    if (!v) return undefined
-    // Accept ISO YYYY-MM-DD only after normDate normalisation already ran in the backend
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return undefined
-    const d = new Date(v)
-    if (isNaN(d.getTime())) return undefined
-    const year = d.getFullYear()
-    if (year < 2000 || year > 2035) return undefined   // sanity range
-    return v
-  }
-
-  // ── Invoice number scorer — returns numeric quality score 0-3 ──────────────
-  // Higher = more trustworthy:  3 = known prefix + long  2 = long  1 = short  0 = empty/junk
-  function invoiceNumberScore(v: string | null | undefined): number {
-    if (!v || v.trim().length < 2) return 0
-    const upper = v.trim().toUpperCase()
-    // Reject values that look like field labels, not numbers
-    if (/^(FAKTURA|PARAGON|NIP|DATA|BRUTTO|NETTO|VAT|RAZEM)/.test(upper)) return 0
-    const hasPrefix = /^(FV|FA|FS|FZ|FVAT|F\/|FK|FR|VAT)/.test(upper)
-    const len = upper.length
-    if (hasPrefix && len >= 8) return 3
-    if (hasPrefix) return 2
-    if (len >= 6) return 1
-    return 0
-  }
-
-  // ── Vendor name validator ───────────────────────────────────────────────────
-  // Rejects obvious hallucinations: document headers, field labels, NIP lines.
-  const BAD_VENDOR_PATTERNS = [
-    /^faktura/i, /^paragon/i, /^nip$/i, /^data wystawienia/i,
-    /^data sprzeda/i, /^termin/i, /^razem/i, /^brutto/i,
-    /^netto/i, /^do zap/i, /^suma/i, /^nr faktury/i, /^nr dok/i,
-  ]
-  function validVendor(v: string | null | undefined): string | undefined {
-    if (!v || v.trim().length < 2) return undefined
-    const t = v.trim()
-    if (BAD_VENDOR_PATTERNS.some(re => re.test(t))) return undefined
-    // Reject if value looks purely numeric (e.g. hallucinated NIP as vendor)
-    if (/^\d+$/.test(t.replace(/[\s\-]/g, ''))) return undefined
-    return t
-  }
-
-  // ── NIP validator (Polish 10-digit tax ID) ──────────────────────────────────
-  function validNip(v: string | null | undefined): string | undefined {
-    if (!v) return undefined
-    const digits = v.replace(/\D/g, '')
-    if (digits.length !== 10) return undefined
-    // NIP checksum
-    const weights = [6, 5, 7, 2, 3, 4, 5, 6, 7]
-    const sum = weights.reduce((acc, w, i) => acc + w * parseInt(digits[i]), 0)
-    if (sum % 11 !== parseInt(digits[9])) return undefined
-    return digits
-  }
-
-  // ── Amount sanity checks ───────────────────────────────────────────────────
-  function validAmount(v: number | null | undefined): number | undefined {
-    if (v == null) return undefined
-    if (!isFinite(v) || v < 0 || v > 10_000_000) return undefined   // > 10M PLN is suspect
-    return Math.round(v * 100) / 100
-  }
-
-  // ── Pick best invoice number ────────────────────────────────────────────────
-  const localInvScore = invoiceNumberScore(local.invoice_number)
-  const aiInvScore    = invoiceNumberScore(ai.invoice_number)
-  const bestInvoiceNumber = (
-    aiInvScore > localInvScore ? ai.invoice_number :
-    localInvScore > 0          ? local.invoice_number :
-    ai.invoice_number          // both zero — take AI (it might be a receipt)
-  ) ?? undefined
-
-  // ── Pick best vendor ────────────────────────────────────────────────────────
-  const localVendor = validVendor(local.vendor)
-  const aiVendor    = validVendor(ai.vendor_name)
-  let bestVendor = localVendor   // local wins by default
-  if (!localVendor && aiVendor) {
-    bestVendor = aiVendor
-  } else if (localVendor && aiVendor) {
-    // Prefer the longer, more complete name
-    bestVendor = aiVendor.length > localVendor.length + 3 ? aiVendor : localVendor
-  }
-
-  // ── Pick best NIP ───────────────────────────────────────────────────────────
-  const localNip = validNip(local.vendor_nip) ?? (local.vendor_nip || undefined)
-  const aiNip    = validNip(ai.vendor_nip)
-  // If local NIP passes checksum but AI does not, always keep local
-  const bestNip  = validNip(local.vendor_nip)
-    ? local.vendor_nip
-    : (aiNip ?? local.vendor_nip ?? undefined)
-
-  // ── Pick best dates ─────────────────────────────────────────────────────────
-  const bestIssueDate = validDate(local.issue_date) ?? validDate(ai.issue_date)
-
-  // ── Pick best amounts ───────────────────────────────────────────────────────
-  const localNet   = validAmount(local.amount_net)
-  const localVat   = validAmount(local.amount_vat)
-  const localGross = validAmount(local.amount_gross)
-  const aiNet      = validAmount(ai.net_amount)
-  const aiVat      = validAmount(ai.vat_amount)
-  const aiGross    = validAmount(ai.gross_amount)
-
-  // Local wins for any already-set amount; AI fills gaps only
-  let bestNet   = localNet   ?? aiNet
-  let bestVat   = localVat   ?? aiVat
-  let bestGross = localGross ?? aiGross
-
-  // Amounts sanity cross-check: net + vat ≈ gross (within 5%)
-  if (bestNet != null && bestVat != null && bestGross != null) {
-    const derived = Math.round((bestNet + bestVat) * 100) / 100
-    const tolerance = Math.max(0.10, bestGross * 0.05)
-    if (Math.abs(derived - bestGross) > tolerance) {
-      // Inconsistency — trust gross (user sees it first), try to derive vat
-      bestVat = Math.round((bestGross - bestNet) * 100) / 100
-    }
-  } else if (bestNet != null && bestVat != null && bestGross == null) {
-    bestGross = Math.round((bestNet + bestVat) * 100) / 100
-  }
-
-  // ── Pick description ────────────────────────────────────────────────────────
-  const localDesc = local.description?.trim() || undefined
-  const aiNotes   = ai.notes?.trim() || undefined
-  const bestDesc  = localDesc ?? aiNotes
-
-  return {
-    invoice_number: bestInvoiceNumber,
-    vendor:         bestVendor,
-    vendor_nip:     bestNip,
-    issue_date:     bestIssueDate,
-    amount_net:     bestNet,
-    amount_vat:     bestVat,
-    amount_gross:   bestGross,
-    description:    bestDesc,
-  }
-}
-
-
-/**
- * Call the parse-invoice-ai Netlify function.
- * Accepts either extracted text or a base64 image (JPEG/PNG/WEBP — NOT raw PDF).
- * NOTE: For scanned PDFs without a text layer, skip this call entirely on the
- *       frontend — sending raw PDF bytes to the vision endpoint causes 400/502.
- *
- * Response contract: { ok: true, result: ParseInvoiceResult } | { ok: false, error, message }
- */
-export async function callParseInvoiceAI(params: {
-  textContent?: string
-  imageBase64?: string
-  imageType?: string
-}): Promise<ParseInvoiceResult> {
-  let resp: Response
-  try {
-    resp = await fetch('/.netlify/functions/parse-invoice-ai', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text_content: params.textContent,
-        image_base64: params.imageBase64,
-        image_type:   params.imageType,
-      }),
-    })
-  } catch {
-    throw new Error('AI fallback niedostępny — brak połączenia z funkcją')
-  }
-
-  // Always parse JSON — the function now returns { ok, result } or { ok, error, message }
-  let data: Record<string, unknown>
-  try {
-    data = await resp.json() as Record<string, unknown>
-  } catch {
-    throw new Error(`AI HTTP ${resp.status}: niepoprawna odpowiedź serwera`)
-  }
-
-  // ── DIAGNOSTIC LOG (tymczasowe) ────────────────────────────────────────────
-  console.info('AI_FALLBACK_RESPONSE', {
-    httpStatus:   resp.status,
-    ok:           data.ok,
-    aiAttempted:  data.aiAttempted,
-    aiModelUsed:  data.aiModelUsed,
-    error:        data.error ?? null,
-  })
-
-  if (!data.ok) {
-    throw new Error(String(data.message ?? data.error ?? `AI HTTP ${resp.status}`))
-  }
-
-  return data.result as ParseInvoiceResult
 }

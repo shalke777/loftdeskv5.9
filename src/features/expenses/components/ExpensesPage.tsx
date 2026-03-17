@@ -3,7 +3,7 @@ import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks/useExpenses'
 import { expensesApi, ExpenseInvoice, ParsedExpenseData, parseInvoiceFromText } from '../api/expenses.api'
 import type { ParseInvoiceResult, ExpenseSourceType } from '../api/expenses.api'
-import { callParseInvoice, callParseInvoiceAI, detectDocumentType, shouldUseAI, mergeIntoExpenseData } from '../hooks/useParseInvoice'
+import { callParseInvoice, callParseInvoiceAI } from '../hooks/useParseInvoice'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Button } from '@/shared/ui/Button/Button'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
@@ -101,15 +101,11 @@ export function ExpensesPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
-  // Tracks which input triggered the file picker so we can skip Tesseract for
-  // camera shots and go straight to GPT vision (better accuracy, no cold-start).
-  const pendingSourceRef = useRef<ExpenseSourceType>('gallery')
 
   const [uploading, setUploading] = useState(false)
-  const [isParsingDocument, setIsParsingDocument] = useState(false)
   const [uploadStep, setUploadStep] = useState<string>('Przesyłanie...')
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [parseStatus, setParseStatus] = useState<{ level: 'success'|'partial'|'empty'|'error'|'ocr-unavailable', message: string, parserSource?: 'ai'|'regex'|'manual' } | null>(null)
+  const [parseStatus, setParseStatus] = useState<{ level: 'success'|'partial'|'empty'|'error'|'ocr-unavailable', message: string } | null>(null)
 
   // modal: 'add' or 'edit'
   const [modal, setModal] = useState<{ type: 'add'; fileUrl: string; fileName: string; parsed: ParsedExpenseData; previewBlobUrl?: string } | { type: 'edit'; expense: ExpenseInvoice } | null>(null)
@@ -122,37 +118,25 @@ export function ExpensesPage() {
 
   async function handleFileSelected(file: File) {
     if (!file) return
-    // Capture source at the moment the file is picked (pendingSourceRef was set by the
-    // button click handler before triggering the file picker).
-    const fileSource = pendingSourceRef.current
     setUploading(true)
     setUploadStep('Przesyłanie pliku...')
     setUploadError(null)
     setParseStatus(null)
-    console.info('EXPENSE_PARSE_LOADING_START')
     try {
       // ── Step 1: upload to storage ─────────────────────────────
       const { url, name } = await expensesApi.uploadFile(file, companyId)
 
       // ── Step 2: choose extraction path ────────────────────────
-      const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-      // Camera shots go straight to GPT vision — skipping Tesseract entirely.
-      // Reasons: Tesseract struggles with shadows / perspective / low contrast that
-      // are typical on phone camera photos; GPT vision is significantly more accurate
-      // and avoids the Netlify cold-start overhead of loading Tesseract WASM.
-      const isCamera = fileSource === 'camera'
+      const isPDF   = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
       let parsed: ParsedExpenseData = {}
       let usedLocalParser = false
-      let rawText = ''
-      let ocrResult: ParseInvoiceResult | null = null
-      let ocrErrorLevel: 'ocr-unavailable' | 'error' | null = null
 
-      setUploadStep('Odczyt lokalny...')
+      setUploadStep('Odczytuję tekst...')
 
       // For digitally-generated PDFs: try fast local text extraction first
       if (isPDF) {
         try {
-          rawText = await extractRawPdfText(file)
+          const rawText = await extractRawPdfText(file)
           const PDF_KEYWORDS = ['faktura', 'fvat', 'nip', 'netto', 'brutto', 'zaplat', 'termin']
           const hasGoodText  = rawText.trim().length >= 80 &&
             PDF_KEYWORDS.some(kw => rawText.toLowerCase().includes(kw))
@@ -165,14 +149,43 @@ export function ExpensesPage() {
         }
       }
 
-      // For images OR scanned PDFs without usable text layer: use Netlify OCR.
-      // EXCEPTION: camera shots skip Tesseract entirely and go straight to GPT vision
-      // (see isCamera flag; handled below in the AI step).
-      if (!usedLocalParser && !isCamera) {
+      // For images OR scanned PDFs without usable text layer: use Netlify OCR + AI fallback
+      if (!usedLocalParser) {
         setUploadStep('Analizuję dane faktury...')
+
+        let ocrResult: ParseInvoiceResult | null = null
+        let ocrFailed = false
+        let ocrUnavailable = false
+
+        // Step A: OCR (Tesseract / PDF text extraction on server)
         try {
           const sourceType: ExpenseSourceType = isPDF ? 'pdf' : 'gallery'
           ocrResult = await callParseInvoice(file, sourceType)
+        } catch (ocrErr: unknown) {
+          const msg = ocrErr instanceof Error ? ocrErr.message : ''
+          ocrFailed = true
+          ocrUnavailable = msg.includes('Serwer OCR') || msg.includes('niedostępny')
+        }
+
+        // Step B: AI fallback — try when OCR failed for images, or OCR confidence is low
+        const ocrConf = ocrResult?.extraction_confidence ?? 0
+        const needsAI = (ocrFailed && !isPDF) || (!ocrFailed && ocrConf < 50)
+
+        if (needsAI) {
+          setUploadStep('Analizuję przez AI...')
+          try {
+            const aiResult = await callParseInvoiceAI(file)
+            const aiConf   = aiResult.extraction_confidence ?? 0
+            if (aiConf >= ocrConf) {
+              ocrResult = aiResult   // AI gave equal or better result
+            }
+          } catch {
+            // AI not configured or failed — keep OCR result (or null if OCR also failed)
+          }
+        }
+
+        // Step C: map final result → form fields
+        if (ocrResult) {
           parsed = {
             invoice_number: ocrResult.invoice_number ?? undefined,
             vendor:         ocrResult.vendor_name    ?? undefined,
@@ -183,182 +196,53 @@ export function ExpensesPage() {
             amount_gross:   ocrResult.gross_amount   ?? undefined,
             description:    ocrResult.notes          ?? undefined,
           }
-        } catch (ocrErr: unknown) {
-          const msg = ocrErr instanceof Error ? ocrErr.message : ''
-          ocrErrorLevel = (msg.includes('Serwer OCR') || msg.includes('niedostępny'))
-            ? 'ocr-unavailable' : 'error'
-        }
-      }
 
-      // ── Step 2c: AI fallback ──────────────────────────────────
-      // PDFs always go through AI: the server-side OCR/regex is not reliable enough
-      // for compressed (FlateDecode) PDF streams — AI on the extracted text is far better.
-      // For images: apply AI when OCR server is reachable and quality is low.
-      const localConfidence = ocrResult?.extraction_confidence ?? estimateParsedConfidence(parsed)
-      const docType         = detectDocumentType(rawText || ocrResult?.extracted_text || '')
-      let usedAI = false
-      let aiAttemptedButFailed = false
+          const confidence   = ocrResult.extraction_confidence
+          const filledFields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
+          const aiHint       = ocrResult.parser_source === 'ai' ? ' (AI)' : ''
 
-      // For PDFs: always try AI (regex on PDF is unreliable; extracted_text from server is available).
-      // For camera: always try AI (Tesseract was skipped; GPT vision is the only extractor).
-      // For gallery images: when OCR is unavailable use AI vision directly; otherwise check quality threshold.
-      const shouldRunAI = (isPDF || isCamera)
-        ? ocrErrorLevel !== 'ocr-unavailable'
-        : ocrErrorLevel === 'ocr-unavailable'
-          ? true  // OCR server down → AI vision is the only extraction path
-          : shouldUseAI(localConfidence, parsed, docType)
-
-      if (shouldRunAI) {
-        setUploadStep('Analizuję dokument...')
-        setIsParsingDocument(true)
-        try {
-          const isMediaImage  = file.type.startsWith('image/') ||
-            /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name)
-
-          // ── DIAGNOSTIC: state at AI entry point ─────────────────────────
-          const _diagBase = {
-            docType,
-            fileType:      file.type,
-            mimeType:      file.type,
-            rawTextLength:           rawText.trim().length,
-            serverExtractedTextLen:  ocrResult?.extracted_text?.trim().length ?? 0,
-            isMediaImage,
-            hasOcrResult:  !!ocrResult,
-            isPDF,
-            ocrErrorLevel,
-          }
-          console.info('AI_CALL_REQUEST_START', { ..._diagBase, hasAiCallParams: '(pending)' })
-
-          let aiCallParams: { textContent?: string; imageBase64?: string; imageType?: string } | null = null
-
-          // For PDFs: prefer the server-extracted text (covers FlateDecode-compressed streams
-          // that the client-side extractor cannot decompress). Fall back to embedded-JPEG OCR
-          // text if available, then the field-level synthetic text, then a minimal hint.
-          const serverExtractedText = isPDF ? (ocrResult?.extracted_text ?? '') : ''
-          const effectiveTextForAI  = rawText.trim().length > 10
-            ? rawText
-            : serverExtractedText.trim().length > 10
-              ? serverExtractedText
-              : ''
-
-          if (effectiveTextForAI.length > 10) {
-            aiCallParams = { textContent: effectiveTextForAI }
-          } else if (isMediaImage) {
-            console.info('AI_CALL_REQUEST_URL', { ..._diagBase, path: '/.netlify/functions/parse-invoice-ai', mode: 'vision', hasAiCallParams: true })
-            aiCallParams = {
-              imageBase64: await fileToBase64ForAI(file),
-              imageType:   file.type || 'image/jpeg',
-            }
-          } else if (ocrResult) {
-            const parts: string[] = ['Wynik OCR (niepewny, wymaga weryfikacji):']
-            if (ocrResult.invoice_number) parts.push(`Numer faktury: ${ocrResult.invoice_number}`)
-            if (ocrResult.vendor_name)    parts.push(`Sprzedawca: ${ocrResult.vendor_name}`)
-            if (ocrResult.vendor_nip)     parts.push(`NIP: ${ocrResult.vendor_nip}`)
-            if (ocrResult.issue_date)     parts.push(`Data wystawienia: ${ocrResult.issue_date}`)
-            if (ocrResult.gross_amount)   parts.push(`Brutto: ${ocrResult.gross_amount}`)
-            if (ocrResult.net_amount)     parts.push(`Netto: ${ocrResult.net_amount}`)
-            if (ocrResult.vat_amount)     parts.push(`VAT: ${ocrResult.vat_amount}`)
-            if (parts.length > 1) {
-              console.info('AI_FALLBACK_SYNTHETIC_TEXT', { ..._diagBase, fields: parts.length - 1 })
-              aiCallParams = { textContent: parts.join('\n') }
-            } else {
-              // ocrResult exists but every field is null — synthetic text would be empty
-              console.warn('AI_CALL_ABORTED_NO_INPUT', {
-                reason:       'ocr_result_all_fields_null',
-                ..._diagBase,
-                hasAiCallParams: false,
-              })
-            }
+          if (filledFields.length > 0 && confidence >= 70) {
+            setParseStatus({ level: 'success', message: `Dane odczytane${aiHint} (${filledFields.length} pola) — sprawdź i zapisz` })
+          } else if (filledFields.length > 0) {
+            setParseStatus({ level: 'partial', message: `Odczytano część danych${aiHint} — uzupełnij brakujące pola` })
           } else {
-            // Not an image, no usable text layer, no ocrResult at all
-            console.warn('AI_CALL_ABORTED_UNSUPPORTED_DOC', {
-              reason:       'no_text_no_image_no_ocr',
-              ..._diagBase,
-              hasAiCallParams: false,
-              hint: 'scanned PDF with failed OCR or unknown file type',
-            })
+            setParseStatus({ level: 'empty', message: 'Nie udało się odczytać danych — wpisz pola ręcznie' })
           }
-
-          if (!aiCallParams) {
-            // Catch-all in case a branch above didn't log (safety net)
-            console.warn('AI_CALL_ABORTED_NO_PARAMS', {
-              reason:          'aiCallParams_null',
-              ..._diagBase,
-              hasAiCallParams: false,
-            })
-          } else {
-            console.info('AI_CALL_REQUEST_URL', {
-              path:            '/.netlify/functions/parse-invoice-ai',
-              mode:            aiCallParams.imageBase64 ? 'vision' : 'text',
-              textLen:         aiCallParams.textContent?.length ?? 0,
-              ..._diagBase,
-              hasAiCallParams: true,
-            })
-            const aiResult = await callParseInvoiceAI(aiCallParams)
-            parsed   = mergeIntoExpenseData(parsed, aiResult)
-            usedAI   = true
-            ocrResult = ocrResult
-              ? { ...ocrResult, extraction_confidence: Math.max(ocrResult.extraction_confidence, aiResult.extraction_confidence) }
-              : aiResult
-          }
-        } catch (aiErr: unknown) {
-          aiAttemptedButFailed = true
-          console.warn('AI_CALL_SKIPPED', {
-            reason:       'exception_in_ai_block',
-            errorMessage: aiErr instanceof Error ? aiErr.message : String(aiErr),
-            docType,
-            fileType:     file.type,
-            mimeType:     file.type,
-            rawTextLength: rawText.trim().length,
-            isMediaImage: file.type.startsWith('image/'),
-            hasOcrResult: !!ocrResult,
-            hasAiCallParams: null,
-          })
-        } finally {
-          setIsParsingDocument(false)
-        }
-      }
-
-      // ── Step 2d: set status banner ────────────────────────────
-      if (ocrErrorLevel && !usedAI) {
-        setParseStatus({
-          level:   ocrErrorLevel,
-          message: ocrErrorLevel === 'ocr-unavailable'
-            ? 'Serwer OCR niedostępny — uzupełnij pola ręcznie'
-            : 'Błąd odczytu — uzupełnij pola ręcznie',
-        })
-      } else {
-        const filledFields    = Object.entries(parsed).filter(([, v]) => v != null && v !== '').map(([k]) => k)
-        const finalConfidence = ocrResult?.extraction_confidence ?? estimateParsedConfidence(parsed)
-        const source: 'ai' | 'regex' | 'manual' = usedAI ? 'ai' : (usedLocalParser ? 'manual' : 'regex')
-        const aiFailNote = aiAttemptedButFailed ? ' · Analiza AI nie powiodła się' : ''
-
-        if (filledFields.length > 0 && (usedAI || finalConfidence >= 70)) {
-          setParseStatus({ level: 'success', message: `Dane odczytane — sprawdź i zapisz${aiFailNote}`, parserSource: source })
-        } else if (filledFields.length > 0) {
-          setParseStatus({ level: 'partial', message: `Częściowe dane — sprawdź przed zapisem${aiFailNote}`, parserSource: source })
         } else {
-          setParseStatus({ level: 'empty', message: 'Nie udało się odczytać danych — wpisz pola ręcznie' })
+          // Both OCR and AI failed
+          if (ocrUnavailable) {
+            setParseStatus({ level: 'ocr-unavailable', message: 'Serwer OCR niedostępny — uzupełnij pola ręcznie' })
+          } else {
+            setParseStatus({ level: 'error', message: 'Błąd odczytu — uzupełnij pola ręcznie' })
+          }
         }
+      } else {
+        // Local PDF parser succeeded
+        const fields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
+        setParseStatus(
+          fields.length > 0
+            ? { level: 'success', message: `Dane odczytane (${fields.length} pola) — sprawdź i zapisz` }
+            : { level: 'empty', message: 'Parser uruchomiony, ale nie odczytał pól — wpisz ręcznie' }
+        )
       }
 
       // ── Step 3: open modal with pre-filled form ───────────────
       setUploadStep('Uzupełniam formularz...')
       setForm({ ...emptyForm(), ...parsedToForm(parsed) })
+      // Use local blob URL for image preview — reliably available immediately,
+      // works in demo mode and in production regardless of Supabase bucket visibility.
       const isImgFile = file.type.startsWith('image/') || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(file.name)
       const previewBlobUrl = isImgFile ? URL.createObjectURL(file) : undefined
       setModal({ type: 'add', fileUrl: url, fileName: name, parsed, previewBlobUrl })
     } catch (err: any) {
       setUploadError(err?.message ?? 'Błąd przesyłania pliku')
     } finally {
-      console.info('EXPENSE_PARSE_LOADING_END')
       setUploading(false)
     }
   }
 
   function onFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    console.info('EXPENSE_FILE_INPUT_CHANGE', { name: file?.name ?? null, type: file?.type ?? null, size: file?.size ?? null })
     if (file) handleFileSelected(file)
     e.target.value = ''
   }
@@ -474,70 +358,26 @@ export function ExpensesPage() {
     <div className="page">
       <PageHeader title="Koszty" subtitle="Skanuj i ewidencjonuj faktury kosztowe" />
 
-      {/* Hidden file inputs — placed OUTSIDE the upload zone so that programmatic
-          .click() events don't bubble back through the zone's onClick handler
-          (which was causing the file picker to open twice on desktop). */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,application/pdf"
-        style={{ display: 'none' }}
-        onChange={onFileInput}
-      />
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        style={{ display: 'none' }}
-        onChange={onFileInput}
-      />
+      {/* ── Mobile quick-action bar (hidden on desktop) ──────────────── */}
+      <div className="exp-mobile-actions">
+        <button type="button" onClick={() => cameraInputRef.current?.click()}>
+          <Camera size={22} />
+          Zdjęcie
+        </button>
+        <button type="button" onClick={() => fileInputRef.current?.click()}>
+          <Upload size={22} />
+          Galeria / PDF
+        </button>
+        <button type="button" onClick={() => {
+          setForm(emptyForm())
+          setModal({ type: 'add', fileUrl: '', fileName: '', parsed: {} })
+        }}>
+          <FileText size={22} />
+          Ręcznie
+        </button>
+      </div>
 
-      {/* ── Mobile: quick-action buttons OR parsing overlay ──────────────
-           The upload zone is hidden on mobile via CSS, so we replicate the
-           loading indicator here as a dedicated overlay.              */}
-      {uploading ? (
-        <div className="exp-parse-overlay">
-          <Spinner />
-          <span className="exp-parse-overlay__step">{uploadStep}</span>
-          {isParsingDocument && (
-            <span className="exp-parse-overlay__hint">Może potrwać kilka sekund</span>
-          )}
-        </div>
-      ) : (
-        <div className="exp-mobile-actions">
-          <button
-            type="button"
-            className="exp-mobile-actions__camera"
-            onClick={() => { console.info('EXPENSE_CAMERA_CLICK'); pendingSourceRef.current = 'camera'; cameraInputRef.current?.click() }}
-          >
-            <Camera size={22} />
-            Zdjęcie
-          </button>
-          <button
-            type="button"
-            className="exp-mobile-actions__gallery"
-            onClick={() => { console.info('EXPENSE_GALLERY_CLICK'); pendingSourceRef.current = 'gallery'; fileInputRef.current?.click() }}
-          >
-            <Upload size={22} />
-            Galeria / PDF
-          </button>
-          <button
-            type="button"
-            className="exp-mobile-actions__manual"
-            onClick={() => {
-              console.info('EXPENSE_MANUAL_CLICK')
-              setForm(emptyForm())
-              setModal({ type: 'add', fileUrl: '', fileName: '', parsed: {} })
-            }}
-          >
-            <FileText size={22} />
-            Ręcznie
-          </button>
-        </div>
-      )}
-
-      {/* Upload zone (desktop only — hidden on mobile via CSS) */}
+      {/* Upload zone */}
       <div
         className="exp-upload-zone"
         onClick={() => fileInputRef.current?.click()}
@@ -550,20 +390,26 @@ export function ExpensesPage() {
           if (file) handleFileSelected(file)
         }}
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,.pdf"
+          style={{ display: 'none' }}
+          onChange={onFileInput}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: 'none' }}
+          onChange={onFileInput}
+        />
 
         {uploading ? (
           <div className="exp-upload-zone__inner">
             <Spinner />
-            <span style={{
-              fontWeight: isParsingDocument ? 600 : 400,
-              color: isParsingDocument ? 'var(--color-brand)' : undefined,
-              fontSize: 14,
-            }}>{uploadStep}</span>
-            {isParsingDocument && (
-              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-                Odczytuję dane — może potrwać kilka sekund
-              </span>
-            )}
+            <span>{uploadStep}</span>
           </div>
         ) : (
           <div className="exp-upload-zone__inner">
@@ -574,7 +420,7 @@ export function ExpensesPage() {
               <Button variant="secondary" size="sm" icon={<Upload size={14} />} onClick={() => fileInputRef.current?.click()}>
                 Wybierz plik
               </Button>
-              <Button variant="secondary" size="sm" icon={<Camera size={14} />} onClick={() => { pendingSourceRef.current = 'camera'; cameraInputRef.current?.click() }}>
+              <Button variant="secondary" size="sm" icon={<Camera size={14} />} onClick={() => cameraInputRef.current?.click()}>
                 Zdjęcie
               </Button>
               <Button variant="secondary" size="sm" icon={<FileText size={14} />} onClick={() => {
@@ -683,7 +529,6 @@ export function ExpensesPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="exp-pdf-preview-card__open btn btn-ghost"
-                      onClick={() => console.info('EXPENSE_OPEN_FILE_CLICK', { expenseId: null, fileName: modal.fileName })}
                     >
                       Otwórz ↗
                     </a>
@@ -708,9 +553,6 @@ export function ExpensesPage() {
             {parseStatus && (
               <div className={`exp-parse-status exp-parse-status--${parseStatus.level}`}>
                 <span className="exp-parse-status__msg">{parseStatus.message}</span>
-                {parseStatus.parserSource === 'ai' && (
-                  <span className="exp-ai-chip">Analiza rozszerzona</span>
-                )}
               </div>
             )}
 
@@ -867,25 +709,6 @@ export function ExpensesPage() {
  * Falls through to Netlify OCR for: modern software invoices (iFirma, Comarch, Word)
  * whose text content streams are FlateDecode-compressed.
  */
-function estimateParsedConfidence(p: ParsedExpenseData): number {
-  let score = 0
-  if (p.vendor)         score += 20
-  if (p.invoice_number) score += 25
-  if (p.issue_date)     score += 20
-  if (p.amount_gross)   score += 25
-  if (p.vendor_nip)     score += 10
-  return score
-}
-
-function fileToBase64ForAI(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '')
-    reader.onerror = () => reject(new Error('FileReader error'))
-    reader.readAsDataURL(file)
-  })
-}
-
 async function extractRawPdfText(file: File): Promise<string> {
   const ab = await file.arrayBuffer()
   const latin = new TextDecoder('latin1').decode(new Uint8Array(ab))

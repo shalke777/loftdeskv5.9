@@ -209,7 +209,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   const useVision = !!isValidImageMime
 
-  const DEFAULT_OPENAI_MODEL = 'gpt-5.4-2026-03-05'
+  // Use gpt-4o for vision (images); gpt-4o-mini for text-only (cheaper, equally good for structured text)
+  const DEFAULT_OPENAI_MODEL = useVision ? 'gpt-4o' : 'gpt-4o-mini'
   const model =
     process.env.OPENAI_DEBUG_FORCE_MODEL?.trim() ||
     process.env.OPENAI_MODEL?.trim() ||
