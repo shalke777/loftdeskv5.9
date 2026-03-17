@@ -4,8 +4,8 @@
 // AI extraction of invoice/receipt data via OpenAI Responses API with:
 //   • Structured JSON output — text.format.type = 'json_schema' (required)
 //   • Nullable fields via anyOf (strict schema — array types not supported)
-//   • Vision input: gpt-4o for images (JPEG/PNG/WEBP only — not raw PDF)
-//   • Text input: gpt-4o-mini for PDF text layer / Tesseract output
+//   • Vision input: gpt-4.5-preview for images (JPEG/PNG/WEBP only — not raw PDF)
+//   • Text input: gpt-4.5-preview for PDF text layer / Tesseract output
 //
 // Request (POST /.netlify/functions/parse-invoice-ai):
 //   Content-Type: application/json
@@ -240,8 +240,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   const useVision = !!isValidImageMime
 
-  // Use gpt-4o for vision (images); gpt-4o-mini for text-only (cheaper, equally good for structured text)
-  const DEFAULT_OPENAI_MODEL = useVision ? 'gpt-4o' : 'gpt-4o-mini'
+  // Use gpt-4.5-preview for all extraction (vision and text)
+  const DEFAULT_OPENAI_MODEL = 'gpt-4.5-preview'
   const model =
     process.env.OPENAI_DEBUG_FORCE_MODEL?.trim() ||
     process.env.OPENAI_MODEL?.trim() ||
