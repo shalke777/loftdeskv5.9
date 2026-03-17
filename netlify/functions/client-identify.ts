@@ -1,37 +1,37 @@
 // =============================================================================
 // Netlify Function: client-identify
-// LoftDesk — Phase 5: Canonical tokenless invite flow
+// LoftDesk ÔÇö Phase 5: Canonical tokenless invite flow
 // =============================================================================
 // Flow:
-//   1. Operator wypełnia email + projekt w ProjectPortalCTA
+//   1. Operator wype┼énia email + projekt w ProjectPortalCTA
 //   2. Frontend POST '/.netlify/functions/client-identify'
 //      Authorization: Bearer <operator_jwt>
 //      Body: { project_id, company_id, email, full_name? }
 //   3. Tu:
-//      a) Weryfikacja JWT operatora + przynależność do company_id
-//      b) Weryfikacja, że projekt należy do company_id
-//      c) Znajdź lub utwórz client_accounts (company_id, email)
-//      d) Upsert project_client_access (project_id ↔ client_account_id)
+//      a) Weryfikacja JWT operatora + przynale┼╝no┼Ť─ç do company_id
+//      b) Weryfikacja, ┼╝e projekt nale┼╝y do company_id
+//      c) Znajd┼║ lub utw├│rz client_accounts (company_id, email)
+//      d) Upsert project_client_access (project_id Ôćö client_account_id)
 //      e) Zapewnij auth_user_id (admin.generateLink do pobrania ID)
-//      f) Wyślij magic link przez signInWithOtp
-//   4. Klient dostaje email z magic linkiem → /auth/callback?mode=client&project_id=... → /client/project/:id
+//      f) Wy┼Ťlij magic link przez signInWithOtp
+//   4. Klient dostaje email z magic linkiem Ôćĺ /auth/callback?mode=client&project_id=... Ôćĺ /client/project/:id
 //
-// BEZPIECZEŃSTWO:
-//   - service_role TYLKO tutaj, nigdy w przeglądarce
-//   - JWT operatora weryfikowany przed jakąkolwiek operacją
+// BEZPIECZE┼âSTWO:
+//   - service_role TYLKO tutaj, nigdy w przegl─ůdarce
+//   - JWT operatora weryfikowany przed jak─ůkolwiek operacj─ů
 //   - Company membership weryfikowane (role: owner/admin/manager)
-//   - Project ownership weryfikowane przed dostępem
+//   - Project ownership weryfikowane przed dost─Öpem
 //   - Email normalizowany do lowercase
-//   - Idempotentny: wielokrotne wywołanie nie tworzy duplikatów
-//   - Brak tokenów URL — dostęp wyłącznie przez magic link → auth session
+//   - Idempotentny: wielokrotne wywo┼éanie nie tworzy duplikat├│w
+//   - Brak token├│w URL ÔÇö dost─Öp wy┼é─ůcznie przez magic link Ôćĺ auth session
 // =============================================================================
 
 import { createClient } from '@supabase/supabase-js'
 import type { Handler, HandlerEvent } from '@netlify/functions'
 
-// Resend — transakcyjne emaile z nazwą wykonawcy jako nadawca
-// Opcjonalne: jeśli RESEND_API_KEY nie ustawiony, wysyłka jest pomijana
-// i link jest zwracany do ręcznego przesłania (poprzednie zachowanie).
+// Resend ÔÇö transakcyjne emaile z nazw─ů wykonawcy jako nadawca
+// Opcjonalne: je┼Ťli RESEND_API_KEY nie ustawiony, wysy┼éka jest pomijana
+// i link jest zwracany do r─Öcznego przes┼éania (poprzednie zachowanie).
 async function sendInviteEmail(opts: {
   to:          string
   toName:      string | null
@@ -44,9 +44,9 @@ async function sendInviteEmail(opts: {
   const key = process.env.RESEND_API_KEY
   if (!key) return
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL ?? 'noreply@resend.dev'
+  const fromEmail = process.env.RESEND_FROM_EMAIL ?? 'noreply@mail.loftdesk.pl'
   const fromLabel = opts.fromName ? `${opts.fromName} (przez LoftDesk)` : 'LoftDesk'
-  const greeting  = opts.toName ? `Cześć ${opts.toName.split(' ')[0]}` : 'Cześć'
+  const greeting  = opts.toName ? `Cze┼Ť─ç ${opts.toName.split(' ')[0]}` : 'Cze┼Ť─ç'
 
   const html = `
 <!DOCTYPE html>
@@ -67,29 +67,29 @@ async function sendInviteEmail(opts: {
         <tr><td style="padding:32px">
           <p style="font-size:16px;font-weight:700;color:#111;margin:0 0 8px">${greeting},</p>
           <p style="font-size:15px;color:#374151;line-height:1.65;margin:0 0 24px">
-            <strong>${opts.fromName}</strong> zaprasza Cię do projektu:
+            <strong>${opts.fromName}</strong> zaprasza Ci─Ö do projektu:
           </p>
           <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 18px;margin-bottom:28px">
-            <p style="margin:0;font-size:15px;font-weight:700;color:#15803d">📁 ${opts.projectName}</p>
+            <p style="margin:0;font-size:15px;font-weight:700;color:#15803d">­čôü ${opts.projectName}</p>
           </div>
           <p style="font-size:14px;color:#6b7280;margin:0 0 20px;line-height:1.6">
-            Kliknij poniższy przycisk, aby zalogować się jednym kliknięciem i przejść bezpośrednio do swojego projektu.
+            Kliknij poni┼╝szy przycisk, aby zalogowa─ç si─Ö jednym klikni─Öciem i przej┼Ť─ç bezpo┼Ťrednio do swojego projektu.
             Link jest jednorazowy i wygasa po 24 godzinach.
           </p>
           <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px">
             <tr><td style="background:#1a5c32;border-radius:12px;padding:14px 32px">
-              <a href="${opts.magicLink}" style="color:#fff;font-size:15px;font-weight:700;text-decoration:none">Przejdź do projektu →</a>
+              <a href="${opts.magicLink}" style="color:#fff;font-size:15px;font-weight:700;text-decoration:none">Przejd┼║ do projektu Ôćĺ</a>
             </td></tr>
           </table>
           <p style="font-size:12px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:16px;margin:0;line-height:1.6">
-            Jeśli przycisk nie działa, skopiuj i wklej ten adres w przeglądarce:<br />
+            Je┼Ťli przycisk nie dzia┼éa, skopiuj i wklej ten adres w przegl─ůdarce:<br />
             <a href="${opts.magicLink}" style="color:#1a5c32;word-break:break-all;font-size:11px">${opts.magicLink}</a>
           </p>
         </td></tr>
         <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb">
           <p style="margin:0;font-size:12px;color:#9ca3af">
-            Zaproszenie wysłano przez <strong>${opts.fromName}</strong>.
-            ${opts.replyTo ? `W razie pytań odpowiedz na ten email lub napisz na <a href="mailto:${opts.replyTo}" style="color:#1a5c32">${opts.replyTo}</a>.` : ''}
+            Zaproszenie wys┼éano przez <strong>${opts.fromName}</strong>.
+            ${opts.replyTo ? `W razie pyta┼ä odpowiedz na ten email lub napisz na <a href="mailto:${opts.replyTo}" style="color:#1a5c32">${opts.replyTo}</a>.` : ''}
           </p>
         </td></tr>
       </table>
@@ -114,11 +114,11 @@ async function sendInviteEmail(opts: {
   if (!resp.ok) {
     const txt = await resp.text().catch(() => '')
     console.error('[client-identify] Resend error:', resp.status, txt)
-    // Non-fatal — magic link is still returned to operator
+    // Non-fatal ÔÇö magic link is still returned to operator
   }
 }
 
-// ── Konfiguracja ──────────────────────────────────────────────────────────────
+// ÔöÇÔöÇ Konfiguracja ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 const HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -138,7 +138,7 @@ function sbAdmin() {
   return createClient(url, key, { auth: { persistSession: false } })
 }
 
-// Public client (anon key) — used for signInWithOtp which actually sends the email.
+// Public client (anon key) ÔÇö used for signInWithOtp which actually sends the email.
 // admin.generateLink() only generates a link without sending; signInWithOtp triggers Supabase mailer.
 function sbPublic() {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
@@ -151,7 +151,7 @@ function getBaseUrl(): string {
   return process.env.URL ?? process.env.DEPLOY_URL ?? 'https://app.loftdesk.pl'
 }
 
-// ── Rate limiting (in-memory, per email, 5 req / 10 min) ─────────────────────
+// ÔöÇÔöÇ Rate limiting (in-memory, per email, 5 req / 10 min) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 const RATE_MAX = 5
 const RATE_WINDOW_MS = 10 * 60 * 1000
@@ -168,10 +168,10 @@ function isRateLimited(email: string): boolean {
   return entry.count > RATE_MAX
 }
 
-// ── Walidacja emaila ──────────────────────────────────────────────────────────
+// ÔöÇÔöÇ Walidacja emaila ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-// ── Handler ───────────────────────────────────────────────────────────────────
+// ÔöÇÔöÇ Handler ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 export const handler: Handler = async (event: HandlerEvent) => {
   // Preflight CORS
@@ -183,27 +183,27 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return json(405, { error: 'Method not allowed' })
   }
 
-  // ── Weryfikacja JWT operatora ─────────────────────────────────────────────
+  // ÔöÇÔöÇ Weryfikacja JWT operatora ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
   const auth = event.headers['authorization'] ?? event.headers['Authorization']
   if (!auth?.startsWith('Bearer ')) {
-    return json(401, { error: 'Brak autoryzacji — wymagany JWT operatora' })
+    return json(401, { error: 'Brak autoryzacji ÔÇö wymagany JWT operatora' })
   }
   const jwt = auth.slice(7)
   if (!jwt || jwt.length < 20) {
-    return json(401, { error: 'Brak autoryzacji — pusty token' })
+    return json(401, { error: 'Brak autoryzacji ÔÇö pusty token' })
   }
 
   let operatorUserId: string
   try {
     const anonClient = sbPublic()
     const { data: { user }, error: authErr } = await anonClient.auth.getUser(jwt)
-    if (authErr || !user) return json(401, { error: 'Nieautoryzowane żądanie' })
+    if (authErr || !user) return json(401, { error: 'Nieautoryzowane ┼╝─ůdanie' })
     operatorUserId = user.id
   } catch {
-    return json(401, { error: 'Nieautoryzowane żądanie' })
+    return json(401, { error: 'Nieautoryzowane ┼╝─ůdanie' })
   }
 
-  // ── Parsuj body ──────────────────────────────────────────────────────────────
+  // ÔöÇÔöÇ Parsuj body ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
   let projectId: string
   let companyId: string
   let emailRaw: string
@@ -216,7 +216,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     emailRaw   = (body.email       ?? '').trim()
     fullName   = typeof body.full_name === 'string' ? body.full_name.trim() : undefined
   } catch {
-    return json(400, { error: 'Nieprawidłowy format żądania' })
+    return json(400, { error: 'Nieprawid┼éowy format ┼╝─ůdania' })
   }
 
   if (!projectId || !companyId || !emailRaw) {
@@ -226,17 +226,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const email = emailRaw.toLowerCase()
 
   if (!EMAIL_RE.test(email)) {
-    return json(400, { error: 'Nieprawidłowy adres email' })
+    return json(400, { error: 'Nieprawid┼éowy adres email' })
   }
 
   if (isRateLimited(email)) {
-    return json(429, { error: 'Za dużo żądań. Spróbuj ponownie za chwilę.' })
+    return json(429, { error: 'Za du┼╝o ┼╝─ůda┼ä. Spr├│buj ponownie za chwil─Ö.' })
   }
 
   const sb = sbAdmin()
 
-  // ── Weryfikacja: operator jest członkiem firmy (role: owner/admin/manager) ──
-  // Pobieramy też email operatora i nazwę firmy do użycia jako Reply-To / From w emailu.
+  // ÔöÇÔöÇ Weryfikacja: operator jest cz┼éonkiem firmy (role: owner/admin/manager) ÔöÇÔöÇ
+  // Pobieramy te┼╝ email operatora i nazw─Ö firmy do u┼╝ycia jako Reply-To / From w emailu.
   const { data: member } = await sb
     .from('company_members')
     .select('role, profiles(email, full_name), companies(name)')
@@ -245,13 +245,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
     .maybeSingle()
 
   if (!member || !['owner', 'admin', 'manager'].includes(member.role as string)) {
-    return json(403, { error: 'Brak uprawnień do zapraszania klientów dla tej firmy' })
+    return json(403, { error: 'Brak uprawnie┼ä do zapraszania klient├│w dla tej firmy' })
   }
 
   const operatorEmail  = (member as any)?.profiles?.email  ?? null
   const companyName    = (member as any)?.companies?.name  ?? 'Wykonawca'
 
-  // ── Weryfikacja: projekt należy do tej firmy ─────────────────────────────
+  // ÔöÇÔöÇ Weryfikacja: projekt nale┼╝y do tej firmy ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
   const { data: project } = await sb
     .from('projects')
     .select('id, name')
@@ -261,10 +261,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     .maybeSingle()
 
   if (!project) {
-    return json(404, { error: 'Projekt nie istnieje lub nie należy do tej firmy' })
+    return json(404, { error: 'Projekt nie istnieje lub nie nale┼╝y do tej firmy' })
   }
 
-  // ── Utwórz lub znajdź client_account ────────────────────────────────────────
+  // ÔöÇÔöÇ Utw├│rz lub znajd┼║ client_account ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
   const { data: account, error: accountError } = await sb
     .from('client_accounts')
     .upsert(
@@ -281,10 +281,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   if (accountError || !account) {
     console.error('[client-identify] account upsert error:', accountError)
-    return json(500, { error: 'Błąd serwera. Spróbuj ponownie.' })
+    return json(500, { error: 'B┼é─ůd serwera. Spr├│buj ponownie.' })
   }
 
-  // ── Nadaj dostęp do projektu ─────────────────────────────────────────────────
+  // ÔöÇÔöÇ Nadaj dost─Öp do projektu ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
   const { error: accessError } = await sb
     .from('project_client_access')
     .upsert(
@@ -298,23 +298,23 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   if (accessError) {
     console.error('[client-identify] project_client_access upsert error:', accessError)
-    // Nie przerywamy — magic link wyślemy mimo to
+    // Nie przerywamy ÔÇö magic link wy┼Ťlemy mimo to
   }
 
-  // ── Wymuś połączenie auth_user_id przed wysyłką OTP ──────────────────────────
-  // Kluczowy fix dla błędu: klient widzi LegalAcceptanceGate zamiast /client/dashboard.
+  // ÔöÇÔöÇ Wymu┼Ť po┼é─ůczenie auth_user_id przed wysy┼ék─ů OTP ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // Kluczowy fix dla b┼é─Ödu: klient widzi LegalAcceptanceGate zamiast /client/dashboard.
   //
-  // Root cause: client_accounts.auth_user_id może być NULL gdy:
-  //   a) Poprzednie zaproszenia używały generateLink przed wdrożeniem triggera (migr. 042)
-  //   b) Trigger AFTER INSERT ON auth.users nie odpalił się dla istniejących auth userów
+  // Root cause: client_accounts.auth_user_id mo┼╝e by─ç NULL gdy:
+  //   a) Poprzednie zaproszenia u┼╝ywa┼éy generateLink przed wdro┼╝eniem triggera (migr. 042)
+  //   b) Trigger AFTER INSERT ON auth.users nie odpali┼é si─Ö dla istniej─ůcych auth user├│w
   // Gdy auth_user_id IS NULL:
   //   - RLS policy "ca_client_select_own" evaluuje: NULL = auth.uid() = FALSE
-  //   - Rekord jest niewidoczny dla klienta w przeglądarce
-  //   - resolveSupabaseSession() odpada do bootstrap_my_company → role:'owner'
+  //   - Rekord jest niewidoczny dla klienta w przegl─ůdarce
+  //   - resolveSupabaseSession() odpada do bootstrap_my_company Ôćĺ role:'owner'
   //
   // Fix: admin.generateLink() creates-or-gets the auth user synchronously,
   // generates a fresh one-time magic link, and returns the URL.
-  // Uses service_role key — no dependency on Supabase SMTP configuration.
+  // Uses service_role key ÔÇö no dependency on Supabase SMTP configuration.
   // The link is returned to the operator who sends it to the client however
   // they prefer (email, WhatsApp, etc.).
   // Pass project_id through the redirect so auth-callback can land the client
@@ -332,7 +332,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   if (linkError || !linkData?.user) {
     console.error('[client-identify] generateLink error:', linkError)
-    return json(500, { error: 'Błąd generowania linku logowania. Spróbuj ponownie.' })
+    return json(500, { error: 'B┼é─ůd generowania linku logowania. Spr├│buj ponownie.' })
   }
 
   // Update auth_user_id if not yet linked
@@ -345,11 +345,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   const magicLink: string | null = (linkData as any)?.properties?.action_link ?? null
 
-  // ── Wyślij email z linkiem ─────────────────────────────────────────────────
-  // Używa Resend jeśli RESEND_API_KEY jest ustawiony.
+  // ÔöÇÔöÇ Wy┼Ťlij email z linkiem ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // U┼╝ywa Resend je┼Ťli RESEND_API_KEY jest ustawiony.
   // Klient widzi: From = "<Firma> (przez LoftDesk) <noreply@twoja-domena.pl>"
   //               Reply-To = <email operatora>
-  // Jeśli Resend nie jest skonfigurowany — link wraca do frontendu do ręcznego wysłania.
+  // Je┼Ťli Resend nie jest skonfigurowany ÔÇö link wraca do frontendu do r─Öcznego wys┼éania.
   let emailSent = false
   if (magicLink) {
     if (process.env.RESEND_API_KEY) {
@@ -382,15 +382,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
   }
 
-  // Sukces — zwracamy link do ręcznego przesłania (+ informacja czy email poszedł)
+  // Sukces ÔÇö zwracamy link do r─Öcznego przes┼éania (+ informacja czy email poszed┼é)
   return json(200, {
     ok: true,
     magic_link: magicLink,
     email_sent: emailSent,
     message: emailSent
-      ? `Link logowania wysłany na ${email}.`
+      ? `Link logowania wys┼éany na ${email}.`
       : magicLink
-        ? 'Link logowania wygenerowany — skopiuj i wyślij do klienta.'
-        : 'Dostęp nadany.',
+        ? 'Link logowania wygenerowany ÔÇö skopiuj i wy┼Ťlij do klienta.'
+        : 'Dost─Öp nadany.',
   })
 }
