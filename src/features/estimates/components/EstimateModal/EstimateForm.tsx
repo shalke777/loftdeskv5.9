@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/shared/ui/Button/Button'
 import { Input } from '@/shared/ui/Input/Input'
 import { Select } from '@/shared/ui/Select/Select'
+import { ClientSelectWithCreate } from '@/shared/ui/ClientSelectWithCreate/ClientSelectWithCreate'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { ItemsEditor } from '@/features/estimates/components/EstimateModal/ItemsEditor'
@@ -48,7 +49,6 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
 
   const { data: clients = [] } = useClients()
   const { data: projects = [] } = useProjects()
-  const clientOptions = useMemo(() => clients.map((c) => ({ value: c.id, label: c.name })), [clients])
   const projectOptions = useMemo(() => projects.map((p) => ({ value: p.id, label: `${p.number} · ${p.name}` })), [projects])
   const totals = useMemo(() => calcTotals(items), [items])
 
@@ -124,7 +124,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
         <div style={{ gridColumn: '1 / -1' }}>
           <Input label="Nazwa wyceny *" value={name} onChange={(e) => setName(e.target.value)} placeholder="np. Remont łazienki – oferta wstępna" />
         </div>
-        <Select label="Klient" value={clientId} onChange={(e) => setClientId(e.target.value)} options={clientOptions} placeholder="Bez przypisania" />
+        <ClientSelectWithCreate label="Kontrahent" value={clientId} onChange={setClientId} />
         <Select label="Projekt" value={projectId} onChange={(e) => {
           const pid = e.target.value
           setProjectId(pid)

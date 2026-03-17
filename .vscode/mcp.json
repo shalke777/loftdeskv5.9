@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "loftdesk-local": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "./mcp/loftdesk-mcp-server.mjs"
+      ]
+    }
+  }
+}

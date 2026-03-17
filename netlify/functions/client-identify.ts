@@ -352,20 +352,33 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // Jeśli Resend nie jest skonfigurowany — link wraca do frontendu do ręcznego wysłania.
   let emailSent = false
   if (magicLink) {
-    try {
-      await sendInviteEmail({
-        to:          email,
-        toName:      fullName ?? null,
-        fromName:    companyName,
-        replyTo:     operatorEmail,
-        projectName: (project as any)?.name ?? projectId,
-        magicLink,
-        baseUrl:     getBaseUrl(),
+    if (process.env.RESEND_API_KEY) {
+      try {
+        await sendInviteEmail({
+          to:          email,
+          toName:      fullName ?? null,
+          fromName:    companyName,
+          replyTo:     operatorEmail,
+          projectName: (project as any)?.name ?? projectId,
+          magicLink,
+          baseUrl:     getBaseUrl(),
+        })
+        emailSent = true
+      } catch (e) {
+        console.error('[client-identify] sendInviteEmail threw:', e)
+        // Non-fatal
+      }
+    } else {
+      // Fallback: Supabase built-in mailer (requires Supabase SMTP configured in project settings)
+      const { error: otpErr } = await sbPublic().auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
       })
-      emailSent = Boolean(process.env.RESEND_API_KEY)
-    } catch (e) {
-      console.error('[client-identify] sendInviteEmail threw:', e)
-      // Non-fatal
+      if (!otpErr) {
+        emailSent = true
+      } else {
+        console.warn('[client-identify] signInWithOtp fallback failed:', otpErr.message)
+      }
     }
   }
 

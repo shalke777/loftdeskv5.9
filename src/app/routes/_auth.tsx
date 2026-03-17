@@ -34,32 +34,33 @@ type MainNavItem = {
 }
 
 const mainNavItems: MainNavItem[] = [
-  { to: '/dashboard', label: 'Tablica', icon: LayoutDashboard },
-  { to: '/clients', label: 'Kontrahenci', icon: Users },
-  { to: '/estimates', label: 'Wycena', icon: Calculator },
-  { to: '/contracts', label: 'Umowa', icon: FileText },
-  { to: '/invoices', label: 'Faktura', icon: Receipt },
-  { to: '/projects', label: 'Projekty', icon: FolderKanban },
-  { to: '/chat', label: 'Chat', icon: MessageSquare },
-  { to: '/expenses', label: 'Koszty', icon: Wallet },
-  { to: '/ksef', label: 'KSeF', icon: Shield, feature: 'ksef' },
-  { to: '/settings', label: 'Ustawienia', icon: Settings },
+  { to: '/dashboard', label: 'Tablica',     icon: LayoutDashboard },
+  { to: '/clients',   label: 'Kontrahenci', icon: Users },
+  { to: '/projects',  label: 'Projekty',    icon: FolderKanban },
+  { to: '/estimates', label: 'Wyceny',      icon: Calculator },
+  { to: '/contracts', label: 'Umowy',       icon: FileText },
+  { to: '/invoices',  label: 'Faktury',     icon: Receipt },
+  { to: '/chat',      label: 'Chat',        icon: MessageSquare },
+  { to: '/expenses',  label: 'Koszty',      icon: Wallet },
+  { to: '/ksef',      label: 'KSeF',        icon: Shield, feature: 'ksef' },
+  { to: '/settings',  label: 'Ustawienia',  icon: Settings },
 ]
 
 // ── Primary bar (4 items + Więcej button) — order per spec ──────────────────
 const mobileNavPrimary: MainNavItem[] = [
-  { to: '/dashboard', label: 'Tablica',    icon: LayoutDashboard },
-  { to: '/projects',  label: 'Projekty',   icon: FolderKanban },
-  { to: '/clients',   label: 'Kontrahent', icon: Users },
-  { to: '/estimates', label: 'Wycena',     icon: Calculator },
-  { to: '/chat',      label: 'Chat',       icon: MessageSquare },
+  { to: '/dashboard', label: 'Tablica',     icon: LayoutDashboard },
+  { to: '/clients',   label: 'Kontrahenci', icon: Users },
+  { to: '/projects',  label: 'Projekty',    icon: FolderKanban },
+  { to: '/estimates', label: 'Wyceny',      icon: Calculator },
+  { to: '/chat',      label: 'Chat',        icon: MessageSquare },
 ]
-// ── More drawer items (Umowa + overflow) ─────────────────────────────────────
+// ── More drawer items ────────────────────────────────────────────────────────
 const mobileNavMore: MainNavItem[] = [
-  { to: '/contracts', label: 'Umowa',      icon: FileText },
-  { to: '/invoices',  label: 'Faktura',    icon: Receipt },
-  { to: '/expenses',  label: 'Koszty',     icon: Wallet },
-  { to: '/settings',  label: 'Ustawienia', icon: Settings },
+  { to: '/contracts', label: 'Umowy',       icon: FileText },
+  { to: '/invoices',  label: 'Faktury',     icon: Receipt },
+  { to: '/expenses',  label: 'Koszty',      icon: Wallet },
+  { to: '/ksef',      label: 'KSeF',        icon: Shield, feature: 'ksef' },
+  { to: '/settings',  label: 'Ustawienia',  icon: Settings },
 ]
 
 function isActive(pathname: string, item: MainNavItem) {

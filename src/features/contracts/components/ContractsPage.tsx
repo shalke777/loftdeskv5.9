@@ -43,6 +43,10 @@ export function ContractsPage() {
     () => Object.fromEntries(clients.map(c => [c.id, c.name])),
     [clients],
   )
+  const clientEmailMap = useMemo(
+    () => Object.fromEntries(clients.map(c => [c.id, c.email ?? null])),
+    [clients],
+  )
   const projectMap = useMemo(
     () => Object.fromEntries(projects.map(p => [p.id, p.name])),
     [projects],
@@ -107,6 +111,7 @@ export function ContractsPage() {
               key={contract.id}
               contract={contract}
               clientName={contract.client_id ? (clientMap[contract.client_id] ?? null) : null}
+              clientEmail={contract.client_id ? (clientEmailMap[contract.client_id] ?? null) : null}
               projectName={contract.project_id ? (projectMap[contract.project_id] ?? null) : null}
               onEdit={c => { setEditing(c); setOpen(true) }}
               onDelete={id => deleteContract.mutate(id)}

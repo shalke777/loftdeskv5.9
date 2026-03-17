@@ -201,10 +201,12 @@ export function ExpensesPage() {
 
       // For PDFs: always try AI (regex on PDF is unreliable; extracted_text from server is available).
       // For camera: always try AI (Tesseract was skipped; GPT vision is the only extractor).
-      // For gallery images: only when OCR returns low-quality result.
+      // For gallery images: when OCR is unavailable use AI vision directly; otherwise check quality threshold.
       const shouldRunAI = (isPDF || isCamera)
         ? ocrErrorLevel !== 'ocr-unavailable'
-        : ocrErrorLevel !== 'ocr-unavailable' && shouldUseAI(localConfidence, parsed, docType)
+        : ocrErrorLevel === 'ocr-unavailable'
+          ? true  // OCR server down → AI vision is the only extraction path
+          : shouldUseAI(localConfidence, parsed, docType)
 
       if (shouldRunAI) {
         setUploadStep('Analizuję dokument...')
