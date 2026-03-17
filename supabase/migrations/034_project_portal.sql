@@ -208,17 +208,9 @@ CREATE TABLE IF NOT EXISTS public.project_threads (
 );
 
 -- Constraint: wątek type='internal' nie może mieć visibility!='internal'
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'chk_thread_internal_visibility'
-      AND table_name = 'project_threads'
-  ) THEN
-    ALTER TABLE public.project_threads
-      ADD CONSTRAINT chk_thread_internal_visibility
-        CHECK (NOT (type = 'internal' AND visibility != 'internal'));
-  END IF;
-END $$;
+ALTER TABLE public.project_threads
+  ADD CONSTRAINT chk_thread_internal_visibility
+    CHECK (NOT (type = 'internal' AND visibility != 'internal'));
 
 CREATE INDEX IF NOT EXISTS idx_threads_project
   ON public.project_threads (project_id, last_message_at DESC NULLS LAST)
@@ -308,17 +300,9 @@ CREATE TABLE IF NOT EXISTS public.project_messages (
 );
 
 -- Constraint: klient może pisać tylko do wątków client_shared / approval
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'chk_message_client_visibility'
-      AND table_name = 'project_messages'
-  ) THEN
-    ALTER TABLE public.project_messages
-      ADD CONSTRAINT chk_message_client_visibility
-        CHECK (NOT (sender_type = 'client' AND visibility = 'internal'));
-  END IF;
-END $$;
+ALTER TABLE public.project_messages
+  ADD CONSTRAINT chk_message_client_visibility
+    CHECK (NOT (sender_type = 'client' AND visibility = 'internal'));
 
 CREATE INDEX IF NOT EXISTS idx_messages_thread
   ON public.project_messages (thread_id, created_at ASC);
@@ -553,7 +537,7 @@ CREATE TABLE IF NOT EXISTS public.cost_approvals (
   id                        uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id                uuid        NOT NULL REFERENCES public.companies(id)       ON DELETE CASCADE,
   project_id                uuid        NOT NULL REFERENCES public.projects(id)        ON DELETE RESTRICT,
-  expense_id                uuid        NOT NULL,                                        -- FK to expense_invoices added in KROK 8 once migration 033 is confirmed present
+  expense_id                uuid        NOT NULL REFERENCES public.expense_invoices(id) ON DELETE RESTRICT,
   thread_id                 uuid                 REFERENCES public.project_threads(id)  ON DELETE SET NULL,
   portal_token_id           uuid                 REFERENCES public.project_portal_tokens(id) ON DELETE SET NULL,
 
@@ -653,50 +637,73 @@ CREATE POLICY "approvals_portal_respond" ON public.cost_approvals
 -- =============================================================================
 -- Usuwamy zbyt agresywny UNIQUE INDEX i dodajemy kolumny brakujące dla
 -- mobile-first flow, parsera AI, soft duplicate detection i akceptacji.
--- Guarded: expense_invoices is created in migration 033; skip if absent.
 
-DO $krok8$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.tables
-    WHERE table_schema = 'public' AND table_name = 'expense_invoices'
-  ) THEN
-    RAISE NOTICE 'Migration 033 not yet applied — skipping expense_invoices extensions (KROK 8)';
-    RETURN;
-  END IF;
+-- ── Usuń stary twardy unique ──────────────────────────────────────────────────
+-- Ten indeks był zbyt agresywny — blokował faktury korygujące i duplikaty
+-- z różnych źródeł. Zastępujemy soft detection poniżej.
+DROP INDEX IF EXISTS public.expense_invoices_number_company_uidx;
 
-  -- Add FK on cost_approvals.expense_id now that expense_invoices is confirmed present
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE table_schema = 'public' AND table_name = 'cost_approvals'
-      AND constraint_name = 'cost_approvals_expense_id_fkey'
-  ) THEN
-    EXECUTE 'ALTER TABLE public.cost_approvals ADD CONSTRAINT cost_approvals_expense_id_fkey FOREIGN KEY (expense_id) REFERENCES public.expense_invoices(id) ON DELETE RESTRICT';
-  END IF;
+-- ── Nowe kolumny ─────────────────────────────────────────────────────────────
 
-  -- ── Usuń stary twardy unique ─────────────────────────────────────────────
-  EXECUTE 'DROP INDEX IF EXISTS public.expense_invoices_number_company_uidx';
+-- Skąd pochodzi dokument
+ALTER TABLE public.expense_invoices
+  ADD COLUMN IF NOT EXISTS source_type text NOT NULL DEFAULT 'manual'
+    CHECK (source_type IN ('camera','gallery','pdf','manual'));
 
-  -- ── Nowe kolumny ─────────────────────────────────────────────────────────
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS source_type text NOT NULL DEFAULT 'manual' CHECK (source_type IN ('camera','gallery','pdf','manual')) $sql$;
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS cost_type text NOT NULL DEFAULT 'internal_cost' CHECK (cost_type IN ('internal_cost','client_billable','client_approval_required')) $sql$;
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS approval_status text DEFAULT 'not_sent' CHECK (approval_status IN ('not_sent','pending_client','accepted','rejected','questioned')) $sql$;
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS approval_sent_at timestamptz $sql$;
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS extraction_confidence numeric(3,2) CHECK (extraction_confidence IS NULL OR (extraction_confidence >= 0 AND extraction_confidence <= 1)) $sql$;
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS extraction_warnings jsonb NOT NULL DEFAULT '[]' $sql$;
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS requires_user_confirmation boolean NOT NULL DEFAULT false $sql$;
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS parser_source text DEFAULT 'manual' CHECK (parser_source IN ('ai','regex','manual')) $sql$;
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS possible_duplicate boolean NOT NULL DEFAULT false $sql$;
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS duplicate_of_expense_id uuid REFERENCES public.expense_invoices(id) ON DELETE SET NULL $sql$;
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS category text $sql$;
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS currency text NOT NULL DEFAULT 'PLN' $sql$;
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS sale_date date $sql$;
-  EXECUTE $sql$ ALTER TABLE public.expense_invoices ADD COLUMN IF NOT EXISTS payment_due_date date $sql$;
+-- Typ kosztu / przeznaczenie dla klienta
+ALTER TABLE public.expense_invoices
+  ADD COLUMN IF NOT EXISTS cost_type text NOT NULL DEFAULT 'internal_cost'
+    CHECK (cost_type IN ('internal_cost','client_billable','client_approval_required'));
 
-  -- ── Soft duplicate detection index ──────────────────────────────────────
-  EXECUTE $sql$ CREATE INDEX IF NOT EXISTS idx_expense_soft_dup ON public.expense_invoices (company_id, vendor_nip, invoice_number, issue_date) WHERE vendor_nip IS NOT NULL AND invoice_number IS NOT NULL $sql$;
-  EXECUTE $sql$ CREATE INDEX IF NOT EXISTS idx_expense_project_list ON public.expense_invoices (project_id, created_at DESC) WHERE project_id IS NOT NULL $sql$;
-END $krok8$;
+-- Status procesu akceptacji przez klienta
+ALTER TABLE public.expense_invoices
+  ADD COLUMN IF NOT EXISTS approval_status text DEFAULT 'not_sent'
+    CHECK (approval_status IN ('not_sent','pending_client','accepted','rejected','questioned'));
+
+ALTER TABLE public.expense_invoices
+  ADD COLUMN IF NOT EXISTS approval_sent_at timestamptz;
+
+-- Parser AI / OCR — diagnostyka
+ALTER TABLE public.expense_invoices
+  ADD COLUMN IF NOT EXISTS extraction_confidence  numeric(3,2)              -- 0.00–1.00
+    CHECK (extraction_confidence IS NULL OR (extraction_confidence >= 0 AND extraction_confidence <= 1));
+
+ALTER TABLE public.expense_invoices
+  ADD COLUMN IF NOT EXISTS extraction_warnings    jsonb NOT NULL DEFAULT '[]';
+
+ALTER TABLE public.expense_invoices
+  ADD COLUMN IF NOT EXISTS requires_user_confirmation boolean NOT NULL DEFAULT false;
+
+ALTER TABLE public.expense_invoices
+  ADD COLUMN IF NOT EXISTS parser_source text DEFAULT 'manual'
+    CHECK (parser_source IN ('ai','regex','manual'));
+
+-- Soft duplicate detection (nie twardy UNIQUE — tylko flaga + referencja)
+ALTER TABLE public.expense_invoices
+  ADD COLUMN IF NOT EXISTS possible_duplicate boolean NOT NULL DEFAULT false;
+
+ALTER TABLE public.expense_invoices
+  ADD COLUMN IF NOT EXISTS duplicate_of_expense_id uuid
+    REFERENCES public.expense_invoices(id) ON DELETE SET NULL;
+
+-- Dodatkowe pola danych faktury
+ALTER TABLE public.expense_invoices
+  ADD COLUMN IF NOT EXISTS category            text,           -- materiały, robocizna, transport, inne
+  ADD COLUMN IF NOT EXISTS currency            text NOT NULL DEFAULT 'PLN',
+  ADD COLUMN IF NOT EXISTS sale_date           date,
+  ADD COLUMN IF NOT EXISTS payment_due_date    date;
+
+-- ── Soft duplicate detection index ───────────────────────────────────────────
+-- Nie blokuje wstawiania — pozwala na szybki lookup podobnych faktur.
+-- Aplikacja robi SELECT przed INSERT i ustawia possible_duplicate=true + ostrzeżenie.
+CREATE INDEX IF NOT EXISTS idx_expense_soft_dup
+  ON public.expense_invoices (company_id, vendor_nip, invoice_number, issue_date)
+  WHERE vendor_nip IS NOT NULL AND invoice_number IS NOT NULL;
+
+-- Index dla listy kosztów projektu (najczęstszy query w ProjectExpensesTab)
+CREATE INDEX IF NOT EXISTS idx_expense_project_list
+  ON public.expense_invoices (project_id, created_at DESC)
+  WHERE project_id IS NOT NULL;
 
 
 -- =============================================================================
@@ -726,20 +733,10 @@ CREATE TRIGGER trg_approvals_updated_at
   BEFORE UPDATE ON public.cost_approvals
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
--- Guarded: expense_invoices trigger depends on migration 033
-DO $do$ BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.tables
-    WHERE table_schema = 'public' AND table_name = 'expense_invoices'
-  ) THEN
-    EXECUTE 'DROP TRIGGER IF EXISTS trg_expense_updated_at ON public.expense_invoices';
-    EXECUTE $sql$
-      CREATE TRIGGER trg_expense_updated_at
-        BEFORE UPDATE ON public.expense_invoices
-        FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()
-    $sql$;
-  END IF;
-END $do$;
+DROP TRIGGER IF EXISTS trg_expense_updated_at       ON public.expense_invoices;
+CREATE TRIGGER trg_expense_updated_at
+  BEFORE UPDATE ON public.expense_invoices
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 
 -- =============================================================================

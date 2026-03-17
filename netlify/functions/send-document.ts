@@ -78,13 +78,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   // ── Parse body ────────────────────────────────────────────────────────────
-  let toEmail: string, documentType: string, documentName: string, userMessage: string | null
+  let toEmail: string, documentType: string, documentName: string, userMessage: string | null, documentUrl: string | null
   try {
     const b = JSON.parse(event.body ?? '{}') as Record<string, unknown>
     toEmail       = ((b.to_email       ?? '') as string).trim().toLowerCase()
     documentType  = ((b.document_type  ?? '') as string).trim()
     documentName  = ((b.document_name  ?? '') as string).trim()
     userMessage   = typeof b.message === 'string' ? b.message.trim() : null
+    documentUrl   = typeof b.document_url === 'string' && b.document_url.trim() ? b.document_url.trim() : null
   } catch {
     return json(400, { ok: false, error: 'invalid_json' })
   }
@@ -132,6 +133,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             <p style="margin:0;font-size:15px;font-weight:700;color:#15803d">${docLabel}: ${documentName}</p>
           </div>
           ${msgBlock}
+          ${documentUrl ? `<table cellpadding="0" cellspacing="0" style="margin:0 0 24px"><tr><td align="center" style="background:#1a5c32;border-radius:10px;padding:14px 32px"><a href="${documentUrl}" style="color:#fff;font-size:15px;font-weight:700;text-decoration:none;letter-spacing:-.2px">Otw\u00f3rz dokument w portalu &rarr;</a></td></tr></table>` : ''}
           <p style="font-size:13px;color:#6b7280;margin:0;line-height:1.6">
             W razie pytań skontaktuj się z nami.
             ${operatorEmail ? `Możesz odpowiedzieć bezpośrednio na ten email: <a href="mailto:${operatorEmail}" style="color:#1a5c32">${operatorEmail}</a>` : ''}

@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Edit2, FileText, Send, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Edit2, FileText, Trash2 } from 'lucide-react'
 import type { Estimate } from '@/entities/estimate/model'
 import { Button } from '@/shared/ui/Button/Button'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
-import { SendDocumentModal } from '@/shared/ui/SendDocumentModal/SendDocumentModal'
 import { buildEstimatePreview } from '@/services/pdf/documentPreview'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { useClients } from '@/features/clients/hooks/useClients'
@@ -34,7 +33,6 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [sendOpen, setSendOpen] = useState(false)
 
   const { data: clients = [] } = useClients()
   const { user } = useAuth()
@@ -96,13 +94,6 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
           </span>
           <span className={STATUS_CLASS[estimate.status]}>{STATUS_LABEL[estimate.status]}</span>
           <div className="proj-row__actions">
-            <button
-              className="proj-action-btn"
-              title="Wyślij do kontrahenta"
-              onClick={e => { e.stopPropagation(); setSendOpen(true) }}
-            >
-              <Send size={14} />
-            </button>
             <button
               className="proj-action-btn"
               title="Podgląd PDF"
@@ -169,13 +160,6 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
         onClose={() => setPreviewOpen(false)}
         title={`${estimate.number} · Podgląd dokumentu`}
         tabs={tabs}
-      />
-      <SendDocumentModal
-        open={sendOpen}
-        onClose={() => setSendOpen(false)}
-        documentType="estimate"
-        documentName={`${estimate.number} · ${estimate.name}`}
-        defaultEmail={client?.email ?? null}
       />
     </div>
   )

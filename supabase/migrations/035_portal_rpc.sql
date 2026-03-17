@@ -32,22 +32,17 @@ CREATE OR REPLACE FUNCTION public._portal_validate_session(
   p_required_scope text DEFAULT NULL
 )
 RETURNS TABLE (project_id uuid, company_id uuid, portal_token_id uuid)
-LANGUAGE plpgsql STABLE SECURITY DEFINER
+LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public AS $$
-BEGIN
-  -- plpgsql (not sql) so table references are not validated at CREATE time;
-  -- allows this function to be created before migration 034 is applied.
-  RETURN QUERY
-    SELECT s.project_id, s.company_id, s.portal_token_id
-      FROM public.project_portal_sessions s
-      JOIN public.project_portal_tokens   t ON t.id = s.portal_token_id
-     WHERE s.id          = p_session_id
-       AND s.expires_at  > now()
-       AND t.active      = true
-       AND t.revoked_at IS NULL
-       AND (p_required_scope IS NULL OR p_required_scope = ANY(t.scope))
-     LIMIT 1;
-END;
+  SELECT s.project_id, s.company_id, s.portal_token_id
+    FROM public.project_portal_sessions s
+    JOIN public.project_portal_tokens   t ON t.id = s.portal_token_id
+   WHERE s.id          = p_session_id
+     AND s.expires_at  > now()
+     AND t.active      = true
+     AND t.revoked_at IS NULL
+     AND (p_required_scope IS NULL OR p_required_scope = ANY(t.scope))
+   LIMIT 1;
 $$;
 
 

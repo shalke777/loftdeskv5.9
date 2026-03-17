@@ -60,17 +60,17 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
     switch (thread.visibility) {
       case 'internal':
         return {
-          bg:    '#fefce8',
-          border: '#f0d070',
-          color:  '#7a5010',
+          bg:    '#f0f9ff',
+          border: '#bae6fd',
+          color:  '#0c4a6e',
           icon:   '🔒',
           text:   'Notatka wewnętrzna — widoczna tylko dla Twojego zespołu',
         }
       case 'client_shared':
         return {
-          bg:    '#eff8ff',
-          border: '#bee3f8',
-          color:  '#1e4f78',
+          bg:    '#f0fdf4',
+          border: '#86efac',
+          color:  '#14532d',
           icon:   '💬',
           text:   'Wiadomość do klienta — klient zobaczy ją w portalu',
         }

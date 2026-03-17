@@ -10,6 +10,7 @@ export interface Conversation {
   company_id: string
   client_id: string | null
   project_id: string | null
+  portal_token_id: string | null
   subject: string | null
   client_name?: string   // joined
   project_name?: string  // joined
@@ -41,6 +42,7 @@ const demoConvs: Conversation[] = [
     company_id: 'demo-company',
     client_id: 'demo-client-1',
     project_id: 'demo-project-1',
+    portal_token_id: null,
     subject: 'Pytanie o termin realizacji',
     client_name: 'Jan Kowalski',
     project_name: 'Remont łazienki',
@@ -56,6 +58,7 @@ const demoConvs: Conversation[] = [
     company_id: 'demo-company',
     client_id: 'demo-client-2',
     project_id: null,
+    portal_token_id: null,
     subject: 'Zapytanie o wycenę malowania',
     client_name: 'Anna Nowak',
     project_name: undefined,
@@ -212,6 +215,7 @@ export const conversationsApi = {
         company_id: input.companyId,
         client_id: input.clientId ?? null,
         project_id: input.projectId ?? null,
+        portal_token_id: null,
         subject: input.subject ?? null,
         last_message_at: null,
         unread_count: 0,

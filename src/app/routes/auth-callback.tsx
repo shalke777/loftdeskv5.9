@@ -11,21 +11,8 @@ export function AuthCallbackRoutePage() {
   const [errorMsg, setErrorMsg] = useState('')
   const isClientMode = typeof window !== 'undefined'
     && new URLSearchParams(window.location.search).get('mode') === 'client'
-  // project_id is appended by client-identify.ts for project-centric invites.
-  // When present, the callback redirects straight to that project instead of
-  // the generic /client/dashboard, so the client sees only the invited project.
-  const inviteProjectId = typeof window !== 'undefined'
-    ? (new URLSearchParams(window.location.search).get('project_id') ?? null)
-    : null
 
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.info('CLIENT_PORTAL_AUTH_CALLBACK', {
-        mode: isClientMode ? 'client' : 'operator',
-        hasCode: typeof window !== 'undefined' && Boolean(new URLSearchParams(window.location.search).get('code')),
-        url: typeof window !== 'undefined' ? window.location.href.replace(/code=[^&]+/, 'code=***') : '',
-      })
-    }
     if (!supabase) {
       window.location.assign('/login')
       return
@@ -35,6 +22,12 @@ export function AuthCallbackRoutePage() {
     const succeed = (session: boolean) => {
       if (handled) return
       handled = true
+      // Clients should go straight to their project — no intermediate screen.
+      if (isClientMode && session) {
+        const projectId = params.get('project_id')
+        window.location.replace(projectId ? `/client/project/${projectId}` : '/client/dashboard')
+        return
+      }
       setHasSession(session)
       setStatus('success')
     }
@@ -135,16 +128,7 @@ export function AuthCallbackRoutePage() {
           </div>
 
           <Button
-            onClick={() => {
-              const clientTarget = inviteProjectId
-                ? `/client/project/${inviteProjectId}`
-                : '/client/dashboard'
-              const target = hasSession ? (isClientMode ? clientTarget : '/dashboard') : '/login'
-              if (import.meta.env.DEV) {
-                console.info('CLIENT_PORTAL_REDIRECT', { mode: isClientMode ? 'client' : 'operator', target, hasSession, inviteProjectId })
-              }
-              window.location.assign(target)
-            }}
+            onClick={() => window.location.assign(hasSession ? (isClientMode ? '/client/dashboard' : '/dashboard') : '/login')}
             style={{ width: '100%', fontSize: 16, padding: '12px 0' }}
           >
             {hasSession ? (isClientMode ? 'Przejdź do swoich projektów' : 'Przejdź do aplikacji') : 'Zaloguj się'}

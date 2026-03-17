@@ -65,43 +65,34 @@ export interface ClientMessage {
 
 export interface ClientApproval {
   id: string
-  snapshot_vendor?: string | null
-  snapshot_description?: string | null
-  snapshot_amount_gross?: number | null
-  message_to_client?: string | null
+  title: string
+  description?: string | null
   status: string
+  amount?: number | null
   created_at: string
 }
 
 export const clientPortalApi = {
-  // SECURITY: pass companyId explicitly — never read from session inside API.
-  // This adds a defence-in-depth company_id filter on top of RLS so that:
-  //   a) a client whose email exists in multiple companies only sees their own company's projects
-  //   b) if migration 042 / my_client_project_ids() is absent, we still filter correctly
-  async listProjects(companyId: string): Promise<ClientProject[]> {
-    if (!supabase || !companyId || companyId === 'demo-company') return []
+  async listProjects(): Promise<ClientProject[]> {
+    if (!supabase) return []
+    // RLS na project_client_access filtruje automatycznie przez my_client_project_ids()
     const { data, error } = await supabase
       .from('projects')
       .select('id, company_id, number, name, status, address, investment_address, start_date, end_date, created_at')
-      .eq('company_id', companyId)
-      .is('deleted_at', null)
       .order('created_at', { ascending: false })
     if (error) throw error
     return (data ?? []) as ClientProject[]
   },
 
-  // SECURITY: also scope getProject by company_id to prevent UUID-guessing attacks.
-  async getProject(projectId: string, companyId: string): Promise<ClientProject | null> {
-    if (!supabase || !companyId || companyId === 'demo-company') return null
+  async getProject(projectId: string): Promise<ClientProject | null> {
+    if (!supabase) return null
     const { data, error } = await supabase
       .from('projects')
       .select('id, company_id, number, name, status, address, investment_address, start_date, end_date, created_at')
       .eq('id', projectId)
-      .eq('company_id', companyId)
-      .is('deleted_at', null)
-      .maybeSingle()
+      .single()
     if (error) throw error
-    return data as ClientProject | null
+    return data as ClientProject
   },
 
   async listEstimates(projectId: string): Promise<ClientEstimate[]> {
@@ -156,20 +147,7 @@ export const clientPortalApi = {
 
   async sendMessage(projectId: string, companyId: string, body: string, senderName: string): Promise<void> {
     if (!supabase) return
-    // project_messages.thread_id is NOT NULL — find the client_shared thread first.
-    // Operator creates threads; client can SELECT but not INSERT them.
-    const { data: thread, error: threadError } = await supabase
-      .from('project_threads')
-      .select('id')
-      .eq('project_id', projectId)
-      .eq('visibility', 'client_shared')
-      .eq('archived', false)
-      .limit(1)
-      .maybeSingle()
-    if (threadError) throw threadError
-    if (!thread) throw new Error('Wykonawca nie otworzył jeszcze wątku czatu dla tego projektu. Spróbuj ponownie za chwilę lub skontaktuj się z wykonawcą.')
     const { error } = await supabase.from('project_messages').insert({
-      thread_id:      thread.id,
       project_id:     projectId,
       company_id:     companyId,
       body:           body.trim(),
@@ -185,7 +163,7 @@ export const clientPortalApi = {
     if (!supabase) return []
     const { data, error } = await supabase
       .from('cost_approvals')
-      .select('id, snapshot_vendor, snapshot_description, snapshot_amount_gross, message_to_client, status, created_at')
+      .select('id, title, description, status, amount, created_at')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
     if (error) throw error

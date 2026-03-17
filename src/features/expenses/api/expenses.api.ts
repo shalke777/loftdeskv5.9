@@ -409,44 +409,24 @@ export interface ExpenseInvoiceV4 extends ExpenseInvoice {
   payment_due_date?:         string | null
 }
 
-export interface ParsedLineItem {
-  name:         string | null
-  quantity:     number | null
-  unit:         string | null
-  unit_net:     number | null
-  vat_rate:     number | null
-  net_amount:   number | null
-  vat_amount:   number | null
-  gross_amount: number | null
-}
-
 /** The result returned by /.netlify/functions/parse-invoice */
 export interface ParseInvoiceResult {
-  vendor_name:     string | null
-  vendor_nip:      string | null
-  vendor_address?: string | null
-  invoice_number:  string | null
-  issue_date:      string | null
-  sale_date:       string | null
-  net_amount:      number | null
-  vat_amount:      number | null
-  gross_amount:    number | null
-  currency:        string
+  vendor_name:      string | null
+  vendor_nip:       string | null
+  invoice_number:   string | null
+  issue_date:       string | null
+  sale_date:        string | null
+  net_amount:       number | null
+  vat_amount:       number | null
+  gross_amount:     number | null
+  currency:         string
   payment_due_date: string | null
-  notes:           string | null
-  // buyer
-  buyer_name?:     string | null
-  buyer_nip?:      string | null
-  buyer_address?:  string | null
-  // line items
-  line_items?:     ParsedLineItem[]
+  notes:            string | null
   // metadata
   extraction_confidence:      number   // 0–100
   extraction_warnings:        string[]
   requires_user_confirmation: boolean
   parser_source:              'ai' | 'regex' | 'manual'
-  // raw text extracted server-side (used as AI input for PDFs)
-  extracted_text?:            string
 }
 
 /** Input to create an expense and link it to a project */

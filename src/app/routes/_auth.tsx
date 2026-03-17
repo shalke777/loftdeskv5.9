@@ -1,12 +1,13 @@
 import {
   Bell,
   Calculator,
+  CreditCard,
+  ExternalLink,
   FileText,
   FolderKanban,
   LayoutDashboard,
   LogOut,
   MessageSquare,
-  MoreHorizontal,
   Receipt,
   Settings,
   Shield,
@@ -34,33 +35,25 @@ type MainNavItem = {
 }
 
 const mainNavItems: MainNavItem[] = [
-  { to: '/dashboard', label: 'Tablica',     icon: LayoutDashboard },
-  { to: '/clients',   label: 'Kontrahenci', icon: Users },
-  { to: '/projects',  label: 'Projekty',    icon: FolderKanban },
-  { to: '/estimates', label: 'Wyceny',      icon: Calculator },
-  { to: '/contracts', label: 'Umowy',       icon: FileText },
-  { to: '/invoices',  label: 'Faktury',     icon: Receipt },
-  { to: '/chat',      label: 'Chat',        icon: MessageSquare },
-  { to: '/expenses',  label: 'Koszty',      icon: Wallet },
-  { to: '/ksef',      label: 'KSeF',        icon: Shield, feature: 'ksef' },
-  { to: '/settings',  label: 'Ustawienia',  icon: Settings },
+  { to: '/dashboard', label: 'Tablica', icon: LayoutDashboard },
+  { to: '/clients', label: 'Kontrahenci', icon: Users },
+  { to: '/estimates', label: 'Wycena', icon: Calculator },
+  { to: '/contracts', label: 'Umowa', icon: FileText },
+  { to: '/invoices', label: 'Faktura', icon: Receipt },
+  { to: '/projects', label: 'Projekty', icon: FolderKanban },
+  { to: '/chat', label: 'Chat', icon: MessageSquare },
+  { to: '/expenses', label: 'Koszty', icon: Wallet },
+  { to: '/ksef', label: 'KSeF', icon: Shield, feature: 'ksef' },
+  { to: '/settings', label: 'Ustawienia', icon: Settings },
 ]
 
-// ── Primary bar (4 items + Więcej button) — order per spec ──────────────────
-const mobileNavPrimary: MainNavItem[] = [
-  { to: '/dashboard', label: 'Tablica',     icon: LayoutDashboard },
-  { to: '/clients',   label: 'Kontrahenci', icon: Users },
-  { to: '/projects',  label: 'Projekty',    icon: FolderKanban },
-  { to: '/estimates', label: 'Wyceny',      icon: Calculator },
-  { to: '/chat',      label: 'Chat',        icon: MessageSquare },
-]
-// ── More drawer items ────────────────────────────────────────────────────────
-const mobileNavMore: MainNavItem[] = [
-  { to: '/contracts', label: 'Umowy',       icon: FileText },
-  { to: '/invoices',  label: 'Faktury',     icon: Receipt },
-  { to: '/expenses',  label: 'Koszty',      icon: Wallet },
-  { to: '/ksef',      label: 'KSeF',        icon: Shield, feature: 'ksef' },
-  { to: '/settings',  label: 'Ustawienia',  icon: Settings },
+const mobileNav: MainNavItem[] = [
+  { to: '/dashboard', label: 'Tablica', icon: LayoutDashboard },
+  { to: '/projects',  label: 'Projekty', icon: FolderKanban },
+  { to: '/chat',      label: 'Chat',     icon: MessageSquare },
+  { to: '/expenses',  label: 'Koszty',   icon: Wallet },
+  { to: '/invoices',  label: 'Faktura',  icon: Receipt },
+  { to: '/settings',  label: 'Ustawienia', icon: Settings },
 ]
 
 function isActive(pathname: string, item: MainNavItem) {
@@ -71,18 +64,11 @@ export function AuthLayout() {
   const { user, signOut, loading } = useAuth()
   const companyId = useCompanyId()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const canUsePortal = useFeatureAccess('portal')
   const canUseKsef = useFeatureAccess('ksef')
-  // Client portal users have no access to portal_messages (company ops table).
-  // Passing null disables the query, preventing 400 errors from the legacy table.
-  const isClientRole = user?.role === 'client'
-  const { notifications, unreadCount, markAllRead, dbUnreadCount } = usePortalNotifications(
-    isClientRole ? null : (user?.id ?? null),
-  )
+  const { notifications, unreadCount, markAllRead, dbUnreadCount } = usePortalNotifications(user?.id ?? null)
   const [showNotifications, setShowNotifications] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
-  const [moreOpen, setMoreOpen] = useState(false)
-  const [navVisible, setNavVisible] = useState(true)
-  const lastScrollYRef = useRef(0)
 
   useEffect(() => {
     if (!showNotifications) return
@@ -95,17 +81,6 @@ export function AuthLayout() {
     return () => document.removeEventListener('mousedown', handle)
   }, [showNotifications])
 
-  useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY
-      if (y > lastScrollYRef.current + 8) { setNavVisible(false); setMoreOpen(false) }
-      else if (y < lastScrollYRef.current - 4) setNavVisible(true)
-      lastScrollYRef.current = y
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
   if (loading) return <div className="page-loading">Ładowanie sesji...</div>
   if (!user) return <AuthScreen />
 
@@ -114,9 +89,7 @@ export function AuthLayout() {
 
   const featureFlags = { ksef: canUseKsef } as const
   const visibleMainNav = mainNavItems.filter((item) => !item.feature || featureFlags[item.feature])
-  const visibleMobileNavPrimary = mobileNavPrimary.filter((item) => !item.feature || featureFlags[item.feature])
-  const visibleMobileNavMore = mobileNavMore.filter((item) => !item.feature || featureFlags[item.feature])
-  const moreActive = visibleMobileNavMore.some((item) => isActive(pathname, item))
+  const visibleMobileNav = mobileNav.filter((item) => !item.feature || featureFlags[item.feature])
 
   return (
     <>
@@ -144,6 +117,19 @@ export function AuthLayout() {
 			  </Link>
 			)
 		  })}
+		  {canUsePortal ? (
+			<Link to="/portal-inbox" className={pathname.startsWith('/portal-inbox') ? 'sidebar__link sidebar__link--active' : 'sidebar__link'}>
+			  <MessageSquare size={18} />
+			  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+				Portal
+				{dbUnreadCount > 0 && (
+				  <span style={{ background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 20, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
+					{dbUnreadCount > 99 ? '99+' : dbUnreadCount}
+				  </span>
+				)}
+			  </span>
+			</Link>
+		  ) : null}
 		</nav>
 
         <div className="sidebar__footer">
@@ -222,59 +208,24 @@ export function AuthLayout() {
           </div>
         </header>
         <main className="shell-content"><Outlet /></main>
-        {/* ── Fixed bottom nav bar — mobile only ───────────────────────── */}
-        <nav className={`mobile-nav${navVisible ? '' : ' mobile-nav--hidden'}`}>
-          {visibleMobileNavPrimary.map((item) => {
+        <nav className="mobile-nav">
+          {visibleMobileNav.map((item) => {
             const Icon = item.icon
             const active = isActive(pathname, item)
-            const isChat = item.to === '/chat'
             return (
-              <Link key={item.to} to={item.to} onClick={() => setMoreOpen(false)}
-                className={active ? 'mobile-nav__link mobile-nav__link--active' : 'mobile-nav__link'}>
-                <span className="mobile-nav__icon-wrap">
-                  <Icon size={20} />
-                  {isChat && dbUnreadCount > 0 && (
-                    <span className="mobile-nav__badge">
-                      {dbUnreadCount > 99 ? '99+' : dbUnreadCount}
-                    </span>
-                  )}
-                </span>
+              <Link key={item.to} to={item.to} className={active ? 'mobile-nav__link mobile-nav__link--active' : 'mobile-nav__link'}>
+                <Icon size={18} />
                 <span>{item.label}</span>
               </Link>
             )
           })}
-          <button
-            className={`mobile-nav__more-btn${moreActive ? ' mobile-nav__link--active' : ''}`}
-            onClick={() => setMoreOpen((v) => !v)}
-            aria-label="Więcej"
-          >
-            <MoreHorizontal size={20} />
-            <span>Więcej</span>
-          </button>
+          {canUsePortal ? (
+            <Link to="/portal-inbox" className={pathname.startsWith('/portal-inbox') ? 'mobile-nav__link mobile-nav__link--active' : 'mobile-nav__link'}>
+              <MessageSquare size={18} />
+              <span>Portal</span>
+            </Link>
+          ) : null}
         </nav>
-
-        {/* ── Więcej bottom sheet ──────────────────────────────────────── */}
-        {moreOpen && (
-          <>
-            <div className="mobile-more-backdrop" onClick={() => setMoreOpen(false)} />
-            <div className="mobile-more-sheet">
-              <div className="mobile-more-sheet__handle" />
-              <div className="mobile-more-sheet__grid">
-                {visibleMobileNavMore.map((item) => {
-                  const Icon = item.icon
-                  const active = isActive(pathname, item)
-                  return (
-                    <Link key={item.to} to={item.to} onClick={() => setMoreOpen(false)}
-                      className={active ? 'mobile-more-sheet__link mobile-more-sheet__link--active' : 'mobile-more-sheet__link'}>
-                      <Icon size={24} />
-                      <span>{item.label}</span>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
-          </>
-        )}
       </section>
     </div>
     </>

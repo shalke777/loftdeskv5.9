@@ -56,3 +56,15 @@ Use the orchestrator agent. Inspect the repo, identify the highest-priority issu
 
 ## 11) Reality check
 This setup is as close as VS Code/Copilot currently gets to autonomous local delivery. You can remove many approvals, but fully unattended coding still depends on your plan, org policies, available tools, and your own local environment.
+
+
+## Added premium UI roles
+- `visual-design-director`: audits hierarchy, spacing, density, premium polish, and visual consistency
+- `ux-modern-apps`: audits usability, flow clarity, discoverability, empty/loading/error states, and low-friction task completion
+
+Recommended chain for customer-facing UI work:
+1. orchestrator
+2. ux-modern-apps
+3. visual-design-director
+4. frontend-specialist
+5. qa-reviewer

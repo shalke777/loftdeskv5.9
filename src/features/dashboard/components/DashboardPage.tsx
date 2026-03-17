@@ -1,4 +1,4 @@
-import { ArrowRight, FileText, FolderKanban, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
+import { ArrowRight, FileText, FolderKanban, MessageSquareText, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Card } from '@/shared/ui/Card/Card'
@@ -9,7 +9,8 @@ import { useDashboardStats } from '@/features/dashboard/hooks/useDashboardStats'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { PLAN_DEFS } from '@/shared/lib/constants'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
-import { useAuth } from '@/features/auth/hooks/useAuth'
+import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
+import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
 import { OnboardingChecklist } from '@/features/onboarding/components/OnboardingChecklist'
 import { WelcomeBanner } from '@/features/onboarding/components/WelcomeBanner'
 import { useOnboardingProgress } from '@/features/onboarding/hooks/useOnboardingProgress'
@@ -17,32 +18,18 @@ import { useOnboardingProgress } from '@/features/onboarding/hooks/useOnboarding
 const WELCOME_DISMISSED_KEY = 'loftdesk-welcome-dismissed'
 
 const quickActions = [
-  { icon: Users,        title: 'Dodaj klienta',  href: '/clients'   },
-  { icon: FileText,     title: 'Nowa wycena',    href: '/estimates' },
-  { icon: Receipt,      title: 'Nowa faktura',   href: '/invoices'  },
-  { icon: FolderKanban, title: 'Projekty',        href: '/projects'  },
+  { icon: Users,        title: 'Dodaj kontrahenta', text: 'Uzupełnij bazę inwestorów i wykonawców.',    href: '/clients'   },
+  { icon: FileText,     title: 'Nowa wycena',        text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates' },
+  { icon: Receipt,      title: 'Nowa faktura',       text: 'Wystaw dokument i przygotuj XML do KSeF.',   href: '/invoices'  },
+  { icon: FolderKanban, title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',     href: '/projects'  },
 ]
 
 export function DashboardPage() {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const companyId = useCompanyId()
-
-  // Safety guard: if a client somehow reaches the operator dashboard, redirect them.
-  // The primary guard is in AuthLayout (user.role === 'client' → ClientShell).
-  // This catches any edge cases where role was resolved incorrectly.
-  useEffect(() => {
-    if (user?.role === 'client') {
-      if (import.meta.env.DEV) {
-        console.info('CLIENT_PORTAL_GUARD_REDIRECTED_FROM_DASHBOARD', {
-          userId: user.id,
-          currentRoute: '/dashboard',
-          targetRoute: '/client/dashboard',
-        })
-      }
-      void navigate({ to: '/client/dashboard', replace: true })
-    }
-  }, [user?.role, navigate])
+  const canUsePortal = useFeatureAccess('portal')
+  const { data: portalTokens } = usePortalTokens(companyId ?? '')
+  const firstPortalUrl = canUsePortal ? (portalTokens ?? []).find((t) => t.active)?.url ?? null : null
   const { data, isLoading } = useDashboardStats()
   const { data: onboarding } = useOnboardingProgress()
 
@@ -58,20 +45,6 @@ export function DashboardPage() {
   if (isLoading || !data) return <Spinner />
 
   const pipelineProjects: { id: string; name: string; number: string; status: string; clientName: string; contractValue: number; estimateValue: number; invoicedTotal: number; paidTotal: number }[] = (data as any).pipelineProjects ?? []
-
-  const hasData = onboarding ? !onboarding.isEmpty : false
-  const shouldShowChecklist = onboarding != null && !onboarding.isComplete
-
-  if (import.meta.env.DEV) {
-    console.info('DASHBOARD_GETTING_STARTED_VISIBILITY', {
-      shouldShowChecklist,
-      isEmpty: onboarding?.isEmpty,
-      isComplete: onboarding?.isComplete,
-      done: onboarding?.done,
-      total: onboarding?.total,
-      hasData,
-    })
-  }
 
   const stats = [
     { label: 'Pipeline projektów', value: formatCurrency(data.pipeline) },
@@ -89,8 +62,8 @@ export function DashboardPage() {
         <WelcomeBanner companyName={data.companyName} onDismiss={dismissWelcome} />
       )}
 
-      {/* ── Onboarding checklist: shown until all core steps done ─────────── */}
-      {shouldShowChecklist && <OnboardingChecklist />}
+      {/* ── Onboarding checklist: shown until all steps done ──────────────── */}
+      {!onboarding?.isEmpty && <OnboardingChecklist />}
 
       <section className="dashboard-hero">
         <Card className="highlight-card">
@@ -104,6 +77,12 @@ export function DashboardPage() {
         </Card>
 
         <Card className="subtle-panel">
+          <div className="toolbar" style={{ marginBottom: 12 }}>
+            <div>
+              <h3>Szybkie akcje</h3>
+              <p className="field__label">Najczęstsze ruchy z pulpitu.</p>
+            </div>
+          </div>
           <div className="quick-actions-grid">
             {quickActions.map((action) => {
               const Icon = action.icon
@@ -113,10 +92,11 @@ export function DashboardPage() {
                   className="quick-action"
                   onClick={() => navigate({ to: action.href as any })}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                     <div className="quick-action__icon"><Icon size={18} /></div>
                     <strong>{action.title}</strong>
                   </div>
+                  <div className="field__label">{action.text}</div>
                 </button>
               )
             })}
@@ -134,7 +114,7 @@ export function DashboardPage() {
       </div>
 
       {pipelineProjects.length > 0 && (
-        <Card style={{ marginTop: 16, minWidth: 0, overflow: 'hidden' }}>
+        <Card style={{ marginTop: 16 }}>
           <div className="toolbar" style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <TrendingUp size={20} />
@@ -142,8 +122,7 @@ export function DashboardPage() {
             </div>
             <span className="field__label">{pipelineProjects.length} {pipelineProjects.length === 1 ? 'pozycja' : 'pozycji'}</span>
           </div>
-          <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse', fontSize: 14 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
                 <th style={{ padding: '8px 12px' }}>Nazwa</th>
@@ -156,7 +135,7 @@ export function DashboardPage() {
             </thead>
             <tbody>
               {pipelineProjects.map((proj) => (
-                <tr key={proj.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                <tr key={proj.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                   <td style={{ padding: '10px 12px' }}><strong>{proj.name}</strong><div className="field__label">{proj.number}</div></td>
                   <td style={{ padding: '10px 12px' }}>{proj.clientName || '—'}</td>
                   <td style={{ padding: '10px 12px' }}><span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: proj.status === 'active' ? '#dcfce7' : proj.status === 'done' ? '#f3f4f6' : proj.status === 'offer' ? '#fef3c7' : '#fee2e2', color: proj.status === 'active' ? '#166534' : proj.status === 'done' ? '#374151' : proj.status === 'offer' ? '#92400e' : '#991b1b' }}>{proj.status === 'active' ? 'W toku' : proj.status === 'done' ? 'Zakończony' : proj.status === 'offer' ? 'Oferta' : 'Anulowany'}</span></td>
@@ -167,7 +146,6 @@ export function DashboardPage() {
               ))}
             </tbody>
           </table>
-          </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 12px 0', gap: 24, fontSize: 14, fontWeight: 700 }}>
             <span>Suma pipeline: {formatCurrency(data.pipeline)}</span>
           </div>
@@ -197,9 +175,10 @@ export function DashboardPage() {
         </Card>
         <Card>
           <h3>Portal klienta</h3>
-          <p>Klient dostaje zaproszenie emailowe i loguje się do dedykowanego portalu. Zarządzaj dostępem w widoku projektu.</p>
+          <p>Klient dostaje link do konkretnego kosztorysu, może go zaakceptować i zostawić komentarz w jednym miejscu.</p>
           <div className="actions-row">
-            <Button variant="secondary" onClick={() => navigate({ to: '/projects' })}>Otwórz projekty</Button>
+            <Button variant="secondary" onClick={() => navigate({ to: '/estimates' })}>Generuj link portalu</Button>
+            {firstPortalUrl ? <a href={firstPortalUrl} target="_blank" rel="noreferrer"><Button variant="ghost" icon={<MessageSquareText size={16} />}>Otwórz portal demo</Button></a> : null}
           </div>
         </Card>
       </div>

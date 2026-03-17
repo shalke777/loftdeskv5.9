@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@/shared/ui/Button/Button'
 import { Input } from '@/shared/ui/Input/Input'
 import { LoginForm } from '@/features/auth/components/LoginForm'
 import { RegisterForm } from '@/features/auth/components/RegisterForm'
 import { ForgotPasswordForm } from '@/features/auth/components/ForgotPasswordForm'
+import { supabase } from '@/shared/lib/supabase'
 
 const tabs = [
   { key: 'login',    label: 'Logowanie' },
@@ -15,8 +17,6 @@ const tabs = [
 type AuthTab = (typeof tabs)[number]['key']
 
 // ── Prosty formularz magic-link dla klientów ──────────────────────────────────
-// Używa /.netlify/functions/client-otp (admin.generateLink, bez SMTP).
-// Klient zostaje przekierowany bezpośrednio na wygenerowany link Supabase.
 function ClientMagicLinkForm() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -25,37 +25,17 @@ function ClientMagicLinkForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim()) return
+    if (!email.trim() || !supabase) return
     setLoading(true)
     setError('')
-
-    try {
-      const res = await fetch('/.netlify/functions/client-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.toLowerCase().trim() }),
-      })
-      const body = await res.json() as { ok?: boolean; error?: string; magic_link?: string | null }
-      setLoading(false)
-
-      if (!res.ok) {
-        setError(body?.error ?? 'Błąd serwera. Spróbuj ponownie.')
-        return
-      }
-
-      if (body?.magic_link) {
-        // Przekieruj bezpośrednio na magic link — Supabase weryfikuje i ustawia sesję
-        window.location.assign(body.magic_link)
-        return
-      }
-
-      // Brak magic_link: konto nie istnieje (lub konto nie jest klienckie).
-      // Pokazujemy neutralną wiadomość zamiast ujawniać, że email nie jest zarejestrowany.
-      setSent(true)
-    } catch {
-      setLoading(false)
-      setError('Błąd połączenia. Sprawdź internet i spróbuj ponownie.')
-    }
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email: email.toLowerCase().trim(),
+      options: { emailRedirectTo: `${baseUrl}/auth/callback?mode=client` },
+    })
+    setLoading(false)
+    if (err) { setError('Nie udało się wysłać linku. Sprawdź adres email.'); return }
+    setSent(true)
   }
 
   if (sent) {
@@ -64,11 +44,11 @@ function ClientMagicLinkForm() {
         <div style={{ fontSize: 48, marginBottom: 12 }}>📬</div>
         <h2 style={{ marginBottom: 8 }}>Sprawdź skrzynkę</h2>
         <p style={{ color: '#64748b', lineHeight: 1.6 }}>
-          Jeśli masz przypisany dostęp do projektu, link logowania powinien dotrzeć na <strong>{email}</strong>.
-          <br />Sprawdź folder spam.
+          Wysłaliśmy link logowania na <strong>{email}</strong>.<br />
+          Kliknij go, aby przejść do swoich projektów.
         </p>
         <Button variant="secondary" style={{ marginTop: 20 }} onClick={() => { setSent(false); setEmail('') }}>
-          Spróbuj ponownie
+          Wyślij ponownie
         </Button>
       </div>
     )
@@ -79,7 +59,7 @@ function ClientMagicLinkForm() {
       <h2 style={{ marginBottom: 6, fontSize: 20 }}>Dostęp do projektów</h2>
       <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20, lineHeight: 1.5 }}>
         Jeśli wykonawca przydzielił Ci dostęp do projektu, wpisz swój adres email.<br />
-        Zostaniesz automatycznie zalogowany.
+        Wyślemy Ci link logowania bez hasła.
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 14 }}>
         <Input
@@ -92,7 +72,7 @@ function ClientMagicLinkForm() {
         />
         {error && <p style={{ color: '#dc2626', fontSize: 13, margin: 0 }}>{error}</p>}
         <Button type="submit" disabled={loading || !email.trim()}>
-          {loading ? 'Łączenie…' : 'Zaloguj się'}
+          {loading ? 'Wysyłanie…' : 'Wyślij link logowania'}
         </Button>
       </form>
       <p style={{ marginTop: 14, fontSize: 12, color: '#94a3b8', textAlign: 'center' }}>
@@ -104,6 +84,7 @@ function ClientMagicLinkForm() {
 
 export function AuthScreen() {
   const [tab, setTab] = useState<AuthTab>(() => {
+    // Jeśli URL zawiera ?mode=client, otwórz od razu zakładkę klienta
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'client') {
       return 'client'
     }
@@ -112,60 +93,32 @@ export function AuthScreen() {
 
   return (
     <main className="auth-shell">
-      <div style={{ width: 'min(440px, 100%)', display: 'grid', gap: 12 }}>
-
-        {/* Compact header */}
-        <div style={{ textAlign: 'center', paddingBottom: 2 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 7,
-              background: 'var(--color-brand)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontWeight: 800, fontSize: 11, letterSpacing: .5,
-            }}>LD</div>
-            <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-primary)', letterSpacing: -.2 }}>LoftDesk Login</span>
+      <div style={{ width: 'min(1120px, 100%)', display: 'grid', gap: 16 }}>
+        <div className="grid-2" style={{ alignItems: 'stretch' }}>
+          <div className="card highlight-card">
+            <span className="hero__eyebrow" style={{ background: 'rgba(255,255,255,.18)', color: 'white' }}>LoftDesk</span>
+            <h1 style={{ fontSize: 42, marginBottom: 12, color: 'var(--color-chart-5)' }}>Wchodzisz do systemu, który porządkuje ofertę, dokumenty i realizację.</h1>
+            <p>LoftDesk jest prostszy niż ciężkie ERP-y i dużo bardziej dopasowany do realiów budowy niż zwykłe programy do faktur.</p>
+            <div className="hero__actions">
+              <Link to="/"><Button variant="secondary">Wróć na landing</Button></Link>
+            </div>
           </div>
-          <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: 13 }}>
-            Zaloguj się do konta firmowego
-          </p>
+          <div style={{ display: 'grid', gap: 16 }}>
+            <div className="toolbar" style={{ justifyContent: 'center', marginBottom: 0 }}>
+              <div className="toolbar__actions">
+                {tabs.map((item) => (
+                  <Button key={item.key} variant={tab === item.key ? 'primary' : 'secondary'} onClick={() => setTab(item.key)}>
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            {tab === 'login'    ? <LoginForm />             : null}
+            {tab === 'register' ? <RegisterForm />          : null}
+            {tab === 'forgot'   ? <ForgotPasswordForm />    : null}
+            {tab === 'client'   ? <ClientMagicLinkForm />   : null}
+          </div>
         </div>
-
-        {/* Compact pill tab bar */}
-        <div style={{
-          display: 'flex', gap: 3,
-          background: 'var(--color-bg-elevated)',
-          borderRadius: 8, padding: 3,
-        }}>
-          {tabs.map((item) => (
-            <button
-              key={item.key}
-              onClick={() => setTab(item.key)}
-              style={{
-                flex: 1,
-                padding: '5px 4px',
-                fontSize: 11.5,
-                fontWeight: tab === item.key ? 600 : 400,
-                border: 'none',
-                borderRadius: 6,
-                cursor: 'pointer',
-                background: tab === item.key ? 'var(--color-surface)' : 'transparent',
-                color: tab === item.key ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-                boxShadow: tab === item.key ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
-                transition: 'all .15s',
-                whiteSpace: 'nowrap',
-                lineHeight: 1.4,
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Forms */}
-        {tab === 'login'    ? <LoginForm />           : null}
-        {tab === 'register' ? <RegisterForm />        : null}
-        {tab === 'forgot'   ? <ForgotPasswordForm />  : null}
-        {tab === 'client'   ? <ClientMagicLinkForm /> : null}
       </div>
     </main>
   )

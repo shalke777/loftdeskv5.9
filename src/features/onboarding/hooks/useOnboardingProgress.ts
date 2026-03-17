@@ -9,6 +9,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { billingApi } from '@/features/billing/api/billing.api'
+import { portalApi } from '@/features/portal/api/portal.api'
 import { demoDb } from '@/shared/lib/demoDb'
 import { isDemoMode } from '@/shared/lib/supabase'
 
@@ -63,8 +64,8 @@ const STEP_META: Record<string, { label: string; description: string; href: stri
   },
 }
 
-// Ordered steps displayed to user (portal is optional — excluded from core completion)
-const ORDERED_STEPS = ['companyProfile', 'firstClient', 'firstEstimate', 'projects']
+// Ordered steps displayed to user (simplified subset of full onboarding)
+const ORDERED_STEPS = ['companyProfile', 'firstClient', 'firstEstimate', 'projects', 'portal']
 
 export function useOnboardingProgress() {
   const companyId = useCompanyId()
@@ -91,13 +92,17 @@ export function useOnboardingProgress() {
         }
       }
 
-      // Supabase mode: derive from billing summary
-      const billing = await billingApi.summary(companyId)
+      // Supabase mode: derive from billing summary + portal tokens
+      const [billing, portalTokens] = await Promise.all([
+        billingApi.summary(companyId),
+        portalApi.listCompanyTokens(companyId).catch(() => [] as { active: boolean }[]),
+      ])
       const checks: Record<string, boolean> = {
         companyProfile: Boolean(billing.companyName && billing.companyName !== 'LoftDesk Workspace'),
         firstClient: billing.usage.clients > 0,
         firstEstimate: billing.usage.estimates > 0,
         projects: billing.usage.projects > 0,
+        portal: portalTokens.some((t) => t.active),
       }
       const steps = buildSteps(checks)
       const done = steps.filter((s) => s.done).length

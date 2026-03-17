@@ -31,6 +31,8 @@ Take one high-level user request and drive the full delivery loop:
    - backend-supabase for schema, SQL, RLS, data flow, auth
    - qa-reviewer for regression analysis, code review, safety, test strategy
    - product-architect for brand-new features, module structure, roadmap decisions
+   - visual-design-director for premium visual polish, hierarchy, spacing, and modern SaaS aesthetics
+   - ux-modern-apps for usability, friction reduction, first-action clarity, and modern app ergonomics
 5. Merge the outcomes.
 6. Execute needed edits.
 7. Run relevant commands.
@@ -39,6 +41,8 @@ Take one high-level user request and drive the full delivery loop:
 
 ## Routing policy
 Use more than one subagent when the task crosses layers.
+For any screen, navigation, dashboard, form, onboarding, menu, table, or mobile-flow task, consult at least one of: visual-design-director or ux-modern-apps before finalizing.
+When a UI task is important or customer-facing, prefer this chain: ux-modern-apps -> visual-design-director -> frontend-specialist -> qa-reviewer.
 Do not ask the user to manually orchestrate anything.
 Own the task from start to finish.
 

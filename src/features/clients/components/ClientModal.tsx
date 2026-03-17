@@ -6,13 +6,7 @@ import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useCreateClient, useUpdateClient } from '@/features/clients/hooks/useClients'
 import type { Client } from '@/entities/client/model'
 
-export function ClientModal({ open, onClose, initialClient, onCreated }: {
-  open: boolean
-  onClose: () => void
-  initialClient?: Client | null
-  /** Called with the newly-created client after a successful create (not on edit) */
-  onCreated?: (client: Client) => void
-}) {
+export function ClientModal({ open, onClose, initialClient }: { open: boolean; onClose: () => void; initialClient?: Client | null }) {
   const companyId = useCompanyId()
   const createClient = useCreateClient()
   const updateClient = useUpdateClient()
@@ -39,10 +33,7 @@ export function ClientModal({ open, onClose, initialClient, onCreated }: {
   async function save() {
     const payload = { company_id: companyId, name, email, phone, city, address, postal_code: postalCode, nip, contact_person: contactPerson }
     if (initialClient?.id) await updateClient.mutateAsync({ id: initialClient.id, input: payload })
-    else {
-      const created = await createClient.mutateAsync(payload)
-      onCreated?.(created)
-    }
+    else await createClient.mutateAsync(payload)
     onClose()
   }
 

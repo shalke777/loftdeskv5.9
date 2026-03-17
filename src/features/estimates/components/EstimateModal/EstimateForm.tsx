@@ -2,7 +2,6 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/shared/ui/Button/Button'
 import { Input } from '@/shared/ui/Input/Input'
 import { Select } from '@/shared/ui/Select/Select'
-import { ClientSelectWithCreate } from '@/shared/ui/ClientSelectWithCreate/ClientSelectWithCreate'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { ItemsEditor } from '@/features/estimates/components/EstimateModal/ItemsEditor'
@@ -49,6 +48,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
 
   const { data: clients = [] } = useClients()
   const { data: projects = [] } = useProjects()
+  const clientOptions = useMemo(() => clients.map((c) => ({ value: c.id, label: c.name })), [clients])
   const projectOptions = useMemo(() => projects.map((p) => ({ value: p.id, label: `${p.number} · ${p.name}` })), [projects])
   const totals = useMemo(() => calcTotals(items), [items])
 
@@ -124,7 +124,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
         <div style={{ gridColumn: '1 / -1' }}>
           <Input label="Nazwa wyceny *" value={name} onChange={(e) => setName(e.target.value)} placeholder="np. Remont łazienki – oferta wstępna" />
         </div>
-        <ClientSelectWithCreate label="Kontrahent" value={clientId} onChange={setClientId} />
+        <Select label="Klient" value={clientId} onChange={(e) => setClientId(e.target.value)} options={clientOptions} placeholder="Bez przypisania" />
         <Select label="Projekt" value={projectId} onChange={(e) => {
           const pid = e.target.value
           setProjectId(pid)
@@ -157,10 +157,10 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
 
       {/* ── Podsumowanie ── */}
       {items.length > 0 && (
-        <div style={{ background: 'var(--color-surface-soft)', border: '1px solid var(--color-border-light)', borderRadius: 10, padding: '14px 18px' }}>
-          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)', marginBottom: 10 }}>Podsumowanie</div>
+        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 18px' }}>
+          <div style={{ fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 10 }}>Podsumowanie</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '5px 24px', fontSize: 13 }}>
-            <span style={{ color: 'var(--color-text-secondary)' }}>Netto</span>
+            <span style={{ color: '#6b7280' }}>Netto</span>
             <span style={{ fontWeight: 500, textAlign: 'right' }}>{totals.net.toFixed(2)} zł</span>
             {vatBreakdown.map(({ rate, amount }) => (
               <Fragment key={rate}>
@@ -168,8 +168,8 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
                 <span style={{ fontWeight: 500, textAlign: 'right' }}>{amount.toFixed(2)} zł</span>
               </Fragment>
             ))}
-            <span style={{ color: 'var(--color-text-primary)', fontWeight: 700, borderTop: '1px solid var(--color-border)', paddingTop: 8, marginTop: 2 }}>Brutto</span>
-            <span style={{ fontWeight: 700, textAlign: 'right', borderTop: '1px solid var(--color-border)', paddingTop: 8, marginTop: 2 }}>{totals.gross.toFixed(2)} zł</span>
+            <span style={{ color: '#111827', fontWeight: 700, borderTop: '1px solid #e2e8f0', paddingTop: 8, marginTop: 2 }}>Brutto</span>
+            <span style={{ fontWeight: 700, textAlign: 'right', borderTop: '1px solid #e2e8f0', paddingTop: 8, marginTop: 2 }}>{totals.gross.toFixed(2)} zł</span>
           </div>
         </div>
       )}

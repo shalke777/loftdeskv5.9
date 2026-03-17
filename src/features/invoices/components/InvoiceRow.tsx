@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, Send, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, Trash2 } from 'lucide-react'
 import type { Invoice } from '@/entities/invoice/model'
 import { Button } from '@/shared/ui/Button/Button'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
-import { SendDocumentModal } from '@/shared/ui/SendDocumentModal/SendDocumentModal'
 import { buildInvoicePreview, buildInvoiceXml } from '@/services/pdf/documentPreview'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { useClients } from '@/features/clients/hooks/useClients'
@@ -52,7 +51,6 @@ export function InvoiceRow({
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [sendOpen, setSendOpen] = useState(false)
 
   const { data: clients = [] } = useClients()
   const { user } = useAuth()
@@ -121,13 +119,6 @@ export function InvoiceRow({
           )}
           <span className={STATUS_CLASS[invoice.status]}>{STATUS_LABEL[invoice.status]}</span>
           <div className="proj-row__actions">
-            <button
-              className="proj-action-btn"
-              title="Wyślij do klienta"
-              onClick={e => { e.stopPropagation(); setSendOpen(true) }}
-            >
-              <Send size={14} />
-            </button>
             <button
               className="proj-action-btn"
               title="PDF / XML"
@@ -251,13 +242,6 @@ export function InvoiceRow({
         onClose={() => setPreviewOpen(false)}
         title={`${invoice.number} · Podgląd dokumentu`}
         tabs={tabs}
-      />
-      <SendDocumentModal
-        open={sendOpen}
-        onClose={() => setSendOpen(false)}
-        documentType="invoice"
-        documentName={invoice.number}
-        defaultEmail={client?.email ?? null}
       />
     </div>
   )

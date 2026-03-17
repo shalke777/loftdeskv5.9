@@ -41,7 +41,7 @@ subject = "Resetowanie hasła – LoftDesk"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.email.template.invite]
-subject = "Zaproszenie do LoftDesk"
+subject = " LoftDesk"
 content_path = "./supabase/templates/invite.html"
 
 [auth.email.template.magic_link]

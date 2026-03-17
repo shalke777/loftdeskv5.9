@@ -72,7 +72,7 @@ export const billingApi = {
 
     const [{ count: clients }, { count: projects }, { count: estimates }, { count: invoices }, { count: contracts }] = await Promise.all([
       supabase.from('clients').select('*', { count: 'exact', head: true }).eq(filterColumn, filterValue),
-      supabase.from('projects').select('*', { count: 'exact', head: true }).eq(filterColumn, filterValue).is('deleted_at', null),
+      supabase.from('projects').select('*', { count: 'exact', head: true }).eq(filterColumn, filterValue),
       supabase.from('cost_estimates').select('*', { count: 'exact', head: true }).eq(filterColumn, filterValue),
       supabase.from('invoices').select('*', { count: 'exact', head: true }).eq(filterColumn, filterValue),
       supabase.from('contracts').select('*', { count: 'exact', head: true }).eq(filterColumn, filterValue),
@@ -100,7 +100,7 @@ export const billingApi = {
       }
       const currentPlan = ((company?.plan as BillingPlan | null) ?? 'free')
       return {
-        companyName: (company?.name as string | null | undefined) ?? 'LoftDesk Workspace',
+        companyName: company?.name ?? 'LoftDesk Workspace',
         companyId: scope.companyId,
         currentPlan,
         ksefReady: Boolean(company?.ksef_token),

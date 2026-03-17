@@ -28,27 +28,11 @@ CREATE POLICY "ca_client_update_own" ON public.client_accounts
 -- Migration 041 dodała tę kolumnę tylko do client_tokens.
 -- client-identify.ts zapisuje client_account_id po weryfikacji emaila —
 -- potrzebujemy go tu, żeby powiązać nowy portal token z kontem klienta.
--- Guarded: project_portal_tokens is created in migration 034; skip if absent.
 
-DO $do$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.tables
-    WHERE table_schema = 'public' AND table_name = 'project_portal_tokens'
-  ) THEN
-    RAISE NOTICE 'Migration 034 not yet applied — skipping project_portal_tokens ALTER';
-    RETURN;
-  END IF;
+ALTER TABLE public.project_portal_tokens
+  ADD COLUMN IF NOT EXISTS client_account_id uuid
+    REFERENCES public.client_accounts(id) ON DELETE SET NULL;
 
-  EXECUTE $sql$
-    ALTER TABLE public.project_portal_tokens
-      ADD COLUMN IF NOT EXISTS client_account_id uuid
-        REFERENCES public.client_accounts(id) ON DELETE SET NULL
-  $sql$;
-
-  EXECUTE $sql$
-    CREATE INDEX IF NOT EXISTS idx_ppt_client_account
-      ON public.project_portal_tokens (client_account_id)
-      WHERE client_account_id IS NOT NULL
-  $sql$;
-END $do$;
+CREATE INDEX IF NOT EXISTS idx_ppt_client_account
+  ON public.project_portal_tokens (client_account_id)
+  WHERE client_account_id IS NOT NULL;

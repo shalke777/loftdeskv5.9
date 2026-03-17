@@ -47,6 +47,10 @@ Core areas include:
 - Improve spacing, hierarchy, compactness, readability, and alignment.
 - Keep visuals subtle, refined, and production-ready.
 - Dashboard actions should be direct and obvious.
+- Every important screen should make the next action obvious.
+- Reduce cognitive overload before adding more options.
+- Prefer modern SaaS ergonomics: clear entry points, visible states, predictable actions, low-friction forms.
+- Premium visual quality matters: alignment, density, rhythm, contrast, and calm hierarchy.
 
 ## Data / backend rules
 - Always consider multi-tenant isolation.

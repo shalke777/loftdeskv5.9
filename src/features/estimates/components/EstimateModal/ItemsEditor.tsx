@@ -15,8 +15,8 @@ const VAT_OPTIONS = [
   { value: '0', label: '0%' },
 ]
 const baseInput: CSSProperties = {
-  height: 34, fontSize: 13, padding: '4px 8px', background: 'var(--color-surface)',
-  border: '1px solid var(--color-border)', borderRadius: 6, outline: 'none',
+  height: 34, fontSize: 13, padding: '4px 8px', background: '#fff',
+  border: '1px solid #d1d5db', borderRadius: 6, outline: 'none',
   width: '100%', boxSizing: 'border-box',
 }
 
@@ -190,17 +190,17 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
             placeholder="Opis, szczegóły, uwagi... (opcjonalnie)"
             value={fastDescription}
             onChange={e => setFastDescription(e.target.value)}
-            style={{ width: '100%', fontSize: 12, padding: '6px 8px', resize: 'vertical', minHeight: 40, border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-surface)', boxSizing: 'border-box' }}
+            style={{ width: '100%', fontSize: 12, padding: '6px 8px', resize: 'vertical', minHeight: 40, border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', boxSizing: 'border-box' }}
           />
         </div>
       </div>
 
       {/* ── Items table ── */}
       {items.length > 0 && (
-        <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid var(--color-border-light)' }}>
+        <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e2e8f0' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr style={{ background: 'var(--color-surface-soft)', borderBottom: '2px solid var(--color-border)' }}>
+              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                 <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, color: '#9ca3af', fontSize: 11, width: 30 }}>#</th>
                 <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, color: '#6b7280', fontSize: 11 }}>Nazwa</th>
                 <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600, color: '#6b7280', fontSize: 11, width: 52 }}>j.m.</th>
@@ -215,8 +215,8 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
               {items.map((item) =>
                 editId === item.id ? (
                   <Fragment key={item.id}>
-                    <tr style={{ background: 'var(--color-warning-soft)', borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: '7px 10px', color: 'var(--color-text-muted)', fontSize: 12 }}>{item.sort_order}</td>
+                    <tr style={{ background: '#fff7ed', borderBottom: '1px solid #fed7aa' }}>
+                      <td style={{ padding: '7px 10px', color: '#9ca3af', fontSize: 12 }}>{item.sort_order}</td>
                       <td style={{ padding: '7px 10px' }}>
                         <input className="input" value={editValues.name ?? ''} onChange={e => setEditValues(v => ({ ...v, name: e.target.value }))} style={{ width: '100%', height: 28, fontSize: 13, padding: '3px 7px', border: '1px solid #d1d5db', borderRadius: 5 }} />
                       </td>
@@ -245,7 +245,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
                         </div>
                       </td>
                     </tr>
-                    <tr style={{ background: 'var(--color-warning-soft)', borderBottom: '1px solid var(--color-border)' }}>
+                    <tr style={{ background: '#fff7ed', borderBottom: '1px solid #fed7aa' }}>
                       <td colSpan={8} style={{ padding: '2px 10px 8px 44px' }}>
                         <textarea
                           className="input"
@@ -260,8 +260,8 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
                 ) : (
                   <Fragment key={item.id}>
                     <tr
-                      style={{ borderBottom: '1px solid var(--color-border-light)' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg-hover)')}
+                      style={{ borderBottom: '1px solid #f1f5f9' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#fafbfc')}
                       onMouseLeave={e => (e.currentTarget.style.background = '')}
                     >
                       <td style={{ padding: '9px 10px', color: '#9ca3af', fontSize: 12 }}>{item.sort_order}</td>
@@ -279,7 +279,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
                       </td>
                     </tr>
                     {item.description?.trim() && (
-                      <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                      <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td colSpan={8} style={{ padding: '2px 10px 8px 44px', fontSize: 12, color: '#6b7280' }}>
                           {item.description}
                         </td>

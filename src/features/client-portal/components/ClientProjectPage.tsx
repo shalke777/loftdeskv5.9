@@ -5,7 +5,6 @@
 // =============================================================================
 
 import { useState, useEffect } from 'react'
-import { Link } from '@tanstack/react-router'
 import {
   useClientProject,
   useClientEstimates,
@@ -182,7 +181,6 @@ function ChatTab({ projectId }: { projectId: string }) {
   const { user } = useAuth()
   const companyId = useCompanyId()
   const [body, setBody] = useState('')
-  const [sendError, setSendError] = useState<string | null>(null)
   const { data: messages, isLoading } = useClientMessages(projectId)
   const senderName = user?.fullName || user?.email || 'Klient'
   const sendMessage = useClientSendMessage(projectId, companyId ?? '', senderName)
@@ -191,15 +189,8 @@ function ChatTab({ projectId }: { projectId: string }) {
     e.preventDefault()
     const trimmed = body.trim()
     if (!trimmed || !companyId) return
-    setSendError(null)
-    try {
-      await sendMessage.mutateAsync(trimmed)
-      setBody('')
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Nie udało się wysłać wiadomości.'
-      setSendError(msg)
-      if (import.meta.env.DEV) console.error('[ChatTab] send error:', err)
-    }
+    await sendMessage.mutateAsync(trimmed)
+    setBody('')
   }
 
   if (isLoading) return <div className="client-tab-loading">Ładowanie wiadomości...</div>
@@ -228,9 +219,6 @@ function ChatTab({ projectId }: { projectId: string }) {
           ))
         )}
       </div>
-      {sendError && (
-        <div className="client-chat__error" role="alert">{sendError}</div>
-      )}
       <form className="client-chat__form" onSubmit={handleSend}>
         <input
           className="client-chat__input"
@@ -269,19 +257,19 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
       {approvals.map((approval: ClientApproval) => (
         <div key={approval.id} className="client-approval-card">
           <div className="client-approval-card__header">
-            <h4 className="client-approval-card__title">{approval.snapshot_vendor ?? 'Koszt do akceptacji'}</h4>
+            <h4 className="client-approval-card__title">{approval.title}</h4>
             <Badge variant={APPROVAL_STATUS_VARIANT[approval.status] ?? 'default'}>
               {APPROVAL_STATUS_LABEL[approval.status] ?? approval.status}
             </Badge>
           </div>
 
-          {(approval.snapshot_description ?? approval.message_to_client) && (
-            <p className="client-approval-card__desc">{approval.snapshot_description ?? approval.message_to_client}</p>
+          {approval.description && (
+            <p className="client-approval-card__desc">{approval.description}</p>
           )}
 
-          {approval.snapshot_amount_gross != null && (
+          {approval.amount != null && (
             <p className="client-approval-card__amount">
-              Kwota: <strong>{approval.snapshot_amount_gross.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })}</strong>
+              Kwota: <strong>{approval.amount.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })}</strong>
             </p>
           )}
 
@@ -327,7 +315,7 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
 // ── Zakładka Oś czasu ─────────────────────────────────────────────────────────
 
 function TimelineTab({ projectId }: { projectId: string }) {
-  const [events, setEvents] = useState<Array<{ id: string; title: string; created_at: string; event_type: string }>>([])
+  const [events, setEvents] = useState<Array<{ id: string; body: string; created_at: string; event_type: string }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
@@ -339,7 +327,7 @@ function TimelineTab({ projectId }: { projectId: string }) {
       if (!supabase) { setLoading(false); return }
       supabase
         .from('project_timeline_events')
-        .select('id, title, event_type, created_at')
+        .select('id, body, event_type, created_at')
         .eq('project_id', projectId)
         .eq('visibility', 'client_shared')
         .order('created_at', { ascending: false })
@@ -361,7 +349,7 @@ function TimelineTab({ projectId }: { projectId: string }) {
         <li key={ev.id} className="client-timeline__item">
           <span className="client-timeline__dot" />
           <div className="client-timeline__content">
-            <p className="client-timeline__body">{ev.title}</p>
+            <p className="client-timeline__body">{ev.body}</p>
             <span className="client-timeline__date">
               {new Date(ev.created_at).toLocaleString('pl-PL', {
                 day: 'numeric', month: 'short', year: 'numeric',
@@ -399,11 +387,6 @@ export function ClientProjectPage({ projectId }: Props) {
 
   return (
     <div>
-      {/* Wróć do listy projektów */}
-      <div className="client-project-back">
-        <Link to="/client/dashboard" className="client-project-back__link">← Wróć do projektów</Link>
-      </div>
-
       {/* Nagłówek projektu */}
       <div className="client-project-header">
         <div className="client-project-header__meta">

@@ -55,7 +55,6 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
   const { profile } = useSettings()
   const companyIban = (profile as any)?.iban || ''
 
-  const [customNumber, setCustomNumber] = useState('')
   const [invoiceType, setInvoiceType] = useState('standard')
   const [issueDate, setIssueDate] = useState(todayStr())
   const [saleDate, setSaleDate] = useState(todayStr())
@@ -88,7 +87,6 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
   useEffect(() => {
     saveGuard.current = false
     if (initialInvoice) {
-      setCustomNumber(initialInvoice.number || '')
       setInvoiceType(initialInvoice.invoice_type || 'standard')
       setIssueDate(initialInvoice.issue_date || todayStr())
       setSaleDate(initialInvoice.sale_date || todayStr())
@@ -107,7 +105,6 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
     } else {
       const draft = loadDraft()
       if (draft) {
-        setCustomNumber((draft.customNumber as string) ?? '')
         setInvoiceType((draft.invoiceType as string) ?? 'standard')
         setIssueDate((draft.issueDate as string) ?? todayStr())
         setSaleDate((draft.saleDate as string) ?? todayStr())
@@ -126,7 +123,6 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
       } else {
         // fresh defaults
         const today = todayStr()
-        setCustomNumber('')
         setInvoiceType('standard')
         setIssueDate(today); setSaleDate(today)
         setDueDays('14'); setDueDate(addDays(today, 14))
@@ -161,8 +157,8 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
   // ── Persist draft on every change (new form only) ──────────────────────────
   useEffect(() => {
     if (!isNew || !saveGuard.current) return
-    saveDraft({ customNumber, invoiceType, issueDate, saleDate, dueDays, dueDate, issuePlace, paymentMethod, bankAccount, clientId, contractId, advanceTotal, items, projectId, notes })
-  }, [customNumber, invoiceType, issueDate, saleDate, dueDays, dueDate, issuePlace, paymentMethod, bankAccount, clientId, contractId, advanceTotal, items, projectId, notes, isNew])
+    saveDraft({ invoiceType, issueDate, saleDate, dueDays, dueDate, issuePlace, paymentMethod, bankAccount, clientId, contractId, advanceTotal, items, projectId, notes })
+  }, [invoiceType, issueDate, saleDate, dueDays, dueDate, issuePlace, paymentMethod, bankAccount, clientId, contractId, advanceTotal, items, projectId, notes, isNew])
 
   function applyTranche(trancheId: string) {
     setSelectedTrancheId(trancheId)
@@ -193,7 +189,6 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
     try {
       await onSubmit({
         company_id: companyId,
-        number: customNumber.trim() || undefined,
         client_id: clientId || null,
         project_id: projectId || null,
         contract_id: contractId || null,
@@ -220,12 +215,6 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
     <div style={{ display: 'grid', gap: 20 }}>
       {/* ── Sekcja nagłówkowa ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
-        <Input
-          label="Numer faktury"
-          value={customNumber}
-          onChange={(e) => setCustomNumber(e.target.value)}
-          placeholder={isNew ? 'Zostanie wygenerowany automatycznie' : ''}
-        />
         <Select label="Rodzaj faktury" value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)} options={INVOICE_TYPE_OPTIONS} />
         <Select label="Umowa" value={contractId} onChange={(e) => setContractId(e.target.value)} options={contractOptions} placeholder="Bez umowy" />
         {selectedContract?.tranches?.length ? (
@@ -237,8 +226,8 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
       </div>
 
       {/* ── Daty ── */}
-      <div style={{ background: 'var(--color-surface-soft)', border: '1px solid var(--color-border-light)', borderRadius: 10, padding: '14px 16px' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Daty</div>
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Daty</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
           <Input label="Data wystawienia" type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
           <Input label="Data sprzedaży / wyk. usługi" type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} />
@@ -317,18 +306,18 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
       </div>
 
       {/* ── Podsumowanie ── */}
-      <div style={{ background: 'var(--color-surface-soft)', border: '1px solid var(--color-border-light)', borderRadius: 10, padding: '14px 18px' }}>
-        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)', marginBottom: 10 }}>Podsumowanie</div>
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 18px' }}>
+        <div style={{ fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 10 }}>Podsumowanie</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '5px 24px', fontSize: 13 }}>
-          <span style={{ color: 'var(--color-text-secondary)' }}>Netto</span>
+          <span style={{ color: '#6b7280' }}>Netto</span>
           <span style={{ fontWeight: 500, textAlign: 'right' }}>{formatCurrency(totals.totalNet)}</span>
-          <span style={{ color: 'var(--color-text-secondary)' }}>VAT</span>
+          <span style={{ color: '#6b7280' }}>VAT</span>
           <span style={{ fontWeight: 500, textAlign: 'right' }}>{formatCurrency(vatDiff)}</span>
-          <span style={{ color: 'var(--color-text-primary)', fontWeight: 700, borderTop: '1px solid var(--color-border)', paddingTop: 8 }}>Brutto</span>
-          <span style={{ fontWeight: 700, textAlign: 'right', borderTop: '1px solid var(--color-border)', paddingTop: 8 }}>{formatCurrency(totals.totalGross)}</span>
+          <span style={{ color: '#111827', fontWeight: 700, borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>Brutto</span>
+          <span style={{ fontWeight: 700, textAlign: 'right', borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>{formatCurrency(totals.totalGross)}</span>
         </div>
         {invoiceType === 'final' && Number(advanceTotal) > 0 ? (
-            <div style={{ marginTop: 8, fontSize: 13, color: 'var(--color-text-primary)' }}>
+          <div style={{ marginTop: 8, fontSize: 13, color: '#374151' }}>
             Pozostało do zapłaty: <strong>{formatCurrency(remainsToPay)}</strong>
           </div>
         ) : null}

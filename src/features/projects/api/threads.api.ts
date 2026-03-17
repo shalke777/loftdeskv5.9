@@ -440,29 +440,4 @@ export const threadsApi = {
         .eq('company_id', scope.companyId)
     }
   },
-
-  // ---------------------------------------------------------------------------
-  // Delete thread
-  // ---------------------------------------------------------------------------
-
-  async deleteThread(threadId: string, companyId?: string): Promise<void> {
-    if (isDemoMode || !supabase) {
-      const idx = demoThreads.findIndex(t => t.id === threadId)
-      if (idx !== -1) demoThreads.splice(idx, 1)
-      return
-    }
-    const scope = await getDataScope(companyId)
-    // Delete messages first (FK may not cascade depending on migration)
-    await supabase
-      .from('project_messages')
-      .delete()
-      .eq('thread_id', threadId)
-      .eq('company_id', scope.companyId)
-    const { error } = await supabase
-      .from('project_threads')
-      .delete()
-      .eq('id', threadId)
-      .eq('company_id', scope.companyId)
-    if (error) throw error
-  },
 }

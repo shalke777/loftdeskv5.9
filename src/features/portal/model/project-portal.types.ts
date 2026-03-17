@@ -4,6 +4,14 @@
 
 // ─── Typy pomocnicze ──────────────────────────────────────────────────────────
 
+export type PortalScope =
+  | 'read_updates'
+  | 'read_messages'
+  | 'send_messages'
+  | 'read_documents'
+  | 'read_approvals'
+  | 'respond_approvals';
+
 export type ThreadType =
   | 'general'
   | 'approvals'
@@ -35,6 +43,7 @@ export type TimelineReferenceType =
   | 'message'
   | 'document'
   | 'approval'
+  | 'portal_token'
   | 'project';
 
 export type ExpenseSourceType = 'camera' | 'gallery' | 'pdf' | 'manual';
@@ -52,6 +61,58 @@ export type ExpenseApprovalStatus =
   | 'questioned';
 
 export type ParserSource = 'ai' | 'regex' | 'manual';
+
+// ─── project_portal_tokens ────────────────────────────────────────────────────
+
+export interface ProjectPortalToken {
+  id: string;
+  company_id: string;
+  project_id: string;
+  client_id: string | null;
+  /** SHA-256 hex — nigdy plaintext w odpowiedzi API dla klienta */
+  token_hash: string;
+  scope: PortalScope[];
+  client_name: string | null;
+  client_email: string | null;
+  active: boolean;
+  expires_at: string | null;
+  revoked_at: string | null;
+  last_used_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+/** Formularz tworzenia nowego tokenu (token_hash generuje backend) */
+export interface CreatePortalTokenInput {
+  project_id: string;
+  client_id?: string;
+  scope?: PortalScope[];
+  client_name?: string;
+  client_email?: string;
+  expires_at?: string | null;
+}
+
+// ─── project_portal_sessions ─────────────────────────────────────────────────
+
+export interface ProjectPortalSession {
+  id: string;
+  portal_token_id: string;
+  project_id: string;
+  company_id: string;
+  expires_at: string;
+  created_at: string;
+}
+
+/** Odpowiedź z portal-validate (Netlify function) */
+export interface PortalSessionResponse {
+  session_id: string;
+  project_id: string;
+  company_id: string;
+  client_name: string | null;
+  client_email: string | null;
+  scope: PortalScope[];
+  expires_at: string;
+}
 
 // ─── project_threads ─────────────────────────────────────────────────────────
 
@@ -179,6 +240,7 @@ export interface CostApproval {
   project_id: string;
   expense_id: string;
   thread_id: string | null;
+  portal_token_id: string | null;
   status: ApprovalStatus;
   snapshot_amount_gross: number | null;
   snapshot_description: string | null;
@@ -191,6 +253,15 @@ export interface CostApproval {
   responded_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Operator wysyła prośbę o akceptację */
+export interface SendApprovalRequestInput {
+  expense_id: string;
+  project_id: string;
+  portal_token_id: string;
+  thread_id?: string;
+  message_to_client?: string;
 }
 
 /** Klient odpowiada na prośbę o akceptację (przez portal) */

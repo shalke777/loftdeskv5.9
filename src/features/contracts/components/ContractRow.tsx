@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, Send, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, Trash2 } from 'lucide-react'
 import type { Contract } from '@/entities/contract/model'
 import { Button } from '@/shared/ui/Button/Button'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
-import { SendDocumentModal } from '@/shared/ui/SendDocumentModal/SendDocumentModal'
 import { buildContractPreview } from '@/services/pdf/documentPreview'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -26,7 +25,6 @@ const TRANCHE_CLASS: Record<string, string> = {
 interface Props {
   contract: Contract
   clientName: string | null
-  clientEmail?: string | null
   projectName: string | null
   onEdit: (c: Contract) => void
   onDelete: (id: string) => void
@@ -36,14 +34,13 @@ interface Props {
 }
 
 export function ContractRow({
-  contract, clientName, clientEmail, projectName,
+  contract, clientName, projectName,
   onEdit, onDelete, onSign,
   canDelete = true, canSign = true,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [sendOpen, setSendOpen] = useState(false)
 
   const { user } = useAuth()
   const companyMeta = useCompanyMeta()
@@ -96,13 +93,6 @@ export function ContractRow({
           )}
           <span className={STATUS_CLASS[contract.status]}>{STATUS_LABEL[contract.status]}</span>
           <div className="proj-row__actions">
-            <button
-              className="proj-action-btn"
-              title="Wyślij do klienta"
-              onClick={e => { e.stopPropagation(); setSendOpen(true) }}
-            >
-              <Send size={14} />
-            </button>
             <button
               className="proj-action-btn"
               title="Podgląd PDF"
@@ -221,13 +211,6 @@ export function ContractRow({
         onClose={() => setPreviewOpen(false)}
         title={`${contract.number} · Podgląd dokumentu`}
         tabs={tabs}
-      />
-      <SendDocumentModal
-        open={sendOpen}
-        onClose={() => setSendOpen(false)}
-        documentType="contract"
-        documentName={contract.number}
-        defaultEmail={clientEmail ?? null}
       />
     </div>
   )

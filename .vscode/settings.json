@@ -1,6 +1,37 @@
 {
-    "githubPullRequests.experimental.notificationsMarkPullRequests": "markAsDone",
-    "githubPullRequests.experimental.useQuickChat": true,
-    "typescript.tsdk": "node_modules/typescript/lib",
-    "typescript.enablePromptUseWorkspaceTsdk": true
+  "chat.agent.enabled": true,
+  "chat.promptFiles": true,
+  "chat.useCustomAgentHooks": true,
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "chat.tools.global.autoApprove": true,
+  "chat.tools.terminal.autoApprove": {
+    "npm": true,
+    "npx": true,
+    "node": true,
+    "git status": true,
+    "git diff": true,
+    "git log": true,
+    "git branch": true,
+    "git checkout": true,
+    "git switch": true,
+    "git add": true,
+    "git restore": true,
+    "git commit": true,
+    "/^git show\\b.*$/": true,
+    "/^npm (run )?(build|test|lint|typecheck)\\b.*$/": true,
+    "/^npx (vite|playwright|eslint|tsc)\\b.*$/": true,
+    "rm": false,
+    "del": false,
+    "sudo": false,
+    "curl": false,
+    "Invoke-WebRequest": false,
+    "scp": false,
+    "ssh": false
+  },
+  "chat.tools.terminal.ignoreDefaultAutoApproveRules": false,
+  "chat.tools.terminal.enforceTimeoutFromModel": true,
+  "chat.tools.terminal.simpleCollapsible": true,
+  "chat.tools.terminal.terminalProfile.windows": {
+    "path": "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+  }
 }

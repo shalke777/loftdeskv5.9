@@ -19,31 +19,15 @@ export const invoicesApi = {
     if (isDemoMode || !supabase) { const totals = calcInvoiceTotals(input.items); return Promise.resolve(demoDb.invoices.create({ ...input, total_net: totals.totalNet, total_gross: totals.totalGross, ksef_status: 'ksef_pending', ksef_ref: null })) }
     const scope = await getDataScope(input.company_id)
 
-    // Resolve invoice number: use manual override if provided, otherwise auto-generate
+    // Resolve sequential invoice number via DB function (atomic, per-company, per-year)
     let invoiceNumber: string
-    if (input.number?.trim()) {
-      // Manual override — validate uniqueness within the company
-      const { count: dupCount } = await supabase
-        .from('invoices')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', input.company_id)
-        .eq('number', input.number.trim())
-      if ((dupCount ?? 0) > 0) {
-        throw new Error(`Numer faktury "${input.number.trim()}" jest już używany w tej firmie.`)
-      }
-      invoiceNumber = input.number.trim()
+    const { data: numData, error: numError } = await supabase.rpc('next_invoice_number', { p_company_id: input.company_id })
+    if (numError || !numData) {
+      // Fallback: count-based (non-atomic, safe for single-user edge case)
+      const { count } = await supabase.from('invoices').select('*', { count: 'exact', head: true }).eq('company_id', input.company_id).gte('issue_date', `${new Date().getFullYear()}-01-01`)
+      invoiceNumber = `FV/${new Date().getFullYear()}/${String((count ?? 0) + 1).padStart(3, '0')}`
     } else {
-      // Auto-generate via atomic DB function (migration 053: YYYY/MM/N format, monthly reset)
-      const { data: numData, error: numError } = await supabase.rpc('next_invoice_number', { p_company_id: input.company_id })
-      if (numError || !numData) {
-        // Fallback: count-based for current month (non-atomic, single-user edge case)
-        const now = new Date()
-        const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-        const { count } = await supabase.from('invoices').select('*', { count: 'exact', head: true }).eq('company_id', input.company_id).gte('issue_date', `${ym}-01`)
-        invoiceNumber = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${(count ?? 0) + 1}`
-      } else {
-        invoiceNumber = numData as string
-      }
+      invoiceNumber = numData as string
     }
 
     const payload = withScope(scope, { number: invoiceNumber, client_id: input.client_id, project_id: input.project_id, contract_id: input.contract_id ?? null, status: input.status, invoice_type: input.invoice_type ?? 'standard', issue_date: input.issue_date, sale_date: input.sale_date ?? null, issue_place: input.issue_place ?? null, due_date: input.due_date, payment_method: input.payment_method ?? 'transfer', bank_account: input.bank_account ?? null, tranche_id: input.tranche_id ?? null, advance_total: input.advance_total ?? null, ksef_status: 'ksef_pending', ksef_ref: null, notes: input.notes ?? null })
@@ -61,18 +45,6 @@ export const invoicesApi = {
   async update(id: string, input: Partial<Invoice>, companyId?: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.invoices.update(id, input))
     const scope = await getDataScope(companyId)
-    // If number is being changed, validate uniqueness (exclude the invoice being edited)
-    if (input.number?.trim() && companyId) {
-      const { count: dupCount } = await supabase
-        .from('invoices')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', companyId)
-        .eq('number', input.number.trim())
-        .neq('id', id)
-      if ((dupCount ?? 0) > 0) {
-        throw new Error(`Numer faktury "${input.number.trim()}" jest już używany w tej firmie.`)
-      }
-    }
     const items = input.items
     const payload: any = { ...input }
     delete payload.items

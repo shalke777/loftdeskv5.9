@@ -379,13 +379,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return json(500, { error: 'B┼é─ůd generowania linku logowania. Spr├│buj ponownie.' })
   }
 
-  // Update auth_user_id if not yet linked
-  if (!account.auth_user_id) {
-    await sb
-      .from('client_accounts')
-      .update({ auth_user_id: linkData.user.id, updated_at: new Date().toISOString() })
-      .eq('id', account.id)
-  }
+  // Always refresh auth_user_id — generateLink may return a different UUID than
+  // what was stored previously (re-invite, account recreation, stale OTP user).
+  // Without this, resolveSupabaseSession() fails to match client_accounts and
+  // falls through to bootstrap_my_company → role: 'owner' → LegalAcceptanceGate.
+  await sb
+    .from('client_accounts')
+    .update({ auth_user_id: linkData.user.id, updated_at: new Date().toISOString() })
+    .eq('id', account.id)
 
   const magicLink: string | null = (linkData as any)?.properties?.action_link ?? null
 

@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useQuery }             from '@tanstack/react-query'
+import { listProjectPortalTokens } from '@/features/portal/api/portal-project.api'
 import { useCreateCostApproval } from '@/features/expenses/hooks/useCreateCostApproval'
 import { useExpenseApprovals }   from '@/features/expenses/hooks/useCostApprovals'
 import { ApprovalStatusBadge }   from './ApprovalStatusBadge'
@@ -67,8 +69,25 @@ function Row({ label, value }: { label: string; value: string | null | undefined
 
 export function ExpenseApprovalModal({ projectId, expense, onClose }: Props) {
   const [message, setMessage] = useState('')
+  const [selectedTokenId, setSelectedTokenId] = useState<string>('')
 
   const { create } = useCreateCostApproval(projectId)
+
+  // Load active portal tokens for this project
+  const { data: tokens = [], isLoading: tokensLoading } = useQuery({
+    queryKey: ['portal-tokens-project', projectId],
+    queryFn:  () => listProjectPortalTokens(projectId),
+    staleTime: 60_000,
+  })
+
+  const activeTokens = tokens.filter((t) => t.active && !t.revoked_at && (t.expires_at == null || new Date(t.expires_at) > new Date()))
+
+  // Auto-select first active token
+  useEffect(() => {
+    if (activeTokens.length > 0 && !selectedTokenId) {
+      setSelectedTokenId(activeTokens[0].id)
+    }
+  }, [activeTokens, selectedTokenId])
 
   // Check if expense already has a pending approval
   const { data: existingApprovals = [] } = useExpenseApprovals(expense.id)
@@ -84,11 +103,13 @@ export function ExpenseApprovalModal({ projectId, expense, onClose }: Props) {
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault()
+    if (!selectedTokenId) return
 
     create.mutate(
       {
         expense_id:      expense.id,
         project_id:      projectId,
+        portal_token_id: selectedTokenId,
         message_to_client:       message.trim() || undefined,
         snapshot_vendor:         vendorName,
         snapshot_invoice_number: expense.invoice_number ?? null,
@@ -144,6 +165,33 @@ export function ExpenseApprovalModal({ projectId, expense, onClose }: Props) {
         </div>
 
         <form onSubmit={handleSend} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Portal token selector */}
+          <div>
+            <label style={s.label}>Link portalu (klient)</label>
+            {tokensLoading ? (
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted, #6b7280)', margin: 0 }}>Ładowanie linków portalu…</p>
+            ) : activeTokens.length === 0 ? (
+              <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #dc2626', fontSize: 13, color: '#dc2626' }}>
+                ❌ Brak aktywnego linku portalu dla tego projektu.
+                Utwórz link portalu w zakładce Projekt, aby móc wysyłać do akceptacji.
+              </div>
+            ) : (
+              <select
+                style={s.input}
+                value={selectedTokenId}
+                onChange={(e) => setSelectedTokenId(e.target.value)}
+                required
+              >
+                {activeTokens.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.client_name ? `${t.client_name} (${t.client_email ?? '—'})` : t.client_email ?? `Token ${t.id.slice(0, 8)}`}
+                    {t.expires_at ? ` · wygasa ${new Date(t.expires_at).toLocaleDateString('pl-PL')}` : ' · bez limitu'}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
           {/* Optional message to client */}
           <div>
             <label style={s.label}>Wiadomość do klienta (opcjonalna)</label>
@@ -175,7 +223,7 @@ export function ExpenseApprovalModal({ projectId, expense, onClose }: Props) {
             <button
               type="submit"
               className="btn"
-              disabled={create.isPending || !!pendingApproval}
+              disabled={create.isPending || !selectedTokenId || activeTokens.length === 0 || !!pendingApproval}
             >
               {create.isPending ? 'Wysyłanie…' : '📤 Wyślij do akceptacji'}
             </button>

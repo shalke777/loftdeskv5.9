@@ -68,83 +68,52 @@ CREATE POLICY "inv_client_select" ON public.invoices
   );
 
 -- ── 5. RLS: contracts ────────────────────────────────────────────────────────
--- Guarded: contracts.estimate_id is added in migration 021; skip if column absent.
-DO $do$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'contracts' AND column_name = 'estimate_id'
-  ) THEN
-    EXECUTE 'DROP POLICY IF EXISTS "con_client_select" ON public.contracts';
-    EXECUTE $pol$
-      CREATE POLICY "con_client_select" ON public.contracts
-        FOR SELECT USING (
-          EXISTS (
-            SELECT 1 FROM public.cost_estimates ce
-            WHERE ce.id = estimate_id
-              AND ce.project_id IN (SELECT my_client_project_ids())
-          )
-        )
-    $pol$;
-  END IF;
-END $do$;
+DROP POLICY IF EXISTS "con_client_select"  ON public.contracts;
+CREATE POLICY "con_client_select" ON public.contracts
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.cost_estimates ce
+      WHERE ce.id = estimate_id
+        AND ce.project_id IN (SELECT my_client_project_ids())
+    )
+  );
 
--- ── 6-8. RLS: project_threads, project_messages, cost_approvals ─────────────
--- Guarded: these tables are created in migration 034; skip if absent.
-DO $do$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.tables
-    WHERE table_schema = 'public' AND table_name = 'project_threads'
-  ) THEN
-    RAISE NOTICE 'Migration 034 not yet applied — skipping project_threads/messages/approvals RLS';
-    RETURN;
-  END IF;
+-- ── 6. RLS: project_threads (visibility=client_shared/approval) ─────────────
+DROP POLICY IF EXISTS "threads_client_select" ON public.project_threads;
+CREATE POLICY "threads_client_select" ON public.project_threads
+  FOR SELECT USING (
+    visibility IN ('client_shared','approval')
+    AND project_id IN (SELECT my_client_project_ids())
+  );
 
-  EXECUTE 'DROP POLICY IF EXISTS "threads_client_select" ON public.project_threads';
-  EXECUTE $pol$
-    CREATE POLICY "threads_client_select" ON public.project_threads
-      FOR SELECT USING (
-        visibility IN ('client_shared','approval')
-        AND project_id IN (SELECT my_client_project_ids())
-      )
-  $pol$;
+-- ── 7. RLS: project_messages (visibility=client_shared) ─────────────────────
+DROP POLICY IF EXISTS "messages_client_select" ON public.project_messages;
+CREATE POLICY "messages_client_select" ON public.project_messages
+  FOR SELECT USING (
+    visibility IN ('client_shared','approval')
+    AND project_id IN (SELECT my_client_project_ids())
+  );
 
-  EXECUTE 'DROP POLICY IF EXISTS "messages_client_select" ON public.project_messages';
-  EXECUTE $pol$
-    CREATE POLICY "messages_client_select" ON public.project_messages
-      FOR SELECT USING (
-        visibility IN ('client_shared','approval')
-        AND project_id IN (SELECT my_client_project_ids())
-      )
-  $pol$;
+DROP POLICY IF EXISTS "messages_client_insert" ON public.project_messages;
+CREATE POLICY "messages_client_insert" ON public.project_messages
+  FOR INSERT WITH CHECK (
+    visibility = 'client_shared'
+    AND project_id IN (SELECT my_client_project_ids())
+    AND sender_type = 'client'
+  );
 
-  EXECUTE 'DROP POLICY IF EXISTS "messages_client_insert" ON public.project_messages';
-  EXECUTE $pol$
-    CREATE POLICY "messages_client_insert" ON public.project_messages
-      FOR INSERT WITH CHECK (
-        visibility = 'client_shared'
-        AND project_id IN (SELECT my_client_project_ids())
-        AND sender_type = 'client'
-      )
-  $pol$;
+-- ── 8. RLS: cost_approvals ───────────────────────────────────────────────────
+DROP POLICY IF EXISTS "approvals_client_select" ON public.cost_approvals;
+CREATE POLICY "approvals_client_select" ON public.cost_approvals
+  FOR SELECT USING (
+    project_id IN (SELECT my_client_project_ids())
+  );
 
-  EXECUTE 'DROP POLICY IF EXISTS "approvals_client_select" ON public.cost_approvals';
-  EXECUTE $pol$
-    CREATE POLICY "approvals_client_select" ON public.cost_approvals
-      FOR SELECT USING (
-        project_id IN (SELECT my_client_project_ids())
-      )
-  $pol$;
-
-  EXECUTE 'DROP POLICY IF EXISTS "approvals_client_respond" ON public.cost_approvals';
-  EXECUTE $pol$
-    CREATE POLICY "approvals_client_respond" ON public.cost_approvals
-      FOR UPDATE
-      USING  (project_id IN (SELECT my_client_project_ids()) AND status = 'pending_client')
-      WITH CHECK (project_id IN (SELECT my_client_project_ids()))
-  $pol$;
-END $do$;
+DROP POLICY IF EXISTS "approvals_client_respond" ON public.cost_approvals;
+CREATE POLICY "approvals_client_respond" ON public.cost_approvals
+  FOR UPDATE
+  USING  (project_id IN (SELECT my_client_project_ids()) AND status = 'pending_client')
+  WITH CHECK (project_id IN (SELECT my_client_project_ids()));
 
 -- ── 9. RLS: project_timeline_events (visibility=client_shared) ───────────────
 -- Zakłada kolumnę visibility na project_timeline_events, jeśli istnieje
