@@ -364,6 +364,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // Pass project_id through the redirect so auth-callback can land the client
   // directly on the invited project instead of the generic dashboard.
   const redirectTo = `${getBaseUrl()}/auth/callback?mode=client&project_id=${encodeURIComponent(projectId)}`
+  console.log('[client-identify] redirectTo:', redirectTo)
 
   const { data: linkData, error: linkError } = await sb.auth.admin.generateLink({
     type: 'magiclink',
@@ -376,7 +377,20 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   if (linkError || !linkData?.user) {
     console.error('[client-identify] generateLink error:', linkError)
-    return json(500, { error: 'B┼é─ůd generowania linku logowania. Spr├│buj ponownie.' })
+    return json(500, { error: 'Błąd generowania linku logowania. Spróbuj ponownie.' })
+  }
+
+  // Diagnostic: log the action_link so you can verify redirect_to is embedded correctly.
+  // If Supabase Dashboard → Authentication → Redirect URLs does NOT contain the /auth/callback
+  // path, Supabase silently strips it and redirects to Site URL only when the user clicks.
+  const actionLink: string | null = (linkData as any)?.properties?.action_link ?? null
+  if (actionLink) {
+    try {
+      const parsed = new URL(actionLink)
+      console.log('[client-identify] action_link redirect_to:', parsed.searchParams.get('redirect_to'))
+    } catch {
+      console.log('[client-identify] action_link (raw):', actionLink.slice(0, 200))
+    }
   }
 
   // Always refresh auth_user_id — generateLink may return a different UUID than
@@ -388,7 +402,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     .update({ auth_user_id: linkData.user.id, updated_at: new Date().toISOString() })
     .eq('id', account.id)
 
-  const magicLink: string | null = (linkData as any)?.properties?.action_link ?? null
+  const magicLink: string | null = actionLink
 
   // ÔöÇÔöÇ Wy┼Ťlij email z linkiem ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
   // U┼╝ywa Resend je┼Ťli RESEND_API_KEY jest ustawiony.

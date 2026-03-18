@@ -22,6 +22,11 @@
 
 BEGIN;
 
+-- DROP first: CREATE OR REPLACE cannot change the return type of an existing
+-- function (PostgreSQL raises ERROR 42P13). This DROP is safe — the function
+-- is re-created immediately below with the canonical signature.
+DROP FUNCTION IF EXISTS public.resolve_my_client_account();
+
 CREATE OR REPLACE FUNCTION public.resolve_my_client_account()
 RETURNS SETOF public.client_accounts
 LANGUAGE sql
