@@ -57,12 +57,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   let operatorEmail: string | null = null
   let companyName = 'LoftDesk'
-  let operatorUserId = ''
   try {
     const pub = sbPublic()
     const { data: { user }, error } = await pub.auth.getUser(jwt)
     if (error || !user) return json(401, { ok: false, error: 'unauthorized' })
-    operatorUserId = user.id
 
     // Fetch operator email + company name (best-effort, non-fatal if missing)
     const sb = sbAdmin()
@@ -81,16 +79,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   // ── Parse body ────────────────────────────────────────────────────────────
   let toEmail: string, documentType: string, documentName: string, userMessage: string | null, documentUrl: string | null
-  let projectId: string | null, companyId: string | null
   try {
     const b = JSON.parse(event.body ?? '{}') as Record<string, unknown>
-    toEmail      = ((b.to_email      ?? '') as string).trim().toLowerCase()
-    documentType = ((b.document_type ?? '') as string).trim()
-    documentName = ((b.document_name ?? '') as string).trim()
-    userMessage  = typeof b.message === 'string' ? b.message.trim() : null
-    documentUrl  = typeof b.document_url === 'string' && b.document_url.trim() ? b.document_url.trim() : null
-    projectId    = typeof b.project_id  === 'string' && b.project_id.trim()  ? b.project_id.trim()  : null
-    companyId    = typeof b.company_id  === 'string' && b.company_id.trim()  ? b.company_id.trim()  : null
+    toEmail       = ((b.to_email       ?? '') as string).trim().toLowerCase()
+    documentType  = ((b.document_type  ?? '') as string).trim()
+    documentName  = ((b.document_name  ?? '') as string).trim()
+    userMessage   = typeof b.message === 'string' ? b.message.trim() : null
+    documentUrl   = typeof b.document_url === 'string' && b.document_url.trim() ? b.document_url.trim() : null
   } catch {
     return json(400, { ok: false, error: 'invalid_json' })
   }
@@ -110,97 +105,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (!resendKey) {
     console.error('[send-document] Missing RESEND_API_KEY env var')
     return json(200, { ok: false, email_sent: false, error: 'email_provider_not_configured' })
-  }
-
-  // ── Portal provisioning (when project_id + company_id provided) ──────────
-  // Idempotently ensures the recipient has project_client_access and generates
-  // a fresh Supabase magic link → used as the "Otwórz dokument" CTA in email.
-  // Falls back gracefully (non-fatal) so the email is still sent without link.
-  if (projectId && companyId && !documentUrl) {
-    try {
-      const sb = sbAdmin()
-
-      // Security: verify operator belongs to the declared company
-      const { data: membership } = await sb
-        .from('company_members')
-        .select('id')
-        .eq('user_id', operatorUserId)
-        .eq('company_id', companyId)
-        .maybeSingle()
-
-      if (!membership) {
-        console.warn('[send-document] portal provisioning skipped: operator not a member of companyId')
-      } else {
-        // Verify project belongs to company
-        const { data: proj } = await sb
-          .from('projects')
-          .select('id')
-          .eq('id', projectId!)
-          .eq('company_id', companyId!)
-          .is('deleted_at', null)
-          .maybeSingle()
-
-        if (!proj) {
-          console.warn('[send-document] portal provisioning skipped: project not found in company')
-        } else {
-          // Upsert client_accounts (company-scoped, on email conflict)
-          const { data: account } = await sb
-            .from('client_accounts')
-            .upsert(
-              {
-                company_id:  companyId,
-                email:       toEmail,
-                updated_at:  new Date().toISOString(),
-              },
-              { onConflict: 'company_id,email', ignoreDuplicates: false },
-            )
-            .select('id')
-            .maybeSingle()
-
-          if (account) {
-            // Grant project access (idempotent)
-            await sb
-              .from('project_client_access')
-              .upsert(
-                {
-                  project_id:        projectId,
-                  client_account_id: account.id,
-                  granted_at:        new Date().toISOString(),
-                },
-                { onConflict: 'project_id,client_account_id', ignoreDuplicates: true },
-              )
-
-            // Generate fresh magic link via admin API
-            const baseUrl    = process.env.URL ?? process.env.DEPLOY_URL ?? 'https://app.loftdesk.pl'
-            const redirectTo = `${baseUrl}/auth/callback?mode=client&project_id=${encodeURIComponent(projectId!)}`
-            const { data: linkData, error: linkErr } = await sb.auth.admin.generateLink({
-              type:    'magiclink',
-              email:   toEmail,
-              options: {
-                redirectTo,
-                data: { client_account_id: account.id, company_id: companyId },
-              },
-            })
-
-            if (linkErr) {
-              console.error('[send-document] generateLink error:', linkErr)
-            } else if (linkData?.user) {
-              // Keep auth_user_id fresh so resolveSupabaseSession() resolves correctly
-              await sb
-                .from('client_accounts')
-                .update({ auth_user_id: linkData.user.id, updated_at: new Date().toISOString() })
-                .eq('id', account.id)
-
-              const magic: string | null = (linkData as any)?.properties?.action_link ?? null
-              if (magic) documentUrl = magic
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.error('[send-document] portal provisioning failed (non-fatal):', e)
-      // Continue — email will be sent without portal link
-    }
   }
 
   const docLabel  = DOC_LABEL_PL[documentType] ?? 'Dokument'
