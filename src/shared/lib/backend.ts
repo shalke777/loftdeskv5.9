@@ -22,18 +22,32 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   const authUser = authData.user
   if (!authUser) return { user: null }
 
-  // ── Sprawdź company_members NAJPIERW — operatorzy mają priorytet ─────────
-  // UWAGA: client_accounts może zawierać email operatora jeśli ktoś wysłał mu
-  // dokument przez portal. Sprawdzamy company_members najpierw, żeby operator
-  // nie dostał roli 'client' przez pomyłkę.
-  let { data: memberRow } = await supabase
-    .from('company_members')
-    .select('company_id, role, companies(name, plan)')
-    .eq('user_id', authUser.id)
-    .limit(1)
-    .maybeSingle()
+  // ── Sprawdź company_members i client_accounts RÓWNOLEGLE ─────────────────
+  // WAŻNE: operator (company_members) MA ZAWSZE PIERWSZEŃSTWO nad client_accounts.
+  // Jeśli użytkownik jest w obu tabelach (np. operator testował zaproszenie
+  // własnym mailem), musi wchodzić jako operator, nie jako klient.
+  const [memberResult, clientByRpc] = await Promise.all([
+    supabase
+      .from('company_members')
+      .select('company_id, role, companies(name, plan)')
+      .eq('user_id', authUser.id)
+      .limit(1)
+      .maybeSingle(),
+    supabase.rpc('resolve_my_client_account').maybeSingle(),
+  ])
+
+  // Operator — company_members ma pierwszeństwo
+  let memberRow = memberResult.data
 
   if (!memberRow) {
+    // ── Metadata guard: blokada bootstrap dla zaproszeń klienckich ─────────────
+    if (authUser.user_metadata?.client_account_id) {
+      if (import.meta.env.DEV) {
+        console.warn('[backend] CLIENT_PORTAL_AUTH_CALLBACK metadata_guard — klient bez rekordu; uruchom migration 045', { userId: authUser.id })
+      }
+      return { user: null }
+    }
+
     try {
       const { data: companyId } = await supabase.rpc('bootstrap_my_company', { company_name: '', company_nip: '' })
       if (companyId) {
@@ -51,6 +65,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   }
 
   if (memberRow) {
+    // Użytkownik jest operatorem — ignorujemy client_accounts całkowicie
     const companies = Array.isArray(memberRow.companies) ? memberRow.companies[0] : memberRow.companies
     return {
       user: {
@@ -61,6 +76,39 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
         role: (memberRow.role as DemoRole) ?? 'worker',
         plan: (companies?.plan as SessionUser['plan']) ?? 'free',
         fullName: authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Użytkownik',
+      },
+    }
+  }
+
+  // ── Nie znaleziono w company_members — sprawdź client_accounts ────────────
+  const { data: clientByRpcData, error: rpcError } = clientByRpc
+
+  const clientAccount = ((!rpcError && clientByRpcData)
+    ? clientByRpcData
+    : await supabase
+        .from('client_accounts')
+        .select('id, company_id, email, full_name')
+        .eq('auth_user_id', authUser.id)
+        .limit(1)
+        .maybeSingle()
+        .then(r => r.data)) as { id: string; company_id: string; email: string | null; full_name: string | null } | null
+
+  if (clientAccount) {
+    if (import.meta.env.DEV) {
+      console.info('CLIENT_PORTAL_AUTH_CALLBACK', {
+        method: (!rpcError && clientByRpcData) ? 'rpc' : 'auth_user_id_direct',
+        userId: authUser.id,
+      })
+    }
+    return {
+      user: {
+        id: authUser.id,
+        email: authUser.email ?? clientAccount.email ?? '',
+        companyId: clientAccount.company_id,
+        companyName: 'Portal klienta',
+        role: 'client' as const,
+        plan: 'free' as const,
+        fullName: clientAccount.full_name ?? authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Klient',
       },
     }
   }
@@ -82,30 +130,6 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
         role: roleFromLegacyPlan(profileRow.plan),
         plan,
         fullName: profileRow.full_name || authUser.email?.split('@')[0] || 'Użytkownik',
-      },
-    }
-  }
-
-  // ── Sprawdź czy to konto klienta (v6.0) — tylko jeśli brak rekordu operatora ──
-  // Sprawdzamy client_accounts NA KOŃCU: użytkownik bez company_members i profiles
-  // jest dopiero wtedy traktowany jako klient portalu.
-  const { data: clientAccount } = await supabase
-    .from('client_accounts')
-    .select('id, company_id, email, full_name')
-    .eq('auth_user_id', authUser.id)
-    .limit(1)
-    .maybeSingle()
-
-  if (clientAccount) {
-    return {
-      user: {
-        id: authUser.id,
-        email: authUser.email ?? clientAccount.email ?? '',
-        companyId: clientAccount.company_id,
-        companyName: 'Portal klienta',
-        role: 'client' as const,
-        plan: 'free' as const,
-        fullName: clientAccount.full_name ?? authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Klient',
       },
     }
   }
