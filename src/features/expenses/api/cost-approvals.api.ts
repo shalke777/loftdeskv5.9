@@ -7,7 +7,7 @@
 // Key rules:
 //  - Only one ACTIVE approval per expense (unique idx on expense_id WHERE pending_client)
 //  - Operator creates the approval with a snapshot of the expense data at send time
-//  - portal_token_id links to the active portal token — required for client RLS
+//  - portal_token_id column was dropped in migration 051 (CASCADE from project_portal_tokens)
 //  - getOrCreateApprovalsThread() ensures max 1 approvals thread per project
 //  - All timeline events are fire-and-forget (never block main flow)
 
@@ -28,8 +28,6 @@ export interface CreateApprovalInput {
   expense_id:    string
   project_id:    string
   company_id:    string
-  /** Active portal token for the project — required so the client can see it */
-  portal_token_id: string
   /** Message shown to the client alongside the snapshot */
   message_to_client?: string
   /** Snapshot data — captured at send time */
@@ -57,7 +55,7 @@ const demoApprovals: CostApproval[] = [
     project_id:    'demo-project-1',
     expense_id:    'exp-v4-demo-1',
     thread_id:     'thread-demo-approvals',
-    portal_token_id: 'token-demo-1',
+    portal_token_id: null,
     status:        'pending_client',
     snapshot_amount_gross:   2460.00,
     snapshot_description:    'Płytki wielkoformatowe 120x60',
@@ -177,7 +175,7 @@ export const costApprovalsApi = {
         project_id:    input.project_id,
         expense_id:    input.expense_id,
         thread_id:     'thread-demo-approvals',
-        portal_token_id: input.portal_token_id,
+        portal_token_id: null,
         status:        'pending_client',
         snapshot_amount_gross:   input.snapshot_amount_gross,
         snapshot_description:    input.snapshot_description,
@@ -206,7 +204,6 @@ export const costApprovalsApi = {
         project_id:    input.project_id,
         expense_id:    input.expense_id,
         thread_id:     threadId,
-        portal_token_id: input.portal_token_id,
         status:        'pending_client',
         snapshot_vendor:         input.snapshot_vendor,
         snapshot_invoice_number: input.snapshot_invoice_number,

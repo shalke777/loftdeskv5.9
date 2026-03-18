@@ -240,6 +240,7 @@ export interface CostApproval {
   project_id: string;
   expense_id: string;
   thread_id: string | null;
+  /** @deprecated column dropped in migration 051 — always null on fresh records */
   portal_token_id: string | null;
   status: ApprovalStatus;
   snapshot_amount_gross: number | null;
@@ -259,7 +260,8 @@ export interface CostApproval {
 export interface SendApprovalRequestInput {
   expense_id: string;
   project_id: string;
-  portal_token_id: string;
+  /** @deprecated column dropped in migration 051 */
+  portal_token_id?: string;
   thread_id?: string;
   message_to_client?: string;
 }
