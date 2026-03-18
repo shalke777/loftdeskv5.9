@@ -229,12 +229,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
             <p style="margin:0;font-size:15px;font-weight:700;color:#15803d">${docLabel}: ${documentName}</p>
           </div>
           ${msgBlock}
-          ${documentUrl
-            ? `<table cellpadding="0" cellspacing="0" style="margin:0 0 24px"><tr><td align="center" style="background:#1a5c32;border-radius:10px;padding:14px 32px"><a href="${documentUrl}" style="color:#fff;font-size:15px;font-weight:700;text-decoration:none;letter-spacing:-.2px">Otw\u00f3rz dokument w portalu &rarr;</a></td></tr></table>`
-            : operatorEmail
-              ? `<table cellpadding="0" cellspacing="0" style="margin:0 0 24px"><tr><td align="center" style="background:#374151;border-radius:10px;padding:12px 28px"><a href="mailto:${operatorEmail}" style="color:#fff;font-size:14px;font-weight:600;text-decoration:none;letter-spacing:-.2px">Odpowiedz na email &rarr;</a></td></tr></table>`
-              : ''
-          }
+          ${documentUrl ? `<table cellpadding="0" cellspacing="0" style="margin:0 0 24px"><tr><td align="center" style="background:#1a5c32;border-radius:10px;padding:14px 32px"><a href="${documentUrl}" style="color:#fff;font-size:15px;font-weight:700;text-decoration:none;letter-spacing:-.2px">Otw\u00f3rz dokument w portalu &rarr;</a></td></tr></table>` : ''}
           <p style="font-size:13px;color:#6b7280;margin:0;line-height:1.6">
             W razie pytań skontaktuj się z nami.
             ${operatorEmail ? `Możesz odpowiedzieć bezpośrednio na ten email: <a href="mailto:${operatorEmail}" style="color:#1a5c32">${operatorEmail}</a>` : ''}
