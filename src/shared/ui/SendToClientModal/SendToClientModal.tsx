@@ -6,8 +6,16 @@
 //     open={open} onClose={() => setOpen(false)}
 //     documentType="invoice" documentName="FV/2025/01"
 //     defaultEmail={client?.email}
-//     portalUrl={portalUrl}   // opcjonalne — dodaje przycisk CTA w emailu
+//     projectId={invoice.project_id ?? undefined}   // wymagane dla auto-linku
+//     companyId={invoice.company_id}                // wymagane dla auto-linku
 //   />
+//
+// Gdy projectId + companyId są podane, backend (send-document.ts) automatycznie:
+//   1. Upsertuje client_accounts
+//   2. Upsertuje project_client_access
+//   3. Generuje świeży Supabase magic link → użyty jako CTA w emailu
+// Nie ma potrzeby żadnego ręcznego "generuj link portalu" przed wysyłką.
+// =============================================================================
 
 import { useState, useEffect } from 'react'
 import { Modal } from '@/shared/ui/Modal/Modal'
@@ -29,10 +37,13 @@ interface Props {
   documentType:  'estimate' | 'invoice' | 'contract'
   documentName:  string
   defaultEmail?: string
-  portalUrl?:    string
+  /** When provided, backend auto-provisions project_client_access and generates magic link. */
+  projectId?:    string
+  /** Required alongside projectId for security verification. */
+  companyId?:    string
 }
 
-export function SendToClientModal({ open, onClose, documentType, documentName, defaultEmail, portalUrl }: Props) {
+export function SendToClientModal({ open, onClose, documentType, documentName, defaultEmail, projectId, companyId }: Props) {
   const toast = useToast()
   const [email,   setEmail]   = useState(defaultEmail ?? '')
   const [message, setMessage] = useState('')
@@ -69,8 +80,9 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
         document_type: documentType,
         document_name: documentName,
       }
-      if (message.trim()) body.message = message.trim()
-      if (portalUrl)       body.document_url = portalUrl
+      if (message.trim()) body.message    = message.trim()
+      if (projectId)      body.project_id  = projectId
+      if (companyId)      body.company_id  = companyId
 
       const res = await fetch(SEND_ENDPOINT, {
         method:  'POST',
@@ -142,7 +154,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
           />
         </div>
 
-        {portalUrl ? (
+        {projectId ? (
           <div
             style={{
               background: '#f0fdf4',
@@ -153,7 +165,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
               color: '#166534',
             }}
           >
-            ✓ Email b\u0119dzie zawiera\u0142 przycisk &ldquo;Otw\u00f3rz dokument w portalu&rdquo;
+            &#10003; Email będzie zawierał przycisk &ldquo;Otwórz projekt w portalu&rdquo;&nbsp;&mdash; link zostanie wygenerowany automatycznie.
           </div>
         ) : (
           <div
@@ -166,8 +178,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
               color: '#92400e',
             }}
           >
-            Brak linku do portalu — klient otrzyma tylko informacj\u0119 o dokumencie.
-            Wygeneruj link portalu (w sekcji &ldquo;Co dalej?&rdquo; na wycenie), aby do\u0142\u0105czy\u0107 bezpo\u015brednio do projektu.
+            Brak powiązanego projektu &mdash; klient otrzyma tylko informację o dokumencie bez linku dostępu.
           </div>
         )}
 
