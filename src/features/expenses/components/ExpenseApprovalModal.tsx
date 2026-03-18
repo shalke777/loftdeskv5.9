@@ -144,7 +144,7 @@ export function ExpenseApprovalModal({ projectId, expense, onClose }: Props) {
         </div>
 
         <form onSubmit={handleSend} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Optional message to client */
+          {/* Optional message to client */}
           <div>
             <label style={s.label}>Wiadomość do klienta (opcjonalna)</label>
             <textarea
