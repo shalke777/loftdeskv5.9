@@ -85,7 +85,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
     documentType  = ((b.document_type  ?? '') as string).trim()
     documentName  = ((b.document_name  ?? '') as string).trim()
     userMessage   = typeof b.message === 'string' ? b.message.trim() : null
-    documentUrl   = typeof b.document_url === 'string' && b.document_url.trim() ? b.document_url.trim() : null
+    const rawDocUrl = typeof b.document_url === 'string' ? b.document_url.trim() : ''
+    documentUrl   = /^https?:\/\//i.test(rawDocUrl) ? rawDocUrl : null
   } catch {
     return json(400, { ok: false, error: 'invalid_json' })
   }
