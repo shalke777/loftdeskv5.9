@@ -39,17 +39,16 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   // Operator — company_members ma pierwszeństwo
   let memberRow = memberResult.data
 
-  // ── Guard: bootstrap-only company + klient ──────────────────────────────────
-  // Jeśli poprzednie sesje (przed fiksem) odpaliły bootstrap_my_company dla klienta,
-  // klient ma wiersz w company_members z pustą nazwą firmy.
-  // W takim przypadku wynik z client_accounts (RPC) nadpisuje memberRow.
-  // Nie robimy tego gdy firma ma prawdziwą nazwę — chroni prawdziwych operatorów,
-  // którzy przetestowali zaproszenie własnym mailem.
+  // ── Guard: client_accounts ma BEZWZGLĘDNE pierwszeństwo ────────────────────
+  // Jeśli użytkownik ma rekord w client_accounts, jest klientem — bez wyjątku.
+  // company_members może istnieć jako artefakt po bootstrap_my_company (stary bug).
+  // Sprawdzamy RPC (migration 054) lub bezpośrednio po auth_user_id.
+  // NIE ograniczamy do pustej nazwy firmy — każdy klient_account wygrywa z company_members.
+  // Jedyny wyjątek: prawdziwy operator testujący własnym mailem — ale wtedy nie ma
+  // rekordu w client_accounts dla swojej własnej firmy (client_accounts.company_id != operator's company_id).
   if (memberRow) {
     const { data: clientByRpcData } = clientByRpc
 
-    // Sprawdź czy użytkownik to klient — RPC (jeśli dostępne) lub bezpośrednie zapytanie.
-    // Fallback jest kluczowy gdy migracja 054 nie jest jeszcze zaaplikowana do DB.
     let isClientAccount = !!clientByRpcData
     if (!isClientAccount) {
       const { data: directLookup } = await supabase
@@ -62,12 +61,8 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
     }
 
     if (isClientAccount) {
-      const companies = Array.isArray(memberRow.companies) ? memberRow.companies[0] : memberRow.companies
-      const companyName = companies?.name ?? ''
-      if (companyName === '' || companyName === null) {
-        // Bootstrap-only company: traktuj jako klient
-        memberRow = null
-      }
+      // Klient z artefaktem bootstrap — zawsze traktuj jako klient
+      memberRow = null
     }
   }
 
