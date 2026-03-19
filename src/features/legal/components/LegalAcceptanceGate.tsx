@@ -64,6 +64,11 @@ export function LegalAcceptanceGate() {
     return init
   })
 
+  // Zaproszeni klienci (rola 'client') nigdy nie akceptują dokumentów B2B / regulaminu
+  // dla przedsiębiorców. Gate musi być wyłączony PRZED sprawdzeniem stanu ładowania,
+  // żeby klient nie widział pełnoekranowego spinnera z legal-gate__backdrop.
+  if (user?.role === 'client') return null
+
   // Block the app while loading — never grant access optimistically
   if (missing === undefined) {
     return (

@@ -14,7 +14,9 @@ export function useLegalAcceptances() {
   return useQuery({
     queryKey: ACCEPTANCES_KEY,
     queryFn: () => legalApi.getAcceptances(),
-    enabled: Boolean(user),
+    // Klienci (role:'client') nie mają dokumentów prawnych do akceptacji.
+    // Wyłączamy query żeby nie odpytywać bazy i nie generować undefined-loading-state.
+    enabled: Boolean(user) && user?.role !== 'client',
     // Stale time: 5 min — acceptances rarely change mid-session
     staleTime: 5 * 60 * 1_000,
   })
