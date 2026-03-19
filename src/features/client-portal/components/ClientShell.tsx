@@ -25,9 +25,14 @@ export function ClientShell() {
 
   useEffect(() => {
     if (!pathname.startsWith('/client/')) {
-      void navigate({ to: '/client/dashboard' })
+      // Jeśli klient ma pendingProjectId (z zaproszenia), idzie od razu na projekt.
+      // Bez tego — ogólny dashboard.
+      const dest = user?.pendingProjectId
+        ? `/client/project/${user.pendingProjectId}`
+        : '/client/dashboard'
+      void navigate({ to: dest })
     }
-  }, [pathname, navigate])
+  }, [pathname, navigate, user?.pendingProjectId])
 
   return (
     <div className="client-shell">

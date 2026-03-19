@@ -371,7 +371,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     email,
     options: {
       redirectTo,
-      data: { client_account_id: account.id, company_id: companyId },
+      data: { client_account_id: account.id, company_id: companyId, project_id: projectId },
     },
   })
 

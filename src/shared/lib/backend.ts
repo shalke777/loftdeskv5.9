@@ -72,6 +72,9 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
           role: 'client' as const,
           plan: 'free' as const,
           fullName: clientAccount.full_name ?? authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Klient',
+          // project_id zapisywany przez client-identify.ts via generateLink data — używany do
+          // jednorazowego przekierowania na właściwy projekt po zalogowaniu z zaproszenia.
+          pendingProjectId: (authUser.user_metadata?.project_id as string | undefined) ?? null,
         },
       }
     }

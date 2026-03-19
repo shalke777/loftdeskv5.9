@@ -1,5 +1,6 @@
 import { ArrowRight, Calculator, CheckCircle2, FileText, FolderKanban, MessageSquareText, Receipt, Shield, Smartphone, Wallet } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { APP_NAME } from '@/shared/lib/constants'
 import { Button } from '@/shared/ui/Button/Button'
 import { Card } from '@/shared/ui/Card/Card'
@@ -41,6 +42,19 @@ const mockItems = [
 
 export function LandingPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
+
+  // Klient trafia na stronę główną gdy Supabase obetnie redirect_to do Site URL.
+  // Sesja jest już załadowana (detectSessionInUrl:true) ale router wylądował na /.
+  // Auto-przekierowanie na właściwy projekt lub /client/dashboard.
+  useEffect(() => {
+    if (user?.role === 'client') {
+      const dest = user.pendingProjectId
+        ? `/client/project/${user.pendingProjectId}`
+        : '/client/dashboard'
+      void navigate({ to: dest })
+    }
+  }, [user, navigate])
 
   return (
     <main className="landing-shell">

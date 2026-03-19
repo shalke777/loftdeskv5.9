@@ -19,6 +19,9 @@ export interface SessionUser {
   role: UserRole
   plan: 'free' | 'pro' | 'business' | 'admin'
   fullName: string
+  // Ustawiane jednorazowo po kliknięciu zaproszenia — używane do nawigacji na właściwy projekt.
+  // Wartość pochodzi z user_metadata.project_id (zapisywanego przez client-identify.ts).
+  pendingProjectId?: string | null
 }
 
 interface AuthContextValue {
