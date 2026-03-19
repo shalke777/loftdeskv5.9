@@ -29,19 +29,37 @@ export function AuthCallbackRoutePage() {
         return
       }
       // emailRedirectTo may be stripped by Supabase → mode=client lost.
-      // Even without mode param, detect client sessions via RPC and auto-redirect.
+      // Detect client sessions via RPC; if RPC fails (e.g. migration 054 not yet applied),
+      // fall back to direct auth_user_id lookup in client_accounts.
       if (session && supabase) {
-        void supabase.rpc('resolve_my_client_account').maybeSingle().then(({ data }) => {
-          if (data) {
-            window.location.replace('/client/dashboard')
-          } else {
-            setHasSession(true)
-            setStatus('success')
+        void (async () => {
+          try {
+            // Fast path: RPC (works when migration 054 is applied)
+            const { data: rpcData, error: rpcError } = await supabase!.rpc('resolve_my_client_account').maybeSingle()
+            if (!rpcError && rpcData) {
+              window.location.replace('/client/dashboard')
+              return
+            }
+            // Fallback: direct auth_user_id lookup (works as long as client-identify.ts set auth_user_id)
+            const { data: { user: authedUser } } = await supabase!.auth.getUser()
+            if (authedUser) {
+              const { data: clientRow } = await supabase!
+                .from('client_accounts')
+                .select('id')
+                .eq('auth_user_id', authedUser.id)
+                .limit(1)
+                .maybeSingle()
+              if (clientRow) {
+                window.location.replace('/client/dashboard')
+                return
+              }
+            }
+          } catch {
+            // ignore — fall through to contractor screen
           }
-        }).catch(() => {
           setHasSession(true)
           setStatus('success')
-        })
+        })()
         return
       }
       setHasSession(session)

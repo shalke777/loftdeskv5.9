@@ -47,7 +47,21 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   // którzy przetestowali zaproszenie własnym mailem.
   if (memberRow) {
     const { data: clientByRpcData } = clientByRpc
-    if (clientByRpcData) {
+
+    // Sprawdź czy użytkownik to klient — RPC (jeśli dostępne) lub bezpośrednie zapytanie.
+    // Fallback jest kluczowy gdy migracja 054 nie jest jeszcze zaaplikowana do DB.
+    let isClientAccount = !!clientByRpcData
+    if (!isClientAccount) {
+      const { data: directLookup } = await supabase
+        .from('client_accounts')
+        .select('id')
+        .eq('auth_user_id', authUser.id)
+        .limit(1)
+        .maybeSingle()
+      isClientAccount = !!directLookup
+    }
+
+    if (isClientAccount) {
       const companies = Array.isArray(memberRow.companies) ? memberRow.companies[0] : memberRow.companies
       const companyName = companies?.name ?? ''
       if (companyName === '' || companyName === null) {
