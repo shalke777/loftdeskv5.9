@@ -39,31 +39,40 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   // Operator — company_members ma pierwszeństwo
   let memberRow = memberResult.data
 
-  // ── Guard: client_accounts ma BEZWZGLĘDNE pierwszeństwo ────────────────────
-  // Jeśli użytkownik ma rekord w client_accounts, jest klientem — bez wyjątku.
-  // company_members może istnieć jako artefakt po bootstrap_my_company (stary bug).
-  // Sprawdzamy RPC (migration 054) lub bezpośrednio po auth_user_id.
-  // NIE ograniczamy do pustej nazwy firmy — każdy klient_account wygrywa z company_members.
-  // Jedyny wyjątek: prawdziwy operator testujący własnym mailem — ale wtedy nie ma
-  // rekordu w client_accounts dla swojej własnej firmy (client_accounts.company_id != operator's company_id).
+  // ── Guard: client_accounts vs company_members priority ──────────────────────
+  // Przypadki:
+  //   A) Prawdziwy klient z bootstrap-ghost company:
+  //      company_members.company_id = X (ghost), client_accounts.company_id = Y (operator)
+  //      → różne company_id → wyczyść memberRow → rola 'client'
+  //
+  //   B) Operator testujący własne zaproszenie swoim mailem:
+  //      company_members.company_id = Y (prawdziwa firma operatora)
+  //      client_accounts.company_id = Y (zaproszenie do własnej firmy)
+  //      → ten sam company_id → zostaje operatorem
+  //
+  //   C) Klient bez żadnego company_members → memberRow = null → wpada w ścieżkę klienta niżej
   if (memberRow) {
     const { data: clientByRpcData } = clientByRpc
 
-    let isClientAccount = !!clientByRpcData
-    if (!isClientAccount) {
+    // Pobierz client_accounts z company_id — RPC (migration 054) lub bezpośrednio
+    let clientAccountCompanyId: string | null = null
+    if (clientByRpcData && typeof clientByRpcData === 'object' && 'company_id' in (clientByRpcData as object)) {
+      clientAccountCompanyId = (clientByRpcData as { company_id: string }).company_id
+    } else {
       const { data: directLookup } = await supabase
         .from('client_accounts')
-        .select('id')
+        .select('id, company_id')
         .eq('auth_user_id', authUser.id)
         .limit(1)
         .maybeSingle()
-      isClientAccount = !!directLookup
+      clientAccountCompanyId = directLookup?.company_id ?? null
     }
 
-    if (isClientAccount) {
-      // Klient z artefaktem bootstrap — zawsze traktuj jako klient
+    if (clientAccountCompanyId && clientAccountCompanyId !== memberRow.company_id) {
+      // Różne firmy → company_members to artefakt bootstrap → traktuj jako klient
       memberRow = null
     }
+    // Ten sam company_id lub brak client_accounts → zostaje operatorem
   }
 
   if (!memberRow) {
