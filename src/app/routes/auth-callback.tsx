@@ -28,6 +28,22 @@ export function AuthCallbackRoutePage() {
         window.location.replace(projectId ? `/client/project/${projectId}` : '/client/dashboard')
         return
       }
+      // emailRedirectTo may be stripped by Supabase → mode=client lost.
+      // Even without mode param, detect client sessions via RPC and auto-redirect.
+      if (session && supabase) {
+        void supabase.rpc('resolve_my_client_account').maybeSingle().then(({ data }) => {
+          if (data) {
+            window.location.replace('/client/dashboard')
+          } else {
+            setHasSession(true)
+            setStatus('success')
+          }
+        }).catch(() => {
+          setHasSession(true)
+          setStatus('success')
+        })
+        return
+      }
       setHasSession(session)
       setStatus('success')
     }
