@@ -49,7 +49,7 @@ BEGIN
     )
     -- Firma NIE ma żadnych kosztorysów
     AND NOT EXISTS (
-      SELECT 1 FROM public.estimates e
+      SELECT 1 FROM public.cost_estimates e
       WHERE  e.company_id = c.id
     )
     -- Tylko jeden członek (sam właściciel — nikt nie dołączył)
