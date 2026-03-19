@@ -57,7 +57,7 @@ export function LandingPage() {
         <div className="landing-nav__actions">
           <InstallAppButton compact />
           <Link to="/login"><Button variant="ghost">Zaloguj sie</Button></Link>
-          <Link to={user ? '/dashboard' : '/login'}><Button>Zacznij za darmo</Button></Link>
+          <Link to={user ? (user.role === 'client' ? '/client/dashboard' : '/dashboard') : '/login'}><Button>Zacznij za darmo</Button></Link>
         </div>
       </nav>
 
@@ -69,7 +69,7 @@ export function LandingPage() {
           <h1>Koniec z chaosem dokumentow. Wyceny, umowy, faktury i KSeF w jednym miejscu.</h1>
           <p>LoftDesk zastepuje stos arkuszy, maili i osobnych programow. Jeden system od kosztorysu przez umowe i fakture az do odbioru budowy.</p>
           <div className="hero__actions">
-            <Link to={user ? '/dashboard' : '/login'}>
+            <Link to={user ? (user.role === 'client' ? '/client/dashboard' : '/dashboard') : '/login'}>
               <Button size="lg" icon={<ArrowRight size={16} />}>Zacznij za darmo</Button>
             </Link>
             <Link to="/login"><Button size="lg" variant="secondary">Zaloguj sie</Button></Link>
@@ -261,7 +261,7 @@ export function LandingPage() {
             Bez umowy. Bez karty kredytowej. Gotowy w 5 minut.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to={user ? '/dashboard' : '/login'}>
+            <Link to={user ? (user.role === 'client' ? '/client/dashboard' : '/dashboard') : '/login'}>
               <Button size="lg" icon={<ArrowRight size={16} />}>Uruchom LoftDesk za darmo</Button>
             </Link>
             <Link to="/login"><Button size="lg" variant="ghost">Zaloguj sie</Button></Link>

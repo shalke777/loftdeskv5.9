@@ -397,10 +397,20 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // what was stored previously (re-invite, account recreation, stale OTP user).
   // Without this, resolveSupabaseSession() fails to match client_accounts and
   // falls through to bootstrap_my_company → role: 'owner' → LegalAcceptanceGate.
-  await sb
+  const { error: authUserIdUpdateError } = await sb
     .from('client_accounts')
     .update({ auth_user_id: linkData.user.id, updated_at: new Date().toISOString() })
     .eq('id', account.id)
+
+  if (authUserIdUpdateError) {
+    // Critical: without auth_user_id the client cannot resolve as role:'client' after login.
+    console.error('[client-identify] CRITICAL: auth_user_id update failed. Client will see contractor panel instead of portal!', {
+      client_account_id: account.id,
+      auth_user_id: linkData.user.id,
+      error: authUserIdUpdateError.message,
+    })
+    return json(500, { error: 'Błąd zapisu konta klienta. Spróbuj ponownie.' })
+  }
 
   const magicLink: string | null = actionLink
 
