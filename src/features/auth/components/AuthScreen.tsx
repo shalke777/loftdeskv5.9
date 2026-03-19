@@ -31,7 +31,9 @@ function ClientMagicLinkForm() {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.toLowerCase().trim(),
-      options: { emailRedirectTo: `${baseUrl}/auth/callback?mode=client` },
+      // No query params: Supabase may reject redirectTo with query strings.
+      // Client detection is handled in auth-callback via RPC/auth_user_id fallback.
+      options: { emailRedirectTo: `${baseUrl}/auth/callback` },
     })
     setLoading(false)
     if (err) { setError('Nie udało się wysłać linku. Sprawdź adres email.'); return }

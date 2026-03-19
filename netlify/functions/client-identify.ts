@@ -363,7 +363,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // they prefer (email, WhatsApp, etc.).
   // Pass project_id through the redirect so auth-callback can land the client
   // directly on the invited project instead of the generic dashboard.
-  const redirectTo = `${getBaseUrl()}/auth/callback?mode=client&project_id=${encodeURIComponent(projectId)}`
+  // NOTE: Supabase validates redirectTo against the allowlist before embedding
+  // it in the action_link. Query params (?mode=client&project_id=...) can cause
+  // matching to fail in some gotrue versions, falling back to Site URL.
+  // Solution: use a bare callback URL — project_id is already in user_metadata
+  // via the data: field below, and client detection uses RPC/auth_user_id fallback.
+  const redirectTo = `${getBaseUrl()}/auth/callback`
   console.log('[client-identify] redirectTo:', redirectTo)
 
   const { data: linkData, error: linkError } = await sb.auth.admin.generateLink({
