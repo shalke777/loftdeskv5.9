@@ -39,6 +39,24 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   // Operator — company_members ma pierwszeństwo
   let memberRow = memberResult.data
 
+  // ── Guard: bootstrap-only company + klient ──────────────────────────────────
+  // Jeśli poprzednie sesje (przed fiksem) odpaliły bootstrap_my_company dla klienta,
+  // klient ma wiersz w company_members z pustą nazwą firmy.
+  // W takim przypadku wynik z client_accounts (RPC) nadpisuje memberRow.
+  // Nie robimy tego gdy firma ma prawdziwą nazwę — chroni prawdziwych operatorów,
+  // którzy przetestowali zaproszenie własnym mailem.
+  if (memberRow) {
+    const { data: clientByRpcData } = clientByRpc
+    if (clientByRpcData) {
+      const companies = Array.isArray(memberRow.companies) ? memberRow.companies[0] : memberRow.companies
+      const companyName = companies?.name ?? ''
+      if (companyName === '' || companyName === null) {
+        // Bootstrap-only company: traktuj jako klient
+        memberRow = null
+      }
+    }
+  }
+
   if (!memberRow) {
     // ── Sprawdź client_accounts PRZED bootstrap ───────────────────────────────
     // KLUCZOWE: ten check MUSI być przed bootstrap_my_company.
