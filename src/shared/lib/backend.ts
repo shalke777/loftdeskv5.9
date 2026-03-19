@@ -40,10 +40,46 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   let memberRow = memberResult.data
 
   if (!memberRow) {
-    // ── Metadata guard: blokada bootstrap dla zaproszeń klienckich ─────────────
+    // ── Sprawdź client_accounts PRZED bootstrap ───────────────────────────────
+    // KLUCZOWE: ten check MUSI być przed bootstrap_my_company.
+    // Bez tego: klient nie ma wiersza w company_members → bootstrap tworzy firmę
+    // → memberRow jest ustawiany → klient wraca jako role:'owner' → LegalAcceptanceGate.
+    const { data: clientByRpcData, error: rpcError } = clientByRpc
+
+    const clientAccount = ((!rpcError && clientByRpcData)
+      ? clientByRpcData
+      : await supabase
+          .from('client_accounts')
+          .select('id, company_id, email, full_name')
+          .eq('auth_user_id', authUser.id)
+          .limit(1)
+          .maybeSingle()
+          .then(r => r.data)) as { id: string; company_id: string; email: string | null; full_name: string | null } | null
+
+    if (clientAccount) {
+      if (import.meta.env.DEV) {
+        console.info('CLIENT_PORTAL_AUTH_CALLBACK', {
+          method: (!rpcError && clientByRpcData) ? 'rpc' : 'auth_user_id_direct',
+          userId: authUser.id,
+        })
+      }
+      return {
+        user: {
+          id: authUser.id,
+          email: authUser.email ?? clientAccount.email ?? '',
+          companyId: clientAccount.company_id,
+          companyName: 'Portal klienta',
+          role: 'client' as const,
+          plan: 'free' as const,
+          fullName: clientAccount.full_name ?? authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Klient',
+        },
+      }
+    }
+
+    // Nie jest klientem — metadata guard blokuje bootstrap dla błędnych zaproszeń
     if (authUser.user_metadata?.client_account_id) {
       if (import.meta.env.DEV) {
-        console.warn('[backend] CLIENT_PORTAL_AUTH_CALLBACK metadata_guard — klient bez rekordu; uruchom migration 045', { userId: authUser.id })
+        console.warn('[backend] metadata_guard — client_account_id w metadata ale brak rekordu w client_accounts', { userId: authUser.id })
       }
       return { user: null }
     }
@@ -76,39 +112,6 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
         role: (memberRow.role as DemoRole) ?? 'worker',
         plan: (companies?.plan as SessionUser['plan']) ?? 'free',
         fullName: authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Użytkownik',
-      },
-    }
-  }
-
-  // ── Nie znaleziono w company_members — sprawdź client_accounts ────────────
-  const { data: clientByRpcData, error: rpcError } = clientByRpc
-
-  const clientAccount = ((!rpcError && clientByRpcData)
-    ? clientByRpcData
-    : await supabase
-        .from('client_accounts')
-        .select('id, company_id, email, full_name')
-        .eq('auth_user_id', authUser.id)
-        .limit(1)
-        .maybeSingle()
-        .then(r => r.data)) as { id: string; company_id: string; email: string | null; full_name: string | null } | null
-
-  if (clientAccount) {
-    if (import.meta.env.DEV) {
-      console.info('CLIENT_PORTAL_AUTH_CALLBACK', {
-        method: (!rpcError && clientByRpcData) ? 'rpc' : 'auth_user_id_direct',
-        userId: authUser.id,
-      })
-    }
-    return {
-      user: {
-        id: authUser.id,
-        email: authUser.email ?? clientAccount.email ?? '',
-        companyId: clientAccount.company_id,
-        companyName: 'Portal klienta',
-        role: 'client' as const,
-        plan: 'free' as const,
-        fullName: clientAccount.full_name ?? authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Klient',
       },
     }
   }
