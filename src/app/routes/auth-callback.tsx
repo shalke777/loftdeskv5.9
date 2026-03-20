@@ -150,30 +150,42 @@ export function AuthCallbackRoutePage() {
       const code = params.get('code')
 
       if (code) {
-        await new Promise((r) => window.setTimeout(r, 600))
-        const { data: existing } = await sb.auth.getSession()
-        if (existing.session) { succeed(true); return }
+        // Exchange code for session first — then check result
+        const { error, data: exchangeData } = await sb.auth.exchangeCodeForSession(code)
 
-        // Subscribe BEFORE exchange — Supabase fires PASSWORD_RECOVERY via
-        // onAuthStateChange after exchangeCodeForSession completes (PKCE flow).
-        const { data: { subscription: recSub } } = sb.auth.onAuthStateChange((event, session) => {
-          recSub.unsubscribe()
-          if (event === 'PASSWORD_RECOVERY') {
-            if (!handled) { handled = true; setIsRecovery(true); setStatus('success') }
-          } else {
-            succeed(!!session)
-          }
-        })
-
-        const { error } = await sb.auth.exchangeCodeForSession(code)
-        if (error) {
-          recSub.unsubscribe()
-          const { data: retry } = await sb.auth.getSession()
-          if (retry.session) { succeed(true) } else { fail(translateError(error, 'Link wygasł lub jest nieprawidłowy.')) }
+        if (!error) {
+          // Check if this is a password recovery session
+          const event = (exchangeData as any)?.session?.user?.aud === 'authenticated'
+            ? null : null // can't tell from data alone — use onAuthStateChange below
+          void (async () => {
+            // Supabase emits PASSWORD_RECOVERY event when the session type is recovery
+            // We listen for one event only after successful exchange
+            let resolved = false
+            const { data: { subscription: postSub } } = sb.auth.onAuthStateChange((ev, session) => {
+              if (resolved) return
+              resolved = true
+              postSub.unsubscribe()
+              if (ev === 'PASSWORD_RECOVERY') {
+                if (!handled) { handled = true; setIsRecovery(true); setStatus('success') }
+              } else {
+                succeed(!!session)
+              }
+            })
+            // Fallback: if onAuthStateChange doesn't fire within 1s, use the session from exchangeCodeForSession
+            window.setTimeout(() => {
+              if (!resolved) {
+                resolved = true
+                postSub.unsubscribe()
+                if (!handled) succeed(!!(exchangeData as any)?.session)
+              }
+            }, 1000)
+          })()
           return
         }
-        // Fallback: if onAuthStateChange never fires within 2s
-        window.setTimeout(() => { recSub.unsubscribe(); if (!handled) succeed(true) }, 2000)
+
+        // Exchange failed — maybe session already exists (link clicked twice)
+        const { data: retry } = await sb.auth.getSession()
+        if (retry.session) { succeed(true) } else { fail(translateError(error, 'Link wygasł lub jest nieprawidłowy.')) }
         return
       }
 
