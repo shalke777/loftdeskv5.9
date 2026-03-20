@@ -3,12 +3,77 @@ import { supabase } from '@/shared/lib/supabase'
 import { translateError } from '@/shared/lib/errorMessages'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
+import { Input } from '@/shared/ui/Input/Input'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
+import { useToast } from '@/shared/hooks/useToast'
+
+// ── Formularz ustawienia nowego hasła (po kliknięciu linku recovery) ──────────
+function SetNewPasswordForm() {
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm]   = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [done, setDone]         = useState(false)
+  const toast = useToast()
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (password.length < 8) { toast.error('Za krótkie hasło', 'Hasło musi mieć minimum 8 znaków.'); return }
+    if (password !== confirm) { toast.error('Hasła się różnią', 'Wpisz dwa razy to samo hasło.'); return }
+    if (!supabase) return
+    setLoading(true)
+    const { error } = await supabase.auth.updateUser({ password })
+    setLoading(false)
+    if (error) { toast.error('Błąd', error.message); return }
+    setDone(true)
+    window.setTimeout(() => window.location.assign('/login'), 3000)
+  }
+
+  if (done) {
+    return (
+      <Card style={{ maxWidth: 400, textAlign: 'center', padding: 40 }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+        <h2 style={{ marginBottom: 8 }}>Hasło zmienione</h2>
+        <p style={{ color: 'var(--color-text-secondary)' }}>Za chwilę zostaniesz przekierowany do logowania…</p>
+      </Card>
+    )
+  }
+
+  return (
+    <Card style={{ maxWidth: 400, padding: '36px 32px' }}>
+      <h2 style={{ marginBottom: 6, fontSize: 22 }}>Nowe hasło</h2>
+      <p style={{ color: 'var(--color-text-secondary)', fontSize: 14, marginBottom: 24, lineHeight: 1.5 }}>
+        Wpisz nowe hasło do swojego konta LoftDesk.
+      </p>
+      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
+        <Input
+          label="Nowe hasło"
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          placeholder="minimum 8 znaków"
+          required
+        />
+        <Input
+          label="Powtórz hasło"
+          type="password"
+          value={confirm}
+          onChange={e => setConfirm(e.target.value)}
+          placeholder="••••••••"
+          required
+        />
+        <Button type="submit" loading={loading} disabled={!password || !confirm}>
+          Ustaw nowe hasło
+        </Button>
+      </form>
+    </Card>
+  )
+}
 
 export function AuthCallbackRoutePage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [hasSession, setHasSession] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [isRecovery, setIsRecovery] = useState(false)
   const isClientMode = typeof window !== 'undefined'
     && new URLSearchParams(window.location.search).get('mode') === 'client'
 
@@ -73,10 +138,32 @@ export function AuthCallbackRoutePage() {
     }
 
     const params = new URLSearchParams(window.location.search)
+    // Supabase recovery links use the URL hash: #type=recovery&access_token=...
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
 
     const urlError = params.get('error_description') || params.get('error')
     if (urlError) {
       fail(translateError(urlError))
+      return
+    }
+
+    // ── Password recovery flow ──────────────────────────────────────────────
+    // When user clicks the reset-password email link, Supabase redirects to
+    // /auth/callback#type=recovery&access_token=... — detect this early and
+    // show the set-new-password form instead of the normal login success screen.
+    const recoveryType = hashParams.get('type') || params.get('type')
+    if (recoveryType === 'recovery') {
+      // Exchange hash tokens so supabase has an active session for updateUser()
+      void (async () => {
+        if (hashParams.get('access_token') && supabase) {
+          await supabase.auth.setSession({
+            access_token:  hashParams.get('access_token')!,
+            refresh_token: hashParams.get('refresh_token') ?? '',
+          })
+        }
+        setIsRecovery(true)
+        setStatus('success')
+      })()
       return
     }
 
@@ -126,7 +213,9 @@ export function AuthCallbackRoutePage() {
         </Card>
       )}
 
-      {status === 'success' && (
+      {status === 'success' && isRecovery && <SetNewPasswordForm />}
+
+      {status === 'success' && !isRecovery && (
         <Card style={{ maxWidth: 500, textAlign: 'center', padding: 48 }}>
           <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
           <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Witaj w LoftDesk!</h1>

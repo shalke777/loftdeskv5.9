@@ -29,7 +29,7 @@ export function ForgotPasswordForm() {
             setLoading(true)
             try {
               if (supabase) {
-                const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` })
+                const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/auth/callback` })
                 if (error) throw error
               }
               toast.success('Link wysłany', `Sprawdź skrzynkę ${email} — znajdziesz tam link do resetu hasła.`)
