@@ -138,32 +138,10 @@ export function AuthCallbackRoutePage() {
     }
 
     const params = new URLSearchParams(window.location.search)
-    // Supabase recovery links use the URL hash: #type=recovery&access_token=...
-    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
 
     const urlError = params.get('error_description') || params.get('error')
     if (urlError) {
       fail(translateError(urlError))
-      return
-    }
-
-    // ── Password recovery flow ──────────────────────────────────────────────
-    // When user clicks the reset-password email link, Supabase redirects to
-    // /auth/callback#type=recovery&access_token=... — detect this early and
-    // show the set-new-password form instead of the normal login success screen.
-    const recoveryType = hashParams.get('type') || params.get('type')
-    if (recoveryType === 'recovery') {
-      // Exchange hash tokens so supabase has an active session for updateUser()
-      void (async () => {
-        if (hashParams.get('access_token') && supabase) {
-          await supabase.auth.setSession({
-            access_token:  hashParams.get('access_token')!,
-            refresh_token: hashParams.get('refresh_token') ?? '',
-          })
-        }
-        setIsRecovery(true)
-        setStatus('success')
-      })()
       return
     }
 
@@ -175,11 +153,27 @@ export function AuthCallbackRoutePage() {
         await new Promise((r) => window.setTimeout(r, 600))
         const { data: existing } = await sb.auth.getSession()
         if (existing.session) { succeed(true); return }
+
+        // Subscribe BEFORE exchange — Supabase fires PASSWORD_RECOVERY via
+        // onAuthStateChange after exchangeCodeForSession completes (PKCE flow).
+        const { data: { subscription: recSub } } = sb.auth.onAuthStateChange((event, session) => {
+          recSub.unsubscribe()
+          if (event === 'PASSWORD_RECOVERY') {
+            if (!handled) { handled = true; setIsRecovery(true); setStatus('success') }
+          } else {
+            succeed(!!session)
+          }
+        })
+
         const { error } = await sb.auth.exchangeCodeForSession(code)
         if (error) {
+          recSub.unsubscribe()
           const { data: retry } = await sb.auth.getSession()
           if (retry.session) { succeed(true) } else { fail(translateError(error, 'Link wygasł lub jest nieprawidłowy.')) }
-        } else { succeed(true) }
+          return
+        }
+        // Fallback: if onAuthStateChange never fires within 2s
+        window.setTimeout(() => { recSub.unsubscribe(); if (!handled) succeed(true) }, 2000)
         return
       }
 
@@ -189,6 +183,11 @@ export function AuthCallbackRoutePage() {
       if (data.session) { succeed(true); return }
 
       const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          subscription.unsubscribe()
+          if (!handled) { handled = true; setIsRecovery(true); setStatus('success') }
+          return
+        }
         if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
           subscription.unsubscribe()
           succeed(true)
