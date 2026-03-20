@@ -1,5 +1,5 @@
-import { ArrowRight, FileText, FolderKanban, MessageSquareText, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
-import { useNavigate } from '@tanstack/react-router'
+import { ArrowRight, Calculator, FileText, FolderKanban, MessageSquareText, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
@@ -23,6 +23,16 @@ const quickActions = [
   { icon: Receipt,      title: 'Nowa faktura',       text: 'Wystaw dokument i przygotuj XML do KSeF.',   href: '/invoices'  },
   { icon: FolderKanban, title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',     href: '/projects'  },
 ]
+
+// 6 kafli mobilnych — wejścia do głównych modułów
+const MOBILE_TILES = [
+  { label: 'Kontrahenci', sub: 'Klienci i zleceniodawcy', icon: Users,          href: '/clients'   },
+  { label: 'Wyceny',      sub: 'Oferty i kosztorysy',     icon: Calculator,     href: '/estimates' },
+  { label: 'Umowy',       sub: 'Podpisane zlecenia',      icon: FileText,       href: '/contracts' },
+  { label: 'Faktury',     sub: 'Rozliczenia i KSeF',      icon: Receipt,        href: '/invoices'  },
+  { label: 'Projekty',    sub: 'Realizacje i dokumenty',  icon: FolderKanban,   href: '/projects'  },
+  { label: 'Portal klienta', sub: 'Dostęp zleceniodawcy', icon: MessageSquareText, href: '/chat'  },
+] as const
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -56,6 +66,19 @@ export function DashboardPage() {
   return (
     <div>
       <PageHeader title={data.companyName} subtitle={`Plan: ${(PLAN_DEFS[data.plan as keyof typeof PLAN_DEFS] ?? PLAN_DEFS.free).name}`} />
+
+      {/* ── Mobile home — 6 kafli (widoczne tylko na mobile) ──────────────── */}
+      <nav className="mobile-home-grid" aria-label="Główne moduły">
+        {MOBILE_TILES.map(({ label, sub, icon: Icon, href }) => (
+          <Link key={href} to={href as any} className="mobile-tile">
+            <div className="mobile-tile__icon"><Icon size={20} /></div>
+            <div>
+              <div className="mobile-tile__label">{label}</div>
+              <div className="mobile-tile__sub">{sub}</div>
+            </div>
+          </Link>
+        ))}
+      </nav>
 
       {/* ── Onboarding-first state: shown when account is empty ─────────── */}
       {onboarding?.isEmpty && !welcomeDismissed && (
