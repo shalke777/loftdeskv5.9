@@ -1,4 +1,4 @@
-import { ArrowRight, Calculator, FileText, FolderKanban, MessageSquareText, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
+import { ArrowRight, BookText, FileText, FolderKanban, MessageSquareText, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Card } from '@/shared/ui/Card/Card'
@@ -17,22 +17,21 @@ import { useOnboardingProgress } from '@/features/onboarding/hooks/useOnboarding
 
 const WELCOME_DISMISSED_KEY = 'loftdesk-welcome-dismissed'
 
+const MOBILE_TILES = [
+  { label: 'Kontrahenci',    sub: 'Klienci i zleceniodawcy',  icon: Users,               href: '/clients'   },
+  { label: 'Wyceny',         sub: 'Oferty i kosztorysy',      icon: FileText,            href: '/estimates' },
+  { label: 'Umowy',          sub: 'Podpisane zlecenia',        icon: BookText,            href: '/contracts' },
+  { label: 'Faktury',        sub: 'Rozliczenia i KSeF',        icon: Receipt,             href: '/invoices'  },
+  { label: 'Projekty',       sub: 'Realizacje i dokumenty',   icon: FolderKanban,        href: '/projects'  },
+  { label: 'Portal klienta', sub: 'Dostęp zleceniodawcy',   icon: MessageSquareText,   href: '/chat'      },
+] as const
+
 const quickActions = [
   { icon: Users,        title: 'Dodaj kontrahenta', text: 'Uzupełnij bazę inwestorów i wykonawców.',    href: '/clients'   },
   { icon: FileText,     title: 'Nowa wycena',        text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates' },
   { icon: Receipt,      title: 'Nowa faktura',       text: 'Wystaw dokument i przygotuj XML do KSeF.',   href: '/invoices'  },
   { icon: FolderKanban, title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',     href: '/projects'  },
 ]
-
-// 6 kafli mobilnych — wejścia do głównych modułów
-const MOBILE_TILES = [
-  { label: 'Kontrahenci', sub: 'Klienci i zleceniodawcy', icon: Users,          href: '/clients'   },
-  { label: 'Wyceny',      sub: 'Oferty i kosztorysy',     icon: Calculator,     href: '/estimates' },
-  { label: 'Umowy',       sub: 'Podpisane zlecenia',      icon: FileText,       href: '/contracts' },
-  { label: 'Faktury',     sub: 'Rozliczenia i KSeF',      icon: Receipt,        href: '/invoices'  },
-  { label: 'Projekty',    sub: 'Realizacje i dokumenty',  icon: FolderKanban,   href: '/projects'  },
-  { label: 'Portal klienta', sub: 'Dostęp zleceniodawcy', icon: MessageSquareText, href: '/chat'  },
-] as const
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -67,10 +66,10 @@ export function DashboardPage() {
     <div>
       <PageHeader title={data.companyName} subtitle={`Plan: ${(PLAN_DEFS[data.plan as keyof typeof PLAN_DEFS] ?? PLAN_DEFS.free).name}`} />
 
-      {/* ── Mobile home — 6 kafli (widoczne tylko na mobile) ──────────────── */}
+      {/* ── Mobile home — 6 kafli (tylko mobile) ─────────────────────────── */}
       <nav className="mobile-home-grid" aria-label="Główne moduły">
-        {MOBILE_TILES.map(({ label, sub, icon: Icon, href }) => (
-          <Link key={href} to={href as any} className="mobile-tile">
+        {MOBILE_TILES.map(({ label, sub, icon: Icon, href }, i) => (
+          <Link key={href} to={href as any} className={`mobile-tile mobile-tile--${i + 1}`}>
             <div className="mobile-tile__icon"><Icon size={20} /></div>
             <div>
               <div className="mobile-tile__label">{label}</div>
@@ -79,6 +78,9 @@ export function DashboardPage() {
           </Link>
         ))}
       </nav>
+
+      {/* ── Reszta dashboardu — ukryta na mobile ─────────────────────── */}
+      <div className="dashboard-desktop-content">
 
       {/* ── Onboarding-first state: shown when account is empty ─────────── */}
       {onboarding?.isEmpty && !welcomeDismissed && (
@@ -205,6 +207,8 @@ export function DashboardPage() {
           </div>
         </Card>
       </div>
+
+      </div>{/* end dashboard-desktop-content */}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import type { Project } from '@/entities/project/model'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Button } from '@/shared/ui/Button/Button'
 import { Card } from '@/shared/ui/Card/Card'
+import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
 import {
   useProjectDocuments,
   useUnlinkDocument,
@@ -23,11 +24,14 @@ const TYPE_ORDER: Record<string, number> = {
   note: 1, estimate: 2, contract: 3, invoice: 4, protocol: 5, attachment: 6, other: 7,
 }
 
+const MAILABLE_TYPES = new Set(['estimate', 'contract', 'invoice'])
+
 export function ProjectDocuments({ project }: { project: Project }) {
   const { data: docs = [], isLoading } = useProjectDocuments(project.id)
   const unlink = useUnlinkDocument()
   const { exportZip, loading: exporting } = useProjectExport(project.id)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [sendDoc, setSendDoc] = useState<{ type: 'estimate' | 'contract' | 'invoice'; name: string } | null>(null)
 
   const sorted = [...docs].sort(
     (a, b) => (TYPE_ORDER[a.doc_type] ?? 9) - (TYPE_ORDER[b.doc_type] ?? 9),
@@ -131,10 +135,34 @@ export function ProjectDocuments({ project }: { project: Project }) {
                 >
                   Odepnij
                 </Button>
+                {MAILABLE_TYPES.has(doc.doc_type) && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      setSendDoc({
+                        type: doc.doc_type as 'estimate' | 'contract' | 'invoice',
+                        name: `${TYPE_LABEL[doc.doc_type]} (${doc.doc_id.slice(0, 8)})`,
+                      })
+                    }
+                  >
+                    Wyślij
+                  </Button>
+                )}
               </div>
             ))}
           </div>
         ))
+      )}
+
+      {sendDoc && (
+        <SendToClientModal
+          open={!!sendDoc}
+          onClose={() => setSendDoc(null)}
+          documentType={sendDoc.type}
+          documentName={sendDoc.name}
+          portalUrl={`${window.location.origin}/client/project/${project.id}`}
+        />
       )}
     </Card>
   )

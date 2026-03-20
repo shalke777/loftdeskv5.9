@@ -124,20 +124,26 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .mobile-home-grid { display: none; }
 @media (max-width: 640px) {
   .mobile-home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .dashboard-desktop-content { display: none; }
 }
 .mobile-tile {
   display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
-  padding: 18px 16px 16px; border-radius: 18px; border: 1px solid var(--color-border);
-  background: var(--color-card); box-shadow: var(--shadow-sm);
-  cursor: pointer; text-decoration: none; color: var(--color-text-primary);
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-  min-height: 100px;
+  padding: 20px 16px 18px; border-radius: 18px; border: none;
+  cursor: pointer; text-decoration: none; color: #fff;
+  transition: transform .18s ease, box-shadow .18s ease;
+  min-height: 110px;
 }
-.mobile-tile:hover, .mobile-tile:active { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--color-brand); }
+.mobile-tile:hover, .mobile-tile:active { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .mobile-tile:active { transform: scale(.97); }
-.mobile-tile__icon { width: 40px; height: 40px; border-radius: 12px; background: var(--color-brand-light); color: var(--color-brand); display: grid; place-items: center; flex-shrink: 0; }
-.mobile-tile__label { font-size: 15px; font-weight: 700; line-height: 1.2; color: var(--color-text-primary); }
-.mobile-tile__sub { font-size: 12px; color: var(--color-text-muted); line-height: 1.3; }
+.mobile-tile__icon { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,0.2); color: #fff; display: grid; place-items: center; flex-shrink: 0; }
+.mobile-tile__label { font-size: 15px; font-weight: 700; line-height: 1.2; color: #fff; }
+.mobile-tile__sub { font-size: 12px; color: rgba(255,255,255,0.75); line-height: 1.3; }
+.mobile-tile--1 { background-color: var(--color-chart-3); }
+.mobile-tile--2 { background-color: var(--color-chart-4); }
+.mobile-tile--3 { background-color: var(--color-primary-light); }
+.mobile-tile--4 { background-color: var(--color-chart-5); }
+.mobile-tile--5 { background-color: var(--color-chart-2); }
+.mobile-tile--6 { background-color: var(--color-chart-1); }
 
 .app-shell { min-height: 100dvh; display: grid; grid-template-columns: 280px minmax(0, 1fr); background: linear-gradient(to right, var(--color-sidebar-bg) 280px, var(--color-bg) 280px); }
 .sidebar {
