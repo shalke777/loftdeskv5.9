@@ -25,7 +25,7 @@ function SetNewPasswordForm() {
     setLoading(false)
     if (error) { toast.error('Błąd', error.message); return }
     setDone(true)
-    window.setTimeout(() => window.location.assign('/login'), 3000)
+    window.setTimeout(() => window.location.assign('/dashboard'), 2000)
   }
 
   if (done) {
@@ -33,7 +33,7 @@ function SetNewPasswordForm() {
       <Card style={{ maxWidth: 400, textAlign: 'center', padding: 40 }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
         <h2 style={{ marginBottom: 8 }}>Hasło zmienione</h2>
-        <p style={{ color: 'var(--color-text-secondary)' }}>Za chwilę zostaniesz przekierowany do logowania…</p>
+        <p style={{ color: 'var(--color-text-secondary)' }}>Za chwilę zostaniesz przekierowany do aplikacji…</p>
       </Card>
     )
   }

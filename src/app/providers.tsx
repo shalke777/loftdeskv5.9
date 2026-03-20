@@ -102,8 +102,20 @@ function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     void refreshSession()
-    const subscription = supabase?.auth.onAuthStateChange(() => {
-      void refreshSession()
+    const subscription = supabase?.auth.onAuthStateChange((event) => {
+      // PASSWORD_RECOVERY is handled in auth-callback.tsx — don't touch loading here
+      if (event === 'PASSWORD_RECOVERY') return
+      // Silent refresh — no loading spinner for background token refreshes
+      void (async () => {
+        try {
+          const resolved = await resolveSupabaseSession()
+          setUser(resolved.user)
+          setStoredUser(resolved.user)
+        } catch {
+          setUser(null)
+          setStoredUser(null)
+        }
+      })()
     })
     return () => subscription?.data.subscription.unsubscribe()
     // eslint-disable-next-line react-hooks/exhaustive-deps
