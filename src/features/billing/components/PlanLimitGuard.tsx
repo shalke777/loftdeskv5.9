@@ -113,7 +113,7 @@ function UpgradeBannerInline({
           flexShrink: 0,
         }}
       >
-        Ulepszy plan
+        Ulepsz plan
       </button>
     </div>
   )

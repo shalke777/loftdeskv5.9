@@ -10,6 +10,7 @@ import { useCreateInvoice, useDeleteInvoice, useInvoices, useMarkInvoicePaid, us
 import { InvoiceRow } from '@/features/invoices/components/InvoiceRow'
 import { InvoiceForm } from '@/features/invoices/components/InvoiceModal/InvoiceForm'
 import { useCan } from '@/features/auth/hooks/usePermissions'
+import { PlanLimitGuard } from '@/features/billing/components/PlanLimitGuard'
 import { useClients } from '@/features/clients/hooks/useClients'
 import type { Invoice } from '@/entities/invoice/model'
 
@@ -73,10 +74,12 @@ export function InvoicesPage() {
         <PageHeader title="Faktury" subtitle="Edycja do momentu wysyłki do KSeF, transze z umowy, PDF/XML i pełne rozbicie VAT." />
         <div className="toolbar__actions">
           {canCreate && (
-            <Button onClick={() => { setEditing(null); setOpen(true) }}>
-              <Plus size={16} style={{ marginRight: 4 }} />
-              Nowa faktura
-            </Button>
+            <PlanLimitGuard resource="invoices">
+              <Button onClick={() => { setEditing(null); setOpen(true) }}>
+                <Plus size={16} style={{ marginRight: 4 }} />
+                Nowa faktura
+              </Button>
+            </PlanLimitGuard>
           )}
         </div>
       </div>

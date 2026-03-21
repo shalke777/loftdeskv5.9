@@ -83,8 +83,13 @@ export function SettingsPage() {
             <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6b7280', minWidth: 120 }}>NIP do KSeF</span><span>{(profile as any)?.ksef_nip ?? 'brak — ustaw w danych wykonawcy'}</span></div>
             <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6b7280', minWidth: 120 }}>Token</span><span>{(profile as any)?.ksef_token ? '✅ ustawiony' : '❌ brak — ustaw poniżej'}</span></div>
           </div>
-          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>{canUseKsef ? 'Moduł aktywny w Twoim planie.' : 'Plan Free blokuje pełną integrację KSeF.'}</p>
-          <div className="actions-row"><Button variant="secondary" onClick={() => navigate({ to: '/ksef' })}>Przejdź do KSeF</Button></div>
+          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>{canUseKsef ? 'Moduł aktywny w Twoim planie.' : 'Plan Free blokuje pełną integrację KSeF. Ulepsz plan, aby wysyłać faktury do KSeF.'}</p>
+          <div className="actions-row">
+            {canUseKsef
+              ? <Button variant="secondary" onClick={() => navigate({ to: '/ksef' })}>Przejdź do KSeF</Button>
+              : <Button onClick={() => navigate({ to: '/billing' })}>Ulepsz plan</Button>
+            }
+          </div>
         </Card>
 
         <CompanyProfileCard />

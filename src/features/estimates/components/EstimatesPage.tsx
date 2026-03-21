@@ -11,6 +11,7 @@ import { EstimateRow } from '@/features/estimates/components/EstimateRow'
 import { EstimateForm } from '@/features/estimates/components/EstimateModal/EstimateForm'
 import { useEstimateToContract } from '@/workflows/estimate-to-contract/useEstimateToContract'
 import { useCan } from '@/features/auth/hooks/usePermissions'
+import { PlanLimitGuard } from '@/features/billing/components/PlanLimitGuard'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import type { Estimate } from '@/entities/estimate/model'
@@ -81,10 +82,12 @@ export function EstimatesPage() {
         <PageHeader title="Wyceny" subtitle="Edytowalne pozycje, portal klienta i workflow do umów i faktur." />
         <div className="toolbar__actions">
           {canCreate && (
-            <Button onClick={() => { setEditing(null); setOpen(true) }}>
-              <Plus size={16} style={{ marginRight: 4 }} />
-              Nowa wycena
-            </Button>
+            <PlanLimitGuard resource="estimates">
+              <Button onClick={() => { setEditing(null); setOpen(true) }}>
+                <Plus size={16} style={{ marginRight: 4 }} />
+                Nowa wycena
+              </Button>
+            </PlanLimitGuard>
           )}
         </div>
       </div>

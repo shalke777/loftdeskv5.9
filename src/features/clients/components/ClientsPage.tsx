@@ -9,6 +9,7 @@ import { Button } from '@/shared/ui/Button/Button'
 import { useClients, useDeleteClient } from '@/features/clients/hooks/useClients'
 import { ClientModal } from '@/features/clients/components/ClientModal'
 import { useCan } from '@/features/auth/hooks/usePermissions'
+import { PlanLimitGuard } from '@/features/billing/components/PlanLimitGuard'
 import type { Client } from '@/entities/client/model'
 
 export function ClientsPage() {
@@ -23,7 +24,7 @@ export function ClientsPage() {
     <div>
       <div className="toolbar">
         <PageHeader title="Kontrahenci" subtitle="Pełne dane firmowe, NIP, adres, kontakt i szybka edycja." />
-        <div className="toolbar__actions">{canCreate ? <Button onClick={() => { setSelected(null); setOpen(true) }}>Dodaj kontrahenta</Button> : null}</div>
+        <div className="toolbar__actions">{canCreate ? <PlanLimitGuard resource="clients"><Button onClick={() => { setSelected(null); setOpen(true) }}>Dodaj kontrahenta</Button></PlanLimitGuard> : null}</div>
       </div>
       <Card>
         {isLoading ? <Spinner /> : null}

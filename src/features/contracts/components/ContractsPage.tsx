@@ -11,6 +11,7 @@ import { useCreateInvoiceFromContract } from '@/features/invoices/hooks/useInvoi
 import { ContractRow } from '@/features/contracts/components/ContractRow'
 import { ContractForm } from '@/features/contracts/components/ContractModal/ContractForm'
 import { useCan } from '@/features/auth/hooks/usePermissions'
+import { PlanLimitGuard } from '@/features/billing/components/PlanLimitGuard'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import type { Contract } from '@/entities/contract/model'
@@ -73,10 +74,12 @@ export function ContractsPage() {
         <PageHeader title="Umowy" subtitle="Wzory umów, transze płatności, edycja i podgląd PDF." />
         <div className="toolbar__actions">
           {canCreate && (
-            <Button onClick={() => { setEditing(null); setOpen(true) }}>
-              <Plus size={16} style={{ marginRight: 4 }} />
-              Nowa umowa
-            </Button>
+            <PlanLimitGuard resource="contracts">
+              <Button onClick={() => { setEditing(null); setOpen(true) }}>
+                <Plus size={16} style={{ marginRight: 4 }} />
+                Nowa umowa
+              </Button>
+            </PlanLimitGuard>
           )}
         </div>
       </div>

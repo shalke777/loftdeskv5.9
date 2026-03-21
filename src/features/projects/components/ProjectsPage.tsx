@@ -19,6 +19,7 @@ import { AssignmentQueueBanner } from '@/features/projects/components/Assignment
 import { ProjectForm } from '@/features/projects/components/ProjectModal/ProjectForm'
 import type { Project } from '@/entities/project/model'
 import { useCan } from '@/features/auth/hooks/usePermissions'
+import { PlanLimitGuard } from '@/features/billing/components/PlanLimitGuard'
 import { ProjectInvoiceModal } from '@/features/projects/components/ProjectInvoiceModal'
 import type { InvoiceFromProjectConfig } from '@/features/projects/components/ProjectInvoiceModal'
 import { useClients } from '@/features/clients/hooks/useClients'
@@ -87,10 +88,12 @@ export function ProjectsPage() {
         <PageHeader title="Projekty" subtitle="Lista wszystkich realizacji i ofert." />
         <div className="toolbar__actions">
           {canCreate && (
-            <Button onClick={() => { setEditing(null); setOpen(true) }}>
-              <Plus size={16} style={{ marginRight: 4 }} />
-              Nowy projekt
-            </Button>
+            <PlanLimitGuard resource="projects">
+              <Button onClick={() => { setEditing(null); setOpen(true) }}>
+                <Plus size={16} style={{ marginRight: 4 }} />
+                Nowy projekt
+              </Button>
+            </PlanLimitGuard>
           )}
         </div>
       </div>
