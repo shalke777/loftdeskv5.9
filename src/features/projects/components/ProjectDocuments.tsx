@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { Project } from '@/entities/project/model'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Button } from '@/shared/ui/Button/Button'
@@ -9,9 +10,11 @@ import {
   useUnlinkDocument,
   useProjectExport,
 } from '@/features/projects/hooks/useProjectDocuments'
-import { useEstimates } from '@/features/estimates/hooks/useEstimates'
-import { useContracts } from '@/features/contracts/hooks/useContracts'
-import { useInvoices } from '@/features/invoices/hooks/useInvoices'
+import { useEstimates, useDeleteEstimate } from '@/features/estimates/hooks/useEstimates'
+import { useContracts, useDeleteContract } from '@/features/contracts/hooks/useContracts'
+import { useInvoices, useDeleteInvoice } from '@/features/invoices/hooks/useInvoices'
+import { useCompanyId } from '@/features/auth/hooks/useAuth'
+import { projectDocumentsApi } from '@/features/projects/api/projectDocuments.api'
 
 const TYPE_LABEL: Record<string, string> = {
   estimate: 'Wycena',
@@ -29,12 +32,38 @@ const TYPE_ORDER: Record<string, number> = {
 
 const MAILABLE_TYPES = new Set(['estimate', 'contract', 'invoice'])
 
+const DELETABLE_TYPES = new Set(['estimate', 'contract', 'invoice'])
+
 export function ProjectDocuments({ project }: { project: Project }) {
+  const qc = useQueryClient()
+  const companyId = useCompanyId()
   const { data: docs = [], isLoading } = useProjectDocuments(project.id)
   const unlink = useUnlinkDocument()
   const { exportZip, loading: exporting } = useProjectExport(project.id)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [sendDoc, setSendDoc] = useState<{ type: 'estimate' | 'contract' | 'invoice'; name: string } | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+  const deleteEstimate = useDeleteEstimate()
+  const deleteContract = useDeleteContract()
+  const deleteInvoice = useDeleteInvoice()
+  const isDeleting = deleteEstimate.isPending || deleteContract.isPending || deleteInvoice.isPending
+
+  async function handleDelete(docId: string, docType: string, pdRowId: string) {
+    try {
+      if (docType === 'estimate') await deleteEstimate.mutateAsync(docId)
+      else if (docType === 'contract') await deleteContract.mutateAsync(docId)
+      else if (docType === 'invoice') await deleteInvoice.mutateAsync(docId)
+      // Archive the project_documents link row directly (avoids a duplicate unlink toast)
+      await projectDocumentsApi.unlink(companyId, project.id, docType, docId)
+      qc.invalidateQueries({ queryKey: ['project_documents', project.id] })
+      qc.invalidateQueries({ queryKey: ['projects'] })
+    } catch {
+      // error toast already raised by the domain delete hook
+    } finally {
+      setConfirmDeleteId(null)
+    }
+  }
 
   const { data: estimates = [], isLoading: estLoading } = useEstimates()
   const { data: contracts = [], isLoading: ctLoading } = useContracts()
@@ -146,6 +175,24 @@ export function ProjectDocuments({ project }: { project: Project }) {
                 >
                   Odepnij
                 </Button>
+                {DELETABLE_TYPES.has(doc.doc_type) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    style={confirmDeleteId === doc.id ? { color: 'var(--color-danger, #e53e3e)' } : {}}
+                    disabled={isDeleting}
+                    onClick={() => {
+                      if (confirmDeleteId === doc.id) {
+                        handleDelete(doc.doc_id, doc.doc_type, doc.id)
+                      } else {
+                        setConfirmDeleteId(doc.id)
+                        setTimeout(() => setConfirmDeleteId(cur => cur === doc.id ? null : cur), 3000)
+                      }
+                    }}
+                  >
+                    {confirmDeleteId === doc.id ? 'Potwierdź usunięcie' : 'Usuń'}
+                  </Button>
+                )}
                 {MAILABLE_TYPES.has(doc.doc_type) && (
                   <Button
                     variant="secondary"
