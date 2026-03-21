@@ -109,6 +109,8 @@ export function EstimateNextActions({ estimate }: { estimate: Estimate }) {
     onSuccess: (result) => {
       setFreshToken(result)
       queryClient.invalidateQueries({ queryKey: ['project-portal-tokens', projectId] })
+      // Mark the 'portal' onboarding step as complete
+      queryClient.invalidateQueries({ queryKey: ['onboarding-progress', user?.companyId] })
       const url = `${window.location.origin}/portal/${result.raw_token}`
       copyText(url)
         .then(() => toast.success('Link portalu wygenerowany', 'Adres skopiowany do schowka.'))

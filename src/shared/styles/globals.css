@@ -1764,6 +1764,34 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .quick-action, .btn { word-break: break-word; }
 @media (max-width: 1024px) { .shell-topbar__right { width: 100%; justify-content: flex-start; } .mobile-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); } .mobile-nav__link span { font-size: 10px; } }
 
+/* ── Mobile phone: single-row compact topbar (≤640px) ─────────────────────── */
+@media (max-width: 640px) {
+  .shell-topbar {
+    flex-wrap: nowrap;
+    padding: 10px 14px;
+    gap: 8px;
+    align-items: center;
+  }
+  /* Hide the verbose subtitle — pure waste of vertical space on a phone */
+  .shell-topbar__left .field__label { display: none; }
+  .shell-topbar__left strong { font-size: 14px; }
+  /* Override the 1024px full-width rule — keep items on same row */
+  .shell-topbar__right {
+    width: auto;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+  /* Shrink plan/upgrade pill */
+  .shell-pill {
+    padding: 5px 10px;
+    font-size: 11px;
+    gap: 4px;
+    white-space: nowrap;
+  }
+}
+
 .helper-links { display: flex; gap: 10px; flex-wrap: wrap; }
 .sidebar__nav--main { padding-bottom: 4px; }
 .doc-preview__actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }

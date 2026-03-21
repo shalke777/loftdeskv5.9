@@ -72,6 +72,9 @@ export function useOnboardingProgress() {
 
   return useQuery<OnboardingProgress>({
     queryKey: ['onboarding-progress', companyId],
+    // staleTime intentionally not set (defaults to 0) — must always re-check
+    // after mutations so checklist never freezes showing an outdated state.
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<OnboardingProgress> => {
       if (isDemoMode || !companyId) {
         const summary = demoDb.onboardingSummary(companyId)
@@ -119,7 +122,6 @@ export function useOnboardingProgress() {
         isEmpty,
       }
     },
-    staleTime: 5_000,
   })
 }
 
