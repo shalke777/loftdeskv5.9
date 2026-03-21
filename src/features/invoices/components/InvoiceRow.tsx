@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, Mail, Trash2 } from 'lucide-react'
 import type { Invoice } from '@/entities/invoice/model'
 import { Button } from '@/shared/ui/Button/Button'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
@@ -8,6 +8,7 @@ import { formatCurrency } from '@/shared/lib/formatters'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
+import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
 
 const STATUS_LABEL: Record<Invoice['status'], string> = {
   unpaid: 'Nieopłacona', paid: 'Opłacona', overdue: 'Przeterminowana',
@@ -51,6 +52,7 @@ export function InvoiceRow({
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [sendOpen, setSendOpen] = useState(false)
 
   const { data: clients = [] } = useClients()
   const { user } = useAuth()
@@ -119,6 +121,13 @@ export function InvoiceRow({
           )}
           <span className={STATUS_CLASS[invoice.status]}>{STATUS_LABEL[invoice.status]}</span>
           <div className="proj-row__actions">
+            <button
+              className="proj-action-btn"
+              title="Wyślij do klienta"
+              onClick={e => { e.stopPropagation(); setSendOpen(true) }}
+            >
+              <Mail size={14} />
+            </button>
             <button
               className="proj-action-btn"
               title="PDF / XML"
@@ -223,6 +232,7 @@ export function InvoiceRow({
 
           <div className="actions-row">
             <Button variant="secondary" onClick={() => setPreviewOpen(true)}>PDF / XML</Button>
+            <Button variant="secondary" onClick={() => setSendOpen(true)}>Wyślij do klienta</Button>
             {invoice.status !== 'paid' && canMarkPaid && (
               <Button variant="secondary" onClick={() => onMarkPaid(invoice.id)}>
                 Oznacz jako opłaconą
@@ -242,6 +252,15 @@ export function InvoiceRow({
         onClose={() => setPreviewOpen(false)}
         title={`${invoice.number} · Podgląd dokumentu`}
         tabs={tabs}
+      />
+
+      <SendToClientModal
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
+        documentType="invoice"
+        documentName={invoice.number}
+        defaultEmail={client?.email}
+        portalUrl={invoice.project_id ? `${window.location.origin}/client/project/${invoice.project_id}` : undefined}
       />
     </div>
   )
