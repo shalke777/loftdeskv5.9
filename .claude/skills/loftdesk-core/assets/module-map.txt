@@ -1,0 +1,14 @@
+Clients
+Estimates
+Contracts
+Invoices
+KSeF
+Projects
+Portal
+Communication
+AI Extraction
+Auth/RLS
+UI/Mobile
+Modals
+Notifications
+Release/Env

@@ -16,6 +16,7 @@ function statusVariant(status: Invoice['status']) { if (status === 'paid') retur
 export function InvoiceCard({ invoice, onDelete, onMarkPaid, onOpen, onEdit, canDelete = true, canMarkPaid = true }: { invoice: Invoice; onDelete: (id: string) => void; onMarkPaid: (id: string) => void; onOpen: (invoice: Invoice) => void; onEdit?: (invoice: Invoice) => void; canDelete?: boolean; canMarkPaid?: boolean }) {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const { data: clients = [] } = useClients()
   const { user } = useAuth()
   const companyMeta = useCompanyMeta()
@@ -26,9 +27,10 @@ export function InvoiceCard({ invoice, onDelete, onMarkPaid, onOpen, onEdit, can
   ]), [client, companyMeta, invoice, user?.companyName, user?.email])
 
   function handleDelete() {
-    if (!window.confirm(`Usunąć fakturę ${invoice.number}? Tej operacji nie można cofnąć.`)) return
+    if (!confirmDelete) { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 3000); return }
     onDelete(invoice.id)
+    setConfirmDelete(false)
   }
 
-  return <><Card><div className="toolbar"><div><strong>{invoice.number}</strong><div className="field__label">Termin: {invoice.due_date || 'brak'}</div></div><Badge variant={statusVariant(invoice.status)}>{invoice.status}</Badge></div><p>Wartość brutto: {formatCurrency(invoice.total_gross)}</p><p>KSeF: {invoice.ksef_status || 'nie wysłano'}</p><div className="actions-row"><Button variant="ghost" onClick={() => onOpen(invoice)}>Szczegóły</Button><Button variant="ghost" onClick={() => setPreviewOpen(true)}>PDF / XML</Button>{onEdit && invoice.ksef_status !== 'ksef_sent' ? <Button variant="secondary" onClick={() => onEdit(invoice)}>Edytuj</Button> : null}{invoice.status !== 'paid' && canMarkPaid ? <Button variant="secondary" onClick={() => onMarkPaid(invoice.id)}>Oznacz jako opłaconą</Button> : null}<Button variant="secondary" onClick={() => setSendOpen(true)}>Wyślij do klienta</Button>{canDelete ? <Button variant="danger" onClick={handleDelete}>Usuń</Button> : null}</div></Card><DocumentPreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} title={`${invoice.number} · Podgląd dokumentu`} tabs={tabs} /><SendToClientModal open={sendOpen} onClose={() => setSendOpen(false)} documentType="invoice" documentName={invoice.number} defaultEmail={client?.email} portalUrl={invoice.project_id ? `${window.location.origin}/client/project/${invoice.project_id}` : undefined} /></>
+  return <><Card><div className="toolbar"><div><strong>{invoice.number}</strong><div className="field__label">Termin: {invoice.due_date || 'brak'}</div></div><Badge variant={statusVariant(invoice.status)}>{invoice.status}</Badge></div><p>Wartość brutto: {formatCurrency(invoice.total_gross)}</p><p>KSeF: {invoice.ksef_status || 'nie wysłano'}</p><div className="actions-row"><Button variant="ghost" onClick={() => onOpen(invoice)}>Szczegóły</Button><Button variant="ghost" onClick={() => setPreviewOpen(true)}>PDF / XML</Button>{onEdit && invoice.ksef_status !== 'ksef_sent' ? <Button variant="secondary" onClick={() => onEdit(invoice)}>Edytuj</Button> : null}{invoice.status !== 'paid' && canMarkPaid ? <Button variant="secondary" onClick={() => onMarkPaid(invoice.id)}>Oznacz jako opłaconą</Button> : null}<Button variant="secondary" onClick={() => setSendOpen(true)}>Wyślij do klienta</Button>{canDelete ? <Button variant={confirmDelete ? 'danger' : 'secondary'} onClick={handleDelete}>{confirmDelete ? 'Potwierdź' : 'Usuń'}</Button> : null}</div></Card><DocumentPreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} title={`${invoice.number} · Podgląd dokumentu`} tabs={tabs} /><SendToClientModal open={sendOpen} onClose={() => setSendOpen(false)} documentType="invoice" documentName={invoice.number} defaultEmail={client?.email} portalUrl={invoice.project_id ? `${window.location.origin}/client/project/${invoice.project_id}` : undefined} /></>
 }

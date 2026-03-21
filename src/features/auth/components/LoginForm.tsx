@@ -9,6 +9,7 @@ import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
 import { getPendingInviteToken, clearPendingInviteToken } from '@/shared/lib/inviteIntent'
 import { settingsApi } from '@/features/settings/api/settings.api'
+import { isDemoMode } from '@/shared/lib/supabase'
 
 export function LoginForm() {
   const { signInDemo } = useAuth()
@@ -41,11 +42,18 @@ export function LoginForm() {
             try {
               setLoading(true)
               await authApi.signIn(email, password)
-              signInDemo(email)
+              if (isDemoMode) signInDemo(email)
               const target = await finalizeInviteIfNeeded()
               toast.success('Zalogowano', 'Możesz od razu przejść do pracy w aplikacji.')
               window.location.assign(target)
             } catch (error) {
+              // Full diagnostic log — helps trace auth issues across environments
+              console.error('[LoginForm] signInWithPassword failed', {
+                code:    (error as any)?.code,
+                status:  (error as any)?.status,
+                message: (error as any)?.message,
+                name:    (error as any)?.name,
+              })
               toast.error('Nie udało się zalogować', translateError(error, 'Sprawdź dane logowania.'))
             } finally {
               setLoading(false)

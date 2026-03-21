@@ -8,15 +8,10 @@
 // =============================================================================
 
 import { useEffect } from 'react'
-import { FolderKanban, LogOut, User } from 'lucide-react'
+import { FolderKanban, LogOut, MessageSquare, User } from 'lucide-react'
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { ClientInstallBanner } from '@/features/client-portal/components/ClientInstallBanner'
-
-const NAV = [
-  { to: '/client/dashboard', label: 'Projekty', icon: FolderKanban },
-  { to: '/client/profile',   label: 'Profil',   icon: User },
-] as const
 
 export function ClientShell() {
   const { user, signOut } = useAuth()
@@ -62,16 +57,30 @@ export function ClientShell() {
 
       {/* ── Dolna nawigacja ── */}
       <nav className="client-nav">
-        {NAV.map(({ to, label, icon: Icon }) => (
+        <Link
+          to="/client/dashboard"
+          className={pathname.startsWith('/client/dashboard') ? 'client-nav__link client-nav__link--active' : 'client-nav__link'}
+        >
+          <FolderKanban size={20} />
+          <span>Projekty</span>
+        </Link>
+        {user?.pendingProjectId && (
           <Link
-            key={to}
-            to={to}
-            className={pathname.startsWith(to) ? 'client-nav__link client-nav__link--active' : 'client-nav__link'}
+            to="/client/project/$id"
+            params={{ id: user.pendingProjectId }}
+            className={/^\/client\/project\//.test(pathname) ? 'client-nav__link client-nav__link--active' : 'client-nav__link'}
           >
-            <Icon size={20} />
-            <span>{label}</span>
+            <MessageSquare size={20} />
+            <span>Chat</span>
           </Link>
-        ))}
+        )}
+        <Link
+          to="/client/profile"
+          className={pathname.startsWith('/client/profile') ? 'client-nav__link client-nav__link--active' : 'client-nav__link'}
+        >
+          <User size={20} />
+          <span>Profil</span>
+        </Link>
       </nav>
 
       <ClientInstallBanner />

@@ -1,0 +1,4 @@
+- Poland only
+- shared contractor+client model
+- Free simple / Pro deeper / Business future
+- obvious mobile UX matters

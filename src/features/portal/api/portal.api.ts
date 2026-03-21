@@ -188,16 +188,6 @@ export const portalApi = {
     if (data?.error) throw new Error(String(data.error))
     return { token, message: message.trim(), ok: true }
   },
-  async sendCompanyMessage(token: string, message: string) {
-    if (!message.trim()) throw new Error('Wiadomość nie może być pusta')
-    if (isDemoMode || !supabase) {
-      const saved = demoDb.portal.sendMessage(token, message.trim())
-      return { token, message: saved.content, ok: true }
-    }
-    const data = await portalRpc('portal_send_message', { p_token: token, p_content: message.trim(), p_sender: 'company' })
-    if (data?.error) throw new Error(String(data.error))
-    return { token, message: message.trim(), ok: true }
-  },
   async saveClientName(token: string, clientName: string) {
     if (!clientName.trim()) throw new Error('Podaj imię lub nazwę klienta')
     demoDb.portal.renameClient(token, clientName)
@@ -258,21 +248,6 @@ export const portalApi = {
       expires_at: item.expires_at,
       url: buildPortalUrl(item.token),
     }))
-  },
-  async createCompanyToken(companyId: string, estimateId: string, userId: string, clientName: string) {
-    if (isDemoMode || !supabase) {
-      const created = demoDb.estimates.createPortalToken(estimateId, userId, companyId, clientName)
-      return { id: created.id, token: created.token, url: buildPortalUrl(created.token) }
-    }
-    const scope = await getDataScope(companyId)
-    const token = `pt-${Math.random().toString(36).slice(2, 12)}`
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-    const payload = scope.mode === 'multi-tenant'
-      ? { company_id: scope.companyId, user_id: userId, cost_estimate_id: estimateId, client_name: clientName.trim() || 'Klient', token, active: true, expires_at: expiresAt }
-      : { user_id: scope.userId, cost_estimate_id: estimateId, client_name: clientName.trim() || 'Klient', token, active: true, expires_at: expiresAt }
-    const { data, error } = await supabase.from('client_tokens').insert(payload).select('id, token').single()
-    if (error) throw error
-    return { id: data.id, token: data.token, url: buildPortalUrl(data.token) }
   },
   async deactivateCompanyToken(companyId: string, tokenId: string) {
     if (isDemoMode || !supabase) {

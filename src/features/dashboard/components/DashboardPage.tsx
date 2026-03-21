@@ -10,7 +10,6 @@ import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { PLAN_DEFS } from '@/shared/lib/constants'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
-import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
 import { OnboardingChecklist } from '@/features/onboarding/components/OnboardingChecklist'
 import { WelcomeBanner } from '@/features/onboarding/components/WelcomeBanner'
 import { useOnboardingProgress } from '@/features/onboarding/hooks/useOnboardingProgress'
@@ -37,8 +36,6 @@ export function DashboardPage() {
   const navigate = useNavigate()
   const companyId = useCompanyId()
   const canUsePortal = useFeatureAccess('portal')
-  const { data: portalTokens } = usePortalTokens(companyId ?? '')
-  const firstPortalUrl = canUsePortal ? (portalTokens ?? []).find((t) => t.active)?.url ?? null : null
   const { data, isLoading } = useDashboardStats()
   const { data: onboarding } = useOnboardingProgress()
 
@@ -200,10 +197,9 @@ export function DashboardPage() {
         </Card>
         <Card>
           <h3>Portal klienta</h3>
-          <p>Klient dostaje link do konkretnego kosztorysu, może go zaakceptować i zostawić komentarz w jednym miejscu.</p>
+          <p>Klient dostaje dostęp do projektu — może przeglądać wyceny, faktury i komunikować się z firmą w jednym miejscu.</p>
           <div className="actions-row">
-            <Button variant="secondary" onClick={() => navigate({ to: '/estimates' })}>Generuj link portalu</Button>
-            {firstPortalUrl ? <a href={firstPortalUrl} target="_blank" rel="noreferrer"><Button variant="ghost" icon={<MessageSquareText size={16} />}>Otwórz portal demo</Button></a> : null}
+            <Button variant="secondary" onClick={() => navigate({ to: '/projects' })}>Przejdź do projektów</Button>
           </div>
         </Card>
       </div>

@@ -43,19 +43,6 @@ export function usePortalTokens(companyId: string) {
   })
 }
 
-export function useCreatePortalToken(companyId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ estimateId, userId, clientName }: { estimateId: string; userId: string; clientName: string }) =>
-      portalApi.createCompanyToken(companyId, estimateId, userId, clientName),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portal', 'company-tokens', companyId] })
-      queryClient.invalidateQueries({ queryKey: ['estimates'] })
-      queryClient.invalidateQueries({ queryKey: ['onboarding-progress', companyId] })
-    },
-  })
-}
-
 export function useDeactivatePortalToken(companyId: string) {
   const queryClient = useQueryClient()
   return useMutation({

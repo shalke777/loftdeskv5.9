@@ -17,6 +17,11 @@ export const supabase = !isDemoMode && url && anonKey
     })
   : null
 
+if (import.meta.env.DEV) {
+  console.info('[supabase] project url:', url ?? '(brak — tryb demo)')
+  console.info('[supabase] isDemoMode:', isDemoMode)
+}
+
 export async function getSupabaseUserId() {
   if (!supabase) return null
   const { data, error } = await supabase.auth.getUser()

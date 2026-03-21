@@ -14,9 +14,12 @@
 // Brak tokenów URL, brak project_portal_tokens, jeden kanoniczny portal.
 
 import { useEffect, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
+import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
+import { AccessNotice } from '@/shared/ui/AccessNotice/AccessNotice'
 import { supabase, isDemoMode } from '@/shared/lib/supabase'
 
 const INVITE_ENDPOINT = '/.netlify/functions/client-identify'
@@ -71,6 +74,9 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
   useEffect(() => {
     if (import.meta.env.DEV) console.info('CLIENT_PORTAL_OPEN', { projectId, projectName })
   }, [projectId, projectName])
+
+  const canUsePortal = useFeatureAccess('portal')
+  const navigate = useNavigate()
 
   async function handleInvite() {
     if (!email.trim()) return
@@ -133,6 +139,18 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
       saveInvite(projectId, rec)
       setLastInvite(rec)
     }
+  }
+
+  // Plan gate — portal invite requires Pro/Business
+  if (!canUsePortal) {
+    return (
+      <AccessNotice
+        title="Portal klienta"
+        description="Zapraszanie klientów do portalu projektu jest dostępne od planu Pro lub Business."
+        actionLabel="Zmień plan"
+        onAction={() => void navigate({ to: '/billing' })}
+      />
+    )
   }
 
   // Demo mode

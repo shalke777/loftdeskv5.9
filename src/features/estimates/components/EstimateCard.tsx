@@ -18,6 +18,7 @@ function variant(status: Estimate['status']) { if (status === 'accepted') return
 export function EstimateCard({ estimate, onDelete, onCreateContract, onEdit }: { estimate: Estimate; onDelete?: (id: string) => void; onCreateContract?: (id: string) => void; onEdit?: (estimate: Estimate) => void }) {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const { data: clients = [] } = useClients()
   const { user } = useAuth()
   const companyMeta = useCompanyMeta()
@@ -27,8 +28,9 @@ export function EstimateCard({ estimate, onDelete, onCreateContract, onEdit }: {
 
   function handleDelete() {
     if (!onDelete) return
-    if (!window.confirm(`Usunąć wycenę ${estimate.number}? Tej operacji nie można cofnąć.`)) return
+    if (!confirmDelete) { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 3000); return }
     onDelete(estimate.id)
+    setConfirmDelete(false)
   }
 
   return (
@@ -48,7 +50,7 @@ export function EstimateCard({ estimate, onDelete, onCreateContract, onEdit }: {
           >
             → Projekt
           </Button>
-          {onDelete ? <Button variant="danger" onClick={handleDelete}>Usuń</Button> : null}
+          {onDelete ? <Button variant={confirmDelete ? 'danger' : 'secondary'} onClick={handleDelete}>{confirmDelete ? 'Potwierdź' : 'Usuń'}</Button> : null}
         </div>
         <div style={{ marginTop: 12 }}>
           <EstimateNextActions estimate={estimate} />

@@ -1,0 +1,5 @@
+- stale UI restore
+- fake sent states
+- modal inconsistency
+- menu order drift
+- table overflow

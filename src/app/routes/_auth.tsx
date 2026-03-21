@@ -87,6 +87,13 @@ export function AuthLayout() {
   // Klient (v6.0) — lekki shell bez nawigacji wykonawcy
   if (user.role === 'client') return <ClientShell />
 
+  // Guard: operator który ręcznie wpisał /client/* → wróć do dashboardu
+  // RLS chroni dane, ale bez tego guardu operator widzi pusty client shell wewnątrz sidebar
+  if (pathname.startsWith('/client/')) {
+    if (typeof window !== 'undefined') window.location.replace('/dashboard')
+    return null
+  }
+
   const featureFlags = { ksef: canUseKsef } as const
   const visibleMainNav = mainNavItems.filter((item) => !item.feature || featureFlags[item.feature])
   const visibleMobileNav = mobileNav.filter((item) => !item.feature || featureFlags[item.feature])
@@ -208,6 +215,7 @@ export function AuthLayout() {
           </div>
         </header>
         <main className="shell-content"><Outlet /></main>
+        {pathname !== '/dashboard' && (
         <nav className="mobile-nav">
           {visibleMobileNav.map((item) => {
             const Icon = item.icon
@@ -226,6 +234,7 @@ export function AuthLayout() {
             </Link>
           ) : null}
         </nav>
+        )}
       </section>
     </div>
     </>

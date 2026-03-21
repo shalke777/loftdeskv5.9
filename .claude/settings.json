@@ -1,0 +1,20 @@
+{
+  "projectName": "LoftDesk",
+  "scope": "Poland-only contractor-client process app",
+  "entryAgent": "chief-orchestrator",
+  "tiers": [
+    "Free",
+    "Pro",
+    "Business-under-construction"
+  ],
+  "roles": [
+    "Contractor",
+    "InvitedClient"
+  ],
+  "mustReadFirst": [
+    ".claude/constitution.md",
+    ".claude/CLAUDE.md",
+    ".claude/skills/loftdesk-core/references/product-definition.md",
+    ".claude/skills/loftdesk-core/references/traps.md"
+  ]
+}
