@@ -65,7 +65,7 @@ export function AssignmentQueueBanner() {
               fontSize: 13,
             }}
           >
-            <span style={{ flex: 1, minWidth: 200 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
               <strong>{DOC_LABEL[item.doc_type] ?? item.doc_type}</strong>
               <span style={{ color: '#718096', fontSize: 12, marginLeft: 6 }}>
                 {resolveDocName(item.doc_type, item.doc_id)}

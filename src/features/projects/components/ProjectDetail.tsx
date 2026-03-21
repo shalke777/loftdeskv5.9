@@ -42,13 +42,13 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
         </div>
 
         {/* Zakładki główne */}
-        <div style={{ display: 'flex', gap: 4, marginTop: 20, marginBottom: 16, borderBottom: '1px solid var(--color-border)', paddingBottom: 0 }}>
+        <div className="proj-detail-tabs" style={{ display: 'flex', gap: 4, marginTop: 20, marginBottom: 16, borderBottom: '1px solid var(--color-border)', paddingBottom: 0, overflowX: 'auto' }}>
           {(['overview', 'threads', 'expenses', 'approvals', 'timeline'] as MainTab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
               style={{
-                padding:      '8px 16px',
+                padding:      '8px 14px',
                 border:       'none',
                 background:   'transparent',
                 fontWeight:   tab === t ? 700 : 400,
@@ -57,6 +57,8 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
                 borderBottom: tab === t ? '2px solid var(--color-brand)' : '2px solid transparent',
                 cursor:       'pointer',
                 marginBottom: -1,
+                whiteSpace:   'nowrap',
+                flexShrink:   0,
               }}
             >
               {t === 'overview' ? 'Przegląd' : t === 'threads' ? '💬 Wątki' : t === 'expenses' ? '💰 Koszty' : t === 'approvals' ? '✅ Akceptacje' : '🕒 Oś czasu'}

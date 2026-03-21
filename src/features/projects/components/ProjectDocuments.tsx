@@ -119,7 +119,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
     <Card>
       <div className="toolbar" style={{ marginBottom: 12 }}>
         <h4 style={{ margin: 0 }}>Dokumenty ({docs.length})</h4>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button
             variant="ghost"
             size="sm"
@@ -167,10 +167,12 @@ export function ProjectDocuments({ project }: { project: Project }) {
             {typeDocs.map((doc) => (
               <div
                 key={doc.id}
+                className="proj-doc-row"
                 style={{
                   display: 'flex',
                   gap: 8,
                   alignItems: 'center',
+                  flexWrap: 'wrap',
                   padding: '6px 0',
                   borderBottom: '1px solid #f7fafc',
                   fontSize: 13,

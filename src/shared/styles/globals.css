@@ -2050,6 +2050,32 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   PROJECTS — MOBILE POLISH (≤640px)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Tab strip: scroll horizontally instead of overflowing / wrapping */
+.proj-detail-tabs {
+  scrollbar-width: none;   /* Firefox */
+  -ms-overflow-style: none;
+}
+.proj-detail-tabs::-webkit-scrollbar { display: none; }
+
+@media (max-width: 640px) {
+  /* Bigger touch targets for row icon-only action buttons */
+  .proj-action-btn { padding: 10px; }
+
+  /* Reduce card padding inside the accordion detail area on phone */
+  .proj-row__detail .card { padding: 16px 14px; }
+
+  /* Doc rows: when buttons wrap to line 2, indent them past the checkbox+name */
+  .proj-doc-row { row-gap: 4px; }
+  .proj-doc-row .btn--sm { min-height: 34px; padding: 6px 10px; font-size: 12px; }
+
+  /* AssignmentQueueBanner: stack buttons on very narrow screens */
+  /* (handled via minWidth: 0 in JSX — text truncates, buttons remain tappable) */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    MICRO-INTERACTIONS
    ═══════════════════════════════════════════════════════════════════════════ */
 
