@@ -74,6 +74,7 @@ export const dashboardApi = {
         estimateValue: estimate?.total_gross ?? 0,
         invoicedTotal: projInvoices.reduce((s, inv) => s + inv.total_gross, 0),
         paidTotal: projInvoices.filter((inv) => inv.status === 'paid').reduce((s, inv) => s + inv.total_gross, 0),
+        completeness_score: proj.completeness_score ?? null,
       })
     }
 

@@ -1948,6 +1948,34 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   color: var(--color-border);
 }
 
+/* Signal strip: compact completeness + attention pills */
+.proj-row__signals {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.proj-signal {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.proj-signal--warn {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+.proj-signal--ok {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
 /* Right side */
 .proj-row__right {
   display: flex;

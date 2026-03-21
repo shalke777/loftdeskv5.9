@@ -50,7 +50,7 @@ export function DashboardPage() {
 
   if (isLoading || !data) return <Spinner />
 
-  const pipelineProjects: { id: string; name: string; number: string; status: string; clientName: string; contractValue: number; estimateValue: number; invoicedTotal: number; paidTotal: number }[] = (data as any).pipelineProjects ?? []
+  const pipelineProjects: { id: string; name: string; number: string; status: string; clientName: string; contractValue: number; estimateValue: number; invoicedTotal: number; paidTotal: number; completeness_score?: number | null }[] = (data as any).pipelineProjects ?? []
 
   const stats = [
     { label: 'Pipeline projektów', value: formatCurrency(data.pipeline) },
@@ -160,7 +160,23 @@ export function DashboardPage() {
                 <tr key={proj.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                   <td style={{ padding: '10px 12px' }}><strong>{proj.name}</strong><div className="field__label">{proj.number}</div></td>
                   <td style={{ padding: '10px 12px' }}>{proj.clientName || '—'}</td>
-                  <td style={{ padding: '10px 12px' }}><span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: proj.status === 'active' ? '#dcfce7' : proj.status === 'done' ? '#f3f4f6' : proj.status === 'offer' ? '#fef3c7' : '#fee2e2', color: proj.status === 'active' ? '#166534' : proj.status === 'done' ? '#374151' : proj.status === 'offer' ? '#92400e' : '#991b1b' }}>{proj.status === 'active' ? 'W toku' : proj.status === 'done' ? 'Zakończony' : proj.status === 'offer' ? 'Oferta' : 'Anulowany'}</span></td>
+                  <td style={{ padding: '10px 12px' }}>
+                    <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: proj.status === 'active' ? '#dcfce7' : proj.status === 'done' ? '#f3f4f6' : proj.status === 'offer' ? '#fef3c7' : '#fee2e2', color: proj.status === 'active' ? '#166534' : proj.status === 'done' ? '#374151' : proj.status === 'offer' ? '#92400e' : '#991b1b' }}>
+                      {proj.status === 'active' ? 'W realizacji' : proj.status === 'done' ? 'Zakończony' : proj.status === 'offer' ? 'Oferta' : proj.status === 'cancelled' ? 'Anulowany' : proj.status}
+                    </span>
+                    {proj.completeness_score != null && (() => {
+                      const sc = proj.completeness_score
+                      const clr = sc >= 80 ? '#16a34a' : sc >= 50 ? '#ca8a04' : '#dc2626'
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                          <div style={{ width: 44, height: 4, background: '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
+                            <div style={{ width: `${sc}%`, height: '100%', background: clr, borderRadius: 2 }} />
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: clr }}>{sc}%</span>
+                        </div>
+                      )
+                    })()}
+                  </td>
                   <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(proj.contractValue || proj.estimateValue)}</td>
                   <td style={{ padding: '10px 12px', textAlign: 'right' }}>{formatCurrency(proj.invoicedTotal)}</td>
                   <td style={{ padding: '10px 12px', textAlign: 'right', color: proj.paidTotal > 0 ? '#166534' : '#9ca3af' }}>{formatCurrency(proj.paidTotal)}</td>

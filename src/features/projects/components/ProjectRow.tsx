@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight, Edit2, FileText, Trash2 } from 'lucide-react'
 import type { Project } from '@/entities/project/model'
 import { ProjectDetail } from '@/features/projects/components/ProjectDetail'
+import { ProjectCompleteness } from '@/features/projects/components/ProjectCompleteness'
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
 const STATUS_LABEL: Record<Project['status'], string> = {
   offer:     'Oferta',
-  active:    'Aktywny',
+  active:    'W realizacji',
   done:      'Zakończony',
   cancelled: 'Anulowany',
 }
@@ -47,6 +48,12 @@ export function ProjectRow({
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
+  const score      = project.completeness_score ?? null
+  const flags      = project.completeness_flags ?? null
+  const noClient   = !project.client_id && (project.status === 'offer' || project.status === 'active')
+  const noContract = project.status === 'active' && flags != null && !flags.has_contract
+  const showSignals = score != null || noClient || noContract
+
   function handleDelete() {
     if (!confirmDelete) { setConfirmDelete(true); return }
     onDelete(project.id)
@@ -78,6 +85,13 @@ export function ProjectRow({
               <span className="proj-row__client">{project.address}</span>
             )}
           </span>
+          {showSignals && (
+            <div className="proj-row__signals">
+              {score != null && <ProjectCompleteness score={score} compact />}
+              {noClient && <span className="proj-signal proj-signal--warn">Brak klienta</span>}
+              {noContract && <span className="proj-signal proj-signal--warn">Brak umowy</span>}
+            </div>
+          )}
         </div>
 
         {/* Right: status + actions */}
