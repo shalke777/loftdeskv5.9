@@ -1,5 +1,12 @@
 import { useMutation } from '@tanstack/react-query'
 import type { ParseInvoiceResult, ExpenseSourceType } from '@/features/expenses/api/expenses.api'
+import { supabase } from '@/shared/lib/supabase'
+
+async function getAuthHeader(): Promise<Record<string, string>> {
+  if (!supabase) return {}
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+}
 
 const MAX_FILE_SIZE  = 5 * 1024 * 1024 // 5 MB
 const MAX_OCR_WIDTH  = 1800             // px — keeps detail, reduces payload
@@ -114,7 +121,7 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
   try {
     resp = await fetch('/.netlify/functions/parse-invoice', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
       body: JSON.stringify({
         file_base64,
         file_name:   processedFile.name,
@@ -187,7 +194,7 @@ export async function callParseInvoiceAI(file: File, extractedText?: string): Pr
   try {
     resp = await fetch('/.netlify/functions/parse-invoice-ai', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
       body:    JSON.stringify(body),
     })
   } catch {

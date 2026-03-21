@@ -25,6 +25,7 @@
 const crypto = require('crypto')
 const { ksefFetch } = require('./ksef-http')
 const { mockApi } = require('./ksef-mock')
+const { requireKsefAccess } = require('./ksef-auth')
 
 const BASE = {
   demo: 'https://api-demo.ksef.mf.gov.pl/v2',
@@ -160,6 +161,12 @@ exports.handler = async (event) => {
     'Content-Type': 'application/json',
   }
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' }
+
+  // Plan gate: requires Pro+ plan and valid Supabase JWT
+  const authResult = await requireKsefAccess(event)
+  if (authResult.error) {
+    return { statusCode: authResult.status, headers, body: JSON.stringify({ error: authResult.error, code: authResult.code, requiredPlan: authResult.requiredPlan }) }
+  }
 
   let body
   try {

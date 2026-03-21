@@ -1,4 +1,5 @@
 import type { Invoice } from '@/entities/invoice/model'
+import { supabase } from '@/shared/lib/supabase'
 
 export type KsefEnv = 'demo' | 'test' | 'prod'
 
@@ -195,13 +196,19 @@ ${advanceSection}
 const PROXY_TIMEOUT_MS = 90_000 // 90s hard timeout for any KSeF proxy call
 
 async function callProxy(path: string, body: unknown): Promise<Record<string, unknown>> {
+  // Attach current Supabase session token so the backend can verify plan access
+  const session = supabase ? (await supabase.auth.getSession()).data.session : null
+  const authHeaders: Record<string, string> = session?.access_token
+    ? { Authorization: `Bearer ${session.access_token}` }
+    : {}
+
   let res: Response
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS)
   try {
     res = await fetch(`/.netlify/functions/${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(body),
       signal: controller.signal,
     })

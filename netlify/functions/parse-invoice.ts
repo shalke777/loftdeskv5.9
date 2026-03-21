@@ -24,6 +24,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import * as zlib from 'node:zlib'
 import { promisify } from 'node:util'
+import { createClient } from '@supabase/supabase-js'
 
 const inflateRawAsync = promisify(zlib.inflateRaw)
 const inflateAsync    = promisify(zlib.inflate)
@@ -58,6 +59,27 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json',
+}
+
+// ─── JWT check ───────────────────────────────────────────────────────────────
+// Prevents unauthenticated file uploads to the OCR endpoint.
+// If Supabase env vars are absent (local dev without backend), check is skipped.
+async function verifyRequestAuth(event: HandlerEvent): Promise<boolean> {
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
+  const key = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
+  if (!url || !key) {
+    console.warn('[parse-invoice] Supabase not configured — skipping JWT check (dev only)')
+    return true
+  }
+  const authHeader = event.headers['authorization'] ?? event.headers['Authorization']
+  if (!authHeader?.startsWith('Bearer ')) return false
+  try {
+    const sb = createClient(url, key, { auth: { persistSession: false } })
+    const { data: { user } } = await sb.auth.getUser(authHeader.slice(7))
+    return !!user
+  } catch {
+    return false
+  }
 }
 
 function json(statusCode: number, body: Record<string, unknown>) {
@@ -437,6 +459,10 @@ function buildWarnings(r: Partial<ParseInvoiceResult>): string[] {
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS_HEADERS, body: '' }
   if (event.httpMethod !== 'POST')    return json(405, { error: 'method_not_allowed' })
+
+  // Auth guard: valid Supabase session required
+  const authed = await verifyRequestAuth(event)
+  if (!authed) return json(401, { error: 'unauthorized', message: 'Valid authentication token required.' })
 
   // ── Parse request body ────────────────────────────────────────────────────
   let body: Record<string, unknown>

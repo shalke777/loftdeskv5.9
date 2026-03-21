@@ -21,11 +21,33 @@
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import type { ParseInvoiceResult } from './parse-invoice'
 import { extractTextFromPDF, extractEmbeddedJpegsFromPdf } from './parse-invoice'
+import { createClient } from '@supabase/supabase-js'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json',
+}
+
+// ─── JWT check ───────────────────────────────────────────────────────────────
+// Prevents unauthenticated callers from burning OpenAI API credits.
+// If Supabase env vars are absent (local dev without backend), check is skipped.
+async function verifyRequestAuth(event: HandlerEvent): Promise<boolean> {
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
+  const key = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
+  if (!url || !key) {
+    console.warn('[parse-invoice-ai] Supabase not configured — skipping JWT check (dev only)')
+    return true
+  }
+  const authHeader = event.headers['authorization'] ?? event.headers['Authorization']
+  if (!authHeader?.startsWith('Bearer ')) return false
+  try {
+    const sb = createClient(url, key, { auth: { persistSession: false } })
+    const { data: { user } } = await sb.auth.getUser(authHeader.slice(7))
+    return !!user
+  } catch {
+    return false
+  }
 }
 
 function ok(result: ParseInvoiceResult, meta: { aiModelUsed: string }) {
@@ -180,6 +202,10 @@ interface ResponsesAPIResult {
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS_HEADERS, body: '' }
   if (event.httpMethod !== 'POST')    return err(405, 'method_not_allowed', 'Only POST allowed')
+
+  // Auth guard: valid Supabase session required
+  const authed = await verifyRequestAuth(event)
+  if (!authed) return err(401, 'unauthorized', 'Valid authentication token required.')
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {

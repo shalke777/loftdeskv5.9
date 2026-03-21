@@ -283,13 +283,23 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // Pobieramy te┼╝ email operatora i nazw─Ö firmy do u┼╝ycia jako Reply-To / From w emailu.
   const { data: member } = await sb
     .from('company_members')
-    .select('role, profiles(email, full_name), companies(name)')
+    .select('role, profiles(email, full_name), companies(name, plan)')
     .eq('user_id', operatorUserId)
     .eq('company_id', companyId)
     .maybeSingle()
 
   if (!member || !['owner', 'admin', 'manager'].includes(member.role as string)) {
-    return json(403, { error: 'Brak uprawnie┼ä do zapraszania klient├│w dla tej firmy' })
+    return json(403, { error: 'Brak uprawnie\u0144 do zapraszania klient\u00f3w dla tej firmy' })
+  }
+
+  // Plan gate: portal invite requires Pro+ plan
+  const companyPlan: string = (member as any)?.companies?.plan ?? 'free'
+  if (!['pro', 'business', 'admin'].includes(companyPlan)) {
+    return json(403, {
+      error: 'Portal klienta wymaga planu Pro lub Business.',
+      code: 'plan_required',
+      requiredPlan: 'pro',
+    })
   }
 
   const operatorEmail  = (member as any)?.profiles?.email  ?? null
