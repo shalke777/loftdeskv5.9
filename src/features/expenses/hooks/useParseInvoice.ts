@@ -135,8 +135,12 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
   }
 
   if (!resp.ok) {
-    const err = await resp.json().catch(() => ({})) as Record<string, unknown>
-    throw new Error(String(err.message ?? err.error ?? `HTTP ${resp.status}`))
+    const errData = await resp.json().catch(() => ({})) as Record<string, unknown>
+    if (resp.status === 401 || errData.error === 'unauthorized')
+      throw new Error('Sesja wygasła — zaloguj się ponownie, aby korzystać z OCR.')
+    if (resp.status === 429 || errData.error === 'too_many_requests')
+      throw new Error('Za dużo żądań OCR. Spróbuj za chwilę.')
+    throw new Error(String(errData.message ?? errData.error ?? `HTTP ${resp.status}`))
   }
 
   try {
@@ -205,6 +209,10 @@ export async function callParseInvoiceAI(file: File, extractedText?: string): Pr
 
   if (!resp.ok) {
     const errCode = String(data.error ?? '')
+    if (resp.status === 401 || errCode === 'unauthorized')
+      throw new Error('Sesja wygasła — zaloguj się ponownie, aby korzystać z AI.')
+    if (resp.status === 429 || errCode === 'too_many_requests')
+      throw new Error('Za dużo żądań AI. Spróbuj za chwilę.')
     if (errCode === 'ai_not_configured')   throw new Error('AI nie jest skonfigurowane (brak OPENAI_API_KEY)')
     if (errCode === 'openai_quota_exceeded') throw new Error('Quota OpenAI wyczerpana — sprawdź billing')
     throw new Error(String(data.message ?? `HTTP ${resp.status}`))

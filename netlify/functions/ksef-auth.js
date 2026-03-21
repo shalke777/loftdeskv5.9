@@ -24,6 +24,22 @@ const { createClient } = require('@supabase/supabase-js')
 
 const PRO_PLANS = new Set(['pro', 'business', 'admin'])
 
+// ─── Rate limiting (in-memory, per user, 10 req / 5 min) ─────────────────────
+const rateLimitMap = new Map()
+const RATE_MAX       = 10
+const RATE_WINDOW_MS = 5 * 60 * 1000
+
+function isRateLimited(userId) {
+  const now = Date.now()
+  const entry = rateLimitMap.get(userId)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_WINDOW_MS })
+    return false
+  }
+  entry.count++
+  return entry.count > RATE_MAX
+}
+
 function sbAdmin() {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -71,7 +87,12 @@ async function requireKsefAccess(event) {
     return { error: 'Nieautoryzowane żądanie.', status: 401, code: 'unauthorized' }
   }
 
-  // 3. Check that at least one of the user's companies has plan >= pro
+  // 3. Rate limit per user (abuse protection)
+  if (isRateLimited(userId)) {
+    return { error: 'Za dużo żądań. Spróbuj za chwilę.', status: 429, code: 'too_many_requests' }
+  }
+
+  // 4. Check that at least one of the user's companies has plan >= pro
   try {
     const { data: members, error: memberErr } = await sb
       .from('company_members')

@@ -165,6 +165,12 @@ export function ExpensesPage() {
           const msg = ocrErr instanceof Error ? ocrErr.message : ''
           ocrFailed = true
           ocrUnavailable = msg.includes('Serwer OCR') || msg.includes('niedostępny')
+          // Auth/rate errors — show immediately, skip AI fallback
+          if (msg.includes('Sesja wygasła') || msg.includes('Za dużo żądań')) {
+            setParseStatus({ level: 'error', message: msg })
+            setUploadStep('')
+            return
+          }
         }
 
         // Step B: AI fallback — try when OCR failed or confidence is low (PDFs included)
@@ -185,7 +191,14 @@ export function ExpensesPage() {
             if (aiConf > 0 && aiConf >= ocrConf) {
               ocrResult = aiResult   // AI gave equal or better result
             }
-          } catch {
+          } catch (aiErr: unknown) {
+            // Auth/rate errors from AI — surface them; otherwise keep OCR result silently
+            const aiMsg = aiErr instanceof Error ? aiErr.message : ''
+            if (aiMsg.includes('Sesja wygasła') || aiMsg.includes('Za dużo żądań')) {
+              setParseStatus({ level: 'error', message: aiMsg })
+              setUploadStep('')
+              return
+            }
             // AI not configured or failed — keep OCR result (or null if OCR also failed)
           }
         }

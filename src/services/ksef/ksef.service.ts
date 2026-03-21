@@ -231,7 +231,11 @@ async function callProxy(path: string, body: unknown): Promise<Record<string, un
   if (!res.ok) {
     // Prefer error field, then detail, then HTTP status
     const msg = (data.error as string) || (data.detail as string) || `HTTP ${res.status}`
-    throw new Error(msg)
+    // Preserve structured error codes so callers can distinguish plan_required / unauthorized
+    const structuredErr = new Error(msg) as Error & { code?: string; requiredPlan?: string }
+    if (data.code)         structuredErr.code         = data.code as string
+    if (data.requiredPlan) structuredErr.requiredPlan = data.requiredPlan as string
+    throw structuredErr
   }
   return data
 }

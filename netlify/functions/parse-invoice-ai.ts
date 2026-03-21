@@ -32,22 +32,40 @@ const CORS_HEADERS = {
 // ─── JWT check ───────────────────────────────────────────────────────────────
 // Prevents unauthenticated callers from burning OpenAI API credits.
 // If Supabase env vars are absent (local dev without backend), check is skipped.
-async function verifyRequestAuth(event: HandlerEvent): Promise<boolean> {
+// Returns a user identifier (user_id or 'dev') on success, null on failure.
+async function verifyRequestAuth(event: HandlerEvent): Promise<string | null> {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
   const key = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
   if (!url || !key) {
     console.warn('[parse-invoice-ai] Supabase not configured — skipping JWT check (dev only)')
-    return true
+    return 'dev'
   }
   const authHeader = event.headers['authorization'] ?? event.headers['Authorization']
-  if (!authHeader?.startsWith('Bearer ')) return false
+  if (!authHeader?.startsWith('Bearer ')) return null
   try {
     const sb = createClient(url, key, { auth: { persistSession: false } })
     const { data: { user } } = await sb.auth.getUser(authHeader.slice(7))
-    return !!user
+    return user?.id ?? null
   } catch {
+    return null
+  }
+}
+
+// ─── Rate limiting (in-memory, per user, 10 req / 10 min) ────────────────────
+// Stricter than OCR because each request calls the OpenAI API.
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+const RATE_MAX       = 10
+const RATE_WINDOW_MS = 10 * 60 * 1000
+
+function isRateLimited(userId: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(userId)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_WINDOW_MS })
     return false
   }
+  entry.count++
+  return entry.count > RATE_MAX
 }
 
 function ok(result: ParseInvoiceResult, meta: { aiModelUsed: string }) {
@@ -204,8 +222,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod !== 'POST')    return err(405, 'method_not_allowed', 'Only POST allowed')
 
   // Auth guard: valid Supabase session required
-  const authed = await verifyRequestAuth(event)
-  if (!authed) return err(401, 'unauthorized', 'Valid authentication token required.')
+  const userId = await verifyRequestAuth(event)
+  if (!userId) return err(401, 'unauthorized', 'Valid authentication token required.')
+  if (isRateLimited(userId)) return err(429, 'too_many_requests', 'Za dużo żądań. Spróbuj za chwilę.')
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
