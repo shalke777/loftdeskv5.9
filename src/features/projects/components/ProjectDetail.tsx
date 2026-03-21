@@ -13,6 +13,13 @@ import { ProjectExpensesTab }  from '@/features/expenses/components/ProjectExpen
 import { ProjectApprovalsTab } from '@/features/expenses/components/ProjectApprovalsTab'
 import { ProjectTimelineTab }  from '@/features/projects/components/ProjectTimelineTab'
 
+const STATUS_LABEL: Record<Project['status'], string> = {
+  offer:     'Oferta',
+  active:    'W realizacji',
+  done:      'Zakończony',
+  cancelled: 'Anulowany',
+}
+
 type MainTab = 'overview' | 'threads' | 'expenses' | 'approvals' | 'timeline'
 
 export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: Project | null; onEdit?: (project: Project) => void; onCreateInvoice?: (id: string) => void }) {
@@ -25,7 +32,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
         {/* Nagłówek projektu */}
         <div className="toolbar">
           <div><h3>{project.number}</h3><p>{project.name}</p></div>
-          <Badge variant={project.status === 'done' ? 'success' : project.status === 'cancelled' ? 'danger' : project.status === 'active' ? 'warning' : 'default'}>{project.status}</Badge>
+          <Badge variant={project.status === 'done' ? 'success' : project.status === 'cancelled' ? 'danger' : project.status === 'active' ? 'warning' : 'default'}>{STATUS_LABEL[project.status]}</Badge>
         </div>
         <p>Adres: {project.address || 'brak'}</p>
         <p>Start: {project.start_date || 'nie ustawiono'} · Koniec: {project.end_date || 'nie ustawiono'}</p>

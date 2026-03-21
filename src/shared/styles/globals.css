@@ -2392,6 +2392,77 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   margin-top: 4px;
 }
 
+/* ── Stage progress rail (client portal) ─────────────────────────────────── */
+.client-stage-rail {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 12px 0 8px;
+  overflow-x: auto;
+}
+.client-stage-rail__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  z-index: 1;
+}
+.client-stage-rail__dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  border: 2px solid transparent;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.client-stage-rail__dot--past {
+  background: var(--color-brand, #7a2230);
+  color: #fff;
+}
+.client-stage-rail__dot--current {
+  background: var(--color-brand, #7a2230);
+  color: #fff;
+  border-color: var(--color-brand, #7a2230);
+  box-shadow: 0 0 0 3px rgba(122, 34, 48, 0.18);
+}
+.client-stage-rail__dot--future {
+  background: var(--color-border-light, #e2e8f0);
+  color: var(--color-text-muted, #94a3b8);
+}
+.client-stage-rail__label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-secondary, #6b7280);
+  white-space: nowrap;
+  text-align: center;
+}
+.client-stage-rail__label--current {
+  font-weight: 700;
+  color: var(--color-brand, #7a2230);
+}
+.client-stage-rail__line {
+  flex: 1;
+  height: 2px;
+  background: var(--color-border-light, #e2e8f0);
+  margin-bottom: 20px;
+  min-width: 20px;
+  transition: background 0.15s;
+}
+.client-stage-rail__line--done {
+  background: var(--color-brand, #7a2230);
+}
+
+@media (max-width: 375px) {
+  .client-stage-rail__label { font-size: 10px; }
+  .client-stage-rail__dot  { width: 24px; height: 24px; font-size: 11px; }
+}
+
 /* ── Tab bar ────────────────────────────────────────────────────────────────── */
 .client-tabs {
   display: flex;

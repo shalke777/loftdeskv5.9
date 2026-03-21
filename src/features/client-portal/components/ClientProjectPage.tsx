@@ -4,7 +4,7 @@
 // Zakładki: Dokumenty | Chat | Akceptacje | Oś czasu
 // =============================================================================
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import {
   useClientProject,
   useClientEstimates,
@@ -74,6 +74,53 @@ const STATUS_LABEL: Record<string, string> = {
   active:    'W realizacji',
   done:      'Zakończony',
   cancelled: 'Anulowany',
+}
+
+// ── Stage progress rail (shared for operator + client) ───────────────────────
+
+const STAGE_STEPS = [
+  { key: 'offer',  label: 'Oferta',      order: 0 },
+  { key: 'active', label: 'W realizacji', order: 1 },
+  { key: 'done',   label: 'Zakończony',  order: 2 },
+]
+const STAGE_ORDER: Record<string, number> = { offer: 0, active: 1, done: 2, cancelled: -1 }
+
+function ProjectStageRail({ status }: { status: string }) {
+  if (status === 'cancelled') {
+    return (
+      <div className="client-stage-rail" style={{ padding: '10px 0' }}>
+        <span style={{ fontSize: 13, color: '#dc2626', fontWeight: 600 }}>⛔ Projekt anulowany</span>
+      </div>
+    )
+  }
+  const current = STAGE_ORDER[status] ?? 0
+  return (
+    <div className="client-stage-rail">
+      {STAGE_STEPS.map((step, i) => {
+        const isPast    = current > step.order
+        const isCurrent = current === step.order
+        return (
+          <Fragment key={step.key}>
+            <div className="client-stage-rail__step">
+              <div
+                className={`client-stage-rail__dot${isPast ? ' client-stage-rail__dot--past' : isCurrent ? ' client-stage-rail__dot--current' : ' client-stage-rail__dot--future'}`}
+              >
+                {isPast ? '✓' : ''}
+              </div>
+              <span className={`client-stage-rail__label${isCurrent ? ' client-stage-rail__label--current' : ''}`}>
+                {step.label}
+              </span>
+            </div>
+            {i < STAGE_STEPS.length - 1 && (
+              <div
+                className={`client-stage-rail__line${current > step.order ? ' client-stage-rail__line--done' : ''}`}
+              />
+            )}
+          </Fragment>
+        )
+      })}
+    </div>
+  )
 }
 
 // ── Typ zakładki ──────────────────────────────────────────────────────────────
@@ -408,6 +455,9 @@ export function ClientProjectPage({ projectId }: Props) {
           </div>
         )}
       </div>
+
+      {/* Stage progress rail — always visible */}
+      <ProjectStageRail status={project.status} />
 
       {/* Zakładki */}
       <div className="client-tabs">
