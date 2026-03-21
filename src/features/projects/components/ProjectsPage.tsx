@@ -15,6 +15,7 @@ import {
   useUpdateProjectStatus,
 } from '@/features/projects/hooks/useProjects'
 import { ProjectRow } from '@/features/projects/components/ProjectRow'
+import { AssignmentQueueBanner } from '@/features/projects/components/AssignmentQueueBanner'
 import { ProjectForm } from '@/features/projects/components/ProjectModal/ProjectForm'
 import type { Project } from '@/entities/project/model'
 import { useCan } from '@/features/auth/hooks/usePermissions'
@@ -95,6 +96,7 @@ export function ProjectsPage() {
       </div>
 
       {/* Filter pills */}
+      <AssignmentQueueBanner />
       <div className="proj-filters">
         {FILTER_LABELS.map(({ value, label }) => (
           <button

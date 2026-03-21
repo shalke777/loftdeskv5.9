@@ -63,7 +63,7 @@ export function EstimateCard({ estimate, onDelete, onCreateContract, onEdit }: {
         documentType="estimate"
         documentName={estimate.number}
         defaultEmail={client?.email}
-        portalUrl={(estimate as any).project_id ? `${window.location.origin}/client/project/${(estimate as any).project_id}` : undefined}
+        portalUrl={estimate.project_id ? `${window.location.origin}/client/project/${estimate.project_id}` : undefined}
       />
     </>
   )

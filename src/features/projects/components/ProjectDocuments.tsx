@@ -36,9 +36,10 @@ export function ProjectDocuments({ project }: { project: Project }) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [sendDoc, setSendDoc] = useState<{ type: 'estimate' | 'contract' | 'invoice'; name: string } | null>(null)
 
-  const { data: estimates = [] } = useEstimates()
-  const { data: contracts = [] } = useContracts()
-  const { data: invoices = [] } = useInvoices()
+  const { data: estimates = [], isLoading: estLoading } = useEstimates()
+  const { data: contracts = [], isLoading: ctLoading } = useContracts()
+  const { data: invoices = [], isLoading: invLoading } = useInvoices()
+  const docNamesLoading = estLoading || ctLoading || invLoading
   const resolveDocName = (docType: string, docId: string): string => {
     if (docType === 'estimate') return estimates.find(e => e.id === docId)?.number ?? docId.slice(0, 8)
     if (docType === 'contract') return contracts.find(c => c.id === docId)?.number ?? docId.slice(0, 8)
@@ -118,7 +119,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
                   style={{ flexShrink: 0 }}
                 />
                 <span style={{ flex: 1, fontSize: 13 }} title={doc.doc_id}>
-                  {resolveDocName(doc.doc_type, doc.doc_id)}
+                  {docNamesLoading ? '…' : resolveDocName(doc.doc_type, doc.doc_id)}
                 </span>
                 {doc.linked_automatically && (
                   <Badge variant="default">auto</Badge>

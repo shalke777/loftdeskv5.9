@@ -2,6 +2,9 @@ import { Button } from '@/shared/ui/Button/Button'
 import { Card } from '@/shared/ui/Card/Card'
 import { useAssignmentQueue, useResolveAssignment } from '@/features/projects/hooks/useProjectDocuments'
 import { useProjects } from '@/features/projects/hooks/useProjects'
+import { useEstimates } from '@/features/estimates/hooks/useEstimates'
+import { useContracts } from '@/features/contracts/hooks/useContracts'
+import { useInvoices } from '@/features/invoices/hooks/useInvoices'
 
 const DOC_LABEL: Record<string, string> = {
   estimate: 'Wycena',
@@ -16,6 +19,16 @@ export function AssignmentQueueBanner() {
   const { data: queue = [] } = useAssignmentQueue()
   const { data: projects = [] } = useProjects()
   const resolve = useResolveAssignment()
+  const { data: estimates = [] } = useEstimates()
+  const { data: contracts = [] } = useContracts()
+  const { data: invoices = [] } = useInvoices()
+
+  const resolveDocName = (docType: string, docId: string): string => {
+    if (docType === 'estimate') return estimates.find(e => e.id === docId)?.number ?? docId.slice(0, 8)
+    if (docType === 'contract') return contracts.find(c => c.id === docId)?.number ?? docId.slice(0, 8)
+    if (docType === 'invoice') return invoices.find(i => i.id === docId)?.number ?? docId.slice(0, 8)
+    return docId.slice(0, 8)
+  }
 
   if (queue.length === 0) return null
 
@@ -54,8 +67,8 @@ export function AssignmentQueueBanner() {
           >
             <span style={{ flex: 1, minWidth: 200 }}>
               <strong>{DOC_LABEL[item.doc_type] ?? item.doc_type}</strong>
-              <span style={{ color: '#718096', fontFamily: 'monospace', fontSize: 11, marginLeft: 6 }}>
-                {item.doc_id.slice(0, 8)}…
+              <span style={{ color: '#718096', fontSize: 12, marginLeft: 6 }}>
+                {resolveDocName(item.doc_type, item.doc_id)}
               </span>
               {suggested && (
                 <span style={{ color: '#718096', marginLeft: 8 }}>

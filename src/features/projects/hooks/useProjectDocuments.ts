@@ -150,10 +150,10 @@ export function useProjectExport(projectId: string) {
         const zip = new JSZip()
         const manifest: unknown[] = []
 
-        // Parse demoDb state once for demo-mode rendering
+        // Demo mode: read from localStorage
         const dbRaw = isDemoMode ? (JSON.parse(demoDb.exportState()) as Record<string, any[]>) : null
         const dbProfile = isDemoMode ? demoDb.companyProfile(companyId) : null
-        const companyMeta = dbProfile ? {
+        let companyMeta: { name?: string; nip?: string; address?: string; postalCity?: string; email?: string; phone?: string; bankAccount?: string } | undefined = dbProfile ? {
           name: dbProfile.company_name || '',
           nip: dbProfile.nip || '',
           address: dbProfile.address || '',
@@ -162,6 +162,47 @@ export function useProjectExport(projectId: string) {
           phone: dbProfile.phone || '',
           bankAccount: dbProfile.iban || '',
         } : undefined
+
+        // Production mode: batch-fetch real document data
+        let prodEstimates: any[] = []
+        let prodContracts: any[] = []
+        let prodInvoices: any[] = []
+        let prodClients: any[] = []
+        if (!isDemoMode && supabase) {
+          const estIds = active.filter(d => d.doc_type === 'estimate').map(d => d.doc_id)
+          const ctIds  = active.filter(d => d.doc_type === 'contract').map(d => d.doc_id)
+          const invIds = active.filter(d => d.doc_type === 'invoice').map(d => d.doc_id)
+          const [estRes, ctRes, invRes, coRes] = await Promise.all([
+            estIds.length ? supabase.from('cost_estimates').select('*, items:cost_estimate_items(*)').in('id', estIds) : Promise.resolve({ data: [] }),
+            ctIds.length  ? supabase.from('contracts').select('*').in('id', ctIds)  : Promise.resolve({ data: [] }),
+            invIds.length ? supabase.from('invoices').select('*').in('id', invIds)  : Promise.resolve({ data: [] }),
+            supabase.from('companies').select('company_name,name,nip,ksef_nip,address,postal_code,city,email,phone,iban').eq('id', companyId).maybeSingle(),
+          ])
+          prodEstimates = estRes.data ?? []
+          prodContracts = ctRes.data ?? []
+          prodInvoices  = invRes.data ?? []
+          const co = coRes.data as any
+          if (co) {
+            companyMeta = {
+              name: co.company_name || co.name || '',
+              nip: co.nip || co.ksef_nip || '',
+              address: co.address || '',
+              postalCity: [co.postal_code, co.city].filter(Boolean).join(' ').trim(),
+              email: co.email || '',
+              phone: co.phone || '',
+              bankAccount: co.iban || '',
+            }
+          }
+          const clientIds = [...new Set([
+            ...prodEstimates.map((e: any) => e.client_id),
+            ...prodContracts.map((c: any) => c.client_id),
+            ...prodInvoices.map((i: any) => i.client_id),
+          ].filter(Boolean))]
+          if (clientIds.length > 0) {
+            const { data: clData } = await supabase.from('clients').select('*').in('id', clientIds)
+            prodClients = clData ?? []
+          }
+        }
 
         console.log('[LoftDesk] ZIP Export – starting', { projectId, docsCount: active.length })
 
@@ -195,17 +236,28 @@ export function useProjectExport(projectId: string) {
               html = `<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>${doc.doc_type}</title></head><body><h1>LoftDesk – ${doc.doc_type.toUpperCase()}</h1><p>ID: ${doc.doc_id}</p></body></html>`
             }
           } else {
-            html = `<!DOCTYPE html>
-<html lang="pl">
-<head><meta charset="UTF-8"><title>${doc.doc_type} ${doc.doc_id.slice(0, 8)}</title></head>
-<body>
-  <h1>LoftDesk — ${doc.doc_type.toUpperCase()}</h1>
-  <p><strong>ID dokumentu:</strong> ${doc.doc_id}</p>
-  <p><strong>Projekt:</strong> ${projectId}</p>
-  <p><strong>Przypisany:</strong> ${doc.linked_automatically ? 'automatycznie' : 'ręcznie'}</p>
-  <p><strong>Data powiązania:</strong> ${new Date(doc.created_at).toLocaleDateString('pl-PL')}</p>
-</body>
-</html>`
+            // Production mode: render real documents fetched from Supabase
+            const cl = (clientId: string | null) => prodClients.find((c: any) => c.id === clientId)
+            const mkClient = (c: any) => c ? {
+              name: c.name ?? '', nip: c.nip ?? '', address: c.address ?? '',
+              postalCity: `${c.postal_code ?? ''} ${c.city ?? ''}`.trim(),
+              email: c.email ?? '', phone: c.phone ?? '',
+            } : undefined
+            if (doc.doc_type === 'estimate') {
+              const est = prodEstimates.find((e: any) => e.id === doc.doc_id)
+              html = est ? buildEstimatePreview(est, mkClient(cl(est.client_id)), companyMeta) : `<!DOCTYPE html><html><body><p>Kosztorys ${doc.doc_id.slice(0, 8)}</p></body></html>`
+            } else if (doc.doc_type === 'invoice') {
+              const inv = prodInvoices.find((i: any) => i.id === doc.doc_id)
+              const ct  = inv?.contract_id ? prodContracts.find((c: any) => c.id === inv.contract_id) : undefined
+              const contractMeta = ct ? { contractNumber: ct.number, contractLocation: ct.location ?? '' } : undefined
+              html = inv ? buildInvoicePreview(inv, mkClient(cl(inv.client_id)), contractMeta, companyMeta) : `<!DOCTYPE html><html><body><p>Faktura ${doc.doc_id.slice(0, 8)}</p></body></html>`
+            } else if (doc.doc_type === 'contract') {
+              const ct  = prodContracts.find((c: any) => c.id === doc.doc_id)
+              const est = ct?.estimate_id ? prodEstimates.find((e: any) => e.id === ct.estimate_id) : undefined
+              html = ct ? buildContractPreview(ct, cl(ct.client_id)?.name ?? '', est?.name ?? ct?.notes ?? '', companyMeta) : `<!DOCTYPE html><html><body><p>Umowa ${doc.doc_id.slice(0, 8)}</p></body></html>`
+            } else {
+              html = `<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>${doc.doc_type}</title></head><body><h1>LoftDesk – ${doc.doc_type.toUpperCase()}</h1><p>ID: ${doc.doc_id}</p></body></html>`
+            }
           }
 
           // Convert HTML → real binary PDF blob (application/pdf)
