@@ -70,5 +70,12 @@ export const estimatesApi = {
     const query = applyScope(supabase.from('cost_estimates').delete().eq('id', id), scope)
     const { error } = await query
     if (error) throw error
+    // Archive any project_documents rows that reference this estimate (best-effort)
+    supabase.from('project_documents')
+      .update({ archived_at: new Date().toISOString() })
+      .eq('doc_type', 'estimate')
+      .eq('doc_id', id)
+      .is('archived_at', null)
+      .then(() => {})
   },
 }

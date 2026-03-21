@@ -60,7 +60,20 @@ export const invoicesApi = {
     }
     return data
   },
-  async delete(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.invoices.delete(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('invoices').delete().eq('id', id), scope); const { error } = await query; if (error) throw error },
+  async delete(id: string, companyId?: string) {
+    if (isDemoMode || !supabase) { demoDb.invoices.delete(id); return Promise.resolve() }
+    const scope = await getDataScope(companyId)
+    const query = applyScope(supabase.from('invoices').delete().eq('id', id), scope)
+    const { error } = await query
+    if (error) throw error
+    // Archive any project_documents rows that reference this invoice (best-effort)
+    supabase.from('project_documents')
+      .update({ archived_at: new Date().toISOString() })
+      .eq('doc_type', 'invoice')
+      .eq('doc_id', id)
+      .is('archived_at', null)
+      .then(() => {})
+  },
   async markPaid(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.invoices.markPaid(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('invoices').update({ status: 'paid' }).eq('id', id), scope); const { error } = await query; if (error) throw error },
   async sendToKsef(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.invoices.sendToKsef(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('invoices').update({ ksef_status: 'ksef_pending', ksef_ref: null }).eq('id', id), scope); const { error } = await query; if (error) throw error },
   async createFromEstimate(companyId: string, estimateId: string) {
