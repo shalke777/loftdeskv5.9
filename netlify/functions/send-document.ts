@@ -44,6 +44,7 @@ const DOC_LABEL_PL: Record<string, string> = {
   estimate: 'Wycena',
   contract: 'Umowa',
   invoice:  'Faktura',
+  package:  'Pakiet dokumentów',
 }
 
 export const handler: Handler = async (event: HandlerEvent) => {

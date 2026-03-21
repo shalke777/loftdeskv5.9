@@ -89,6 +89,15 @@ export function ProjectDocuments({ project }: { project: Project }) {
     ? (clients.find(c => c.id === project.client_id)?.email || undefined)
     : undefined
 
+  const mailableDocs = docs.filter(d => MAILABLE_TYPES.has(d.doc_type))
+  // Mailable docs selected by the user (or all mailable if none explicitly selected)
+  const packageDocIds: string[] = selected.size > 0
+    ? [...selected].filter(id => mailableDocs.some(d => d.doc_id === id))
+    : mailableDocs.map(d => d.doc_id)
+  const packageDocNames = packageDocIds
+    .map(id => { const d = mailableDocs.find(x => x.doc_id === id); return d ? resolveDocName(d.doc_type, id) : null })
+    .filter(Boolean) as string[]
+
   const sorted = [...docs].sort(
     (a, b) => (TYPE_ORDER[a.doc_type] ?? 9) - (TYPE_ORDER[b.doc_type] ?? 9),
   )
@@ -114,10 +123,13 @@ export function ProjectDocuments({ project }: { project: Project }) {
           <Button
             variant="ghost"
             size="sm"
-            disabled={docs.filter(d => MAILABLE_TYPES.has(d.doc_type)).length === 0}
+            disabled={mailableDocs.length === 0}
             onClick={() => setPackageSendOpen(true)}
+            title={packageDocNames.length > 0 ? `Wyślij: ${packageDocNames.join(', ')}` : undefined}
           >
-            Wyślij pakiet
+            {packageDocIds.length > 0 && packageDocIds.length < mailableDocs.length
+              ? `Wyślij pakiet (${packageDocIds.length})`
+              : 'Wyślij pakiet'}
           </Button>
           <Button
             variant="secondary"
@@ -255,6 +267,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
         documentName={`Dokumenty projektu – ${project.name}`}
         defaultEmail={projectClientEmail}
         portalUrl={`${window.location.origin}/client/project/${project.id}`}
+        docSummary={packageDocNames}
       />
     </Card>
   )

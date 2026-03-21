@@ -31,9 +31,11 @@ interface Props {
   documentName:  string
   defaultEmail?: string
   portalUrl?:    string
+  /** For package sends: list of document numbers included (shown in modal + appended to message) */
+  docSummary?:   string[]
 }
 
-export function SendToClientModal({ open, onClose, documentType, documentName, defaultEmail, portalUrl }: Props) {
+export function SendToClientModal({ open, onClose, documentType, documentName, defaultEmail, portalUrl, docSummary }: Props) {
   const toast = useToast()
   const [email,   setEmail]   = useState(defaultEmail ?? '')
   const [message, setMessage] = useState('')
@@ -42,10 +44,15 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
   useEffect(() => {
     if (open) {
       setEmail(defaultEmail ?? '')
-      setMessage('')
+      // Pre-fill message for package sends with list of selected docs
+      if (documentType === 'package' && docSummary && docSummary.length > 0) {
+        setMessage(`W załączeniu przesyłam pakiet dokumentów projektu:\n${docSummary.map(n => `• ${n}`).join('\n')}`)
+      } else {
+        setMessage('')
+      }
       setSending(false)
     }
-  }, [open, defaultEmail])
+  }, [open, defaultEmail, documentType, docSummary])
 
   async function handleSend() {
     const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -103,14 +110,30 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
   }
 
   const label = DOC_LABEL[documentType] ?? 'Dokument'
+  const isPackage = documentType === 'package'
 
   return (
-    <Modal open={open} onClose={onClose} title={`Wyślij ${label.toLowerCase()} do klienta`} size="md">
+    <Modal open={open} onClose={onClose} title={isPackage ? 'Wyślij pakiet dokumentów do klienta' : `Wyślij ${label.toLowerCase()} do klienta`} size="md">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div>
-          <div className="field__label" style={{ marginBottom: 4 }}>Dokument</div>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>{label}: {documentName}</div>
-        </div>
+        {isPackage ? (
+          <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#0369a1' }}>
+            <strong>Projekt:</strong> {documentName.replace(/^Dokumenty projektu – /, '')}
+            {docSummary && docSummary.length > 0 && (
+              <div style={{ marginTop: 6, lineHeight: 1.7 }}>
+                <span style={{ fontWeight: 600 }}>Dokumenty w pakiecie:</span>
+                {docSummary.map(n => <div key={n} style={{ paddingLeft: 8 }}>• {n}</div>)}
+              </div>
+            )}
+            <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
+              Klient otrzyma email z linkiem do projektu. Żadne pliki nie są dołączane bezpośrednio — dokumenty są dostępne w portalu klienta.
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="field__label" style={{ marginBottom: 4 }}>Dokument</div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{label}: {documentName}</div>
+          </div>
+        )}
 
         <div>
           <label className="field__label" htmlFor="stc-email" style={{ display: 'block', marginBottom: 4 }}>
@@ -144,17 +167,8 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
         </div>
 
         {portalUrl ? (
-          <div
-            style={{
-              background: '#f0fdf4',
-              border: '1px solid #bbf7d0',
-              borderRadius: 8,
-              padding: '10px 14px',
-              fontSize: 13,
-              color: '#166534',
-            }}
-          >
-            ✓ Email b\u0119dzie zawiera\u0142 przycisk &ldquo;Otw\u00f3rz dokument w portalu&rdquo;
+          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#166534' }}>
+            ✓ Email będzie zawierał przycisk &ldquo;{isPackage ? 'Otwórz projekt w portalu' : 'Otwórz dokument w portalu'}&rdquo;
           </div>
         ) : (
           <div
@@ -175,7 +189,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
           <Button variant="secondary" onClick={onClose} disabled={sending}>Anuluj</Button>
           <Button onClick={handleSend} loading={sending}>
-            {sending ? 'Wysyłanie…' : `Wyślij ${label.toLowerCase()}`}
+            {sending ? 'Wysyłanie…' : isPackage ? 'Wyślij pakiet' : `Wyślij ${label.toLowerCase()}`}
           </Button>
         </div>
       </div>
