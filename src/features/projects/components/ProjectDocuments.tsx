@@ -13,6 +13,7 @@ import {
 import { useEstimates, useDeleteEstimate } from '@/features/estimates/hooks/useEstimates'
 import { useContracts, useDeleteContract } from '@/features/contracts/hooks/useContracts'
 import { useInvoices, useDeleteInvoice } from '@/features/invoices/hooks/useInvoices'
+import { useClients } from '@/features/clients/hooks/useClients'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { projectDocumentsApi } from '@/features/projects/api/projectDocuments.api'
 
@@ -41,7 +42,8 @@ export function ProjectDocuments({ project }: { project: Project }) {
   const unlink = useUnlinkDocument()
   const { exportZip, loading: exporting } = useProjectExport(project.id)
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [sendDoc, setSendDoc] = useState<{ type: 'estimate' | 'contract' | 'invoice'; name: string } | null>(null)
+  const [sendDoc, setSendDoc] = useState<{ type: 'estimate' | 'contract' | 'invoice'; name: string; defaultEmail?: string } | null>(null)
+  const [packageSendOpen, setPackageSendOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const deleteEstimate = useDeleteEstimate()
@@ -68,6 +70,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
   const { data: estimates = [], isLoading: estLoading } = useEstimates()
   const { data: contracts = [], isLoading: ctLoading } = useContracts()
   const { data: invoices = [], isLoading: invLoading } = useInvoices()
+  const { data: clients = [] } = useClients()
   const docNamesLoading = estLoading || ctLoading || invLoading
   const resolveDocName = (docType: string, docId: string): string => {
     if (docType === 'estimate') return estimates.find(e => e.id === docId)?.number ?? docId.slice(0, 8)
@@ -75,6 +78,16 @@ export function ProjectDocuments({ project }: { project: Project }) {
     if (docType === 'invoice') return invoices.find(i => i.id === docId)?.number ?? docId.slice(0, 8)
     return docId.slice(0, 8)
   }
+  const resolveClientEmail = (docType: string, docId: string): string | undefined => {
+    const clientId =
+      docType === 'estimate' ? estimates.find(e => e.id === docId)?.client_id :
+      docType === 'contract' ? contracts.find(c => c.id === docId)?.client_id :
+      docType === 'invoice'  ? invoices.find(i => i.id === docId)?.client_id  : undefined
+    return clientId ? (clients.find(c => c.id === clientId)?.email || undefined) : undefined
+  }
+  const projectClientEmail = project.client_id
+    ? (clients.find(c => c.id === project.client_id)?.email || undefined)
+    : undefined
 
   const sorted = [...docs].sort(
     (a, b) => (TYPE_ORDER[a.doc_type] ?? 9) - (TYPE_ORDER[b.doc_type] ?? 9),
@@ -97,15 +110,25 @@ export function ProjectDocuments({ project }: { project: Project }) {
     <Card>
       <div className="toolbar" style={{ marginBottom: 12 }}>
         <h4 style={{ margin: 0 }}>Dokumenty ({docs.length})</h4>
-        <Button
-          variant="secondary"
-          size="sm"
-          loading={exporting}
-          onClick={() => exportZip(selected.size > 0 ? [...selected] : undefined, project.name)}
-          disabled={docs.length === 0}
-        >
-          {selected.size > 0 ? `Pobierz zaznaczone (${selected.size})` : 'Pobierz paczkę'}
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={docs.filter(d => MAILABLE_TYPES.has(d.doc_type)).length === 0}
+            onClick={() => setPackageSendOpen(true)}
+          >
+            Wyślij pakiet
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={exporting}
+            onClick={() => exportZip(selected.size > 0 ? [...selected] : undefined, project.name)}
+            disabled={docs.length === 0}
+          >
+            {selected.size > 0 ? `Pobierz zaznaczone (${selected.size})` : 'Pobierz paczkę'}
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -161,6 +184,21 @@ export function ProjectDocuments({ project }: { project: Project }) {
                     z: {TYPE_LABEL[doc.source_doc_type] ?? doc.source_doc_type}
                   </span>
                 )}
+                {MAILABLE_TYPES.has(doc.doc_type) && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      setSendDoc({
+                        type: doc.doc_type as 'estimate' | 'contract' | 'invoice',
+                        name: resolveDocName(doc.doc_type, doc.doc_id),
+                        defaultEmail: resolveClientEmail(doc.doc_type, doc.doc_id),
+                      })
+                    }
+                  >
+                    Wyślij
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -193,20 +231,6 @@ export function ProjectDocuments({ project }: { project: Project }) {
                     {confirmDeleteId === doc.id ? 'Potwierdź usunięcie' : 'Usuń'}
                   </Button>
                 )}
-                {MAILABLE_TYPES.has(doc.doc_type) && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() =>
-                      setSendDoc({
-                        type: doc.doc_type as 'estimate' | 'contract' | 'invoice',
-                        name: resolveDocName(doc.doc_type, doc.doc_id),
-                      })
-                    }
-                  >
-                    Wyślij
-                  </Button>
-                )}
               </div>
             ))}
           </div>
@@ -219,9 +243,19 @@ export function ProjectDocuments({ project }: { project: Project }) {
           onClose={() => setSendDoc(null)}
           documentType={sendDoc.type}
           documentName={sendDoc.name}
+          defaultEmail={sendDoc.defaultEmail}
           portalUrl={`${window.location.origin}/client/project/${project.id}`}
         />
       )}
+
+      <SendToClientModal
+        open={packageSendOpen}
+        onClose={() => setPackageSendOpen(false)}
+        documentType="package"
+        documentName={`Dokumenty projektu – ${project.name}`}
+        defaultEmail={projectClientEmail}
+        portalUrl={`${window.location.origin}/client/project/${project.id}`}
+      />
     </Card>
   )
 }

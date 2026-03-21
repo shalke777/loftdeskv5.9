@@ -21,12 +21,13 @@ const DOC_LABEL: Record<string, string> = {
   estimate: 'Wycena',
   contract: 'Umowa',
   invoice:  'Faktura',
+  package:  'Pakiet dokumentów',
 }
 
 interface Props {
   open:          boolean
   onClose:       () => void
-  documentType:  'estimate' | 'invoice' | 'contract'
+  documentType:  'estimate' | 'invoice' | 'contract' | 'package'
   documentName:  string
   defaultEmail?: string
   portalUrl?:    string
