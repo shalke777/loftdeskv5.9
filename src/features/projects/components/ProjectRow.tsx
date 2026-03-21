@@ -48,11 +48,13 @@ export function ProjectRow({
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const score      = project.completeness_score ?? null
-  const flags      = project.completeness_flags ?? null
-  const noClient   = !project.client_id && (project.status === 'offer' || project.status === 'active')
-  const noContract = project.status === 'active' && flags != null && !flags.has_contract
-  const showSignals = score != null || noClient || noContract
+  const score        = project.completeness_score ?? null
+  const flags        = project.completeness_flags ?? null
+  const noClient     = !project.client_id && (project.status === 'offer' || project.status === 'active')
+  const noEstimate   = (project.status === 'offer' || project.status === 'active') && flags != null && !flags.has_estimate
+  const noContract   = project.status === 'active' && flags != null && !flags.has_contract
+  const noInvoice    = project.status === 'done' && flags != null && !flags.has_invoice
+  const showSignals  = score != null || noClient || noEstimate || noContract || noInvoice
 
   function handleDelete() {
     if (!confirmDelete) { setConfirmDelete(true); return }
@@ -88,8 +90,10 @@ export function ProjectRow({
           {showSignals && (
             <div className="proj-row__signals">
               {score != null && <ProjectCompleteness score={score} compact />}
-              {noClient && <span className="proj-signal proj-signal--warn">Brak klienta</span>}
-              {noContract && <span className="proj-signal proj-signal--warn">Brak umowy</span>}
+              {noEstimate  && <span className="proj-signal proj-signal--warn">Brak wyceny</span>}
+              {noClient    && <span className="proj-signal proj-signal--warn">Brak klienta</span>}
+              {noContract  && <span className="proj-signal proj-signal--warn">Brak umowy</span>}
+              {noInvoice   && <span className="proj-signal proj-signal--danger">⚠ Brak faktury</span>}
             </div>
           )}
         </div>

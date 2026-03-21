@@ -111,6 +111,22 @@ export const dashboardApi = {
 
     const pipeline = pipelineProjects.reduce((s, p) => s + (p.contractValue || p.estimateValue), 0)
 
+    // ── Attention list: projects with actionable gaps, sorted by issue count ────
+    const attentionProjects = projects
+      .filter((p) => p.status !== 'cancelled')
+      .map((p) => {
+        const fl = p.completeness_flags
+        const issues: string[] = []
+        if (!p.client_id && (p.status === 'offer' || p.status === 'active')) issues.push('Brak klienta')
+        if (fl && !fl.has_estimate && (p.status === 'offer' || p.status === 'active')) issues.push('Brak wyceny')
+        if (fl && !fl.has_contract && p.status === 'active') issues.push('Brak umowy')
+        if (fl && !fl.has_invoice && p.status === 'done') issues.push('Brak faktury')
+        return { id: p.id, name: p.name, number: p.number, status: p.status, issues }
+      })
+      .filter((p) => p.issues.length > 0)
+      .sort((a, b) => b.issues.length - a.issues.length)
+      .slice(0, 5)
+
     const companyName = (profile as any)?.name ?? (profile as any)?.company ?? (profile as any)?.company_name ?? 'LoftDesk'
     const plan: 'free' | 'pro' | 'business' | 'admin' = (profile as any)?.plan ?? 'pro'
     const ksefReady = Boolean((profile as any)?.ksef_token)
@@ -135,6 +151,7 @@ export const dashboardApi = {
         projects.length > 0 ? `Projekty: ${projects.length} szt.` : null,
       ].filter(Boolean) as string[],
       upcoming: projects.slice(0, 3).map((p) => `${p.name} · ${p.status}`),
+      attentionProjects,
     }
 
     if (import.meta.env.DEV) {

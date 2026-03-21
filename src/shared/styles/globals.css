@@ -1970,10 +1970,76 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   color: #92400e;
   border: 1px solid #fde68a;
 }
+.proj-signal--danger {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
 .proj-signal--ok {
   background: #f0fdf4;
   color: #166534;
   border: 1px solid #bbf7d0;
+}
+
+/* ── Dashboard: Wymaga uwagi card ────────────────────────────────────────── */
+.attention-card {
+  margin-top: 16px;
+  border-left: 3px solid #f6ad55;
+  background: #fffcf5;
+}
+.attention-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #c05621;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.attention-list {
+  display: grid;
+  gap: 6px;
+}
+.attention-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid #fde68a;
+  flex-wrap: wrap;
+}
+.attention-row__left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.attention-row__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.attention-row__number {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.attention-row__pills {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .attention-row__left { flex-basis: 100%; }
+  .attention-row__pills { padding-left: 0; }
 }
 
 /* Right side */

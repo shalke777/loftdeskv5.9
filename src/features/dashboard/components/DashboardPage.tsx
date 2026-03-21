@@ -1,4 +1,4 @@
-import { ArrowRight, BookText, FileText, FolderKanban, MessageSquareText, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
+import { ArrowRight, AlertTriangle, BookText, FileText, FolderKanban, MessageSquareText, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Card } from '@/shared/ui/Card/Card'
@@ -51,6 +51,7 @@ export function DashboardPage() {
   if (isLoading || !data) return <Spinner />
 
   const pipelineProjects: { id: string; name: string; number: string; status: string; clientName: string; contractValue: number; estimateValue: number; invoicedTotal: number; paidTotal: number; completeness_score?: number | null }[] = (data as any).pipelineProjects ?? []
+  const attentionProjects: { id: string; name: string; number: string; status: string; issues: string[] }[] = (data as any).attentionProjects ?? []
 
   const stats = [
     { label: 'Pipeline projektów', value: formatCurrency(data.pipeline) },
@@ -134,6 +135,40 @@ export function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      {/* ── Wymaga uwagi ──────────────────────────────────────────────────────────── */}
+      {attentionProjects.length > 0 && (
+        <Card className="attention-card">
+          <div className="toolbar" style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={16} color="#c05621" />
+              <h3 style={{ margin: 0, fontSize: 15 }}>Wymaga uwagi</h3>
+              <span className="attention-badge">{attentionProjects.length}</span>
+            </div>
+            <Link to="/projects" style={{ fontSize: 13, color: 'var(--color-brand)', textDecoration: 'none' }}>Przejdź do projektów →</Link>
+          </div>
+          <div className="attention-list">
+            {attentionProjects.map((proj) => (
+              <div key={proj.id} className="attention-row">
+                <div className="attention-row__left">
+                  <span className="attention-row__name">{proj.name}</span>
+                  <span className="attention-row__number">{proj.number}</span>
+                </div>
+                <div className="attention-row__pills">
+                  {proj.issues.map((issue) => (
+                    <span
+                      key={issue}
+                      className={`proj-signal ${issue === 'Brak faktury' ? 'proj-signal--danger' : 'proj-signal--warn'}`}
+                    >
+                      {issue}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {pipelineProjects.length > 0 && (
         <Card style={{ marginTop: 16 }}>
