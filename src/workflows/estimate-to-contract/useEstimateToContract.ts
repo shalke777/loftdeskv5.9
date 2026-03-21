@@ -15,6 +15,7 @@ export function useEstimateToContract() {
       qc.invalidateQueries({ queryKey: ['contracts', companyId] })
       qc.invalidateQueries({ queryKey: ['estimates', 'list', companyId] })
       toast.success('Utworzono umowę', `Numer: ${contract.number}`)
+      if (contract.project_id) qc.invalidateQueries({ queryKey: ['project_documents', contract.project_id] })
       autoLinkService.link({
         type: 'contract',
         id: contract.id,

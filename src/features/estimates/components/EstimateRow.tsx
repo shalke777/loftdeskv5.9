@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Edit2, FileText, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Edit2, FileText, Mail, Trash2 } from 'lucide-react'
 import type { Estimate } from '@/entities/estimate/model'
 import { Button } from '@/shared/ui/Button/Button'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
@@ -8,6 +8,7 @@ import { formatCurrency } from '@/shared/lib/formatters'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
+import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
 import { EstimateNextActions } from './EstimateNextActions'
 
 const STATUS_LABEL: Record<Estimate['status'], string> = {
@@ -33,6 +34,7 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [sendOpen, setSendOpen] = useState(false)
 
   const { data: clients = [] } = useClients()
   const { user } = useAuth()
@@ -96,6 +98,13 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
           <div className="proj-row__actions">
             <button
               className="proj-action-btn"
+              title="Wyślij do klienta"
+              onClick={e => { e.stopPropagation(); setSendOpen(true) }}
+            >
+              <Mail size={14} />
+            </button>
+            <button
+              className="proj-action-btn"
               title="Podgląd PDF"
               onClick={e => { e.stopPropagation(); setPreviewOpen(true) }}
             >
@@ -144,6 +153,7 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
 
           <div className="actions-row" style={{ marginBottom: 16 }}>
             <Button variant="secondary" onClick={() => setPreviewOpen(true)}>PDF</Button>
+            <Button variant="secondary" onClick={() => setSendOpen(true)}>Wyślij do klienta</Button>
             {estimate.status === 'accepted' && onCreateContract && (
               <Button variant="secondary" onClick={() => onCreateContract(estimate.id)}>
                 Utwórz umowę
@@ -160,6 +170,15 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
         onClose={() => setPreviewOpen(false)}
         title={`${estimate.number} · Podgląd dokumentu`}
         tabs={tabs}
+      />
+
+      <SendToClientModal
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
+        documentType="estimate"
+        documentName={estimate.number}
+        defaultEmail={client?.email}
+        portalUrl={(estimate as any).project_id ? `${window.location.origin}/client/project/${(estimate as any).project_id}` : undefined}
       />
     </div>
   )
