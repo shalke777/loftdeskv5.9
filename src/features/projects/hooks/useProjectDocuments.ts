@@ -129,7 +129,7 @@ export function useProjectExport(projectId: string) {
   const [error, setError] = useState<string | null>(null)
 
   const exportZip = useCallback(
-    async (selectedDocIds?: string[]) => {
+    async (selectedDocIds?: string[], projectName?: string) => {
       setLoading(true)
       setError(null)
       try {
@@ -153,7 +153,7 @@ export function useProjectExport(projectId: string) {
         // Demo mode: read from localStorage
         const dbRaw = isDemoMode ? (JSON.parse(demoDb.exportState()) as Record<string, any[]>) : null
         const dbProfile = isDemoMode ? demoDb.companyProfile(companyId) : null
-        let companyMeta: { name?: string; nip?: string; address?: string; postalCity?: string; email?: string; phone?: string; bankAccount?: string } | undefined = dbProfile ? {
+        let companyMeta: { name?: string; nip?: string; address?: string; postalCity?: string; email?: string; phone?: string; bankAccount?: string; logoUrl?: string } | undefined = dbProfile ? {
           name: dbProfile.company_name || '',
           nip: dbProfile.nip || '',
           address: dbProfile.address || '',
@@ -176,7 +176,7 @@ export function useProjectExport(projectId: string) {
             estIds.length ? supabase.from('cost_estimates').select('*, items:cost_estimate_items(*)').in('id', estIds) : Promise.resolve({ data: [] }),
             ctIds.length  ? supabase.from('contracts').select('*').in('id', ctIds)  : Promise.resolve({ data: [] }),
             invIds.length ? supabase.from('invoices').select('*').in('id', invIds)  : Promise.resolve({ data: [] }),
-            supabase.from('companies').select('company_name,name,nip,ksef_nip,address,postal_code,city,email,phone,iban').eq('id', companyId).maybeSingle(),
+            supabase.from('companies').select('company_name,name,nip,ksef_nip,address,postal_code,city,email,phone,iban,logo_url').eq('id', companyId).maybeSingle(),
           ])
           prodEstimates = estRes.data ?? []
           prodContracts = ctRes.data ?? []
@@ -191,6 +191,7 @@ export function useProjectExport(projectId: string) {
               email: co.email || '',
               phone: co.phone || '',
               bankAccount: co.iban || '',
+              logoUrl: co.logo_url || '',
             }
           }
           const clientIds = [...new Set([
@@ -209,8 +210,17 @@ export function useProjectExport(projectId: string) {
         for (let i = 0; i < active.length; i++) {
           const doc = active[i]
           const idx = String(ORDER[doc.doc_type] ?? 9).padStart(2, '0')
+
+          // Resolve human-readable document number for filename
+          const docPool = isDemoMode && dbRaw
+            ? (doc.doc_type === 'estimate' ? dbRaw.estimates : doc.doc_type === 'invoice' ? dbRaw.invoices : doc.doc_type === 'contract' ? dbRaw.contracts : null)
+            : (doc.doc_type === 'estimate' ? prodEstimates : doc.doc_type === 'invoice' ? prodInvoices : doc.doc_type === 'contract' ? prodContracts : null)
+          const rawNum: string | undefined = (docPool as any[] | null | undefined)?.find((x: any) => x.id === doc.doc_id)?.number
+          const safeNum = rawNum
+            ? rawNum.replace(/[\/\\:*?"<>|]/g, '-').replace(/\s+/g, '_')
+            : doc.doc_id.slice(0, 8)
           // Extension is .pdf – ZIP will contain real binary PDF files
-          const fileName = `${idx}_${doc.doc_type}_${doc.doc_id.slice(0, 8)}.pdf`
+          const fileName = `${idx}_${safeNum}.pdf`
 
           let html: string
           if (isDemoMode && dbRaw) {
@@ -295,7 +305,10 @@ export function useProjectExport(projectId: string) {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `projekt_${projectId.slice(0, 8)}_paczka.zip`
+        const safeProjectName = projectName
+          ? projectName.replace(/[\/\\:*?"<>|]/g, '-').replace(/\s+/g, '_').slice(0, 50)
+          : projectId.slice(0, 8)
+        a.download = `projekt_${safeProjectName}_dokumenty.zip`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)

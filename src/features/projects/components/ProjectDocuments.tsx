@@ -72,7 +72,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
           variant="secondary"
           size="sm"
           loading={exporting}
-          onClick={() => exportZip(selected.size > 0 ? [...selected] : undefined)}
+          onClick={() => exportZip(selected.size > 0 ? [...selected] : undefined, project.name)}
           disabled={docs.length === 0}
         >
           {selected.size > 0 ? `Pobierz zaznaczone (${selected.size})` : 'Pobierz paczkę'}
