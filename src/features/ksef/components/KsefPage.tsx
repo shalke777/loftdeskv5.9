@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useToast } from '@/shared/hooks/useToast'
 import { Card } from '@/shared/ui/Card/Card'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Badge } from '@/shared/ui/Badge/Badge'
@@ -181,6 +182,7 @@ function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend
 // ── Main KSeF Page ─────────────────────────────────────────
 export function KsefPage() {
   const navigate = useNavigate()
+  const toast = useToast()
   const { profile } = useSettings()
   const enabled = useFeatureAccess('ksef')
 
@@ -195,6 +197,11 @@ export function KsefPage() {
   const [envInput, setEnvInput] = useState<KsefEnv>('demo')
   const [sendModalOpen, setSendModalOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'queue' | 'received' | 'history'>('queue')
+
+  // Show UPO errors as toasts — avoids fixed-position overlay that overlaps content
+  useEffect(() => {
+    if (upo.error) toast.error('Błąd UPO', upo.error)
+  }, [upo.error]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!profile) return
@@ -434,7 +441,11 @@ export function KsefPage() {
           {activeTab === 'received' && (
             <div>
               {!session && <p style={{ color: '#888', fontSize: 14 }}>Wymagana aktywna sesja KSeF.</p>}
-              {receiveError && <p style={{ color: '#c0392b', fontSize: 13 }}>Błąd: {receiveError}</p>}
+              {receiveError && (
+                <div style={{ marginBottom: 12, padding: '10px 14px', background: '#fff5f5', border: '1px solid #fc8181', borderRadius: 8, fontSize: 13, color: '#c0392b' }}>
+                  <strong>Błąd odbioru:</strong> {receiveError}
+                </div>
+              )}
               {newCount !== null && newCount >= 0 && (
                 <p style={{ fontSize: 13, color: '#27ae60', marginBottom: 8 }}>Pobrano {newCount} nowych dokumentów.</p>
               )}
@@ -531,11 +542,7 @@ export function KsefPage() {
           tabs={[{ key: 'upo', label: 'UPO', type: 'html', content: upo.upoHtml }]}
         />
       )}
-      {upo.error && (
-        <p style={{ position: 'fixed', bottom: 24, right: 24, background: '#fff5f5', border: '1px solid #fc8181', borderRadius: 8, padding: '10px 16px', fontSize: 13, color: '#c0392b', zIndex: 9999 }}>
-          Błąd UPO: {upo.error}
-        </p>
-      )}
+      {/* upo.error is shown via toast (useEffect above) */}
     </div>
   )
 }

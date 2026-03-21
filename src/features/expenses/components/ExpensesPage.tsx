@@ -165,10 +165,9 @@ export function ExpensesPage() {
           const msg = ocrErr instanceof Error ? ocrErr.message : ''
           ocrFailed = true
           ocrUnavailable = msg.includes('Serwer OCR') || msg.includes('niedostępny')
-          // Auth/rate errors — show immediately, skip AI fallback
+          // Auth/rate errors — show in upload error banner (modal not yet open)
           if (msg.includes('Sesja wygasła') || msg.includes('Za dużo żądań')) {
-            setParseStatus({ level: 'error', message: msg })
-            setUploadStep('')
+            setUploadError(msg)
             return
           }
         }
@@ -192,11 +191,10 @@ export function ExpensesPage() {
               ocrResult = aiResult   // AI gave equal or better result
             }
           } catch (aiErr: unknown) {
-            // Auth/rate errors from AI — surface them; otherwise keep OCR result silently
+            // Auth/rate errors from AI — show in upload error banner (modal not yet open)
             const aiMsg = aiErr instanceof Error ? aiErr.message : ''
             if (aiMsg.includes('Sesja wygasła') || aiMsg.includes('Za dużo żądań')) {
-              setParseStatus({ level: 'error', message: aiMsg })
-              setUploadStep('')
+              setUploadError(aiMsg)
               return
             }
             // AI not configured or failed — keep OCR result (or null if OCR also failed)

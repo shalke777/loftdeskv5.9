@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { translateError } from '@/shared/lib/errorMessages'
 import type { ExpenseSourceType, CreateExpenseForProjectInput, ExpenseInvoiceV4 } from '@/features/expenses/api/expenses.api'
 import { useProjectExpenses } from '@/features/expenses/hooks/useProjectExpenses'
 import { useCreateExpense }   from '@/features/expenses/hooks/useCreateExpense'
@@ -36,6 +37,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
   const [fileState,   setFileState]   = useState<File | null>(null)
   const [sourceType,  setSourceType]  = useState<ExpenseSourceType>('manual')
   const [parseResult, setParseResult] = useState<ParseInvoiceResult | null>(null)
+  const [parseError,  setParseError]  = useState<string | null>(null)
   const [approvalExpense, setApprovalExpense] = useState<ExpenseInvoiceV4 | null>(null)
 
   const { data: expenses = [], isLoading } = useProjectExpenses(projectId)
@@ -57,6 +59,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
     setMode('list')
     setFileState(null)
     setParseResult(null)
+    setParseError(null)
     parseInvoice.reset()
     createExpense.reset()
   }
@@ -71,8 +74,8 @@ export function ProjectExpensesTab({ projectId }: Props) {
     parseInvoice.mutate(
       { file, sourceType: type },
       {
-        onSuccess: (result) => { setParseResult(result); setMode('confirm') },
-        onError:   ()       => { setMode('confirm') }, // silent failure → empty form fallback
+        onSuccess: (result) => { setParseResult(result); setParseError(null); setMode('confirm') },
+        onError:   (err)   => { setParseError(err instanceof Error ? err.message : 'Nie udało się odczytać faktury.'); setMode('confirm') },
       },
     )
   }
@@ -303,7 +306,20 @@ export function ProjectExpensesTab({ projectId }: Props) {
             color: 'var(--color-danger, #dc2626)',
           }}
         >
-          Błąd zapisu: {(createExpense.error as Error)?.message ?? 'Nieznany błąd'}
+          Błąd zapisu: {translateError(createExpense.error)}
+        </div>
+      )}
+
+      {parseError && (
+        <div
+          style={{
+            marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: 13,
+            background: 'var(--color-warning-soft, #fffbeb)',
+            border: '1px solid #f59e0b',
+            color: 'var(--color-text, #111)',
+          }}
+        >
+          ⚠️ Odczyt faktury nie powiódł się: {parseError} — uzupełnij pola ręcznie.
         </div>
       )}
 
