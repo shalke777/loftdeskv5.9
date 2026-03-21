@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, Mail, ReceiptText, Trash2 } from 'lucide-react'
 import type { Contract } from '@/entities/contract/model'
 import { Button } from '@/shared/ui/Button/Button'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
@@ -7,6 +7,7 @@ import { buildContractPreview } from '@/services/pdf/documentPreview'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
+import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
 
 const STATUS_LABEL: Record<Contract['status'], string> = {
   unsigned: 'W przygotowaniu', signed: 'Podpisana',
@@ -29,18 +30,20 @@ interface Props {
   onEdit: (c: Contract) => void
   onDelete: (id: string) => void
   onSign: (id: string) => void
+  onCreateInvoice?: (id: string) => void
   canDelete?: boolean
   canSign?: boolean
 }
 
 export function ContractRow({
   contract, clientName, projectName,
-  onEdit, onDelete, onSign,
+  onEdit, onDelete, onSign, onCreateInvoice,
   canDelete = true, canSign = true,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [sendOpen, setSendOpen] = useState(false)
 
   const { user } = useAuth()
   const companyMeta = useCompanyMeta()
@@ -101,8 +104,13 @@ export function ContractRow({
               <FileText size={14} />
             </button>
             <button
-              className="proj-action-btn"
-              title="Edytuj"
+              className="proj-action-btn"              title="Wyślij do klienta"
+              onClick={e => { e.stopPropagation(); setSendOpen(true) }}
+            >
+              <Mail size={14} />
+            </button>
+            <button
+              className="proj-action-btn"              title="Edytuj"
               onClick={e => { e.stopPropagation(); onEdit(contract) }}
             >
               <Edit2 size={14} />
@@ -199,6 +207,13 @@ export function ContractRow({
 
           <div className="actions-row">
             <Button variant="secondary" onClick={() => setPreviewOpen(true)}>PDF</Button>
+            <Button variant="secondary" onClick={() => setSendOpen(true)}>Wyślij do klienta</Button>
+            {onCreateInvoice && (
+              <Button variant="secondary" onClick={() => onCreateInvoice(contract.id)}>
+                <ReceiptText size={14} style={{ marginRight: 4 }} />
+                Wystaw fakturę
+              </Button>
+            )}
             {contract.status !== 'signed' && canSign && (
               <Button onClick={() => onSign(contract.id)}>Oznacz jako podpisaną</Button>
             )}
@@ -211,6 +226,13 @@ export function ContractRow({
         onClose={() => setPreviewOpen(false)}
         title={`${contract.number} · Podgląd dokumentu`}
         tabs={tabs}
+      />
+      <SendToClientModal
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
+        documentType="contract"
+        documentName={contract.number}
+        portalUrl={contract.project_id ? `${window.location.origin}/client/project/${contract.project_id}` : undefined}
       />
     </div>
   )

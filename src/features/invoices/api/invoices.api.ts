@@ -70,6 +70,27 @@ export const invoicesApi = {
     const invoiceItems = (estimate.items ?? []).map((item: any, i: number) => ({ id: crypto.randomUUID(), description: item.name || item.description || '', unit: item.unit || 'szt', quantity: Number(item.quantity), unit_price: Number(item.unit_price), vat_rate: Number(item.vat_rate ?? 23), sort_order: i }))
     return invoicesApi.create({ company_id: companyId, client_id: estimate.client_id, project_id: estimate.project_id ?? null, status: 'unpaid', issue_date: new Date().toISOString().slice(0, 10), due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10), items: invoiceItems })
   },
+  async createFromContract(companyId: string, contractId: string) {
+    if (isDemoMode || !supabase) {
+      const contract = demoDb.contracts.list(companyId).find(c => c.id === contractId)
+      if (!contract) throw new Error('Nie znaleziono umowy')
+      return invoicesApi.create({ company_id: companyId, client_id: contract.client_id, project_id: contract.project_id ?? null, contract_id: contractId, status: 'unpaid', notes: `Wygenerowano z umowy ${contract.number}`, issue_date: new Date().toISOString().slice(0, 10), due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10), items: [{ id: crypto.randomUUID(), description: `Realizacja umowy ${contract.number}`, unit: 'usł', quantity: 1, unit_price: contract.value, vat_rate: contract.vat_rate ?? 23, sort_order: 0, tranche_label: '' }] })
+    }
+    const { data: contract, error: cErr } = await supabase.from('contracts').select('*').eq('id', contractId).single()
+    if (cErr || !contract) throw cErr ?? new Error('Nie znaleziono umowy')
+    let items: any[]
+    if (contract.estimate_id) {
+      const { data: est } = await supabase.from('cost_estimates').select('*, items:cost_estimate_items(*)').eq('id', contract.estimate_id).single()
+      if (est?.items?.length) {
+        items = (est.items as any[]).map((item: any, i: number) => ({ id: crypto.randomUUID(), description: item.name || item.description || '', unit: item.unit || 'szt', quantity: Number(item.quantity), unit_price: Number(item.unit_price), vat_rate: Number(item.vat_rate ?? 23), sort_order: i, tranche_label: '' }))
+      } else {
+        items = [{ id: crypto.randomUUID(), description: `Realizacja umowy ${contract.number}`, unit: 'usł', quantity: 1, unit_price: Number(contract.value ?? 0), vat_rate: Number(contract.vat_rate ?? 23), sort_order: 0, tranche_label: '' }]
+      }
+    } else {
+      items = [{ id: crypto.randomUUID(), description: `Realizacja umowy ${contract.number}`, unit: 'usł', quantity: 1, unit_price: Number(contract.value ?? 0), vat_rate: Number(contract.vat_rate ?? 23), sort_order: 0, tranche_label: '' }]
+    }
+    return invoicesApi.create({ company_id: companyId, client_id: contract.client_id, project_id: contract.project_id ?? null, contract_id: contractId, status: 'unpaid', notes: `Wygenerowano z umowy ${contract.number}`, issue_date: new Date().toISOString().slice(0, 10), due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10), items })
+  },
   async createFromProject(companyId: string, config: { projectId: string; vatRate?: number; tranches?: Array<{ id: string; label: string; amount: number; due_date: string }> }) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.invoices.createFromProject(companyId, config))
     const { data: project, error: projErr } = await supabase.from('projects').select('*').eq('id', config.projectId).single()

@@ -22,7 +22,30 @@ export const contractsApi = {
     return { id: data.id, company_id: data.company_id ?? input.company_id, client_id: data.client_id, project_id: data.project_id, estimate_id: data.estimate_id ?? null, number: data.number, status: data.status, sign_date: data.sign_date, start_date: data.start_date ?? null, end_date: data.end_date ?? null, location: data.location ?? '', value: Number(data.value ?? 0), value_net: data.value_net != null ? Number(data.value_net) : undefined, vat_rate: data.vat_rate != null ? Number(data.vat_rate) : undefined, notes: data.notes ?? '', template_name: data.template_name ?? '', template_content: data.template_content ?? '', custom_paragraphs: data.custom_paragraphs ?? [], tranches: data.tranches ?? [], created_at: data.created_at }
   },
   async update(id: string, input: Partial<Contract>, companyId?: string) { if (isDemoMode || !supabase) return Promise.resolve(demoDb.contracts.update(id, input)); const scope = await getDataScope(companyId); const query = applyScope(supabase.from('contracts').update(input).eq('id', id).select('*').single(), scope); const { data, error } = await query; if (error) throw error; return data },
-  async createFromEstimate(companyId: string, estimateId: string): Promise<Contract> { if (isDemoMode || !supabase) return Promise.resolve(demoDb.contracts.createFromEstimate(companyId, estimateId)); throw new Error('Workflow estimate → umowa wymaga mapowania estimate do contract po stronie funkcji.') },
+  async createFromEstimate(companyId: string, estimateId: string): Promise<Contract> {
+    if (isDemoMode || !supabase) return Promise.resolve(demoDb.contracts.createFromEstimate(companyId, estimateId))
+    const { data: estimate, error: estErr } = await supabase.from('cost_estimates').select('*').eq('id', estimateId).single()
+    if (estErr || !estimate) throw estErr ?? new Error('Nie znaleziono kosztorysu')
+    return contractsApi.create({
+      company_id: companyId,
+      client_id: estimate.client_id,
+      project_id: estimate.project_id ?? null,
+      estimate_id: estimateId,
+      status: 'unsigned',
+      sign_date: null,
+      value: Number(estimate.total_gross ?? 0),
+      value_net: estimate.total_net != null ? Number(estimate.total_net) : undefined,
+      vat_rate: estimate.vat_rate != null ? Number(estimate.vat_rate) : undefined,
+      notes: `Wygenerowano z kosztorysu ${estimate.number ?? estimateId}`,
+      template_name: `Umowa · ${estimate.number ?? ''}`,
+      template_content: '',
+      custom_paragraphs: [],
+      tranches: [
+        { id: crypto.randomUUID(), label: 'Zaliczka', amount: Math.round(Number(estimate.total_gross ?? 0) * 0.3 * 100) / 100, percent: 30, due_date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10), status: 'planned', condition: 'Przed rozpoczęciem robót' },
+        { id: crypto.randomUUID(), label: 'Płatność końcowa', amount: Math.round(Number(estimate.total_gross ?? 0) * 0.7 * 100) / 100, percent: 70, due_date: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10), status: 'planned', condition: 'Po odbiorze końcowym' },
+      ],
+    })
+  },
   async sign(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.contracts.sign(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('contracts').update({ status: 'signed', sign_date: new Date().toISOString().slice(0, 10) }).eq('id', id), scope); const { error } = await query; if (error) throw error },
   async delete(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.contracts.delete(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('contracts').delete().eq('id', id), scope); const { error } = await query; if (error) throw error },
 }

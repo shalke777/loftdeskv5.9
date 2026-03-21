@@ -7,6 +7,7 @@ import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useContracts, useCreateContract, useDeleteContract, useSignContract, useUpdateContract } from '@/features/contracts/hooks/useContracts'
+import { useCreateInvoiceFromContract } from '@/features/invoices/hooks/useInvoices'
 import { ContractRow } from '@/features/contracts/components/ContractRow'
 import { ContractForm } from '@/features/contracts/components/ContractModal/ContractForm'
 import { useCan } from '@/features/auth/hooks/usePermissions'
@@ -35,6 +36,7 @@ export function ContractsPage() {
   const updateContract = useUpdateContract()
   const signContract = useSignContract()
   const deleteContract = useDeleteContract()
+  const createInvoiceFromContract = useCreateInvoiceFromContract()
   const canCreate = useCan('contracts.create')
   const canDelete = useCan('contracts.delete')
   const canSign = useCan('contracts.sign')
@@ -111,6 +113,7 @@ export function ContractsPage() {
               onEdit={c => { setEditing(c); setOpen(true) }}
               onDelete={id => deleteContract.mutate(id)}
               onSign={id => signContract.mutate(id)}
+              onCreateInvoice={id => createInvoiceFromContract.mutate(id)}
               canDelete={canDelete}
               canSign={canSign}
             />
