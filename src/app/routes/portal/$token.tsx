@@ -1,14 +1,12 @@
-import { PortalPage } from '@/features/portal/components/PortalPage'
+import { PortalInvalid } from '@/features/portal/components/PortalInvalid'
 
 /**
  * Router entry for /portal/:token
  *
- * Phase 2 PortalProjectPage (usePortalSession stub) removed — it always
- * rendered <PortalInvalid /> because project_portal_tokens was dropped in
- * migration 051. Legacy estimate portal (PortalPage) is the active handler:
- * it calls portal_get_by_token RPC (migration 026) against client_tokens,
- * which is still live in production.
+ * Legacy estimate portal (PortalPage) removed — active_client_tokens = 0.
+ * All tokens (including historically created ones) are expired/inactive.
+ * Render the expired-link screen for any remaining legacy URLs.
  */
 export function PortalTokenRoutePage() {
-  return <PortalPage />
+  return <PortalInvalid />
 }
