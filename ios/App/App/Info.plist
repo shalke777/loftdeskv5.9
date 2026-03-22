@@ -53,5 +53,8 @@
 	<!-- Photo library: used to pick existing images of receipts and documents -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>LoftDesk potrzebuje dostępu do galerii, aby wybrać zdjęcia faktur i dokumentów.</string>
+	<!-- Encryption: LoftDesk uses only standard HTTPS (exempt encryption) -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
