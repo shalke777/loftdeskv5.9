@@ -103,7 +103,11 @@ export async function parseInvoiceFromText(text: string): Promise<ParsedExpenseD
   // ── Normalize whitespace (PDF text is often token-per-space) ────────────
   const t = text.replace(/\s+/g, ' ')
 
-  // ── Invoice number — 4-pass (mirrors server-side parse-invoice.ts) ──────
+  // ── Document type detection ──────────────────────────────────────────────
+  const RECEIPT_KEYWORDS = /paragon|kasa\s+fiskalna|nr\s*paragonu|fiskaln|kasowy|kasy\s+fiskal/i
+  const isReceipt = RECEIPT_KEYWORDS.test(t)
+
+  // ── Invoice number — 5-pass ──────────────────────────────────────────────
   // Pass 1: compound label "Numer faktury:", "Nr faktury:", "Faktura VAT Nr"
   const numMatch1 = t.match(
     /(?:numer\s+faktury|nr\.?\s+faktury|faktura(?:\s+(?:vat|korektora?|nr|numer))*)[^A-Z0-9\n]{0,20}((?:[A-Z0-9]{1,6}[\/\-]){1,3}[A-Z0-9]{1,10})/i
@@ -126,6 +130,12 @@ export async function parseInvoiceFromText(text: string): Promise<ParsedExpenseD
   if (!result.invoice_number) {
     const numMatch4 = t.match(/\b([A-Z]{1,5}[\/\-][0-9]{1,8}[\/\-][0-9]{1,6})\b/)
     if (numMatch4) result.invoice_number = numMatch4[1].trim().toUpperCase()
+  }
+
+  // Pass 5: receipt / paragon number
+  if (!result.invoice_number && isReceipt) {
+    const receiptNum = t.match(/(?:paragon\s+(?:nr|numer)?\s*|\bnr\s*[:\s])([A-Z0-9]{3,20})/i)
+    if (receiptNum) result.invoice_number = 'PAR/' + receiptNum[1].trim().toUpperCase()
   }
 
   // ── NIP (handles 10 digits, with or without dashes/spaces) ───────────────
@@ -160,36 +170,47 @@ export async function parseInvoiceFromText(text: string): Promise<ParsedExpenseD
     if (candidateLines.length > 0) result.vendor = candidateLines[0].slice(0, 80)
   }
 
+  // Receipt vendor fallback: fiscal receipts often begin with ALL-CAPS store name
+  if (!result.vendor && isReceipt) {
+    const capsLine = text.split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length >= 5 && l.length <= 60 && /^[A-ZŁÓŚĄŹĆĘŃ][A-ZŁÓŚĄŹĆĘŃ\s\-",.]{4,}$/.test(l))
+      .slice(0, 5)
+      .find(Boolean)
+    if (capsLine) result.vendor = capsLine.slice(0, 60)
+  }
+
   // ── Issue date ────────────────────────────────────────────────────────────
-  // Matches: data wystawienia, data, data FV, wystawiono, data sprzedaży
   const dateMatch = t.match(
     /(?:data\s+(?:wystawienia|sprzeda[żz]y|faktury|wyst\.?)|wystawiono|data\s+fv|data)[:\s]+(\d{4}-\d{2}-\d{2}|\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4}|\d{4}[.\/-]\d{1,2}[.\/-]\d{1,2})/i
   )
   if (dateMatch) {
     result.issue_date = normalizeDatePl(dateMatch[1])
   }
-  // Fallback: any ISO date in the text (2026-MM-DD)
   if (!result.issue_date) {
     const isoDate = t.match(/\b(202\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]))\b/)
     if (isoDate) result.issue_date = isoDate[1]
   }
-  // Fallback: Polish DD.MM.YYYY / DD-MM-YYYY without a label
   if (!result.issue_date) {
     const plDate = t.match(/\b((?:0?[1-9]|[12]\d|3[01])[.\-\/](?:0?[1-9]|1[0-2])[.\-\/]202\d)\b/)
     if (plDate) result.issue_date = normalizeDatePl(plDate[1])
   }
 
   // ── Amounts (gross / net) — currency suffix is optional ──────────────────
-  // Gross: "do zapłaty", "razem brutto", "kwota brutto", "total", "suma"
   const grossMatch = t.match(
-    /(?:do\s+zap[łl]aty|razem\s+brutto|kwota\s+brutto|warto[śs][ćc]\s+brutto|sum[ma]?\s+brutto|brutto\s+płatno[śs][ćc]?|brutto)[:\s]+([0-9]+[,. ][0-9]{0,3}[,. ]?[0-9]{0,2})\s*(?:PLN|z[łl]|EUR)?/i
+    /(?:do\s+zap[łl]aty|razem\s+brutto|kwota\s+brutto|warto[śs][ćc]\s+brutto|sum[ma]?\s+brutto|brutto\s+p[łl]atno[śs][ćc]?|brutto)[:\s]+([0-9]+[,. ][0-9]{0,3}[,. ]?[0-9]{0,2})\s*(?:PLN|z[łl]|EUR)?/i
   )
   if (grossMatch) {
     const v = parsePolishAmount(grossMatch[1])
     if (v > 0) result.amount_gross = v
   }
 
-  // Net: "netto", "wartość netto", "razem netto"
+  // Receipt total fallback: "SUMA: 45,00" / "RAZEM: 45,00"
+  if (!result.amount_gross) {
+    const receiptTotal = t.match(/(?:^|\s)(?:suma|razem|total)[:\s]+([0-9]+[\s]?[0-9]{0,3}[,.][0-9]{1,2})\s*(?:PLN|z[łl]|EUR)?/im)
+    if (receiptTotal) { const v = parsePolishAmount(receiptTotal[1]); if (v > 0) result.amount_gross = v }
+  }
+
   const netMatch = t.match(
     /(?:razem\s+netto|kwota\s+netto|warto[śs][ćc]\s+netto|suma\s+netto|netto)[:\s]+([0-9]+[,. ][0-9]{0,3}[,. ]?[0-9]{0,2})\s*(?:PLN|z[łl]|EUR)?/i
   )
@@ -411,8 +432,11 @@ export interface ExpenseInvoiceV4 extends ExpenseInvoice {
 
 /** The result returned by /.netlify/functions/parse-invoice */
 export interface ParseInvoiceResult {
+  document_type:  'invoice' | 'receipt' | 'bill' | 'other' | null  // detected doc type
   vendor_name:      string | null
   vendor_nip:       string | null
+  buyer_name?:      string | null  // from AI path
+  buyer_nip?:       string | null  // from AI path
   invoice_number:   string | null
   issue_date:       string | null
   sale_date:        string | null

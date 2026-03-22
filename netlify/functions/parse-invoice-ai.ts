@@ -608,7 +608,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
     })
     .filter((it) => it.name != null)
 
+  const normalizedDocType = (docType === 'invoice' || docType === 'receipt' || docType === 'bill' || docType === 'other')
+    ? docType as ParseInvoiceResult['document_type']
+    : null
+
   const result: ParseInvoiceResult = {
+    document_type:              normalizedDocType,
     vendor_name:                validVendorVal,
     vendor_nip:                 validNipVal,
     vendor_address:             cleanedVendorAddress,

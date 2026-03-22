@@ -174,7 +174,7 @@ export function ExpensesPage() {
 
         // Step B: AI fallback — try when OCR failed or confidence is low (PDFs included)
         const ocrConf = ocrResult?.extraction_confidence ?? 0
-        const needsAI = ocrFailed || ocrConf < 50
+        const needsAI = ocrFailed || ocrConf < 65  // raised from 50 — trigger AI for partial results
 
         if (needsAI) {
           setUploadStep('Analizuję przez AI...')
@@ -207,7 +207,7 @@ export function ExpensesPage() {
           const descParts: string[] = []
           if (ocrResult.sale_date && ocrResult.sale_date !== ocrResult.issue_date) descParts.push(`Data sprzedaży: ${ocrResult.sale_date}`)
           if (ocrResult.vat_rate != null) descParts.push(`Stawka VAT: ${ocrResult.vat_rate}%`)
-          if ((ocrResult as any).buyer_nip) descParts.push(`NIP nabywcy: ${(ocrResult as any).buyer_nip}`)
+          if (ocrResult.buyer_nip) descParts.push(`NIP nabywcy: ${ocrResult.buyer_nip}`)
           if (ocrResult.payment_due_date) descParts.push(`Płatność do: ${ocrResult.payment_due_date}`)
           if (ocrResult.currency && ocrResult.currency !== 'PLN') descParts.push(`Waluta: ${ocrResult.currency}`)
           const descExtra = descParts.join(' | ')
@@ -230,10 +230,21 @@ export function ExpensesPage() {
           const aiHint       = ocrResult.parser_source === 'ai' ? ' (AI)' : ''
           const confHint     = confidence > 0 ? ` · ${confidence}%` : ''
 
+          // Build hint about which critical fields are missing
+          function missingHint(warnings: string[]): string {
+            const missing: string[] = []
+            if (warnings.some(w => w.includes('nazwy sprzedawcy'))) missing.push('sprzedawca')
+            if (warnings.some(w => w.includes('numeru faktury')))   missing.push('numer FK')
+            if (warnings.some(w => w.includes('kwoty do zapłaty'))) missing.push('kwota')
+            if (warnings.some(w => w.includes('daty wystawienia'))) missing.push('data')
+            return missing.length > 0 ? ` (brakuje: ${missing.join(', ')})` : ''
+          }
+
           if (filledFields.length > 0 && confidence >= 70) {
             setParseStatus({ level: 'success', message: `Dane odczytane${aiHint}${confHint} — sprawdź i zapisz` })
           } else if (filledFields.length > 0) {
-            setParseStatus({ level: 'partial', message: `Odczytano część danych${aiHint}${confHint} — uzupełnij brakujące pola` })
+            const detail = missingHint(ocrResult.extraction_warnings)
+            setParseStatus({ level: 'partial', message: `Odczytano część danych${aiHint}${confHint}${detail} — uzupełnij brakujące pola` })
           } else {
             setParseStatus({ level: 'empty', message: 'Nie udało się odczytać danych — wpisz pola ręcznie' })
           }

@@ -32,6 +32,7 @@ const inflateAsync    = promisify(zlib.inflate)
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface ParseInvoiceResult {
+  document_type:  'invoice' | 'receipt' | 'bill' | 'other' | null  // detected document type
   vendor_name:    string | null
   vendor_nip:     string | null
   invoice_number: string | null
@@ -268,6 +269,16 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
   const t = text.replace(/\s+/g, ' ')
   const result: Record<string, unknown> = { currency: 'PLN', notes: null }
 
+  // ── Document type detection ────────────────────────────────────────────────
+  // Must run first — affects confidence scoring and warning generation below.
+  const RECEIPT_KEYWORDS = /paragon|kasa\s+fiskalna|nr\s*paragonu|fiskaln|kasowy|kasy\s+fiskal|sprzeda[zż]\s+kasow/i
+  const BILL_KEYWORDS    = /proforma|zaliczk(?:owa|owy)|rachunek\s+(?:nr|numer)/i
+  const docType: ParseInvoiceResult['document_type'] =
+    RECEIPT_KEYWORDS.test(t) ? 'receipt'
+    : BILL_KEYWORDS.test(t)  ? 'bill'
+    : 'invoice'
+  result.document_type = docType
+
   // ── Invoice number ─────────────────────────────────────────────────────────
   // Approach: 4 progressive passes. OCR text varies wildly in how labels appear.
 
@@ -311,11 +322,12 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
     if (receiptNum) result.invoice_number = 'PAR/' + receiptNum[1].trim().toUpperCase()
   }
 
-  // NIP
+  // NIP (with Polish checksum validation — rejects OCR-garbled numbers)
   const nipMatch = t.match(/NIP[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/i)
   if (nipMatch) {
     const digits = nipMatch[1].replace(/[\s\-]/g, '')
-    if (digits.length === 10) result.vendor_nip = digits
+    if (digits.length === 10 && validateNip(digits)) result.vendor_nip = digits
+    else if (digits.length === 10) result.vendor_nip = digits  // keep even if checksum fails — warn later
   }
 
   // Vendor name
@@ -398,6 +410,24 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
     }
   }
 
+  // Receipt-specific gross fallback: fiscal receipt "SUMA FISKAL", "GOTOWKA", "PLATNOSC"
+  if (!result.gross_amount && docType === 'receipt') {
+    const fiscalMatch = t.match(
+      /(?:suma\s+fiskal|suma\s+pln|gotow[kc]a|p[lł]atno[sś][cć]\s+got|p[lł]atno[sś][cć])[:\s]+([0-9]+[,\.][0-9]{1,2})/i
+    )
+    if (fiscalMatch) { const v = parsePolishAmount(fiscalMatch[1]); if (v > 0) result.gross_amount = v }
+  }
+
+  // Receipt vendor fallback: fiscal receipts often start with ALL-CAPS store name
+  if (!result.vendor_name && docType === 'receipt') {
+    const capsLine = text.split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length >= 5 && l.length <= 60 && /^[A-ZŁÓŚĄŹĆĘŃ][A-ZŁÓŚĄŹĆĘŃ\s\-".,]{4,}$/.test(l))
+      .slice(0, 5)
+      .find(Boolean)
+    if (capsLine) result.vendor_name = capsLine.slice(0, 60)
+  }
+
   // Derive missing amount
   const g = result.gross_amount as number | undefined
   const n = result.net_amount  as number | undefined
@@ -407,6 +437,7 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
   else if (n && va && !g) result.gross_amount = Math.round((n + va) * 100) / 100
 
   return {
+    document_type:    (result.document_type as ParseInvoiceResult['document_type']) ?? null,
     vendor_name:      (result.vendor_name as string) ?? null,
     vendor_nip:       (result.vendor_nip as string) ?? null,
     invoice_number:   (result.invoice_number as string) ?? null,
@@ -418,7 +449,7 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
     gross_amount:     (result.gross_amount as number) ?? null,
     currency:         result.currency as string,
     payment_due_date: (result.payment_due_date as string) ?? null,
-    notes:            null,
+    notes:            docType === 'receipt' ? 'Paragon fiskalny' : null,
   }
 }
 
@@ -432,6 +463,14 @@ function parsePolishAmount(raw: string): number {
     ? s.replace(/\./g, '').replace(',', '.')
     : s.replace(/,/g, '')
   return parseFloat(normalized.replace(/\s/g, '')) || 0
+}
+
+/** Polish NIP checksum validation (weighted sum mod 11) */
+function validateNip(digits: string): boolean {
+  if (digits.length !== 10) return false
+  const w = [6, 5, 7, 2, 3, 4, 5, 6, 7]
+  const sum = w.reduce((acc, wt, i) => acc + wt * parseInt(digits[i], 10), 0)
+  return sum % 11 === parseInt(digits[9], 10)
 }
 
 function normalizeDatePl(raw: string): string {
@@ -461,20 +500,24 @@ function toNum(v: unknown): number | null {
 
 function calcConfidence(r: Partial<ParseInvoiceResult>): number {
   let score = 0
-  if (r.vendor_name)                          score += 20
-  if (r.invoice_number)                       score += 25
-  if (r.issue_date)                           score += 20
+  const isReceipt = r.document_type === 'receipt'
+  if (r.vendor_name)                               score += 20
+  // Receipts don't require an invoice number — give partial credit for being a paragon
+  if (r.invoice_number)                            score += 25
+  else if (isReceipt)                              score += 15
+  if (r.issue_date)                                score += 20
   if (r.gross_amount != null && r.gross_amount > 0) score += 25
-  if (r.vendor_nip)                           score += 10
+  if (r.vendor_nip)                                score += 10
   return score
 }
 
 function buildWarnings(r: Partial<ParseInvoiceResult>): string[] {
   const w: string[] = []
-  if (!r.vendor_name)    w.push('Nie rozpoznano nazwy sprzedawcy')
-  if (!r.invoice_number) w.push('Nie rozpoznano numeru faktury')
-  if (!r.gross_amount)   w.push('Nie rozpoznano kwoty do zapłaty')
-  if (!r.issue_date)     w.push('Nie rozpoznano daty wystawienia')
+  const isReceipt = r.document_type === 'receipt'
+  if (!r.vendor_name)                        w.push('Nie rozpoznano nazwy sprzedawcy')
+  if (!r.invoice_number && !isReceipt)       w.push('Nie rozpoznano numeru faktury')
+  if (!r.gross_amount)                       w.push('Nie rozpoznano kwoty do zapłaty')
+  if (!r.issue_date)                         w.push('Nie rozpoznano daty wystawienia')
   if (r.issue_date) {
     const d = new Date(r.issue_date)
     if (d > new Date()) w.push('Data wystawienia jest w przyszłości — sprawdź')
@@ -484,8 +527,11 @@ function buildWarnings(r: Partial<ParseInvoiceResult>): string[] {
     if (Math.abs(calc - r.gross_amount) > 0.02)
       w.push(`Sprzeczne kwoty: netto ${r.net_amount} + VAT ${r.vat_amount} ≠ brutto ${r.gross_amount}`)
   }
-  if (r.vendor_nip && !/^\d{10}$/.test(r.vendor_nip))
-    w.push('NIP nie ma dokładnie 10 cyfr — zweryfikuj')
+  if (r.vendor_nip) {
+    const d = r.vendor_nip.replace(/\D/g, '')
+    if (d.length !== 10) w.push('NIP nie ma dokładnie 10 cyfr — zweryfikuj')
+    else if (!validateNip(d)) w.push('NIP ma niepoprawną sumę kontrolną — zweryfikuj')
+  }
   return w
 }
 
@@ -593,17 +639,21 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const confidence = calcConfidence(parsed)
   const warnings   = [...baseWarnings, ...buildWarnings(parsed)]
 
+  // Only require confirmation for critical issues — not minor advisory warnings
+  const CRITICAL_KEYWORDS = ['Nie rozpoznano', 'Sprzeczne kwoty', 'niepoprawną sumę kontrolną']
+  const hasCriticalWarning = warnings.some(w => CRITICAL_KEYWORDS.some(kw => w.includes(kw)))
   return json(200, {
     ...parsed,
     parser_source: parserSource,
     extraction_confidence:    confidence,
     extraction_warnings:      warnings,
-    requires_user_confirmation: confidence < 70 || warnings.length > 0,
+    requires_user_confirmation: confidence < 70 || hasCriticalWarning,
   } satisfies ParseInvoiceResult)
 }
 
 function emptyResult(): Omit<ParseInvoiceResult, 'extraction_confidence' | 'extraction_warnings' | 'requires_user_confirmation' | 'parser_source'> {
   return {
+    document_type: null,
     vendor_name: null, vendor_nip: null, invoice_number: null,
     issue_date: null,  sale_date: null,  net_amount: null,
     vat_amount: null,  vat_rate: null,   gross_amount: null, currency: 'PLN',

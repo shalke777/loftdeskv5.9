@@ -8,22 +8,24 @@ interface Props {
 const CONFIG = {
   high:    { icon: '✅', cls: 'exp-ocr-badge exp-ocr-badge--high',    label: 'Dane odczytane — sprawdź i zapisz' },
   partial: { icon: '🔍', cls: 'exp-ocr-badge exp-ocr-badge--partial', label: 'Częściowe rozpoznanie — uzupełnij brakujące pola' },
-  empty:   { icon: '✏️', cls: 'exp-ocr-badge exp-ocr-badge--empty',   label: 'Wpisz dane ręcznie — OCR nie odczytał wystarczająco' },
+  weak:    { icon: '⚠️', cls: 'exp-ocr-badge exp-ocr-badge--partial', label: 'Słaby odczyt — sprawdź każde pole przed zapisem' },
+  empty:   { icon: '✏️', cls: 'exp-ocr-badge exp-ocr-badge--empty',   label: 'Wpisz dane ręcznie — brak wystarczającego odczytu' },
 }
 
 export function ExpenseConfidenceBadge({ confidence, warnings }: Props) {
   const level: keyof typeof CONFIG =
     confidence >= 70 ? 'high'
-    : confidence >= 30 ? 'partial'
+    : confidence >= 45 ? 'partial'
+    : confidence >= 15 ? 'weak'
     : 'empty'
 
   const { icon, cls, label } = CONFIG[level]
 
-  // Filter out only non-obvious warnings (skip the generic field-missing ones that
-  // duplicate what the empty field already communicates visually in the form).
+  // Show ALL actionable warnings — including "Nie rozpoznano X" which tell the user
+  // exactly what fields are missing. Only suppress the generic manual-entry fallback.
   const notable = (warnings ?? []).filter(w =>
-    !w.startsWith('Nie rozpoznano') &&
-    !w.includes('uzupełnij dane ręcznie')
+    !w.includes('uzupełnij dane ręcznie') &&
+    !w.startsWith('Brak pliku')
   )
 
   return (
