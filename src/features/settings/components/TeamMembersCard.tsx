@@ -49,7 +49,7 @@ export function TeamMembersCard() {
       {/* Current members */}
       <div style={{ marginTop: 16 }}>
         <Table
-          data={team}
+          data={team as Record<string, unknown>[]}
           columns={[
             { key: 'full_name', header: 'Użytkownik' },
             { key: 'email', header: 'E-mail' },

@@ -72,8 +72,8 @@ export const settingsApi = {
         ksef_token: null,
       }))
     }
-    const { data: profile } = await supabase.from('profiles').select('id, email, full_name, company, plan, ksef_env, ksef_nip, ksef_token').eq('id', scope.userId).maybeSingle()
-    return profile ? [{ id: profile.id, email: profile.email, full_name: profile.full_name, company_id: companyId, company_name: profile.company, role: 'owner', plan: profile.plan, ksef_env: profile.ksef_env, ksef_nip: profile.ksef_nip, ksef_token: profile.ksef_token }] : []
+    const { data: profile } = await supabase.from('profiles').select('id, email, full_name, company, plan').eq('id', scope.userId).maybeSingle()
+    return profile ? [{ id: profile.id, email: profile.email, full_name: profile.full_name, company_id: companyId, company_name: profile.company, role: 'owner', plan: profile.plan, ksef_env: 'test', ksef_nip: null, ksef_token: null }] : []
   },
 
   async invitations(companyId: string) {

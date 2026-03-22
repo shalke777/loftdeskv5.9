@@ -241,7 +241,6 @@ export interface CostApproval {
   project_id: string;
   expense_id: string;
   thread_id: string | null;
-  portal_token_id: string | null;
   status: ApprovalStatus;
   snapshot_amount_gross: number | null;
   snapshot_description: string | null;

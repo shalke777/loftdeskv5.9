@@ -113,13 +113,13 @@ export const billingApi = {
       }
     }
 
-    const { data: profile } = await supabase.from('profiles').select('company, plan, ksef_token').eq('id', scope.userId).maybeSingle()
+    const { data: profile } = await supabase.from('profiles').select('company, plan').eq('id', scope.userId).maybeSingle()
     const currentPlan = ((profile?.plan as BillingPlan | null) ?? 'free')
     return {
       companyName: profile?.company ?? 'LoftDesk Workspace',
       companyId: scope.companyId,
       currentPlan,
-      ksefReady: Boolean(profile?.ksef_token),
+      ksefReady: false, // ksef columns only exist on companies table (multi-tenant)
       subscriptionStatus: 'none' as SubscriptionStatus,
       trialEndsAt: null,
       subscriptionPeriodEnd: null,
