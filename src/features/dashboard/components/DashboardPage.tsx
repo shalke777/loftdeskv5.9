@@ -1,4 +1,4 @@
-import { ArrowRight, BookText, FileText, FolderKanban, MessageSquareText, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
+import { BookText, FileText, FolderKanban, MessageSquareText, Receipt, TrendingUp, Users } from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
@@ -62,18 +62,7 @@ export function DashboardPage() {
       {/* ── Reszta dashboardu — ukryta na mobile ─────────────────────── */}
       <div className="dashboard-desktop-content">
 
-      <section className="dashboard-hero">
-        <Card className="highlight-card">
-          <span className="hero__eyebrow" style={{ background: 'rgba(255,255,255,.14)', color: 'white' }}>LoftDesk</span>
-          <h2 style={{ fontSize: 34, marginBottom: 10, color: '#e3ded7' }}>System do dokumentów i realizacji dla firm budowlanych oraz wykończeniowych.</h2>
-          <p>Łączy wycenę, umowę, fakturę, portal klienta, projekty i KSeF w jednym miejscu — bez ciężaru ERP.</p>
-          <div className="hero__actions">
-            <Button onClick={() => navigate({ to: '/estimates' })} icon={<ArrowRight size={16} />}>Przejdź do kosztorysów</Button>
-            <Button variant="secondary" onClick={() => navigate({ to: '/settings' })} icon={<Settings size={16} />}>Ustawienia firmy</Button>
-          </div>
-        </Card>
-
-        <Card className="subtle-panel">
+      <Card className="subtle-panel" style={{ marginBottom: 18 }}>
           <div className="toolbar" style={{ marginBottom: 12 }}>
             <div>
               <h3>Szybkie akcje</h3>
@@ -99,7 +88,6 @@ export function DashboardPage() {
             })}
           </div>
         </Card>
-      </section>
 
       <div className="stats-grid">
         {stats.map((stat) => (

@@ -34,7 +34,7 @@ export function LoginForm() {
         <Input label="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="twoj@email.pl" />
         <Input label="Hasło" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
       </div>
-      <div className="actions-row">
+      <div className="actions-row" style={{ justifyContent: 'center' }}>
         <Button
           loading={loading}
           onClick={async () => {
