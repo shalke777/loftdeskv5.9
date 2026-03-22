@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { clientsApi } from '@/features/clients/api/clients.api'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useToast } from '@/shared/hooks/useToast'
+import { translateError } from '@/shared/lib/errorMessages'
 import type { Client } from '@/entities/client/model'
 
 const clientKeys = {
@@ -16,15 +17,15 @@ export function useClients() {
 
 export function useCreateClient() {
   const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast()
-  return useMutation({ mutationFn: (input: Omit<Client, 'id' | 'created_at'>) => clientsApi.create(input), onSuccess: () => { qc.invalidateQueries({ queryKey: clientKeys.list(companyId) }); qc.invalidateQueries({ queryKey: ['onboarding-progress', companyId] }); toast.success('Klient dodany') } })
+  return useMutation({ mutationFn: (input: Omit<Client, 'id' | 'created_at'>) => clientsApi.create(input), onSuccess: () => { qc.invalidateQueries({ queryKey: clientKeys.list(companyId) }); qc.invalidateQueries({ queryKey: ['onboarding-progress', companyId] }); toast.success('Klient dodany') }, onError: (error) => toast.error('Nie udało się dodać klienta', translateError(error)) })
 }
 
 export function useUpdateClient() {
   const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast()
-  return useMutation({ mutationFn: ({ id, input }: { id: string; input: Partial<Client> }) => clientsApi.update(id, input, companyId), onSuccess: () => { qc.invalidateQueries({ queryKey: clientKeys.list(companyId) }); toast.success('Klient zaktualizowany') } })
+  return useMutation({ mutationFn: ({ id, input }: { id: string; input: Partial<Client> }) => clientsApi.update(id, input, companyId), onSuccess: () => { qc.invalidateQueries({ queryKey: clientKeys.list(companyId) }); toast.success('Klient zaktualizowany') }, onError: (error) => toast.error('Nie udało się zaktualizować klienta', translateError(error)) })
 }
 
 export function useDeleteClient() {
   const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast()
-  return useMutation({ mutationFn: (id: string) => clientsApi.delete(id, companyId), onSuccess: () => { qc.invalidateQueries({ queryKey: clientKeys.list(companyId) }); toast.info('Klient usunięty') } })
+  return useMutation({ mutationFn: (id: string) => clientsApi.delete(id, companyId), onSuccess: () => { qc.invalidateQueries({ queryKey: clientKeys.list(companyId) }); toast.info('Klient usunięty') }, onError: (error) => toast.error('Nie udało się usunąć klienta', translateError(error)) })
 }

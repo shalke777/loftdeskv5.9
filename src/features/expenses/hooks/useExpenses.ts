@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { expensesApi, ExpenseInvoice, ParsedExpenseData } from '../api/expenses.api'
+import { useToast } from '@/shared/hooks/useToast'
 
 export const useExpenses = (companyId: string) =>
   useQuery({
@@ -11,6 +12,7 @@ export const useExpenses = (companyId: string) =>
 
 export const useCreateExpense = (companyId: string) => {
   const qc = useQueryClient()
+  const toast = useToast()
   return useMutation({
     mutationFn: (input: {
       fileUrl?: string
@@ -18,23 +20,28 @@ export const useCreateExpense = (companyId: string) => {
       parsed?: ParsedExpenseData
       projectId?: string | null
     }) => expensesApi.create({ companyId, ...input }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses', companyId] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['expenses', companyId] }); toast.success('Koszt zapisany') },
+    onError: (error: any) => toast.error('Nie udało się zapisać kosztu', error?.message ?? 'Spróbuj ponownie.'),
   })
 }
 
 export const useUpdateExpense = (companyId: string) => {
   const qc = useQueryClient()
+  const toast = useToast()
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<ExpenseInvoice> }) =>
       expensesApi.update(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses', companyId] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['expenses', companyId] }); toast.success('Koszt zaktualizowany') },
+    onError: (error: any) => toast.error('Nie udało się zaktualizować kosztu', error?.message ?? 'Spróbuj ponownie.'),
   })
 }
 
 export const useDeleteExpense = (companyId: string) => {
   const qc = useQueryClient()
+  const toast = useToast()
   return useMutation({
     mutationFn: (id: string) => expensesApi.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses', companyId] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['expenses', companyId] }); toast.success('Koszt usunięty') },
+    onError: (error: any) => toast.error('Nie udało się usunąć kosztu', error?.message ?? 'Spróbuj ponownie.'),
   })
 }

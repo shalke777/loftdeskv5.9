@@ -71,10 +71,12 @@ export function ProjectsPage() {
   )
 
   async function submit(input: any) {
-    if (editing) await updateProject.mutateAsync({ id: editing.id, input })
-    else await createProject.mutateAsync(input)
-    setEditing(null)
-    setOpen(false)
+    try {
+      if (editing) await updateProject.mutateAsync({ id: editing.id, input })
+      else await createProject.mutateAsync(input)
+      setEditing(null)
+      setOpen(false)
+    } catch { /* error handled by hook's onError */ }
   }
 
   function handleEdit(project: Project) { setEditing(project); setOpen(true) }
