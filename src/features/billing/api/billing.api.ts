@@ -2,6 +2,7 @@ import { PLAN_DEFS } from '@/shared/lib/constants'
 import { demoDb } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { getDataScope } from '@/shared/lib/dataScope'
+import { getAppOrigin } from '@/shared/lib/native'
 
 export type BillingPlan = keyof typeof PLAN_DEFS
 
@@ -148,7 +149,7 @@ export const billingApi = {
     const { data: { session } } = await supabase.auth.getSession()
     const accessToken = session?.access_token
     if (!accessToken) throw new Error('Nie zalogowany. Zaloguj się i spróbuj ponownie.')
-    const res = await fetch('/api/stripe/checkout', {
+    const res = await fetch(`${getAppOrigin()}/api/stripe/checkout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -157,8 +158,8 @@ export const billingApi = {
       body: JSON.stringify({
         priceId: resolvedPriceId,
         companyId,
-        successUrl: `${window.location.origin}/billing?checkout=success`,
-        cancelUrl: `${window.location.origin}/billing?checkout=cancel`,
+        successUrl: `${getAppOrigin()}/billing?checkout=success`,
+        cancelUrl: `${getAppOrigin()}/billing?checkout=cancel`,
       }),
     })
     if (!res.ok) {
@@ -173,7 +174,7 @@ export const billingApi = {
     const { data: { session } } = await supabase.auth.getSession()
     const accessToken = session?.access_token
     if (!accessToken) throw new Error('Nie zalogowany. Zaloguj się i spróbuj ponownie.')
-    const res = await fetch('/api/stripe/portal', {
+    const res = await fetch(`${getAppOrigin()}/api/stripe/portal`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -181,7 +182,7 @@ export const billingApi = {
       },
       body: JSON.stringify({
         companyId,
-        returnUrl: `${window.location.origin}/billing`,
+        returnUrl: `${getAppOrigin()}/billing`,
       }),
     })
     if (!res.ok) {

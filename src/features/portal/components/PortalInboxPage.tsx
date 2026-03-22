@@ -7,6 +7,7 @@ import { useToast } from '@/shared/hooks/useToast'
 import { usePortalTokens, useDeactivatePortalToken } from '@/features/portal/hooks/usePortalData'
 import { usePortalInbox } from '@/features/portal/hooks/usePortalInbox'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { getAppOrigin } from '@/shared/lib/native'
 
 type FilterKey = 'active' | 'all' | 'inactive'
 type SortKey = 'activity' | 'unread' | 'client' | 'estimate'
@@ -57,7 +58,7 @@ export function PortalInboxPage() {
 
   if (isLoading) return <Spinner />
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const origin = getAppOrigin()
 
   return (
     <div className="portal-page">
