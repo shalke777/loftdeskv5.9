@@ -285,8 +285,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   const useVision = !!isValidImageMime
 
-  // Use gpt-4.5-preview for all extraction (vision and text)
-  const DEFAULT_OPENAI_MODEL = 'gpt-4.5-preview'
+  // Use gpt-4o as default — stable, vision-capable, well-tested for structured extraction
+  const DEFAULT_OPENAI_MODEL = 'gpt-4o'
   const model =
     process.env.OPENAI_DEBUG_FORCE_MODEL?.trim() ||
     process.env.OPENAI_MODEL?.trim() ||
@@ -621,6 +621,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
     sale_date:                  normDate(ai.sale_date),
     net_amount:                 netAmt,
     vat_amount:                 vatAmt,
+    // Derive dominant VAT rate from line items (most common), or null
+    vat_rate: (() => {
+      const rates = lineItems.map(it => it.vat_rate).filter((r): r is number => r != null)
+      if (!rates.length) return null
+      const freq = rates.reduce((m, r) => { m.set(r, (m.get(r) ?? 0) + 1); return m }, new Map<number, number>())
+      return [...freq.entries()].sort((a, b) => b[1] - a[1])[0][0]
+    })(),
     gross_amount:               grossAmt,
     currency:                   toStr(ai.currency) ?? 'PLN',
     payment_due_date:           normDate(ai.payment_due_date),

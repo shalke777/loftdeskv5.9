@@ -39,6 +39,7 @@ export interface ParseInvoiceResult {
   sale_date:      string | null
   net_amount:     number | null
   vat_amount:     number | null
+  vat_rate:       number | null   // dominant VAT rate, e.g. 23, 8, 5 or 0
   gross_amount:   number | null
   currency:       string
   payment_due_date: string | null
@@ -304,6 +305,12 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
     if (numMatch4) result.invoice_number = numMatch4[1].trim().toUpperCase()
   }
 
+  // Pass 5: receipt / paragon number (NR XXXXX, NR: XXXXX, PARAGON NR XXXXX)
+  if (!result.invoice_number) {
+    const receiptNum = t.match(/(?:paragon\s+(?:nr|numer)?\s*|\bnr\s*[:\s])([A-Z0-9]{3,20})/i)
+    if (receiptNum) result.invoice_number = 'PAR/' + receiptNum[1].trim().toUpperCase()
+  }
+
   // NIP
   const nipMatch = t.match(/NIP[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/i)
   if (nipMatch) {
@@ -358,6 +365,12 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
   const grossMatch = t.match(/(?:do\s+zap[\u0142l]aty|razem\s+brutto|kwota\s+brutto|warto[\u015bs][\u0107c]\s+brutto|sum[ma]?\s+brutto|brutto)[:\s]+([0-9]+[\s]?[0-9]{0,3}[,.][0-9]{1,2})\s*(?:PLN|z[\u0142l]|EUR|USD)?/i)
   if (grossMatch) { const v = parsePolishAmount(grossMatch[1]); if (v > 0) result.gross_amount = v }
 
+  // Gross fallback for receipts: SUMA: 45,00 / RAZEM: 45,00 (without "brutto")
+  if (!result.gross_amount) {
+    const receiptTotal = t.match(/(?:^|\s)(?:suma|razem|total|sum[ma]?)[:\s]+([0-9]+[\s]?[0-9]{0,3}[,.][0-9]{1,2})\s*(?:PLN|z[\u0142l]|EUR|USD)?/im)
+    if (receiptTotal) { const v = parsePolishAmount(receiptTotal[1]); if (v > 0) result.gross_amount = v }
+  }
+
   // Net amount
   const netMatch = t.match(/(?:razem\s+netto|kwota\s+netto|warto[\u015bs][\u0107c]\s+netto|suma\s+netto|netto)[:\s]+([0-9]+[\s]?[0-9]{0,3}[,.][0-9]{1,2})\s*(?:PLN|z[\u0142l]|EUR)?/i)
   if (netMatch) { const v = parsePolishAmount(netMatch[1]); if (v > 0) result.net_amount = v }
@@ -365,6 +378,10 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
   // VAT
   const vatMatch = t.match(/(?:kwota\s+vat|podatek\s+vat|vat\s+razem|suma\s+vat)[:\s]+([0-9]+[\s]?[0-9]{0,3}[,.][0-9]{1,2})\s*(?:PLN|z[\u0142l]|EUR)?/i)
   if (vatMatch) { const v = parsePolishAmount(vatMatch[1]); if (v > 0) result.vat_amount = v }
+
+  // VAT rate (first recognized rate in document — single dominant rate for construction)
+  const vatRateMatch = t.match(/(?:stawka\s+vat|podatku\s+vat|vat\s*%?)[:\s]+(\d{1,2})\s*%/i)
+  if (vatRateMatch) result.vat_rate = parseInt(vatRateMatch[1], 10)
 
   // Fallback gross: look for "do zaplaty" (no diacritics from OCR) + number
   if (!result.gross_amount) {
@@ -397,6 +414,7 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
     sale_date:        (result.sale_date as string) ?? null,
     net_amount:       (result.net_amount as number) ?? null,
     vat_amount:       (result.vat_amount as number) ?? null,
+    vat_rate:         (result.vat_rate as number) ?? null,
     gross_amount:     (result.gross_amount as number) ?? null,
     currency:         result.currency as string,
     payment_due_date: (result.payment_due_date as string) ?? null,
@@ -531,8 +549,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
     extractedText = await extractTextFromPDF(buffer)
 
     // Determine whether the extracted text is actually usable
-    const PDF_KEYWORDS = ['faktura', 'fvat', 'nip', 'netto', 'brutto', 'zaplat', 'termin', 'faktur']
-    const hasUsableText = extractedText.trim().length >= 80 &&
+    const PDF_KEYWORDS = ['faktura', 'fvat', 'nip', 'netto', 'brutto', 'zaplat', 'termin', 'faktur', 'paragon', 'kasowy', 'suma', 'razem']
+    const hasUsableText = extractedText.trim().length >= 60 &&
       PDF_KEYWORDS.some(kw => extractedText.toLowerCase().includes(kw))
 
     if (!hasUsableText) {
@@ -588,7 +606,7 @@ function emptyResult(): Omit<ParseInvoiceResult, 'extraction_confidence' | 'extr
   return {
     vendor_name: null, vendor_nip: null, invoice_number: null,
     issue_date: null,  sale_date: null,  net_amount: null,
-    vat_amount: null,  gross_amount: null, currency: 'PLN',
+    vat_amount: null,  vat_rate: null,   gross_amount: null, currency: 'PLN',
     payment_due_date: null, notes: null,
   }
 }

@@ -203,6 +203,15 @@ export function ExpensesPage() {
 
         // Step C: map final result → form fields
         if (ocrResult) {
+          // Build description: include sale_date, vat_rate, buyer_nip, payment_due_date if useful
+          const descParts: string[] = []
+          if (ocrResult.sale_date && ocrResult.sale_date !== ocrResult.issue_date) descParts.push(`Data sprzedaży: ${ocrResult.sale_date}`)
+          if (ocrResult.vat_rate != null) descParts.push(`Stawka VAT: ${ocrResult.vat_rate}%`)
+          if ((ocrResult as any).buyer_nip) descParts.push(`NIP nabywcy: ${(ocrResult as any).buyer_nip}`)
+          if (ocrResult.payment_due_date) descParts.push(`Płatność do: ${ocrResult.payment_due_date}`)
+          if (ocrResult.currency && ocrResult.currency !== 'PLN') descParts.push(`Waluta: ${ocrResult.currency}`)
+          const descExtra = descParts.join(' | ')
+
           parsed = {
             invoice_number: ocrResult.invoice_number ?? undefined,
             vendor:         ocrResult.vendor_name    ?? undefined,
@@ -211,17 +220,20 @@ export function ExpensesPage() {
             amount_net:     ocrResult.net_amount     ?? undefined,
             amount_vat:     ocrResult.vat_amount     ?? undefined,
             amount_gross:   ocrResult.gross_amount   ?? undefined,
-            description:    ocrResult.notes          ?? undefined,
+            description:    ocrResult.notes
+              ? (descExtra ? `${ocrResult.notes} | ${descExtra}` : ocrResult.notes)
+              : (descExtra || undefined),
           }
 
           const confidence   = ocrResult.extraction_confidence
           const filledFields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
           const aiHint       = ocrResult.parser_source === 'ai' ? ' (AI)' : ''
+          const confHint     = confidence > 0 ? ` · ${confidence}%` : ''
 
           if (filledFields.length > 0 && confidence >= 70) {
-            setParseStatus({ level: 'success', message: `Dane odczytane${aiHint} (${filledFields.length} pola) — sprawdź i zapisz` })
+            setParseStatus({ level: 'success', message: `Dane odczytane${aiHint}${confHint} — sprawdź i zapisz` })
           } else if (filledFields.length > 0) {
-            setParseStatus({ level: 'partial', message: `Odczytano część danych${aiHint} — uzupełnij brakujące pola` })
+            setParseStatus({ level: 'partial', message: `Odczytano część danych${aiHint}${confHint} — uzupełnij brakujące pola` })
           } else {
             setParseStatus({ level: 'empty', message: 'Nie udało się odczytać danych — wpisz pola ręcznie' })
           }

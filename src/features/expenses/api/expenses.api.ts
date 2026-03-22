@@ -418,6 +418,7 @@ export interface ParseInvoiceResult {
   sale_date:        string | null
   net_amount:       number | null
   vat_amount:       number | null
+  vat_rate:         number | null   // dominant VAT rate e.g. 23, 8, 5, 0
   gross_amount:     number | null
   currency:         string
   payment_due_date: string | null
