@@ -4,12 +4,14 @@ import { Input } from '@/shared/ui/Input/Input'
 import { Button } from '@/shared/ui/Button/Button'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useCreateClient, useUpdateClient } from '@/features/clients/hooks/useClients'
+import { useToast } from '@/shared/hooks/useToast'
 import type { Client } from '@/entities/client/model'
 
 export function ClientModal({ open, onClose, initialClient }: { open: boolean; onClose: () => void; initialClient?: Client | null }) {
   const companyId = useCompanyId()
   const createClient = useCreateClient()
   const updateClient = useUpdateClient()
+  const toast = useToast()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -32,10 +34,16 @@ export function ClientModal({ open, onClose, initialClient }: { open: boolean; o
 
   async function save() {
     const payload = { company_id: companyId, name, email, phone, city, address, postal_code: postalCode, nip, contact_person: contactPerson }
-    if (initialClient?.id) await updateClient.mutateAsync({ id: initialClient.id, input: payload })
-    else await createClient.mutateAsync(payload)
-    onClose()
+    try {
+      if (initialClient?.id) await updateClient.mutateAsync({ id: initialClient.id, input: payload })
+      else await createClient.mutateAsync(payload)
+      onClose()
+    } catch {
+      toast.error('Nie udało się zapisać kontrahenta')
+    }
   }
+
+  const isPending = createClient.isPending || updateClient.isPending
 
   return (
     <Modal title={initialClient ? 'Edytuj kontrahenta' : 'Nowy kontrahent'} open={open} onClose={onClose}>
@@ -50,8 +58,8 @@ export function ClientModal({ open, onClose, initialClient }: { open: boolean; o
         <Input label="Adres" value={address} onChange={(e) => setAddress(e.target.value)} />
       </div>
       <div className="actions-row">
-        <Button variant="secondary" onClick={onClose}>Anuluj</Button>
-        <Button onClick={save}>{initialClient ? 'Zapisz zmiany' : 'Zapisz kontrahenta'}</Button>
+        <Button variant="secondary" onClick={onClose} disabled={isPending}>Anuluj</Button>
+        <Button onClick={save} loading={isPending}>{initialClient ? 'Zapisz zmiany' : 'Zapisz kontrahenta'}</Button>
       </div>
     </Modal>
   )

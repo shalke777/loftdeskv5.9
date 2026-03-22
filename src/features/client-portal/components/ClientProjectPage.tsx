@@ -4,7 +4,7 @@
 // Zakładki: Dokumenty | Chat | Akceptacje | Oś czasu
 // =============================================================================
 
-import { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import {
   useClientProject,
   useClientEstimates,
@@ -148,9 +148,9 @@ const TABS: { key: TabKey; label: string }[] = [
 // ── Zakładka Dokumenty ────────────────────────────────────────────────────────
 
 function DocumentsTab({ projectId }: { projectId: string }) {
-  const { data: estimates, isLoading: loadingEst } = useClientEstimates(projectId)
-  const { data: invoices,  isLoading: loadingInv } = useClientInvoices(projectId)
-  const { data: contracts, isLoading: loadingCon } = useClientContracts(projectId)
+  const { data: estimates, isLoading: loadingEst, isError: errorEst } = useClientEstimates(projectId)
+  const { data: invoices,  isLoading: loadingInv, isError: errorInv } = useClientInvoices(projectId)
+  const { data: contracts, isLoading: loadingCon, isError: errorCon } = useClientContracts(projectId)
 
   const loading = loadingEst || loadingInv || loadingCon
 
@@ -161,7 +161,9 @@ function DocumentsTab({ projectId }: { projectId: string }) {
       {/* Wyceny */}
       <section className="client-docs__section">
         <h4 className="client-docs__section-title">Wyceny</h4>
-        {!estimates?.length ? (
+        {errorEst ? (
+          <p className="client-docs__error">Nie udało się załadować wycen.</p>
+        ) : !estimates?.length ? (
           <p className="client-docs__empty">Wycena zostanie tu dodana przez wykonawcę.</p>
         ) : (
           <ul className="client-docs__list">
@@ -186,7 +188,9 @@ function DocumentsTab({ projectId }: { projectId: string }) {
       {/* Umowy */}
       <section className="client-docs__section">
         <h4 className="client-docs__section-title">Umowy</h4>
-        {!contracts?.length ? (
+        {errorCon ? (
+          <p className="client-docs__error">Nie udało się załadować umów.</p>
+        ) : !contracts?.length ? (
           <p className="client-docs__empty">Umowa pojawi się tu po zatwierdzeniu wyceny.</p>
         ) : (
           <ul className="client-docs__list">
@@ -206,7 +210,9 @@ function DocumentsTab({ projectId }: { projectId: string }) {
       {/* Faktury */}
       <section className="client-docs__section">
         <h4 className="client-docs__section-title">Faktury</h4>
-        {!invoices?.length ? (
+        {errorInv ? (
+          <p className="client-docs__error">Nie udało się załadować faktur.</p>
+        ) : !invoices?.length ? (
           <p className="client-docs__empty">Faktury pojawią się w trakcie realizacji projektu.</p>
         ) : (
           <ul className="client-docs__list">
@@ -242,13 +248,22 @@ function ChatTab({ projectId }: { projectId: string }) {
   const { data: messages, isLoading } = useClientMessages(projectId)
   const senderName = user?.fullName || user?.email || 'Klient'
   const sendMessage = useClientSendMessage(projectId, companyId ?? '', senderName)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = body.trim()
     if (!trimmed || !companyId) return
-    await sendMessage.mutateAsync(trimmed)
-    setBody('')
+    try {
+      await sendMessage.mutateAsync(trimmed)
+      setBody('')
+    } catch {
+      // sendMessage.isError surfaced below
+    }
   }
 
   if (isLoading) return <div className="client-tab-loading">Ładowanie wiadomości...</div>
@@ -276,6 +291,7 @@ function ChatTab({ projectId }: { projectId: string }) {
             </div>
           ))
         )}
+        <div ref={messagesEndRef} />
       </div>
       <form className="client-chat__form" onSubmit={handleSend}>
         <input
@@ -293,6 +309,9 @@ function ChatTab({ projectId }: { projectId: string }) {
           {sendMessage.isPending ? '...' : 'Wyślij'}
         </button>
       </form>
+      {sendMessage.isError && (
+        <p className="client-chat__send-error">Nie udało się wysłać wiadomości. Spróbuj ponownie.</p>
+      )}
     </div>
   )
 }
@@ -345,7 +364,7 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
             </p>
           )}
 
-          {(approval.status === 'pending_client' || approval.status === 'pending') && (
+              {(approval.status === 'pending_client' || approval.status === 'pending') && (
             <div className="client-approval-card__actions">
               <input
                 className="client-approval-card__comment"
@@ -376,6 +395,9 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
                   Odrzucam
                 </button>
               </div>
+              {respondMutation.isError && (
+                <p className="client-approval-card__error">Nie udało się zapisać odpowiedzi. Spróbuj ponownie.</p>
+              )}
             </div>
           )}
         </div>
