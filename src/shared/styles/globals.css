@@ -2586,6 +2586,22 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   font-weight: 600;
   box-shadow: var(--shadow-sm);
 }
+.client-tab__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--color-brand);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  margin-left: 4px;
+  padding: 0 3px;
+  vertical-align: middle;
+  line-height: 1;
+}
 .client-tab-panel {
   background: var(--color-card);
   border: 1px solid var(--color-border-light);
@@ -2598,6 +2614,12 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   text-align: center;
   color: var(--color-muted-foreground);
   font-size: 14px;
+}
+.client-tab-empty__hint {
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+  margin: 4px 0 0;
+  opacity: 0.8;
 }
 
 /* ── Documents tab ──────────────────────────────────────────────────────────── */
@@ -2783,6 +2805,15 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+.client-approvals__intro {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0;
+  line-height: 1.5;
 }
 .client-approval-card {
   border: 1px solid var(--color-border-light);

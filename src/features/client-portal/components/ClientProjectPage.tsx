@@ -85,6 +85,17 @@ const STAGE_STEPS = [
 ]
 const STAGE_ORDER: Record<string, number> = { offer: 0, active: 1, done: 2, cancelled: -1 }
 
+const STAGE_HINT: Record<string, string> = {
+  offer:  'Wykonawca przygotowuje lub wysłał Ci wycenę projektu.',
+  active: 'Trwają prace. Możesz śledzić postęp i akceptować zmiany poniżej.',
+  done:   'Projekt jest zakończony. Dziękujemy za zaufanie.',
+}
+
+function fmtDate(d: string | null | undefined): string | null {
+  if (!d) return null
+  return new Date(d + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
 function ProjectStageRail({ status }: { status: string }) {
   if (status === 'cancelled') {
     return (
@@ -151,7 +162,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
       <section className="client-docs__section">
         <h4 className="client-docs__section-title">Wyceny</h4>
         {!estimates?.length ? (
-          <p className="client-docs__empty">Brak wycen</p>
+          <p className="client-docs__empty">Wycena zostanie tu dodana przez wykonawcę.</p>
         ) : (
           <ul className="client-docs__list">
             {estimates.map((e: ClientEstimate) => (
@@ -176,7 +187,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
       <section className="client-docs__section">
         <h4 className="client-docs__section-title">Umowy</h4>
         {!contracts?.length ? (
-          <p className="client-docs__empty">Brak umów</p>
+          <p className="client-docs__empty">Umowa pojawi się tu po zatwierdzeniu wyceny.</p>
         ) : (
           <ul className="client-docs__list">
             {contracts.map((c: ClientContract) => (
@@ -196,7 +207,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
       <section className="client-docs__section">
         <h4 className="client-docs__section-title">Faktury</h4>
         {!invoices?.length ? (
-          <p className="client-docs__empty">Brak faktur</p>
+          <p className="client-docs__empty">Faktury pojawią się w trakcie realizacji projektu.</p>
         ) : (
           <ul className="client-docs__list">
             {invoices.map((inv: ClientInvoice) => (
@@ -247,7 +258,7 @@ function ChatTab({ projectId }: { projectId: string }) {
       <div className="client-chat__messages">
         {!messages?.length ? (
           <div className="client-chat__empty">
-            <p>Brak wiadomości. Napisz pierwszą!</p>
+            <p>Brak wiadomości — napisz do wykonawcy, odpowiemy jak najszybciej.</p>
           </div>
         ) : (
           messages.map((msg: ClientMessage) => (
@@ -296,11 +307,25 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
   if (isLoading) return <div className="client-tab-loading">Ładowanie akceptacji...</div>
 
   if (!approvals?.length) {
-    return <div className="client-tab-empty"><p>Brak pozycji do zaakceptowania.</p></div>
+    return (
+      <div className="client-tab-empty">
+        <p>Nic nie czeka teraz na zatwierdzenie.</p>
+        <p className="client-tab-empty__hint">Gdy wykonawca wyśle prośbę o akceptację, pojawi się tutaj.</p>
+      </div>
+    )
   }
+
+  const hasPending = approvals.some(
+    (a: ClientApproval) => a.status === 'pending_client' || a.status === 'pending'
+  )
 
   return (
     <div className="client-approvals">
+      {hasPending && (
+        <p className="client-approvals__intro">
+          Wykonawca prosi o akceptację poniższych pozycji. Zapoznaj się z każdą i odpowiedz — Twoja decyzja zostanie od razu przekazana.
+        </p>
+      )}
       {approvals.map((approval: ClientApproval) => (
         <div key={approval.id} className="client-approval-card">
           <div className="client-approval-card__header">
@@ -386,9 +411,9 @@ function TimelineTab({ projectId }: { projectId: string }) {
     })
   }, [projectId])
 
-  if (loading) return <div className="client-tab-loading">Ładowanie historii...</div>
-  if (error)   return <div className="client-tab-empty"><p>Nie udało się załadować osi czasu.</p></div>
-  if (!events.length) return <div className="client-tab-empty"><p>Brak wpisów na osi czasu.</p></div>
+  if (loading) return <div className="client-tab-loading">Ładowanie historii projektu...</div>
+  if (error)   return <div className="client-tab-empty"><p>Nie udało się załadować historii.</p><p className="client-tab-empty__hint">Odśwież stronę lub skontaktuj się z wykonawcą.</p></div>
+  if (!events.length) return <div className="client-tab-empty"><p>Historia projektu jest pusta.</p><p className="client-tab-empty__hint">Pierwsze wpisy pojawią się, gdy zaczną się prace.</p></div>
 
   return (
     <ul className="client-timeline">
@@ -419,6 +444,10 @@ interface Props {
 export function ClientProjectPage({ projectId }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>('documents')
   const { data: project, isLoading } = useClientProject(projectId)
+  const { data: approvalsData } = useClientApprovals(projectId)
+  const pendingCount = approvalsData
+    ?.filter((a: ClientApproval) => a.status === 'pending_client' || a.status === 'pending')
+    .length ?? 0
 
   if (isLoading) {
     return <div className="client-page-loading">Ładowanie projektu...</div>
@@ -427,7 +456,8 @@ export function ClientProjectPage({ projectId }: Props) {
   if (!project) {
     return (
       <div className="client-page-error">
-        <p>Projekt nie istnieje lub nie masz do niego dostępu.</p>
+        <p>Nie możemy załadować tego projektu.</p>
+        <p>Sprawdź link lub skontaktuj się z wykonawcą.</p>
       </div>
     )
   }
@@ -450,14 +480,17 @@ export function ClientProjectPage({ projectId }: Props) {
         )}
         {(project.start_date || project.end_date) && (
           <div className="client-project-header__dates">
-            {project.start_date && <span>Od: {project.start_date}</span>}
-            {project.end_date   && <span>Do: {project.end_date}</span>}
+            {project.start_date && <span>Planowany start: {fmtDate(project.start_date)}</span>}
+            {project.end_date   && <span>Planowane zakończenie: {fmtDate(project.end_date)}</span>}
           </div>
         )}
       </div>
 
       {/* Stage progress rail — always visible */}
       <ProjectStageRail status={project.status} />
+      {STAGE_HINT[project.status] && (
+        <p className="client-stage-hint">{STAGE_HINT[project.status]}</p>
+      )}
 
       {/* Zakładki */}
       <div className="client-tabs">
@@ -468,6 +501,9 @@ export function ClientProjectPage({ projectId }: Props) {
             onClick={() => setActiveTab(tab.key)}
           >
             {tab.label}
+            {tab.key === 'approvals' && pendingCount > 0 && (
+              <span className="client-tab__badge">{pendingCount}</span>
+            )}
           </button>
         ))}
       </div>

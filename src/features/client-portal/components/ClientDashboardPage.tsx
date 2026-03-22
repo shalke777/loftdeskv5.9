@@ -42,10 +42,10 @@ function ProjectCard({ project }: { project: ClientProject }) {
       )}
       <div className="client-project-card__dates">
         {project.start_date && (
-          <span>Od: {project.start_date}</span>
+          <span>Start: {new Date(project.start_date + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
         )}
         {project.end_date && (
-          <span>Do: {project.end_date}</span>
+          <span>Koniec: {new Date(project.end_date + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
         )}
       </div>
     </Link>
