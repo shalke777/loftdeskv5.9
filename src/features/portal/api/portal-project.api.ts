@@ -34,7 +34,7 @@ export async function createProjectPortalToken(_opts: {
   company_id:  string
   project_id:  string
   client_name: string
-}): Promise<never> {
+}): Promise<{ raw_token: string; id: string }> {
   throw new Error(
     'project_portal_tokens table has been removed (migration 051). ' +
     'Use /.netlify/functions/send-document with project_id to invite clients.',
