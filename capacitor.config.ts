@@ -3,21 +3,24 @@ import type { CapacitorConfig } from '@capacitor/cli'
 // =============================================================================
 // Capacitor configuration for LoftDesk iOS / Android native shell
 // =============================================================================
-// Build steps (after `npm run build`):
-//   iOS:     npx cap add ios   → npx cap sync → npx cap open ios
-//   Android: npx cap add android → npx cap sync → npx cap open android
+// Build steps (requires macOS + Xcode for iOS):
+//   1. npm run build             ← must have VITE_APP_URL=https://loftdesk.pl set
+//   2. npx cap sync ios          ← copies dist/ into ios/App/App/public/
+//   3. npx cap open ios          ← opens Xcode (macOS only)
+//   4. In Xcode: select device → Run
+//
+// VITE_APP_URL — REQUIRED for native builds:
+//   Create .env.production (gitignored) with:
+//     VITE_APP_URL=https://loftdesk.pl
+//   This ensures Netlify function URLs are absolute and Supabase auth redirects
+//   point to the production server instead of capacitor://localhost.
 //
 // Auth deep links (magic link / OTP):
-//   - For custom URL scheme interception set VITE_APP_URL=https://loftdesk.pl
-//     and configure that URL in Supabase → Authentication → URL Configuration.
 //   - For Universal Links (recommended production setup):
-//     iOS:     add Associated Domains entitlement (applinks:loftdesk.pl)
-//              and host /.well-known/apple-app-site-association on loftdesk.pl
-//     Android: add Intent Filter + Digital Asset Links JSON on loftdesk.pl
+//     iOS: add Associated Domains entitlement (applinks:loftdesk.pl)
+//          and host /.well-known/apple-app-site-association on loftdesk.pl
+//   - Add https://loftdesk.pl/auth/callback in Supabase → Auth → URL Configuration
 //
-// Server functions (Netlify):
-//   Set VITE_APP_URL=https://loftdesk.pl in the native build env so that
-//   all /.netlify/functions/* calls resolve to the production server.
 // =============================================================================
 
 const config: CapacitorConfig = {
@@ -33,7 +36,14 @@ const config: CapacitorConfig = {
   },
 
   plugins: {
-    // Future: push notifications, camera, etc. go here
+    // Keyboard: resize mode = "body" shifts the whole WebView when the soft keyboard
+    // appears, which is the correct behavior for scroll-based forms on iPhone.
+    // This prevents forms from being hidden under the keyboard.
+    Keyboard: {
+      resize: 'body',
+      resizeOnFullScreen: true,
+    },
+    // Future: SplashScreen, PushNotifications, Camera, etc.
   },
 }
 

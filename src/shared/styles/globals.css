@@ -105,7 +105,7 @@ h4 {
 code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 ::selection { background: rgba(220, 38, 38, .14); color: var(--color-text-primary); }
 
-.page-loading, .auth-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.page-loading, .auth-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; overflow-y: auto; padding-top: max(24px, calc(24px + env(safe-area-inset-top, 0px))); }
 .auth-shell { background: var(--color-bg); }
 .auth-card { width: min(920px, 100%); }
 
@@ -298,7 +298,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .empty-state { text-align: center; padding: 36px; color: var(--color-text-secondary); }
 .spinner { width: 32px; height: 32px; border-radius: 999px; border: 3px solid var(--color-border); border-top-color: var(--color-brand); animation: spin .8s linear infinite; }
 
-.modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.40); display: grid; place-items: start center; padding: 20px; z-index: 40; backdrop-filter: blur(6px); overscroll-behavior: contain; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.40); display: grid; place-items: start center; padding: 20px; padding-top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px)); z-index: 40; backdrop-filter: blur(6px); overscroll-behavior: contain; }
 .modal { width: min(780px, 100%); background: var(--color-surface); border-radius: 24px; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--color-border); margin-block: auto; }
 .modal--md { width: min(640px, 100%); background: var(--color-surface); border: 1px solid var(--color-border); }
 .modal--lg { width: min(880px, 100%); background: var(--color-surface); border: 1px solid var(--color-border); }
@@ -336,7 +336,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .public-shell--portal { background: var(--color-bg); }
 .public-shell--landing { background: var(--color-bg); }
 
-.toast-viewport { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 12px; z-index: 50; }
+.toast-viewport { position: fixed; right: 16px; bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px)); display: grid; gap: 12px; z-index: 50; }
 .toast { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-width: 280px; max-width: 360px; background: var(--color-surface); border: 1px solid var(--color-border); padding: 14px; border-radius: 16px; box-shadow: var(--shadow-md); }
 .toast--success { border-color: var(--color-success); }
 .toast--error { border-color: var(--color-error); }
@@ -399,6 +399,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   }
   .mobile-nav__link { color: rgba(255,255,255,.72); display: grid; place-items: center; gap: 4px; font-size: 11px; padding: 8px; border-radius: 14px; }
   .mobile-nav__link--active { background: rgba(255,255,255,.10); color: #fff; }
+  /* Toast: push up above mobile nav + safe area (mobile nav ~70px + inset + 10px gap) */
+  .toast-viewport { bottom: calc(90px + env(safe-area-inset-bottom, 0px) + 8px); }
   .landing-nav { flex-direction: column; align-items: flex-start; }
   .hero h1 { font-size: 40px; }
   .legal-gate__card { max-height: 92vh; overflow-y: auto; margin: 16px; }

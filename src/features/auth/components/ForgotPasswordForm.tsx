@@ -5,6 +5,7 @@ import { Input } from '@/shared/ui/Input/Input'
 import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
 import { supabase } from '@/shared/lib/supabase'
+import { getAppOrigin } from '@/shared/lib/native'
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState('')
@@ -29,7 +30,7 @@ export function ForgotPasswordForm() {
             setLoading(true)
             try {
               if (supabase) {
-                const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/auth/callback` })
+                const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${getAppOrigin()}/auth/callback` })
                 if (error) throw error
               }
               toast.success('Link wysłany', `Sprawdź skrzynkę ${email} — znajdziesz tam link do resetu hasła.`)
