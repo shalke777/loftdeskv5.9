@@ -79,7 +79,7 @@ export function EstimatesPage() {
   return (
     <div className="page">
       <div className="toolbar">
-        <PageHeader title="Wyceny" subtitle="Edytowalne pozycje, portal klienta i workflow do umów i faktur." />
+        <PageHeader title="Wyceny" subtitle="Przygotuj ofertę, wyślij do klienta i przekształć w umowę jednym kliknięciem." />
         <div className="toolbar__actions">
           {canCreate && (
             <PlanLimitGuard resource="estimates">
@@ -108,7 +108,7 @@ export function EstimatesPage() {
       ) : visible.length === 0 ? (
         <EmptyState
           title={filterStatus === 'all' ? 'Brak wycen' : 'Brak wycen w tej kategorii'}
-          description={filterStatus === 'all' ? 'Dodaj pierwszą wycenę, aby uruchomić moduł ofert.' : 'Zmień filtr lub utwórz nową wycenę.'}
+          description={filterStatus === 'all' ? 'Stwórz pierwszą wycenę dla klienta — z pozycjami, stawkami VAT i gotową do PDF.' : 'Zmień filtr lub utwórz nową wycenę.'}
           action={canCreate && filterStatus === 'all'
             ? <Button onClick={() => { setEditing(null); setOpen(true) }}>Utwórz wycenę</Button>
             : undefined}

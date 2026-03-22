@@ -71,7 +71,7 @@ export function InvoicesPage() {
   return (
     <div className="page">
       <div className="toolbar">
-        <PageHeader title="Faktury" subtitle="Edycja do momentu wysyłki do KSeF, transze z umowy, PDF/XML i pełne rozbicie VAT." />
+        <PageHeader title="Faktury" subtitle="Faktury powiązane z umowami, gotowe do KSeF — edytuj, drukuj PDF i wysyłaj do Ministerstwa Finansów." />
         <div className="toolbar__actions">
           {canCreate && (
             <PlanLimitGuard resource="invoices">
@@ -100,7 +100,7 @@ export function InvoicesPage() {
       ) : visible.length === 0 ? (
         <EmptyState
           title={filterStatus === 'all' ? 'Brak faktur' : 'Brak faktur w tej kategorii'}
-          description={filterStatus === 'all' ? 'Dodaj pierwszą fakturę do modułu rozliczeń.' : 'Zmień filtr lub utwórz nową fakturę.'}
+          description={filterStatus === 'all' ? 'Wystaw pierwszą fakturę — możesz wygenerować ją bezpośrednio z wyceny lub umowy.' : 'Zmień filtr lub utwórz nową fakturę.'}
           action={canCreate && filterStatus === 'all'
             ? <Button onClick={() => { setEditing(null); setOpen(true) }}>Utwórz fakturę</Button>
             : undefined}

@@ -26,7 +26,7 @@ function formatAmount(val: number | null) {
 function statusLabel(s: ExpenseInvoice['status']) {
   const map: Record<ExpenseInvoice['status'], string> = {
     new: 'Nowa',
-    parsed: 'Sparsowana',
+    parsed: 'Odczytana',
     review: 'Do weryfikacji',
     assigned: 'Przypisana',
     error: 'Błąd',
@@ -228,7 +228,7 @@ export function ExpensesPage() {
         } else {
           // Both OCR and AI failed
           if (ocrUnavailable) {
-            setParseStatus({ level: 'ocr-unavailable', message: 'Serwer OCR niedostępny — uzupełnij pola ręcznie' })
+            setParseStatus({ level: 'ocr-unavailable', message: 'Automatyczne odczytywanie chwilowo niedostępne — uzupełnij pola ręcznie' })
           } else {
             setParseStatus({ level: 'error', message: 'Błąd odczytu — uzupełnij pola ręcznie' })
           }
@@ -239,7 +239,7 @@ export function ExpensesPage() {
         setParseStatus(
           fields.length > 0
             ? { level: 'success', message: `Dane odczytane (${fields.length} pola) — sprawdź i zapisz` }
-            : { level: 'empty', message: 'Parser uruchomiony, ale nie odczytał pól — wpisz ręcznie' }
+            : { level: 'empty', message: 'Nie udało się odczytać danych z pliku — uzupełnij pola ręcznie' }
         )
       }
 
@@ -373,7 +373,7 @@ export function ExpensesPage() {
 
   return (
     <div className="page">
-      <PageHeader title="Koszty" subtitle="Skanuj i ewidencjonuj faktury kosztowe" />
+      <PageHeader title="Koszty" subtitle="Skanuj faktury od dostawców — dane uzupełniają się automatycznie." />
 
       {/* ── Mobile quick-action bar (hidden on desktop) ──────────────── */}
       <div className="exp-mobile-actions">
@@ -464,7 +464,7 @@ export function ExpensesPage() {
         <div className="exp-empty">
           <Package size={40} />
           <p>Brak faktur kosztowych</p>
-          <span>Dodaj pierwszą fakturę korzystając ze strefy powyżej</span>
+          <span>Przeciągnij plik na stronę lub kliknij, aby dodać pierwszą fakturę kosztową.</span>
         </div>
       ) : (
         <div className="exp-table-wrap">

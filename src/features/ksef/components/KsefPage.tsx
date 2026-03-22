@@ -93,13 +93,13 @@ function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend
 
           <div style={{ marginBottom: 20 }}>
             <p style={{ fontSize: 15 }}>
-              <strong>{pendingCount}</strong> {pendingCount === 1 ? 'faktura oczekuje' : 'faktur oczekuje'} na wysyłkę do KSeF.
+              <strong>{pendingCount}</strong> {pendingCount === 1 ? 'faktura oczekuje' : pendingCount <= 4 ? 'faktury oczekują' : 'faktur oczekuje'} na wysyłkę do KSeF.
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: 12 }}>
             <Button onClick={handleSend}>
-              {`Wyślij ${pendingCount} faktur`}
+              {pendingCount === 1 ? 'Wyślij fakturę' : pendingCount <= 4 ? `Wyślij ${pendingCount} faktury` : `Wyślij ${pendingCount} faktur`}
             </Button>
             <Button variant="secondary" onClick={onClose}>Anuluj</Button>
           </div>
@@ -269,7 +269,7 @@ export function KsefPage() {
 
   return (
     <div>
-      <PageHeader title="KSeF" subtitle="Krajowy System e-Faktur · FA(2) · MF API" />
+      <PageHeader title="KSeF" subtitle="Wysyłka i odbiór faktur przez Krajowy System e-Faktur (Ministerstwo Finansów)." />
 
       <div className="grid-2">
         {/* ── SESJA ─────────────────────────────────────── */}
@@ -363,7 +363,7 @@ export function KsefPage() {
           </div>
 
           <div style={{ marginTop: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12, color: '#718096', lineHeight: 1.7 }}>
-            🔄 Mock API: automatycznie przy błędzie połączenia z serwerem KSeF
+            W razie braku połączenia z KSeF system pracuje w trybie lokalnym.
           </div>
         </Card>
       </div>
@@ -372,13 +372,13 @@ export function KsefPage() {
       <div style={{ marginTop: 24 }}>
         <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: 0 }}>
           <button style={tabStyle('queue')} onClick={() => setActiveTab('queue')}>
-            📤 Kolejka ({pending.length})
+            Kolejka ({pending.length})
           </button>
           <button style={tabStyle('received')} onClick={() => setActiveTab('received')}>
-            📥 Odebrane ({docs.length})
+            Odebrane ({docs.length})
           </button>
           <button style={tabStyle('history')} onClick={() => setActiveTab('history')}>
-            📜 Historia ({history.length})
+            Historia ({history.length})
           </button>
         </div>
 
@@ -386,11 +386,11 @@ export function KsefPage() {
           {/* ── QUEUE TAB ──────────────────────────────── */}
           {activeTab === 'queue' && (
             <div>
-              {!session && <p style={{ color: '#888', fontSize: 14 }}>Wymagana aktywna sesja KSeF.</p>}
+              {!session && <p style={{ color: '#888', fontSize: 14 }}>Zaloguj się do KSeF powyżej, aby zarządzać kolejką wysyłki.</p>}
               {pending.length === 0 ? (
                 <p style={{ color: '#888', fontSize: 14 }}>
-                  Brak faktur oczekujących na wysyłkę.<br />
-                  <span style={{ fontSize: 12 }}>Użyj „Wyślij do KSeF" w szczegółach faktury lub kliknij przycisk u góry.</span>
+                  Kolejka jest pusta.<br />
+                  <span style={{ fontSize: 12 }}>Otwórz dowolną fakturę i użyj akcji „Wyślij do KSeF”, aby dodać ją do kolejki.</span>
                 </p>
               ) : (
                 <div>
@@ -410,7 +410,7 @@ export function KsefPage() {
                   </table>
                   <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
                     <Button onClick={() => setSendModalOpen(true)} disabled={!session || processing} loading={processing}>
-                      Wyślij {pending.length} faktur
+                      {pending.length === 1 ? 'Wyślij fakturę' : pending.length <= 4 ? `Wyślij ${pending.length} faktury` : `Wyślij ${pending.length} faktur`}
                     </Button>
                   </div>
                 </div>
@@ -440,7 +440,7 @@ export function KsefPage() {
           {/* ── RECEIVED TAB ───────────────────────────── */}
           {activeTab === 'received' && (
             <div>
-              {!session && <p style={{ color: '#888', fontSize: 14 }}>Wymagana aktywna sesja KSeF.</p>}
+              {!session && <p style={{ color: '#888', fontSize: 14 }}>Zaloguj się do KSeF powyżej, aby odbierać dokumenty.</p>}
               {receiveError && (
                 <div style={{ marginBottom: 12, padding: '10px 14px', background: '#fff5f5', border: '1px solid #fc8181', borderRadius: 8, fontSize: 13, color: '#c0392b' }}>
                   <strong>Błąd odbioru:</strong> {receiveError}
@@ -451,7 +451,7 @@ export function KsefPage() {
               )}
               {docs.length === 0 ? (
                 <p style={{ color: '#888', fontSize: 14 }}>
-                  Brak odebranych dokumentów. Kliknij „Odbierz dokumenty z KSeF" aby pobrać ostatnie 30 dni.
+                  Nie odebrano jeszcze żadnych dokumentów. Kliknij „Odbierz” powyżej, aby pobrać faktury z KSeF.
                 </p>
               ) : (
                 <table className="table" style={{ fontSize: 12, width: '100%' }}>
@@ -488,7 +488,7 @@ export function KsefPage() {
                 {history.length > 0 && <Button variant="ghost" onClick={clearHistory}>Wyczyść</Button>}
               </div>
               {history.length === 0 ? (
-                <p style={{ color: '#888', fontSize: 14 }}>Brak zarejestrowanych operacji KSeF.</p>
+                <p style={{ color: '#888', fontSize: 14 }}>Historia jest pusta — pojawi się tutaj po pierwszej wysyłce lub odbiorze.</p>
               ) : (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {history.slice(0, 60).map((entry) => (

@@ -71,7 +71,7 @@ export function ContractsPage() {
   return (
     <div className="page">
       <div className="toolbar">
-        <PageHeader title="Umowy" subtitle="Wzory umów, transze płatności, edycja i podgląd PDF." />
+        <PageHeader title="Umowy" subtitle="Umowy powiązane z wycenami i projektami — z harmonogramem płatności i podpisem." />
         <div className="toolbar__actions">
           {canCreate && (
             <PlanLimitGuard resource="contracts">
@@ -100,7 +100,7 @@ export function ContractsPage() {
       ) : visible.length === 0 ? (
         <EmptyState
           title={filterStatus === 'all' ? 'Brak umów' : 'Brak umów w tej kategorii'}
-          description={filterStatus === 'all' ? 'Dodaj pierwszą umowę do modułu dokumentów.' : 'Zmień filtr lub utwórz nową umowę.'}
+          description={filterStatus === 'all' ? 'Utwórz pierwszą umowę — połącz z wycenioną robotą i ustal transze płatności.' : 'Zmień filtr lub utwórz nową umowę.'}
           action={canCreate && filterStatus === 'all'
             ? <Button onClick={() => { setEditing(null); setOpen(true) }}>Utwórz umowę</Button>
             : undefined}

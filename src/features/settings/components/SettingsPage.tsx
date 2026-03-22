@@ -57,7 +57,7 @@ export function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Ustawienia" subtitle="Tutaj trafiają dodatki i administracja. W głównym menu zostają tylko kluczowe moduły operacyjne." />
+      <PageHeader title="Ustawienia" subtitle="Dane firmy, KSeF, zespół, billing i narzędzia dodatkowe." />
       <div className="grid-2">
         <Card>
           <h3>Konto i firma</h3>
@@ -83,7 +83,7 @@ export function SettingsPage() {
             <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6b7280', minWidth: 120 }}>NIP do KSeF</span><span>{(profile as any)?.ksef_nip ?? 'brak — ustaw w danych wykonawcy'}</span></div>
             <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6b7280', minWidth: 120 }}>Token</span><span>{(profile as any)?.ksef_token ? '✅ ustawiony' : '❌ brak — ustaw poniżej'}</span></div>
           </div>
-          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>{canUseKsef ? 'Moduł aktywny w Twoim planie.' : 'Plan Free blokuje pełną integrację KSeF. Ulepsz plan, aby wysyłać faktury do KSeF.'}</p>
+          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>{canUseKsef ? 'Integracja z KSeF aktywna w Twoim planie.' : 'Integracja z KSeF dostępna od planu Business. Przejdź na wyższy plan, aby wysyłać faktury elektronicznie.'}</p>
           <div className="actions-row">
             {canUseKsef
               ? <Button variant="secondary" onClick={() => navigate({ to: '/ksef' })}>Przejdź do KSeF</Button>
@@ -109,7 +109,7 @@ export function SettingsPage() {
 
         <Card>
           <h3>Dodatkowe narzędzia</h3>
-          <p className="muted">Mniej ważne moduły są zebrane tutaj, żeby nie zaśmiecać głównego menu.</p>
+          <p className="muted">Dodatkowe narzędzia i zaawansowane ustawienia dostępne z jednego miejsca.</p>
           <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
             <HelperCard icon={<ChartColumn size={18} />} title="Raporty" text="Marża, przychód, koszty projektów i podsumowania firmy." href="/reports" />
             <HelperCard icon={<Camera size={18} />} title="Dokumentacja i odbiory" text="Zdjęcia, decyzje klienta, protokoły odbioru i standardy techniczne." href="/documentation" />

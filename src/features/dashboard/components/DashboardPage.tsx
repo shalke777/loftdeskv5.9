@@ -1,4 +1,4 @@
-import { ArrowRight, AlertTriangle, BookText, FileText, FolderKanban, MessageSquareText, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
+import { ArrowRight, BookText, FileText, FolderKanban, MessageSquareText, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Card } from '@/shared/ui/Card/Card'
@@ -17,18 +17,18 @@ import { useOnboardingProgress } from '@/features/onboarding/hooks/useOnboarding
 const WELCOME_DISMISSED_KEY = 'loftdesk-welcome-dismissed'
 
 const MOBILE_TILES = [
-  { label: 'Kontrahenci',    sub: 'Klienci i zleceniodawcy',  icon: Users,               href: '/clients'   },
+  { label: 'Kontrahenci',    sub: 'Klienci i kontrahenci',      icon: Users,               href: '/clients'   },
   { label: 'Wyceny',         sub: 'Oferty i kosztorysy',      icon: FileText,            href: '/estimates' },
   { label: 'Umowy',          sub: 'Podpisane zlecenia',        icon: BookText,            href: '/contracts' },
   { label: 'Faktury',        sub: 'Rozliczenia i KSeF',        icon: Receipt,             href: '/invoices'  },
   { label: 'Projekty',       sub: 'Realizacje i dokumenty',   icon: FolderKanban,        href: '/projects'  },
-  { label: 'Portal klienta', sub: 'Dostęp zleceniodawcy',   icon: MessageSquareText,   href: '/chat'      },
+  { label: 'Portal klienta', sub: 'Widok i komunikacja klienta', icon: MessageSquareText,   href: '/chat'      },
 ] as const
 
 const quickActions = [
-  { icon: Users,        title: 'Dodaj kontrahenta', text: 'Uzupełnij bazę inwestorów i wykonawców.',    href: '/clients'   },
+  { icon: Users,        title: 'Dodaj kontrahenta', text: 'Dodaj klientów, inwestorów i podwykonawców.',       href: '/clients'   },
   { icon: FileText,     title: 'Nowa wycena',        text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates' },
-  { icon: Receipt,      title: 'Nowa faktura',       text: 'Wystaw dokument i przygotuj XML do KSeF.',   href: '/invoices'  },
+  { icon: Receipt,      title: 'Nowa faktura',       text: 'Wystaw fakturę i wyślij ją do KSeF jednym kliknięciem.', href: '/invoices'  },
   { icon: FolderKanban, title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',     href: '/projects'  },
 ]
 
@@ -51,7 +51,6 @@ export function DashboardPage() {
   if (isLoading || !data) return <Spinner />
 
   const pipelineProjects: { id: string; name: string; number: string; status: string; clientName: string; contractValue: number; estimateValue: number; invoicedTotal: number; paidTotal: number; completeness_score?: number | null }[] = (data as any).pipelineProjects ?? []
-  const attentionProjects: { id: string; name: string; number: string; status: string; issues: string[] }[] = (data as any).attentionProjects ?? []
 
   const stats = [
     { label: 'Pipeline projektów', value: formatCurrency(data.pipeline) },
@@ -62,7 +61,7 @@ export function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title={data.companyName} subtitle={`Plan: ${(PLAN_DEFS[data.plan as keyof typeof PLAN_DEFS] ?? PLAN_DEFS.free).name}`} />
+      <PageHeader title={data.companyName} />
 
       {/* ── Mobile home — 6 kafli (tylko mobile) ─────────────────────────── */}
       <nav className="mobile-home-grid" aria-label="Główne moduły">
@@ -103,7 +102,7 @@ export function DashboardPage() {
           <div className="toolbar" style={{ marginBottom: 12 }}>
             <div>
               <h3>Szybkie akcje</h3>
-              <p className="field__label">Najczęstsze ruchy z pulpitu.</p>
+              <p className="field__label">Najczęściej używane akcje.</p>
             </div>
           </div>
           <div className="quick-actions-grid">
@@ -135,40 +134,6 @@ export function DashboardPage() {
           </Card>
         ))}
       </div>
-
-      {/* ── Wymaga uwagi ──────────────────────────────────────────────────────────── */}
-      {attentionProjects.length > 0 && (
-        <Card className="attention-card">
-          <div className="toolbar" style={{ marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <AlertTriangle size={16} color="#c05621" />
-              <h3 style={{ margin: 0, fontSize: 15 }}>Wymaga uwagi</h3>
-              <span className="attention-badge">{attentionProjects.length}</span>
-            </div>
-            <Link to="/projects" style={{ fontSize: 13, color: 'var(--color-brand)', textDecoration: 'none' }}>Przejdź do projektów →</Link>
-          </div>
-          <div className="attention-list">
-            {attentionProjects.map((proj) => (
-              <div key={proj.id} className="attention-row">
-                <div className="attention-row__left">
-                  <span className="attention-row__name">{proj.name}</span>
-                  <span className="attention-row__number">{proj.number}</span>
-                </div>
-                <div className="attention-row__pills">
-                  {proj.issues.map((issue) => (
-                    <span
-                      key={issue}
-                      className={`proj-signal ${issue === 'Brak faktury' ? 'proj-signal--danger' : 'proj-signal--warn'}`}
-                    >
-                      {issue}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
       {pipelineProjects.length > 0 && (
         <Card style={{ marginTop: 16 }}>
@@ -233,7 +198,7 @@ export function DashboardPage() {
             <div className="list-row"><span>Kosztorysy</span><strong>{data.estimatesCount}</strong></div>
             <div className="list-row"><span>Umowy</span><strong>{data.contractsCount}</strong></div>
             <div className="list-row"><span>Przychód opłacony</span><strong>{formatCurrency(data.paidRevenue)}</strong></div>
-            <div className="list-row"><span>KSeF ready</span><strong>{data.ksefReady ? 'tak' : 'nie'}</strong></div>
+            <div className="list-row"><span>KSeF</span><strong style={{ color: data.ksefReady ? undefined : '#d97706' }}>{data.ksefReady ? 'Skonfigurowany' : 'Wymaga konfiguracji'}</strong></div>
           </div>
         </Card>
         <Card>
