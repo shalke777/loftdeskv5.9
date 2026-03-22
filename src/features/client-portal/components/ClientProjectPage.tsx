@@ -371,19 +371,23 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
       {approvals.map((approval: ClientApproval) => (
         <div key={approval.id} className="client-approval-card">
           <div className="client-approval-card__header">
-            <h4 className="client-approval-card__title">{approval.title}</h4>
+            <h4 className="client-approval-card__title">{approval.snapshot_vendor || 'Pozycja do akceptacji'}</h4>
             <Badge variant={APPROVAL_STATUS_VARIANT[approval.status] ?? 'default'}>
               {APPROVAL_STATUS_LABEL[approval.status] ?? approval.status}
             </Badge>
           </div>
 
-          {approval.description && (
-            <p className="client-approval-card__desc">{approval.description}</p>
+          {approval.snapshot_description && (
+            <p className="client-approval-card__desc">{approval.snapshot_description}</p>
           )}
 
-          {approval.amount != null && (
+          {approval.message_to_client && (
+            <p className="client-approval-card__desc" style={{ fontStyle: 'italic' }}>{approval.message_to_client}</p>
+          )}
+
+          {approval.snapshot_amount_gross != null && (
             <p className="client-approval-card__amount">
-              Kwota: <strong>{approval.amount.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })}</strong>
+              Kwota: <strong>{approval.snapshot_amount_gross.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })}</strong>
             </p>
           )}
 

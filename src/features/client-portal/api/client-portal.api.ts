@@ -66,10 +66,15 @@ export interface ClientMessage {
 
 export interface ClientApproval {
   id: string
-  title: string
-  description?: string | null
   status: string
-  amount?: number | null
+  snapshot_vendor?: string | null
+  snapshot_description?: string | null
+  snapshot_amount_gross?: number | null
+  snapshot_invoice_number?: string | null
+  message_to_client?: string | null
+  client_comment?: string | null
+  sent_at?: string | null
+  responded_at?: string | null
   created_at: string
 }
 
@@ -172,7 +177,7 @@ export const clientPortalApi = {
     if (!supabase) return []
     const { data, error } = await supabase
       .from('cost_approvals')
-      .select('id, title, description, status, amount, created_at')
+      .select('id, status, snapshot_vendor, snapshot_description, snapshot_amount_gross, snapshot_invoice_number, message_to_client, client_comment, sent_at, responded_at, created_at')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
     if (error) throw error

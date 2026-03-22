@@ -176,7 +176,7 @@ export function useProjectExport(projectId: string) {
             estIds.length ? supabase.from('cost_estimates').select('*, items:cost_estimate_items(*)').in('id', estIds) : Promise.resolve({ data: [] }),
             ctIds.length  ? supabase.from('contracts').select('*').in('id', ctIds)  : Promise.resolve({ data: [] }),
             invIds.length ? supabase.from('invoices').select('*').in('id', invIds)  : Promise.resolve({ data: [] }),
-            supabase.from('companies').select('company_name,name,nip,ksef_nip,address,postal_code,city,email,phone,iban,logo_url').eq('id', companyId).maybeSingle(),
+            supabase.from('companies').select('name,nip,ksef_nip,address,postal_code,city,email,phone,iban,logo_url').eq('id', companyId).maybeSingle(),
           ])
           prodEstimates = estRes.data ?? []
           prodContracts = ctRes.data ?? []
@@ -184,7 +184,7 @@ export function useProjectExport(projectId: string) {
           const co = coRes.data as any
           if (co) {
             companyMeta = {
-              name: co.company_name || co.name || '',
+              name: co.name || '',
               nip: co.nip || co.ksef_nip || '',
               address: co.address || '',
               postalCity: [co.postal_code, co.city].filter(Boolean).join(' ').trim(),

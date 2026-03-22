@@ -1,0 +1,160 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LoftDesk — iOS build via GitHub Actions (macOS runner)
+# ─────────────────────────────────────────────────────────────────────────────
+# Builds an unsigned .app (Simulator) or signed .ipa (if certs are configured).
+#
+# Triggers:
+#   - push to main
+#   - manual dispatch (workflow_dispatch)
+#
+# Secrets required for signed .ipa (optional — skip for unsigned Simulator build):
+#   IOS_CERTIFICATE_BASE64   — .p12 distribution cert, base64-encoded
+#   IOS_CERTIFICATE_PASSWORD — password for the .p12
+#   IOS_PROVISION_PROFILE    — .mobileprovision, base64-encoded
+#   KEYCHAIN_PASSWORD        — any random string (used for temp keychain)
+#
+# Env vars (set in GitHub repo Settings → Secrets and variables → Variables):
+#   VITE_SUPABASE_URL
+#   VITE_SUPABASE_ANON_KEY
+#   VITE_APP_URL             — https://loftdesk.pl
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Build iOS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'ios/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    runs-on: macos-14          # Apple Silicon runner (M1), free for public repos
+    timeout-minutes: 30
+
+    env:
+      VITE_APP_URL: ${{ vars.VITE_APP_URL || 'https://loftdesk.pl' }}
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+    steps:
+      # ── Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Node.js ───────────────────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── Web build ─────────────────────────────────────────────────────────
+      - name: Build web assets
+        run: npm run build
+
+      - name: Capacitor sync iOS
+        run: npx cap sync ios
+
+      # ── Xcode build (unsigned — Simulator) ───────────────────────────────
+      - name: Build iOS (Simulator)
+        if: ${{ !secrets.IOS_CERTIFICATE_BASE64 }}
+        run: |
+          cd ios/App
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty --color
+
+      # ── Xcode build (signed — Device / TestFlight) ───────────────────────
+      - name: Import signing certificate
+        if: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERT_PATH=$RUNNER_TEMP/certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo -n "$CERTIFICATE_BASE64" | base64 --decode -o "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      - name: Import provisioning profile
+        if: ${{ secrets.IOS_PROVISION_PROFILE }}
+        env:
+          PROVISION_BASE64: ${{ secrets.IOS_PROVISION_PROFILE }}
+        run: |
+          PP_PATH=$RUNNER_TEMP/profile.mobileprovision
+          echo -n "$PROVISION_BASE64" | base64 --decode -o "$PP_PATH"
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning Profiles/"
+
+      - name: Build iOS (Signed .ipa)
+        if: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+        run: |
+          cd ios/App
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/LoftDesk.xcarchive \
+            archive \
+            | xcpretty --color
+
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/LoftDesk.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist ../../.github/ExportOptions.plist \
+            | xcpretty --color
+
+      # ── Upload artifact ───────────────────────────────────────────────────
+      - name: Upload Simulator .app
+        if: ${{ !secrets.IOS_CERTIFICATE_BASE64 }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: LoftDesk-iOS-Simulator
+          path: ios/App/build/Build/Products/Release-iphonesimulator/App.app
+          retention-days: 14
+
+      - name: Upload signed .ipa
+        if: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: LoftDesk-iOS-IPA
+          path: ios/App/build/export/*.ipa
+          retention-days: 30
+
+      # ── Cleanup ───────────────────────────────────────────────────────────
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
+          rm -f $RUNNER_TEMP/certificate.p12 $RUNNER_TEMP/profile.mobileprovision
