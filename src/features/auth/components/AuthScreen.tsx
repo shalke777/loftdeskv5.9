@@ -6,8 +6,98 @@ import { RegisterForm } from '@/features/auth/components/RegisterForm'
 import { ForgotPasswordForm } from '@/features/auth/components/ForgotPasswordForm'
 import { supabase } from '@/shared/lib/supabase'
 import { getAppOrigin } from '@/shared/lib/native'
+import { isNativePlatform } from '@/shared/lib/native'
+import { usePwaInstall } from '@/shared/hooks/usePwaInstall'
+import { Download, Smartphone } from 'lucide-react'
 
 type AuthTab = 'login' | 'register' | 'forgot' | 'client'
+
+// ── Platform detection helpers ───────────────────────────────────────────────
+function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+function isAndroid(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Android/i.test(navigator.userAgent)
+}
+
+function isStandalone(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true
+}
+
+// ── Install section on login page ────────────────────────────────────────────
+function AppInstallSection() {
+  const { canInstall, install } = usePwaInstall()
+  const apkUrl = import.meta.env.VITE_APK_DOWNLOAD_URL as string | undefined
+
+  // Don't show inside native app or already-installed PWA
+  if (isNativePlatform() || isStandalone()) return null
+
+  const showAndroid = isAndroid() || (!isIOS() && apkUrl)
+  const showIOS = isIOS()
+  // On desktop, only show if PWA install is available or APK URL is set
+  const showDesktop = !isAndroid() && !isIOS() && (canInstall || apkUrl)
+
+  if (!showAndroid && !showIOS && !showDesktop) return null
+
+  return (
+    <div className="auth-install">
+      <div className="auth-install__header">
+        <Smartphone size={16} />
+        <span>Zainstaluj aplikację</span>
+      </div>
+
+      {/* Android: PWA install or APK download */}
+      {showAndroid && (
+        <div className="auth-install__row">
+          {canInstall ? (
+            <button className="auth-install__btn" onClick={() => void install()}>
+              <Download size={15} />
+              Zainstaluj (Android)
+            </button>
+          ) : apkUrl ? (
+            <a className="auth-install__btn" href={apkUrl} download>
+              <Download size={15} />
+              Pobierz APK (Android)
+            </a>
+          ) : null}
+        </div>
+      )}
+
+      {/* iOS: homescreen instruction */}
+      {showIOS && (
+        <div className="auth-install__ios">
+          <p>
+            <strong>iPhone / iPad:</strong> kliknij{' '}
+            <span style={{ fontSize: 16, verticalAlign: 'middle' }}>⎙</span>{' '}
+            <em>Udostępnij</em>, potem <em>Dodaj do ekranu początkowego</em>.
+          </p>
+        </div>
+      )}
+
+      {/* Desktop: show PWA install + APK link */}
+      {showDesktop && !showAndroid && (
+        <div className="auth-install__row">
+          {canInstall && (
+            <button className="auth-install__btn" onClick={() => void install()}>
+              <Download size={15} />
+              Zainstaluj aplikację
+            </button>
+          )}
+          {apkUrl && (
+            <a className="auth-install__btn auth-install__btn--secondary" href={apkUrl} download>
+              <Download size={15} />
+              Pobierz APK (Android)
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ── Formularz magic-link dla klientów (zleceniodawców) ───────────────────────
 function ClientMagicLinkForm({ onBack }: { onBack: () => void }) {
@@ -128,6 +218,9 @@ export function AuthScreen() {
             <ClientMagicLinkForm onBack={() => setTab('login')} />
           )}
         </div>
+
+        {/* Install app section */}
+        <AppInstallSection />
       </div>
     </main>
   )

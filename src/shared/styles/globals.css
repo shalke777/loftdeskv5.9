@@ -120,6 +120,18 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .auth-screen__text-btn { background: none; border: none; padding: 4px 6px; border-radius: 8px; font-size: 14px; color: var(--color-brand); cursor: pointer; font-weight: 600; transition: background .15s; }
 .auth-screen__text-btn:hover { background: var(--color-brand-light); }
 
+/* ── Auth install section ──────────────────────────────────────────────────── */
+.auth-install { width: min(440px, 100%); padding: 14px 18px; border-radius: 12px; background: var(--color-surface-alt, #f8fafc); border: 1px solid var(--color-border, #e5e7eb); }
+.auth-install__header { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--color-text-secondary, #6b7280); margin-bottom: 10px; }
+.auth-install__row { display: flex; flex-wrap: wrap; gap: 8px; }
+.auth-install__btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--color-brand); background: var(--color-brand); color: #fff; text-decoration: none; transition: opacity .15s; }
+.auth-install__btn:hover { opacity: 0.9; }
+.auth-install__btn--secondary { background: transparent; color: var(--color-brand); }
+.auth-install__btn--secondary:hover { background: var(--color-brand-light, rgba(59,130,246,0.08)); }
+.auth-install__ios { font-size: 13px; color: var(--color-text-secondary, #6b7280); line-height: 1.5; }
+.auth-install__ios p { margin: 0; }
+.auth-install__ios strong { color: var(--color-text-primary, #111827); }
+
 /* ── Mobile home — 6 kafli ─────────────────────────────────────────────────── */
 .mobile-home-grid { display: none; }
 @media (max-width: 640px) {
