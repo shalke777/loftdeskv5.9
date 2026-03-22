@@ -147,14 +147,14 @@ export const clientPortalApi = {
 
   async sendMessage(projectId: string, companyId: string, body: string, senderName: string): Promise<void> {
     if (!supabase) return
-    const { error } = await supabase.from('project_messages').insert({
-      project_id:     projectId,
-      company_id:     companyId,
-      body:           body.trim(),
-      sender_type:    'client',
-      sender_name:    senderName,
-      visibility:     'client_shared',
-      read_by_client: true,
+    // Uses SECURITY DEFINER RPC (migration 062) — direct INSERT fails because
+    // project_messages.thread_id is NOT NULL and clients cannot INSERT into
+    // project_threads (no policy). The RPC finds or auto-creates the thread.
+    const { error } = await supabase.rpc('client_send_message', {
+      p_project_id:  projectId,
+      p_company_id:  companyId,
+      p_body:        body.trim(),
+      p_sender_name: senderName,
     })
     if (error) throw error
   },
