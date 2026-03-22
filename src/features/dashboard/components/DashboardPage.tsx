@@ -1,20 +1,13 @@
 import { ArrowRight, BookText, FileText, FolderKanban, MessageSquareText, Receipt, Settings, TrendingUp, Users } from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { useDashboardStats } from '@/features/dashboard/hooks/useDashboardStats'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
-import { PLAN_DEFS } from '@/shared/lib/constants'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
-import { OnboardingChecklist } from '@/features/onboarding/components/OnboardingChecklist'
-import { WelcomeBanner } from '@/features/onboarding/components/WelcomeBanner'
-import { useOnboardingProgress } from '@/features/onboarding/hooks/useOnboardingProgress'
-
-const WELCOME_DISMISSED_KEY = 'loftdesk-welcome-dismissed'
 
 const MOBILE_TILES = [
   { label: 'Kontrahenci',    sub: 'Klienci i kontrahenci',      icon: Users,               href: '/clients'   },
@@ -37,16 +30,6 @@ export function DashboardPage() {
   const companyId = useCompanyId()
   const canUsePortal = useFeatureAccess('portal')
   const { data, isLoading } = useDashboardStats()
-  const { data: onboarding } = useOnboardingProgress()
-
-  const [welcomeDismissed, setWelcomeDismissed] = useState(
-    () => Boolean(localStorage.getItem(WELCOME_DISMISSED_KEY)),
-  )
-
-  function dismissWelcome() {
-    localStorage.setItem(WELCOME_DISMISSED_KEY, '1')
-    setWelcomeDismissed(true)
-  }
 
   if (isLoading || !data) return <Spinner />
 
@@ -78,14 +61,6 @@ export function DashboardPage() {
 
       {/* ── Reszta dashboardu — ukryta na mobile ─────────────────────── */}
       <div className="dashboard-desktop-content">
-
-      {/* ── Onboarding-first state: shown when account is empty ─────────── */}
-      {onboarding?.isEmpty && !welcomeDismissed && (
-        <WelcomeBanner companyName={data.companyName} onDismiss={dismissWelcome} />
-      )}
-
-      {/* ── Onboarding checklist: shown until all steps done ──────────────── */}
-      {!onboarding?.isEmpty && <OnboardingChecklist />}
 
       <section className="dashboard-hero">
         <Card className="highlight-card">

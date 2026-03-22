@@ -9,7 +9,7 @@ import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import {
   useCreateInvoiceFromProject,
   useCreateProject,
-  useDeleteProject,
+  useHardDeleteProject,
   useProjects,
   useUpdateProject,
   useUpdateProjectStatus,
@@ -47,7 +47,7 @@ export function ProjectsPage() {
   const updateProject  = useUpdateProject()
   const updateStatus   = useUpdateProjectStatus()
   const createInvoice  = useCreateInvoiceFromProject()
-  const deleteProject  = useDeleteProject()
+  const deleteProject  = useHardDeleteProject()
   const canCreate      = useCan('projects.create')
   const canDelete      = useCan('projects.delete')
   const canUpdateStatus = useCan('projects.updateStatus')

@@ -149,12 +149,6 @@ export function AuthLayout() {
 
       <section className="shell-main">
         <header className="shell-topbar">
-          <div className="shell-topbar__left">
-            <div>
-              <strong>{user.companyName}</strong>
-              <div className="field__label">LoftDesk: wyceny, umowy, faktury, portal klienta i realizacja</div>
-            </div>
-          </div>
           <div className="shell-topbar__right">
             <Link to="/billing" className={user.plan === 'free' ? 'shell-pill shell-pill--upgrade' : 'shell-pill'} style={{ textDecoration: 'none', cursor: 'pointer' }}>
               {user.plan === 'free' ? '⭐ Przejdź na Business' : `Plan: ${user.plan}`}
