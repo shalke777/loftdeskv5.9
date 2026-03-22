@@ -21,6 +21,8 @@ export interface ProjectPortalToken {
   client_name:  string | null
   client_email: string | null
   active:       boolean
+  expires_at:   string | null
+  revoked_at:   string | null
   created_at:   string
 }
 

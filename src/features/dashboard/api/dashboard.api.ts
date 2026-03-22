@@ -56,6 +56,7 @@ export const dashboardApi = {
     const pipelineProjects: {
       id: string; name: string; number: string; status: string; clientName: string
       contractValue: number; estimateValue: number; invoicedTotal: number; paidTotal: number
+      completeness_score: number | null
     }[] = []
 
     for (const proj of projects) {
@@ -91,6 +92,7 @@ export const dashboardApi = {
         estimateValue: 0,
         invoicedTotal: cInvoices.reduce((s, inv) => s + inv.total_gross, 0),
         paidTotal: cInvoices.filter((inv) => inv.status === 'paid').reduce((s, inv) => s + inv.total_gross, 0),
+        completeness_score: null,
       })
     }
 
@@ -106,6 +108,7 @@ export const dashboardApi = {
         estimateValue: e.total_gross,
         invoicedTotal: 0,
         paidTotal: 0,
+        completeness_score: null,
       })
     }
 

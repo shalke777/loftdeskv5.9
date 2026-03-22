@@ -101,9 +101,10 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
   // Client-side file size guard
   if (file.size > MAX_FILE_SIZE) {
     return {
+      document_type: null,
       vendor_name: null, vendor_nip: null, invoice_number: null,
       issue_date: null, sale_date: null, net_amount: null,
-      vat_amount: null, gross_amount: null, currency: 'PLN',
+      vat_amount: null, vat_rate: null, gross_amount: null, currency: 'PLN',
       payment_due_date: null, notes: null,
       extraction_confidence: 0,
       extraction_warnings: ['Plik jest za duży (max 5 MB). Uzupełnij dane ręcznie.'],
@@ -184,9 +185,10 @@ export async function callParseInvoiceAI(file: File, extractedText?: string): Pr
 
   if (!body.image_base64 && !body.text_content && !body.pdf_base64) {
     return {
+      document_type: null,
       vendor_name: null, vendor_nip: null, invoice_number: null,
       issue_date: null, sale_date: null, net_amount: null,
-      vat_amount: null, gross_amount: null, currency: 'PLN',
+      vat_amount: null, vat_rate: null, gross_amount: null, currency: 'PLN',
       payment_due_date: null, notes: null,
       extraction_confidence: 0,
       extraction_warnings: ['Brak danych wejściowych dla AI — wpisz pola ręcznie.'],

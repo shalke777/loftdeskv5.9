@@ -107,6 +107,7 @@ const demoMessages: ProjectMessage[] = [
     attachment_mime: null,
     read_by_operator: true,
     read_by_client: true,
+    deleted_at: null,
     created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
   },
@@ -126,6 +127,7 @@ const demoMessages: ProjectMessage[] = [
     attachment_mime: null,
     read_by_operator: false,
     read_by_client: true,
+    deleted_at: null,
     created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
   },
@@ -329,6 +331,7 @@ export const threadsApi = {
         attachment_mime: input.attachment_mime ?? null,
         read_by_operator: true,
         read_by_client: false,
+        deleted_at: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
