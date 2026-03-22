@@ -7,7 +7,7 @@
 //   Efekt: zero podwójnych wiadomości po stronie operatora.
 
 import { useEffect, useRef } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { threadsApi } from '@/features/projects/api/threads.api'
@@ -67,4 +67,14 @@ export function useThreadMessages(threadId: string | null) {
   }, [threadId, queryClient])
 
   return { ...query, mutatingRef }
+}
+
+export function useDeleteThreadMessage(threadId: string | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (messageId: string) => threadsApi.deleteMessage(messageId),
+    onSuccess: () => {
+      if (threadId) queryClient.invalidateQueries({ queryKey: messagesKey(threadId) })
+    },
+  })
 }

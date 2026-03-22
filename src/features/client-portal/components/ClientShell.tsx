@@ -12,22 +12,31 @@ import { FolderKanban, LogOut, MessageSquare, User } from 'lucide-react'
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { ClientInstallBanner } from '@/features/client-portal/components/ClientInstallBanner'
+import { useClientProjects } from '@/features/client-portal/hooks/useClientPortal'
 
 export function ClientShell() {
   const { user, signOut } = useAuth()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const navigate = useNavigate()
+  // Verify pendingProjectId against the RLS-filtered project list.
+  // If the project was deleted or access revoked, my_client_project_ids() won't
+  // return it \u2014 so it won't appear here and we fall back to dashboard.
+  const { data: accessibleProjects } = useClientProjects()
+  const verifiedProjectId = accessibleProjects != null
+    ? (accessibleProjects.some(p => p.id === user?.pendingProjectId)
+        ? user?.pendingProjectId ?? null
+        : null)
+    : user?.pendingProjectId ?? null  // still loading \u2014 keep value to avoid premature redirect
 
   useEffect(() => {
     if (!pathname.startsWith('/client/')) {
-      // Jeśli klient ma pendingProjectId (z zaproszenia), idzie od razu na projekt.
-      // Bez tego — ogólny dashboard.
-      const dest = user?.pendingProjectId
-        ? `/client/project/${user.pendingProjectId}`
+      // Only redirect to the project if it's still accessible.
+      const dest = verifiedProjectId
+        ? `/client/project/${verifiedProjectId}`
         : '/client/dashboard'
       void navigate({ to: dest })
     }
-  }, [pathname, navigate, user?.pendingProjectId])
+  }, [pathname, navigate, verifiedProjectId])
 
   return (
     <div className="client-shell">
@@ -64,10 +73,10 @@ export function ClientShell() {
           <FolderKanban size={20} />
           <span>Projekty</span>
         </Link>
-        {user?.pendingProjectId && (
+        {verifiedProjectId && (
           <Link
             to="/client/project/$id"
-            params={{ id: user.pendingProjectId }}
+            params={{ id: verifiedProjectId }}
             className={/^\/client\/project\//.test(pathname) ? 'client-nav__link client-nav__link--active' : 'client-nav__link'}
           >
             <MessageSquare size={20} />

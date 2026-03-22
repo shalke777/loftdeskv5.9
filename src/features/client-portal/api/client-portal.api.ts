@@ -61,6 +61,7 @@ export interface ClientMessage {
   sender_name: string | null
   created_at: string
   read_by_client: boolean
+  deleted_at: string | null
 }
 
 export interface ClientApproval {
@@ -137,7 +138,7 @@ export const clientPortalApi = {
     if (!supabase) return []
     const { data, error } = await supabase
       .from('project_messages')
-      .select('id, body, sender_type, sender_name, created_at, read_by_client')
+      .select('id, body, sender_type, sender_name, created_at, read_by_client, deleted_at')
       .eq('project_id', projectId)
       .in('visibility', ['client_shared', 'approval'])
       .order('created_at', { ascending: true })
@@ -155,6 +156,14 @@ export const clientPortalApi = {
       p_company_id:  companyId,
       p_body:        body.trim(),
       p_sender_name: senderName,
+    })
+    if (error) throw error
+  },
+
+  async deleteMessage(messageId: string): Promise<void> {
+    if (!supabase) return
+    const { error } = await supabase.rpc('delete_portal_message', {
+      p_message_id: messageId,
     })
     if (error) throw error
   },

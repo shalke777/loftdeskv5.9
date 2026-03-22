@@ -440,4 +440,25 @@ export const threadsApi = {
         .eq('company_id', scope.companyId)
     }
   },
+
+  // ---------------------------------------------------------------------------
+  // Soft-delete message (migration 063)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Soft-deletes a message via SECURITY DEFINER RPC.
+   * Works for both operator messages (sender_type='operator') and
+   * client messages (sender_type='client') — the RPC enforces ownership.
+   */
+  async deleteMessage(messageId: string): Promise<void> {
+    if (isDemoMode || !supabase) {
+      const msg = demoMessages.find(m => m.id === messageId)
+      if (msg) (msg as ProjectMessage & { deleted_at?: string | null }).deleted_at = new Date().toISOString()
+      return
+    }
+    const { error } = await supabase.rpc('delete_portal_message', {
+      p_message_id: messageId,
+    })
+    if (error) throw error
+  },
 }

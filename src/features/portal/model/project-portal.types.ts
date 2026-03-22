@@ -161,6 +161,7 @@ export interface ProjectMessage {
   attachment_mime: string | null;
   read_by_operator: boolean;
   read_by_client: boolean;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }

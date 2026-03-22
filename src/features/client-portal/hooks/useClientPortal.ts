@@ -26,6 +26,8 @@ export function useClientProject(projectId: string) {
     queryFn:  () => clientPortalApi.getProject(projectId),
     enabled:  Boolean(projectId),
     staleTime: 10_000,
+    // A deleted/inaccessible project returns 406 — don't retry, it won't change
+    retry: 0,
   })
 }
 
@@ -67,6 +69,14 @@ export function useClientSendMessage(projectId: string, companyId: string, sende
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: string) => clientPortalApi.sendMessage(projectId, companyId, body, senderName),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: clientKeys.messages(projectId) }),
+  })
+}
+
+export function useClientDeleteMessage(projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (messageId: string) => clientPortalApi.deleteMessage(messageId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: clientKeys.messages(projectId) }),
   })
 }

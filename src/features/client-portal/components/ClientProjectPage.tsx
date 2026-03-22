@@ -5,6 +5,7 @@
 // =============================================================================
 
 import { useState, useEffect, useRef, Fragment } from 'react'
+import { Link } from '@tanstack/react-router'
 import {
   useClientProject,
   useClientEstimates,
@@ -12,6 +13,7 @@ import {
   useClientContracts,
   useClientMessages,
   useClientSendMessage,
+  useClientDeleteMessage,
   useClientApprovals,
   useClientRespondApproval,
 } from '@/features/client-portal/hooks/useClientPortal'
@@ -248,6 +250,7 @@ function ChatTab({ projectId }: { projectId: string }) {
   const { data: messages, isLoading } = useClientMessages(projectId)
   const senderName = user?.fullName || user?.email || 'Klient'
   const sendMessage = useClientSendMessage(projectId, companyId ?? '', senderName)
+  const deleteMessage = useClientDeleteMessage(projectId)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -284,10 +287,30 @@ function ChatTab({ projectId }: { projectId: string }) {
               {msg.sender_type !== 'client' && (
                 <span className="client-chat__msg-sender">{msg.sender_name ?? 'Wykonawca'}</span>
               )}
-              <div className="client-chat__msg-bubble">{msg.body}</div>
-              <span className="client-chat__msg-time">
-                {new Date(msg.created_at).toLocaleString('pl-PL', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
-              </span>
+              <div className="client-chat__msg-bubble">
+                {msg.deleted_at
+                  ? <span className="client-chat__msg-deleted">Wiadomość usunięta</span>
+                  : msg.body
+                }
+              </div>
+              <div className="client-chat__msg-meta">
+                <span className="client-chat__msg-time">
+                  {new Date(msg.created_at).toLocaleString('pl-PL', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                </span>
+                {msg.sender_type === 'client' && !msg.deleted_at && (
+                  <button
+                    type="button"
+                    className="client-chat__msg-delete"
+                    title="Usuń wiadomość"
+                    disabled={deleteMessage.isPending}
+                    onClick={() => {
+                      if (window.confirm('Usunąć tę wiadomość?')) deleteMessage.mutate(msg.id)
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
           ))
         )}
@@ -465,8 +488,10 @@ interface Props {
 
 export function ClientProjectPage({ projectId }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>('documents')
-  const { data: project, isLoading } = useClientProject(projectId)
-  const { data: approvalsData } = useClientApprovals(projectId)
+  const { data: project, isLoading, isError } = useClientProject(projectId)
+  // Gate on project?.id so approvals query doesn't fire (and return 406)
+  // when the project is deleted / inaccessible.
+  const { data: approvalsData } = useClientApprovals(project?.id ?? '')
   const pendingCount = approvalsData
     ?.filter((a: ClientApproval) => a.status === 'pending_client' || a.status === 'pending')
     .length ?? 0
@@ -475,11 +500,22 @@ export function ClientProjectPage({ projectId }: Props) {
     return <div className="client-page-loading">Ładowanie projektu...</div>
   }
 
-  if (!project) {
+  if (isError || !project) {
     return (
       <div className="client-page-error">
-        <p>Nie możemy załadować tego projektu.</p>
-        <p>Sprawdź link lub skontaktuj się z wykonawcą.</p>
+        <p>Ten projekt nie jest już dostępny.</p>
+        <p style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>Projekt mógł zostać usunięty lub Twój dostęp wygasł.</p>
+        <Link
+          to="/client/dashboard"
+          style={{
+            display: 'inline-block', marginTop: 16,
+            padding: '10px 20px', borderRadius: 8,
+            background: 'var(--color-primary, #2563eb)', color: '#fff',
+            fontWeight: 600, fontSize: 14, textDecoration: 'none',
+          }}
+        >
+          ← Powrót do listy projektów
+        </Link>
       </div>
     )
   }

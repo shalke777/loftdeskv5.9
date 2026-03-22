@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
-import { useThreadMessages } from '@/features/projects/hooks/useThreadMessages'
+import { useThreadMessages, useDeleteThreadMessage } from '@/features/projects/hooks/useThreadMessages'
 import { useMarkThreadRead } from '@/features/projects/hooks/useMarkThreadRead'
 import type { ProjectMessage } from '@/features/portal/model/project-portal.types'
 
@@ -27,10 +27,12 @@ function formatDate(iso: string) {
 // ─── Bąbelek wiadomości ───────────────────────────────────────────────────────
 
 interface BubbleProps {
-  msg: ProjectMessage
+  msg:      ProjectMessage
+  onDelete: (id: string) => void
+  deleting: boolean
 }
 
-function MessageBubble({ msg }: BubbleProps) {
+function MessageBubble({ msg, onDelete, deleting }: BubbleProps) {
   const isOperator = msg.sender_type === 'operator'
   const isClient   = msg.sender_type === 'client'
   const isSystem   = msg.sender_type === 'system'
@@ -94,7 +96,10 @@ function MessageBubble({ msg }: BubbleProps) {
         )}
 
         <p className="chat-bubble__text" style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {msg.body}
+          {msg.deleted_at
+            ? <span style={{ fontStyle: 'italic', opacity: 0.55 }}>Wiadomość usunięta</span>
+            : msg.body
+          }
         </p>
 
         {/* Załącznik */}
@@ -111,6 +116,23 @@ function MessageBubble({ msg }: BubbleProps) {
         )}
 
         <span className="chat-bubble__time">{formatTime(msg.created_at)}</span>
+        {isOperator && !msg.deleted_at && (
+          <button
+            type="button"
+            title="Usuń wiadomość"
+            disabled={deleting}
+            onClick={() => {
+              if (window.confirm('Usunąć tę wiadomość?')) onDelete(msg.id)
+            }}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 11, color: '#94a3b8', marginLeft: 6, padding: '0 2px',
+              lineHeight: 1,
+            }}
+          >
+            ✕
+          </button>
+        )}
       </div>
     </div>
   )
@@ -127,6 +149,7 @@ interface ThreadViewProps {
 
 export function ThreadView({ threadId, projectId, visibility }: ThreadViewProps) {
   const { data: messages, isLoading } = useThreadMessages(threadId)
+  const deleteMsg  = useDeleteThreadMessage(threadId)
   const listRef    = useRef<HTMLDivElement>(null)
   const prevThread = useRef<string | null>(null)
   const [prevCount, setPrevCount] = useState(0)
@@ -203,7 +226,7 @@ export function ThreadView({ threadId, projectId, visibility }: ThreadViewProps)
           return (
             <div key={msg.id}>
               {showDate && <div className="chat-date-sep">{dateLabel}</div>}
-              <MessageBubble msg={msg} />
+              <MessageBubble msg={msg} onDelete={(id) => deleteMsg.mutate(id)} deleting={deleteMsg.isPending} />
             </div>
           )
           })}
