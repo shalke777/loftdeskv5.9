@@ -19,8 +19,16 @@ export const useCreateExpense = (companyId: string) => {
       fileName?: string
       parsed?: ParsedExpenseData
       projectId?: string | null
+      extractionConfidence?: number | null
     }) => expensesApi.create({ companyId, ...input }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['expenses', companyId] }); toast.success('Koszt zapisany') },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['expenses', companyId] })
+      // Refresh project-expenses list if the expense was linked to a project
+      if (variables.projectId) {
+        qc.invalidateQueries({ queryKey: ['project-expenses', variables.projectId] })
+      }
+      toast.success('Koszt zapisany')
+    },
     onError: (error: any) => toast.error('Nie udało się zapisać kosztu', error?.message ?? 'Spróbuj ponownie.'),
   })
 }

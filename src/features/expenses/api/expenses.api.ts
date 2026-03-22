@@ -4,6 +4,23 @@
 
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 
+/**
+ * Pick a meaningful initial status based on OCR extraction confidence and
+ * whether the expense is already linked to a project.
+ *   ≥ 70 % + project  → 'assigned'   (high confidence, project known)
+ *   ≥ 70 %            → 'parsed'     (high confidence, no project yet)
+ *   anything else     → 'review'     (needs manual verification)
+ */
+function deriveExpenseStatus(
+  confidence: number | null | undefined,
+  projectId:  string | null | undefined,
+): 'new' | 'parsed' | 'review' | 'assigned' | 'error' {
+  if (confidence != null && confidence >= 70) {
+    return projectId ? 'assigned' : 'parsed'
+  }
+  return 'review'
+}
+
 /** Remove diacritics and replace unsafe Storage path characters */
 function sanitizeFilename(name: string): string {
   return name
@@ -300,6 +317,10 @@ export const expensesApi = {
     fileName?: string
     parsed?: ParsedExpenseData
     projectId?: string | null
+    /** Override the auto-derived status. Defaults to confidence-based logic. */
+    status?: ExpenseInvoice['status']
+    /** Raw OCR confidence (0–100) used to auto-derive status when `status` is omitted. */
+    extractionConfidence?: number | null
   }): Promise<ExpenseInvoice> {
     if (isDemoMode || !supabase) {
       const item: ExpenseInvoice = {
@@ -316,7 +337,7 @@ export const expensesApi = {
         amount_vat: input.parsed?.amount_vat ?? null,
         amount_gross: input.parsed?.amount_gross ?? null,
         description: input.parsed?.description ?? null,
-        status: 'review',
+        status: input.status ?? deriveExpenseStatus(input.extractionConfidence, input.projectId),
         duplicate_of: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -341,7 +362,7 @@ export const expensesApi = {
         amount_vat: input.parsed?.amount_vat ?? null,
         amount_gross: input.parsed?.amount_gross ?? null,
         description: input.parsed?.description ?? null,
-        status: 'review',
+        status: input.status ?? deriveExpenseStatus(input.extractionConfidence, input.projectId),
       })
       .select('*')
       .single()
@@ -557,7 +578,7 @@ export const projectExpensesApi = {
         amount_vat: input.vat_amount ?? null,
         amount_gross: input.gross_amount ?? null,
         description: input.notes ?? null,
-        status: 'review',
+        status: deriveExpenseStatus(input.extraction_confidence, input.project_id),
         duplicate_of: null,
         source_type: input.source_type,
         cost_type: input.cost_type ?? null,
@@ -608,7 +629,7 @@ export const projectExpensesApi = {
         amount_vat:    input.vat_amount ?? null,
         amount_gross:  input.gross_amount ?? null,
         description:   input.notes ?? null,
-        status: 'review',
+        status: deriveExpenseStatus(input.extraction_confidence, input.project_id),
         source_type:   input.source_type,
         cost_type:     input.cost_type ?? null,
         approval_status: 'not_sent',

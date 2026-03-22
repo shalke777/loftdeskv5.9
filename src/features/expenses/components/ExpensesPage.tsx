@@ -106,6 +106,8 @@ export function ExpensesPage() {
   const [uploadStep, setUploadStep] = useState<string>('Przesyłanie...')
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [parseStatus, setParseStatus] = useState<{ level: 'success'|'partial'|'empty'|'error'|'ocr-unavailable', message: string } | null>(null)
+  // Raw OCR confidence (0–100) captured during extraction — used for status derivation on save
+  const [ocrConfidence, setOcrConfidence] = useState<number | null>(null)
 
   // modal: 'add' or 'edit'
   const [modal, setModal] = useState<{ type: 'add'; fileUrl: string; fileName: string; parsed: ParsedExpenseData; previewBlobUrl?: string } | { type: 'edit'; expense: ExpenseInvoice } | null>(null)
@@ -122,6 +124,7 @@ export function ExpensesPage() {
     setUploadStep('Przesyłanie pliku...')
     setUploadError(null)
     setParseStatus(null)
+    setOcrConfidence(null)
     try {
       // ── Step 1: upload to storage ─────────────────────────────
       const { url, name } = await expensesApi.uploadFile(file, companyId)
@@ -203,14 +206,7 @@ export function ExpensesPage() {
 
         // Step C: map final result → form fields
         if (ocrResult) {
-          // Build description: include sale_date, vat_rate, buyer_nip, payment_due_date if useful
-          const descParts: string[] = []
-          if (ocrResult.sale_date && ocrResult.sale_date !== ocrResult.issue_date) descParts.push(`Data sprzedaży: ${ocrResult.sale_date}`)
-          if (ocrResult.vat_rate != null) descParts.push(`Stawka VAT: ${ocrResult.vat_rate}%`)
-          if (ocrResult.buyer_nip) descParts.push(`NIP nabywcy: ${ocrResult.buyer_nip}`)
-          if (ocrResult.payment_due_date) descParts.push(`Płatność do: ${ocrResult.payment_due_date}`)
-          if (ocrResult.currency && ocrResult.currency !== 'PLN') descParts.push(`Waluta: ${ocrResult.currency}`)
-          const descExtra = descParts.join(' | ')
+          setOcrConfidence(ocrResult.extraction_confidence ?? null)
 
           parsed = {
             invoice_number: ocrResult.invoice_number ?? undefined,
@@ -220,9 +216,9 @@ export function ExpensesPage() {
             amount_net:     ocrResult.net_amount     ?? undefined,
             amount_vat:     ocrResult.vat_amount     ?? undefined,
             amount_gross:   ocrResult.gross_amount   ?? undefined,
-            description:    ocrResult.notes
-              ? (descExtra ? `${ocrResult.notes} | ${descExtra}` : ocrResult.notes)
-              : (descExtra || undefined),
+            // Use the product description returned by OCR — avoid dumping
+            // pipe-separated metadata (sale_date, vat_rate, etc.) into this field.
+            description:    ocrResult.notes          ?? undefined,
           }
 
           const confidence   = ocrResult.extraction_confidence
@@ -276,6 +272,7 @@ export function ExpensesPage() {
       setModal({ type: 'add', fileUrl: url, fileName: name, parsed, previewBlobUrl })
     } catch (err: any) {
       setUploadError(err?.message ?? 'Błąd przesyłania pliku')
+      setOcrConfidence(null)
     } finally {
       setUploading(false)
     }
@@ -312,6 +309,7 @@ export function ExpensesPage() {
           fileName: modal.fileName,
           projectId: form.project_id || null,
           parsed: formToParsed(form),
+          extractionConfidence: ocrConfidence,
         })
       } else {
         const patch: Partial<ExpenseInvoice> = {
@@ -331,6 +329,7 @@ export function ExpensesPage() {
       setModal(null)
       setDuplicateWarning(null)
       setParseStatus(null)
+      setOcrConfidence(null)
     } catch (err: any) {
       setUploadError(err?.message ?? 'Błąd zapisu')
     } finally {
@@ -549,7 +548,7 @@ export function ExpensesPage() {
           title={modal.type === 'add' ? 'Dodaj fakturę kosztową' : 'Edytuj fakturę'}
           onClose={() => {
             if (modal?.type === 'add' && modal.previewBlobUrl) URL.revokeObjectURL(modal.previewBlobUrl)
-            setModal(null); setDuplicateWarning(null); setParseStatus(null)
+            setModal(null); setDuplicateWarning(null); setParseStatus(null); setOcrConfidence(null)
           }}
         >
           {/* Two-column layout when a file preview is available */}
@@ -700,7 +699,7 @@ export function ExpensesPage() {
             <div className="exp-form__actions">
               <Button variant="secondary" onClick={() => {
                 if (modal?.type === 'add' && modal.previewBlobUrl) URL.revokeObjectURL(modal.previewBlobUrl)
-                setModal(null); setDuplicateWarning(null); setParseStatus(null)
+                setModal(null); setDuplicateWarning(null); setParseStatus(null); setOcrConfidence(null)
               }}>
                 Anuluj
               </Button>
