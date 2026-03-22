@@ -15,7 +15,9 @@ import { Button } from '@/shared/ui/Button/Button'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/shared/hooks/useToast'
 
-const SEND_ENDPOINT = '/.netlify/functions/send-document'
+import { netlifyFn } from '@/shared/lib/functions'
+
+const SEND_ENDPOINT = netlifyFn('send-document')
 
 const DOC_LABEL: Record<string, string> = {
   estimate: 'Wycena',

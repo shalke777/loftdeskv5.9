@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
+import { netlifyFn } from '@/shared/lib/functions'
 import type { ParseInvoiceResult, ExpenseSourceType } from '@/features/expenses/api/expenses.api'
 import { supabase } from '@/shared/lib/supabase'
 
@@ -119,7 +120,7 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
 
   let resp: Response
   try {
-    resp = await fetch('/.netlify/functions/parse-invoice', {
+    resp = await fetch(netlifyFn('parse-invoice'), {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
       body: JSON.stringify({
@@ -196,7 +197,7 @@ export async function callParseInvoiceAI(file: File, extractedText?: string): Pr
 
   let resp: Response
   try {
-    resp = await fetch('/.netlify/functions/parse-invoice-ai', {
+    resp = await fetch(netlifyFn('parse-invoice-ai'), {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
       body:    JSON.stringify(body),

@@ -5,6 +5,7 @@ import { LoginForm } from '@/features/auth/components/LoginForm'
 import { RegisterForm } from '@/features/auth/components/RegisterForm'
 import { ForgotPasswordForm } from '@/features/auth/components/ForgotPasswordForm'
 import { supabase } from '@/shared/lib/supabase'
+import { getAppOrigin } from '@/shared/lib/native'
 
 type AuthTab = 'login' | 'register' | 'forgot' | 'client'
 
@@ -20,7 +21,7 @@ function ClientMagicLinkForm({ onBack }: { onBack: () => void }) {
     if (!email.trim() || !supabase) return
     setLoading(true)
     setError('')
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
+    const baseUrl = getAppOrigin()
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.toLowerCase().trim(),
       options: { emailRedirectTo: `${baseUrl}/auth/callback` },

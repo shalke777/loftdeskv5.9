@@ -1,5 +1,6 @@
 import type { Invoice } from '@/entities/invoice/model'
 import { supabase } from '@/shared/lib/supabase'
+import { netlifyFn } from '@/shared/lib/functions'
 
 export type KsefEnv = 'demo' | 'test' | 'prod'
 
@@ -206,7 +207,7 @@ async function callProxy(path: string, body: unknown): Promise<Record<string, un
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS)
   try {
-    res = await fetch(`/.netlify/functions/${path}`, {
+    res = await fetch(netlifyFn(path), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(body),

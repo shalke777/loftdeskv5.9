@@ -69,8 +69,13 @@ export function DocumentPreviewModal({
 
   // ── Print ─────────────────────────────────────────────────────────────────
   // Opens the browser print dialog. This is the ONLY action that calls print().
+  // In Capacitor native, window.open popups are not supported — fall back to PDF download.
   function printCurrent() {
     if (!tab || tab.type !== 'html') return
+    if ((window as any).Capacitor?.isNativePlatform?.()) {
+      void downloadPdf()
+      return
+    }
     const win = window.open('', '_blank', 'width=960,height=720')
     if (!win) return
     win.document.write(tab.content)

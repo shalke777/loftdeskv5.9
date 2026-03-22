@@ -1,5 +1,6 @@
 import { supabase } from '@/shared/lib/supabase'
 import { demoDb } from '@/shared/lib/demoDb'
+import { getAppOrigin } from '@/shared/lib/native'
 
 export const authApi = {
   async signIn(email: string, password: string) {
@@ -28,7 +29,7 @@ export const authApi = {
       email: input.email,
       password: input.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${getAppOrigin()}/auth/callback`,
         data: {
           full_name: input.fullName,
           company: input.companyName,

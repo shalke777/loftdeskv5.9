@@ -22,7 +22,9 @@ import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { AccessNotice } from '@/shared/ui/AccessNotice/AccessNotice'
 import { supabase, isDemoMode } from '@/shared/lib/supabase'
 
-const INVITE_ENDPOINT = '/.netlify/functions/client-identify'
+import { netlifyFn } from '@/shared/lib/functions'
+
+const INVITE_ENDPOINT = netlifyFn('client-identify')
 
 // ── localStorage invite persistence ──────────────────────────────────────────
 

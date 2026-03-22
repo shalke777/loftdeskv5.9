@@ -28,6 +28,23 @@ import '@/shared/styles/globals.css'
 
 registerSW({ immediate: true })
 
+// Register appUrlOpen deep-link handler for Capacitor native shell.
+// Fires when the OS hands a URL to the app (Universal Link / Custom Scheme).
+// We extract the path+query and navigate within the WebView.
+;(function registerNativeDeepLinks() {
+  const cap = (window as any).Capacitor
+  if (!cap?.isNativePlatform?.()) return
+  cap.Plugins?.App?.addListener?.('appUrlOpen', (event: { url: string }) => {
+    try {
+      const url = new URL(event.url)
+      const destination = url.pathname + url.search + url.hash
+      window.location.assign(destination)
+    } catch {
+      // Malformed URL — ignore
+    }
+  })
+})()
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
