@@ -44,7 +44,7 @@ export function SettingsPage() {
 
   async function exportBackup() {
     const blob = new Blob([demoDb.exportState()], { type: 'application/json;charset=utf-8' })
-    downloadBlob(`loftdesk-backup-${new Date().toISOString().slice(0, 10)}.json`, blob)
+    await downloadBlob(`loftdesk-backup-${new Date().toISOString().slice(0, 10)}.json`, blob)
   }
 
   async function importBackup(file?: File | null) {

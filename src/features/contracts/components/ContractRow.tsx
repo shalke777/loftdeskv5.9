@@ -8,6 +8,7 @@ import { formatCurrency } from '@/shared/lib/formatters'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
+import { getAppOrigin } from '@/shared/lib/native'
 
 const STATUS_LABEL: Record<Contract['status'], string> = {
   unsigned: 'W przygotowaniu', signed: 'Podpisana',
@@ -232,7 +233,7 @@ export function ContractRow({
         onClose={() => setSendOpen(false)}
         documentType="contract"
         documentName={contract.number}
-        portalUrl={contract.project_id ? `${window.location.origin}/client/project/${contract.project_id}` : undefined}
+        portalUrl={contract.project_id ? `${getAppOrigin()}/client/project/${contract.project_id}` : undefined}
       />
     </div>
   )

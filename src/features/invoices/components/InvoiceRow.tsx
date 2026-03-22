@@ -9,6 +9,7 @@ import { useClients } from '@/features/clients/hooks/useClients'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
+import { getAppOrigin } from '@/shared/lib/native'
 
 const STATUS_LABEL: Record<Invoice['status'], string> = {
   unpaid: 'Nieopłacona', paid: 'Opłacona', overdue: 'Przeterminowana',
@@ -260,7 +261,7 @@ export function InvoiceRow({
         documentType="invoice"
         documentName={invoice.number}
         defaultEmail={client?.email}
-        portalUrl={invoice.project_id ? `${window.location.origin}/client/project/${invoice.project_id}` : undefined}
+        portalUrl={invoice.project_id ? `${getAppOrigin()}/client/project/${invoice.project_id}` : undefined}
       />
     </div>
   )

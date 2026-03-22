@@ -45,11 +45,11 @@ export function DocumentPreviewModal({
         size: pdfBlob.size,
         filename,
       })
-      downloadBlob(filename, pdfBlob)
+      await downloadBlob(filename, pdfBlob)
     } catch (err) {
       console.error('[LoftDesk] PDF generation failed – falling back to HTML download', err)
       // Fallback so the user gets something even if the PDF renderer fails
-      downloadBlob(
+      await downloadBlob(
         `${title.replace(/\s+/g, '_')}.html`,
         new Blob([tab.content], { type: 'text/html;charset=utf-8' }),
       )
@@ -61,7 +61,7 @@ export function DocumentPreviewModal({
   // ── Download XML ──────────────────────────────────────────────────────────
   function downloadXml() {
     if (!tab) return
-    downloadBlob(
+    void downloadBlob(
       `${title.replace(/\s+/g, '_')}.xml`,
       new Blob([tab.content], { type: 'application/xml;charset=utf-8' }),
     )

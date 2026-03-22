@@ -23,6 +23,7 @@ import {
 import { threadsApi } from '@/features/projects/api/threads.api'
 import type { Estimate } from '@/entities/estimate/model'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getAppOrigin } from '@/shared/lib/native'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
 
@@ -96,7 +97,7 @@ export function EstimateNextActions({ estimate }: { estimate: Estimate }) {
   // Pełny URL jest dostępny tylko bezpośrednio po wygenerowaniu tokenu (w tej sesji).
   const [freshToken, setFreshToken] = useState<{ raw_token: string; id: string } | null>(null)
   const fullPortalUrl = freshToken
-    ? `${window.location.origin}/portal/${freshToken.raw_token}`
+    ? `${getAppOrigin()}/portal/${freshToken.raw_token}`
     : null
 
   const createToken = useMutation({
@@ -111,7 +112,7 @@ export function EstimateNextActions({ estimate }: { estimate: Estimate }) {
       queryClient.invalidateQueries({ queryKey: ['project-portal-tokens', projectId] })
       // Mark the 'portal' onboarding step as complete
       queryClient.invalidateQueries({ queryKey: ['onboarding-progress', user?.companyId] })
-      const url = `${window.location.origin}/portal/${result.raw_token}`
+      const url = `${getAppOrigin()}/portal/${result.raw_token}`
       copyText(url)
         .then(() => toast.success('Link portalu wygenerowany', 'Adres skopiowany do schowka.'))
         .catch(() => toast.success('Link portalu wygenerowany', 'Skopiuj adres ręcznie.'))

@@ -1,4 +1,51 @@
-export function downloadBlob(filename: string, blob: Blob) {
+/**
+ * Download or share a Blob file.
+ *
+ * On iOS/Android (Capacitor native): <a download> is ignored by WKWebView.
+ * Instead we write the file to the device cache directory via Capacitor
+ * Filesystem and then open the iOS share sheet via Capacitor Share.
+ *
+ * On web / PWA: standard anchor-with-blob approach.
+ */
+export async function downloadBlob(filename: string, blob: Blob): Promise<void> {
+  // Keep legacy sync callers working — the async path is transparent to callers
+  // that don't await (fire-and-forget).
+  const isNative = Boolean((window as any).Capacitor?.isNativePlatform?.())
+
+  if (isNative) {
+    try {
+      const { Filesystem, Directory } = await import('@capacitor/filesystem')
+      const { Share } = await import('@capacitor/share')
+
+      // Convert Blob → base64 string
+      const base64 = await blobToBase64(blob)
+
+      // Write to cache directory
+      await Filesystem.writeFile({
+        path: filename,
+        data: base64,
+        directory: Directory.Cache,
+        recursive: true,
+      })
+
+      // Resolve the file URI (needed for Share)
+      const { uri } = await Filesystem.getUri({
+        path: filename,
+        directory: Directory.Cache,
+      })
+
+      await Share.share({ title: filename, url: uri, dialogTitle: 'Zapisz lub udostępnij plik' })
+    } catch (err) {
+      console.error('[LoftDesk] Native share failed — falling back to blob download', err)
+      _webDownload(filename, blob)
+    }
+    return
+  }
+
+  _webDownload(filename, blob)
+}
+
+function _webDownload(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
@@ -7,6 +54,19 @@ export function downloadBlob(filename: string, blob: Blob) {
   anchor.click()
   document.body.removeChild(anchor)
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const result = reader.result as string
+      // result is "data:mime/type;base64,<data>" — strip prefix for Capacitor
+      resolve(result.split(',')[1])
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
 }
 
 export function stripHtml(html: string) {

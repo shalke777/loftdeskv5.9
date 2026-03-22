@@ -6,6 +6,7 @@ import { Select } from '@/shared/ui/Select/Select'
 import { useInviteMember, useRevokeInvitation, useSettings } from '@/features/settings/hooks/useSettings'
 import { useCan } from '@/features/auth/hooks/usePermissions'
 import { AccessNotice } from '@/shared/ui/AccessNotice/AccessNotice'
+import { getAppOrigin } from '@/shared/lib/native'
 
 export function TeamInvitationsCard() {
   const { invitations } = useSettings()
@@ -58,7 +59,7 @@ export function TeamInvitationsCard() {
               <div className="muted">link: /join/{item.token}</div>
             </div>
             <div className="actions-row" style={{ justifyContent: 'flex-end' }}>
-              <Button variant="ghost" onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/join/${item.token}`)}>Kopiuj link</Button>
+              <Button variant="ghost" onClick={() => navigator.clipboard?.writeText(`${getAppOrigin()}/join/${item.token}`)}>Kopiuj link</Button>
               {item.status === 'pending' ? (
                 <Button variant="secondary" loading={revoke.isPending} onClick={() => revoke.mutate(item.id)}>Wycofaj</Button>
               ) : null}

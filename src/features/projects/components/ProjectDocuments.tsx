@@ -16,6 +16,7 @@ import { useInvoices, useDeleteInvoice } from '@/features/invoices/hooks/useInvo
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { projectDocumentsApi } from '@/features/projects/api/projectDocuments.api'
+import { getAppOrigin } from '@/shared/lib/native'
 
 const TYPE_LABEL: Record<string, string> = {
   estimate: 'Wycena',
@@ -258,7 +259,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
           documentType={sendDoc.type}
           documentName={sendDoc.name}
           defaultEmail={sendDoc.defaultEmail}
-          portalUrl={`${window.location.origin}/client/project/${project.id}`}
+          portalUrl={`${getAppOrigin()}/client/project/${project.id}`}
         />
       )}
 
@@ -268,7 +269,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
         documentType="package"
         documentName={`Dokumenty projektu – ${project.name}`}
         defaultEmail={projectClientEmail}
-        portalUrl={`${window.location.origin}/client/project/${project.id}`}
+        portalUrl={`${getAppOrigin()}/client/project/${project.id}`}
         docSummary={packageDocNames}
       />
     </Card>

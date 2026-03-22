@@ -12,6 +12,7 @@ import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { EstimateNextActions } from './EstimateNextActions'
 import { useCreateProjectFromEstimate } from '@/features/projects/hooks/useProjects'
 import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
+import { getAppOrigin } from '@/shared/lib/native'
 
 function variant(status: Estimate['status']) { if (status === 'accepted') return 'success'; if (status === 'rejected') return 'danger'; if (status === 'sent') return 'warning'; return 'default' }
 
@@ -63,7 +64,7 @@ export function EstimateCard({ estimate, onDelete, onCreateContract, onEdit }: {
         documentType="estimate"
         documentName={estimate.number}
         defaultEmail={client?.email}
-        portalUrl={estimate.project_id ? `${window.location.origin}/client/project/${estimate.project_id}` : undefined}
+        portalUrl={estimate.project_id ? `${getAppOrigin()}/client/project/${estimate.project_id}` : undefined}
       />
     </>
   )

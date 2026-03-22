@@ -10,6 +10,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
 import { EstimateNextActions } from './EstimateNextActions'
+import { getAppOrigin } from '@/shared/lib/native'
 
 const STATUS_LABEL: Record<Estimate['status'], string> = {
   draft: 'Szkic', sent: 'Wysłane', accepted: 'Zaakceptowane', rejected: 'Odrzucone',
@@ -178,7 +179,7 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
         documentType="estimate"
         documentName={estimate.number}
         defaultEmail={client?.email}
-        portalUrl={estimate.project_id ? `${window.location.origin}/client/project/${estimate.project_id}` : undefined}
+        portalUrl={estimate.project_id ? `${getAppOrigin()}/client/project/${estimate.project_id}` : undefined}
       />
     </div>
   )
