@@ -33,6 +33,10 @@ export function ClientModal({ open, onClose, initialClient }: { open: boolean; o
   }, [initialClient, open])
 
   async function save() {
+    if (!name.trim()) {
+      toast.error('Wymagane pole', 'Nazwa kontrahenta jest wymagana.')
+      return
+    }
     const payload = { company_id: companyId, name, email, phone, city, address, postal_code: postalCode, nip, contact_person: contactPerson }
     try {
       if (initialClient?.id) await updateClient.mutateAsync({ id: initialClient.id, input: payload })

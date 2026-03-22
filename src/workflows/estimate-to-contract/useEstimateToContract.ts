@@ -26,5 +26,8 @@ export function useEstimateToContract() {
         sourceId: estimateId,
       }).catch(() => {})
     },
+    onError: (error) => {
+      toast.error('Nie udało się utworzyć umowy', error instanceof Error ? error.message : 'Spróbuj ponownie.')
+    },
   })
 }

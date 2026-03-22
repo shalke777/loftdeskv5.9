@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/shared/ui/Button/Button'
 import { Input } from '@/shared/ui/Input/Input'
 import { Select } from '@/shared/ui/Select/Select'
+import { useToast } from '@/shared/hooks/useToast'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { ItemsEditor } from '@/features/estimates/components/EstimateModal/ItemsEditor'
@@ -107,7 +108,13 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
     saveDraft({ name, notes, clientId, status, validUntil, projectId, items })
   }, [name, notes, clientId, status, validUntil, projectId, items, isNew])
 
+  const toast = useToast()
+
   async function handleSubmit() {
+    if (!name.trim()) {
+      toast.error('Wymagane pole', 'Nazwa wyceny jest wymagana.')
+      return
+    }
     setSubmitting(true)
     try {
       await onSubmit({ name, notes, client_id: clientId || null, project_id: projectId || null, company_id: companyId, status, valid_until: validUntil || null, items })

@@ -2608,6 +2608,21 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   border-radius: 10px;
   padding: 16px;
 }
+
+/* Narrow-screen tab overflow guard — scrollable below 375px */
+@media (max-width: 374px) {
+  .client-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+  .client-tabs::-webkit-scrollbar { display: none; }
+  .client-tab {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+  }
+}
 .client-tab-loading,
 .client-tab-empty {
   padding: 28px 0;

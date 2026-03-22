@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Input } from '@/shared/ui/Input/Input'
 import { Button } from '@/shared/ui/Button/Button'
 import { Select } from '@/shared/ui/Select/Select'
+import { useToast } from '@/shared/hooks/useToast'
 import type { CreateInvoiceInput, Invoice, InvoiceItem } from '@/entities/invoice/model'
 import { generateId } from '@/shared/lib/generateId'
 import { useClients } from '@/features/clients/hooks/useClients'
@@ -178,6 +179,8 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
     if (tranche.due_date) setDueDate(tranche.due_date)
   }
 
+  const toast = useToast()
+
   function patchItem(id: string, key: keyof InvoiceItem, value: string) {
     setItems((prev) => prev.map((item) => item.id === id ? { ...item, [key]: ['quantity', 'unit_price', 'vat_rate', 'sort_order'].includes(String(key)) ? Number(value) : value } : item))
   }
@@ -185,6 +188,10 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
   function removeItem(id: string) { setItems((prev) => prev.filter((i) => i.id !== id).map((i, idx) => ({ ...i, sort_order: idx + 1 }))) }
 
   async function handleSubmit() {
+    if (items.length === 0) {
+      toast.error('Brak pozycji', 'Dodaj co najmniej jedną pozycję do faktury.')
+      return
+    }
     setSubmitting(true)
     try {
       await onSubmit({
