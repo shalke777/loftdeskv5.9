@@ -137,6 +137,9 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 @media (max-width: 640px) {
   .mobile-home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
   .dashboard-desktop-content { display: none; }
+  .pipeline-table-wrap { display: none; }
+  .pipeline-cards { display: flex; flex-direction: column; gap: 0; }
+  .new-thread-selects { flex-direction: column; }
 }
 .mobile-tile {
   display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
@@ -156,6 +159,42 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .mobile-tile--4 { background-color: var(--color-chart-5); }
 .mobile-tile--5 { background-color: var(--color-chart-2); }
 .mobile-tile--6 { background-color: var(--color-chart-1); }
+
+/* ── Pipeline section — table/cards toggle ─────────────────────────────── */
+.pipeline-table-wrap { }
+.pipeline-cards { display: none; }
+.pipeline-card {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border-light, #f3f4f6);
+}
+.pipeline-card:last-child { border-bottom: none; }
+.pipeline-card__values {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.pipeline-card__values .field__label { margin-bottom: 2px; }
+.pipeline-summary {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 14px 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ── NewThreadForm selects ─────────────────────────────────────────────── */
+.new-thread-selects { display: flex; gap: 8px; }
+.new-thread-select {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  font-size: 13px;
+  min-width: 0;
+  background: var(--color-bg, #fff);
+}
 
 .app-shell { min-height: 100dvh; display: grid; grid-template-columns: 280px minmax(0, 1fr); background: linear-gradient(to right, var(--color-sidebar-bg) 280px, var(--color-bg) 280px); }
 .sidebar {
@@ -2344,6 +2383,14 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .chat-bubble { padding: 8px 12px; font-size: 13px; border-radius: 14px 14px 14px 4px; }
   .chat-bubble--operator { border-radius: 14px 14px 4px 14px; }
   .chat-hint { font-size: 10px; }
+
+  /* NewThread selects — stacked, full-width */
+  .new-thread-select { padding: 9px 10px; font-size: 14px; }
+
+  /* Pipeline cards — compact on phone */
+  .pipeline-card { padding: 10px 12px; }
+  .pipeline-card__values { font-size: 12px; gap: 4px; }
+  .pipeline-summary { font-size: 13px; padding: 10px 12px 0; }
 
   /* Document toolbar — stack on mobile */
   .proj-doc-toolbar-actions { gap: 6px; }

@@ -89,11 +89,11 @@ function NewThreadForm({ projectId, onCreated, onCancel }: NewThreadFormProps) {
         onKeyDown={e => e.key === 'Enter' && void handleCreate()}
       />
 
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div className="new-thread-selects">
         <select
           value={type}
           onChange={e => setType(e.target.value as ThreadType)}
-          style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13 }}
+          className="new-thread-select"
         >
           {Object.entries(THREAD_TYPE_LABELS).map(([v, l]) => (
             <option key={v} value={v}>{l}</option>
@@ -103,7 +103,7 @@ function NewThreadForm({ projectId, onCreated, onCancel }: NewThreadFormProps) {
         <select
           value={visibility}
           onChange={e => setVisibility(e.target.value as ThreadVisibility)}
-          style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13 }}
+          className="new-thread-select"
         >
           {Object.entries(VISIBILITY_LABELS).map(([v, l]) => (
             <option key={v} value={v}>{l}</option>
