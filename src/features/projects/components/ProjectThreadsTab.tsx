@@ -5,7 +5,7 @@
 // Mieści się w karcie Card, nie fullscreen.
 
 import { useState, useMemo } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/shared/ui/Button/Button'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
@@ -15,7 +15,6 @@ import { MessageComposer } from './MessageComposer'
 import { useThreads, threadsKey } from '@/features/projects/hooks/useThreads'
 import { threadsApi, type CreateThreadInput } from '@/features/projects/api/threads.api'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
-import { listProjectPortalTokens } from '@/features/portal/api/portal-project.api'
 import type { ProjectThread, ThreadType, ThreadVisibility } from '@/features/portal/model/project-portal.types'
 
 const THREAD_TYPE_LABELS: Record<string, string> = {
@@ -138,16 +137,6 @@ export function ProjectThreadsTab({ projectId }: Props) {
     [threads, activeId],
   )
 
-  // Portal status — used to warn when client_shared thread has no active portal
-  const { data: portalTokens } = useQuery({
-    queryKey: ['portal-tokens', projectId],
-    queryFn:  () => listProjectPortalTokens(projectId),
-    staleTime: 60_000,
-  })
-  const hasActivePortal = portalTokens?.some(
-    t => t.active && !t.revoked_at && (!t.expires_at || new Date(t.expires_at) > new Date()),
-  ) ?? false
-
   // Łączna liczba nieprzeczytanych
   const totalUnread = useMemo(
     () => (threads ?? []).reduce((s, t) => s + t.unread_count_operator, 0),
@@ -235,22 +224,6 @@ export function ProjectThreadsTab({ projectId }: Props) {
             <Badge variant={activeThread.visibility === 'client_shared' ? 'success' : 'default'} style={{ fontSize: 11, flexShrink: 0 }}>
               {VISIBILITY_LABELS[activeThread.visibility] ?? activeThread.visibility}
             </Badge>
-          </div>
-        )}
-
-        {/* Portal status warning — client_shared thread but portal not active */}
-        {activeThread?.visibility === 'client_shared' && !hasActivePortal && (
-          <div style={{
-            padding: '8px 16px',
-            background: '#fef3c7',
-            color: '#92400e',
-            fontSize: 12,
-            borderBottom: '1px solid #fde68a',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}>
-            ⚠️ Portal klienta nie jest aktywny. Uruchom portal w zak\u0142adce <strong style={{ margin: '0 2px' }}>Portal</strong>, aby klient m\u00f3g\u0142 odebra\u0107 t\u0119 wiadomo\u015b\u0107.
           </div>
         )}
 

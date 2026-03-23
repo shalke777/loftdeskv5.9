@@ -92,28 +92,6 @@ export interface CreatePortalTokenInput {
   expires_at?: string | null;
 }
 
-// ─── project_portal_sessions ─────────────────────────────────────────────────
-
-export interface ProjectPortalSession {
-  id: string;
-  portal_token_id: string;
-  project_id: string;
-  company_id: string;
-  expires_at: string;
-  created_at: string;
-}
-
-/** Odpowiedź z portal-validate (Netlify function) */
-export interface PortalSessionResponse {
-  session_id: string;
-  project_id: string;
-  company_id: string;
-  client_name: string | null;
-  client_email: string | null;
-  scope: PortalScope[];
-  expires_at: string;
-}
-
 // ─── project_threads ─────────────────────────────────────────────────────────
 
 export interface ProjectThread {
@@ -253,15 +231,6 @@ export interface CostApproval {
   responded_at: string | null;
   created_at: string;
   updated_at: string;
-}
-
-/** Operator wysyła prośbę o akceptację */
-export interface SendApprovalRequestInput {
-  expense_id: string;
-  project_id: string;
-  portal_token_id: string;
-  thread_id?: string;
-  message_to_client?: string;
 }
 
 /** Klient odpowiada na prośbę o akceptację (przez portal) */
