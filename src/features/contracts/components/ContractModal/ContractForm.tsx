@@ -158,7 +158,7 @@ export function ContractForm({ companyId, onSubmit, initialContract }: { company
           </div>
         </div>
         {totalGross > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 10, padding: '10px 14px', background: '#fdf8f3', borderRadius: 8, border: '1px solid #e8e0d8' }}>
+          <div className="form-grid" style={{ marginTop: 10, padding: '10px 14px', background: '#fdf8f3', borderRadius: 8, border: '1px solid #e8e0d8' }}>
             <div><div className="field__label">Netto</div><strong>{formatCurrency(totalNet)}</strong></div>
             <div><div className="field__label">VAT ({vatRate}%)</div><strong>{formatCurrency(vatAmount)}</strong></div>
             <div><div className="field__label">Brutto (wartość umowy)</div><strong style={{ color: '#d32f2f' }}>{formatCurrency(totalGross)}</strong></div>
@@ -205,7 +205,7 @@ export function ContractForm({ companyId, onSubmit, initialContract }: { company
             <div key={t.id} style={{ border: '1px solid #e8e0d8', borderRadius: 8, padding: '10px 12px', background: index === 0 ? '#fffbf7' : '#fff' }}>
               <div className="grid-2" style={{ gap: 8 }}>
                 <Input label={index === 0 ? 'Nazwa (Zaliczka)' : 'Nazwa transzy'} value={t.label} onChange={(e) => updateTranche(t.id, 'label', e.target.value)} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div className="form-grid" style={{ gap: 8 }}>
                   <Input label="%" type="number" value={String(t.percent ?? 0)} onChange={(e) => updateTranche(t.id, 'percent', e.target.value)} />
                   <Input label="Kwota" type="number" value={String(t.amount)} onChange={(e) => updateTranche(t.id, 'amount', e.target.value)} />
                 </div>

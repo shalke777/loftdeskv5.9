@@ -260,7 +260,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
           <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 13 }}>← Anuluj</button>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Odczytuję fakturę…</h3>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: fileState ? 'minmax(0,1fr) minmax(0,1.4fr)' : '1fr', gap: 20, alignItems: 'start' }}>
+        <div className="form-grid" style={{ gridTemplateColumns: fileState ? 'minmax(0,1fr) minmax(0,1.4fr)' : '1fr', gap: 20, alignItems: 'start' }}>
           {fileState && (
             <ExpensePreviewPane file={fileState} parseResult={null} parsing={true} />
           )}
@@ -324,8 +324,8 @@ export function ProjectExpensesTab({ projectId }: Props) {
       )}
 
       <div
+        className="form-grid"
         style={{
-          display: 'grid',
           gridTemplateColumns: fileState ? 'minmax(0, 1fr) minmax(0, 1.4fr)' : '1fr',
           gap: 20,
           alignItems: 'start',

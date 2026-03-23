@@ -91,7 +91,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
           Dodaj pozycję
         </div>
         {/* Row 1: Nazwa + j.m. + Ilość + VAT + Dodaj */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 74px 74px auto', gap: 8, alignItems: 'flex-end' }}>
+        <div className="items-fast-add-row" style={{ display: 'grid', gridTemplateColumns: '1fr 70px 74px 74px auto', gap: 8, alignItems: 'flex-end' }}>
           <div>
             <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>
               Nazwa <span style={{ color: '#ef4444' }}>*</span>
@@ -154,7 +154,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
           </div>
         </div>
         {/* Row 2: Materiał + Robocizna */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+        <div className="items-fast-add-row--wide" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
           <div>
             <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>Materiał netto / j.m.</label>
             <input

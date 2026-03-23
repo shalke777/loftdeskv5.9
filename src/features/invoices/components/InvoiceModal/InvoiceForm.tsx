@@ -221,7 +221,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
   return (
     <div style={{ display: 'grid', gap: 20 }}>
       {/* ── Sekcja nagłówkowa ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
+      <div className="form-grid">
         <Select label="Rodzaj faktury" value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)} options={INVOICE_TYPE_OPTIONS} />
         <Select label="Umowa" value={contractId} onChange={(e) => setContractId(e.target.value)} options={contractOptions} placeholder="Bez umowy" />
         {selectedContract?.tranches?.length ? (
@@ -235,7 +235,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
       {/* ── Daty ── */}
       <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 16px' }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Daty</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
+        <div className="form-grid">
           <Input label="Data wystawienia" type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
           <Input label="Data sprzedaży / wyk. usługi" type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} />
           <Select
@@ -260,7 +260,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
       </div>
 
       {/* ── Płatność ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
+      <div className="form-grid">
         <Select label="Forma płatności" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} options={PAYMENT_METHOD_OPTIONS} />
         {paymentMethod === 'transfer' ? (
           <Input
@@ -273,7 +273,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
         {invoiceType === 'final' ? (
           <Input label="Suma wcześniejszych zaliczek (potrącenie)" type="number" value={advanceTotal} onChange={(e) => setAdvanceTotal(e.target.value)} />
         ) : null}
-        <div style={{ gridColumn: '1 / -1' }}>
+        <div className="form-grid--full">
           <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>Uwagi</label>
           <textarea
             className="input"
@@ -291,8 +291,8 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
         {items.map((item, idx) => (
           <div key={item.id} className="card" style={{ display: 'grid', gap: 10, padding: '12px 14px' }}>
             <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>Pozycja {idx + 1}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
-              <div style={{ gridColumn: '1 / -1' }}>
+            <div className="form-grid">
+              <div className="form-grid--full">
                 <Input label="Opis pozycji" value={item.description} onChange={(e) => patchItem(item.id, 'description', e.target.value)} />
               </div>
               <Select label="VAT %" value={String(item.vat_rate)} onChange={(e) => patchItem(item.id, 'vat_rate', e.target.value)} options={[{ value: '23', label: '23%' }, { value: '8', label: '8%' }, { value: '5', label: '5%' }, { value: '0', label: '0%' }]} />

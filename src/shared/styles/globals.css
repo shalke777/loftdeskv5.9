@@ -296,6 +296,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .grid-span-2 { grid-column: span 2; }
 
+/* Form grid: 2-col on desktop, 1-col on phone — replaces inline gridTemplateColumns in forms */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.form-grid--full { grid-column: 1 / -1; }
+
 .badge { display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; border: 1px solid var(--color-border-dark); background: var(--color-surface-soft); color: var(--color-primary-light); }
 .badge--default { background: var(--color-surface-soft); color: var(--color-text-secondary); }
 .badge--success { background: var(--color-success-soft); color: var(--color-success); }
@@ -1782,8 +1786,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .sidebar__nav, .sidebar__secondary { min-height: 0; overflow: visible; padding-right: 0; scrollbar-width: none; }
 .sidebar__footer { position: sticky; bottom: 0; background: var(--color-sidebar-bg); padding-top: 10px; }
 .modal-backdrop { overflow: auto; align-items: start; }
-.modal { max-height: calc(100vh - 24px); display: flex; flex-direction: column; }
-.modal__body { overflow: auto; max-height: calc(100vh - 120px); }
+.modal { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); display: flex; flex-direction: column; }
+.modal__body { overflow: auto; max-height: calc(100vh - 120px); max-height: calc(100dvh - 120px); -webkit-overflow-scrolling: touch; scroll-padding-bottom: 80px; }
 .toolbar, .page-header, .shell-topbar, .landing-nav, .hero__actions, .actions-row, .toolbar__actions { flex-wrap: wrap; }
 .hero__actions > *, .toolbar__actions > *, .actions-row > * { max-width: 100%; }
 .quick-action, .btn { word-break: break-word; }
@@ -1825,7 +1829,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .page-header h1 { font-size: 18px; }
   .modal-backdrop { padding: 10px; }
   .modal { width: 100%; border-radius: 18px; max-height: calc(100dvh - 12px); }
-  .modal__body { max-height: calc(100dvh - 100px); padding: 16px; }
+  .modal__body { max-height: calc(100dvh - 80px); padding: 16px; }
   .modal__header { padding: 16px; }
   .toolbar__actions, .actions-row { width: 100%; }
   .toolbar__actions > *, .actions-row > * { flex: 1 1 100%; }
@@ -2293,10 +2297,23 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .quick-action { padding: 12px; border-radius: 14px; }
 
   /* Modal — more room on small screens */
-  .modal-backdrop { padding: 6px; }
-  .modal { border-radius: 16px; }
-  .modal__header { padding: 14px 16px; }
-  .modal__body { padding: 14px 16px; }
+  .modal-backdrop { padding: 4px; padding-top: max(4px, env(safe-area-inset-top, 0px)); }
+  .modal { border-radius: 16px; max-height: calc(100dvh - 8px); }
+  .modal__header { padding: 12px 14px; }
+  .modal__header h3 { font-size: 15px; }
+  .modal__body { padding: 12px 14px; max-height: calc(100dvh - 64px); }
+
+  /* Form grid collapses to single column */
+  .form-grid { grid-template-columns: 1fr; gap: 10px; }
+
+  /* Tighter inputs for mobile forms */
+  .input { padding: 11px 12px; border-radius: 12px; font-size: 14px; }
+  .field { gap: 4px; }
+  .field__label { font-size: 12px; }
+
+  /* Items editor: stack fast-add on mobile */
+  .items-fast-add-row { grid-template-columns: 1fr 1fr !important; }
+  .items-fast-add-row--wide { grid-template-columns: 1fr !important; }
 
   /* Toast stacking at bottom */
   .toast-viewport { right: 8px; left: 8px; }

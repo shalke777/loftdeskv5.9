@@ -127,8 +127,8 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
   return (
     <div style={{ display: 'grid', gap: 20 }}>
       {/* ── Pola nagłówkowe ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
-        <div style={{ gridColumn: '1 / -1' }}>
+      <div className="form-grid">
+        <div className="form-grid--full">
           <Input label="Nazwa wyceny *" value={name} onChange={(e) => setName(e.target.value)} placeholder="np. Remont łazienki – oferta wstępna" />
         </div>
         <Select label="Klient" value={clientId} onChange={(e) => setClientId(e.target.value)} options={clientOptions} placeholder="Bez przypisania" />
@@ -147,7 +147,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
           onChange={(e) => setStatus((e.target.value || 'draft') as Estimate['status'])}
           options={[{ value: 'draft', label: 'Szkic' }, { value: 'sent', label: 'Wysłany' }, { value: 'accepted', label: 'Akceptacja' }, { value: 'rejected', label: 'Odrzucony' }]}
         />
-        <div style={{ gridColumn: '1 / -1' }}>
+        <div className="form-grid--full">
           <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>Notatki</label>
           <textarea
             className="input"

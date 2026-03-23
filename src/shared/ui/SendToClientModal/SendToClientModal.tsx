@@ -188,7 +188,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
+        <div className="actions-row" style={{ marginTop: 4 }}>
           <Button variant="secondary" onClick={onClose} disabled={sending}>Anuluj</Button>
           <Button onClick={handleSend} loading={sending}>
             {sending ? 'Wysyłanie…' : isPackage ? 'Wyślij pakiet' : `Wyślij ${label.toLowerCase()}`}

@@ -149,7 +149,7 @@ export function ProjectInvoiceModal({ open, onClose, onSubmit, projectId, isLoad
           {/* Summary */}
           {totalTranches > 0 ? (
             <div className="card" style={{ background: '#f7fafc' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
+              <div className="form-grid" style={{ fontSize: 13 }}>
                 <div>Suma transz: <strong>{formatCurrency(totalTranches)}</strong></div>
                 <div>Brutto (VAT {effectiveVat}%): <strong>{formatCurrency(Math.round(totalTranches * (1 + effectiveVat / 100) * 100) / 100)}</strong></div>
               </div>

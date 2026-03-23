@@ -225,7 +225,7 @@ export function ExpenseConfirmForm({
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div className="form-grid" style={{ gap: 10 }}>
           <div style={fieldStyle}>
             <label style={labelStyle}>Data wystawienia <AutoChip field="issue_date" /></label>
             <input
@@ -263,7 +263,7 @@ export function ExpenseConfirmForm({
           Kwoty
         </legend>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+        <div className="form-grid" style={{ gap: 10 }}>
           <div style={fieldStyle}>
             <label style={labelStyle}>Netto <AutoChip field="net_amount" /></label>
             <input
@@ -357,7 +357,7 @@ export function ExpenseConfirmForm({
       </div>
 
       {/* Buttons */}
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 4 }}>
+      <div className="actions-row" style={{ paddingTop: 4 }}>
         <button
           type="button"
           className="btn btn-ghost"

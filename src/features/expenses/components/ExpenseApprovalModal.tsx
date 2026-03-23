@@ -27,7 +27,7 @@ const s = {
     borderRadius: 12,
     width:        '100%',
     maxWidth:     520,
-    maxHeight:    '90vh',
+    maxHeight:    'calc(100dvh - 32px)',
     overflowY:    'auto' as const,
     padding:      24,
     display:      'flex',
@@ -165,7 +165,7 @@ export function ExpenseApprovalModal({ projectId, expense, onClose }: Props) {
           )}
 
           {/* Buttons */}
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 4 }}>
+          <div className="actions-row" style={{ paddingTop: 4 }}>
             <button
               type="button"
               className="btn btn-ghost"
