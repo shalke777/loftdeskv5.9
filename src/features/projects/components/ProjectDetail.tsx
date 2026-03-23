@@ -53,19 +53,12 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
           {(['overview', 'threads', 'expenses', 'approvals', 'timeline'] as MainTab[]).map(t => (
             <button
               key={t}
+              className="proj-detail-tab"
               onClick={() => setTab(t)}
               style={{
-                padding:      '8px 14px',
-                border:       'none',
-                background:   'transparent',
                 fontWeight:   tab === t ? 700 : 400,
-                fontSize:     13,
                 color:        tab === t ? 'var(--color-brand)' : 'var(--color-text-secondary)',
                 borderBottom: tab === t ? '2px solid var(--color-brand)' : '2px solid transparent',
-                cursor:       'pointer',
-                marginBottom: -1,
-                whiteSpace:   'nowrap',
-                flexShrink:   0,
               }}
             >
               {t === 'overview' ? 'Przegląd' : t === 'threads' ? '💬 Wątki' : t === 'expenses' ? '💰 Koszty' : t === 'approvals' ? '✅ Akceptacje' : '🕒 Oś czasu'}

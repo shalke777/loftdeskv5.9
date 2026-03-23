@@ -120,7 +120,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
     <Card>
       <div className="toolbar" style={{ marginBottom: 12 }}>
         <h4 style={{ margin: 0 }}>Dokumenty ({docs.length})</h4>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="proj-doc-toolbar-actions">
           <Button
             variant="ghost"
             size="sm"

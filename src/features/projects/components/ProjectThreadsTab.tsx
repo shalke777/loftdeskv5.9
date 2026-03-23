@@ -152,21 +152,10 @@ export function ProjectThreadsTab({ projectId }: Props) {
   }
 
   return (
-    <div
-      style={{
-        display:       'flex',
-        height:        640,
-        overflow:      'hidden',
-        border:        '1px solid var(--color-border)',
-        borderRadius:  16,
-        background:    'var(--color-surface)',
-      }}
-    >
+    <div className="chat-layout chat-layout--embedded">
       {/* ── Lewa kolumna: lista wątków ────────────────────────────────── */}
-      <div
-        className="chat-sidebar"
-        style={{ width: 260, minWidth: 220, flexShrink: 0 }}
-      >
+      <div className="chat-sidebar">
+
         <div className="chat-sidebar__header">
           <span className="chat-sidebar__title">
             Wątki
@@ -203,16 +192,8 @@ export function ProjectThreadsTab({ projectId }: Props) {
       </div>
 
       {/* ── Prawa kolumna: wiadomości + composer ─────────────────────── */}
-      <div
-        style={{
-          flex:          1,
-          display:       'flex',
-          flexDirection: 'column',
-          minWidth:      0,
-          overflow:      'hidden',
-          background:    'var(--color-bg)',
-        }}
-      >
+      <div className="chat-thread">
+
         {/* Nagłówek aktywnego wątku */}
         {activeThread && (
           <div className="chat-thread__header">

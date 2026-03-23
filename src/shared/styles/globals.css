@@ -662,6 +662,11 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   overflow: hidden;
   background: var(--color-bg);
 }
+.chat-layout--embedded {
+  height: 560px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+}
 
 /* ── Left sidebar ───────────────────────────────────────────────── */
 
@@ -1214,6 +1219,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .chat-layout {
     grid-template-columns: 1fr;
     height: auto;
+  }
+  .chat-layout--embedded {
+    height: auto;
+    max-height: none;
   }
 
   .chat-sidebar {
@@ -2224,6 +2233,19 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* Tab strip: scroll horizontally instead of overflowing / wrapping */
+.proj-detail-tab {
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.proj-doc-toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.proj-timeline-legend { display: flex; gap: 10px; font-size: 11px; flex-wrap: wrap; }
+
 .proj-detail-tabs {
   scrollbar-width: none;   /* Firefox */
   -ms-overflow-style: none;
@@ -2302,9 +2324,37 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .attention-row { gap: 8px; }
   .attention-row__name { font-size: 12px; }
 
-  /* Quick actions grid: single column */
+  /* Quick actions grid */
   .quick-actions-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .quick-action { padding: 12px; border-radius: 14px; }
+
+  /* Project detail tabs — compact touch targets */
+  .proj-detail-tab { padding: 8px 10px; font-size: 12px; }
+
+  /* Chat within project — tighter on mobile */
+  .chat-layout--embedded { border-radius: 12px; }
+  .chat-sidebar { max-height: 35vh; }
+  .chat-thread__composer { padding: 10px 12px; }
+  .chat-thread__composer-banner { font-size: 11px; padding: 5px 10px; margin-bottom: 8px; }
+  .chat-textarea { font-size: 14px; padding: 10px 12px; }
+  .chat-send-btn { width: 38px; height: 38px; border-radius: 10px; }
+  .chat-thread__header { padding: 10px 14px; }
+  .chat-thread__name { font-size: 14px; }
+  .chat-thread__messages { padding: 12px 14px; }
+  .chat-bubble { padding: 8px 12px; font-size: 13px; border-radius: 14px 14px 14px 4px; }
+  .chat-bubble--operator { border-radius: 14px 14px 4px 14px; }
+  .chat-hint { font-size: 10px; }
+
+  /* Document toolbar — stack on mobile */
+  .proj-doc-toolbar-actions { gap: 6px; }
+  .proj-doc-toolbar-actions .btn--sm { font-size: 12px; padding: 6px 10px; min-height: 34px; }
+
+  /* Document rows — tighter */
+  .proj-doc-row { gap: 6px; font-size: 12px; }
+  .proj-doc-row .badge { font-size: 10px; padding: 2px 6px; }
+
+  /* Approvals — compact cards */
+  .proj-timeline-legend { font-size: 10px; gap: 6px; }
 
   /* Modal — more room on small screens */
   .modal-backdrop { padding: 4px; padding-top: max(4px, env(safe-area-inset-top, 0px)); }

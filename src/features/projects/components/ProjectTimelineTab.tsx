@@ -81,7 +81,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0, padding: '16px 0' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
           Oś czasu projektu
           {events.length > 0 && (
@@ -92,7 +92,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
         </h3>
 
         {/* Internal / client-shared legend */}
-        <div style={{ display: 'flex', gap: 10, fontSize: 11 }}>
+        <div className="proj-timeline-legend">
           <span style={{ padding: '2px 8px', borderRadius: 99, background: '#dbeafe', color: '#1d4ed8', fontWeight: 600 }}>
             widoczne klientowi
           </span>
