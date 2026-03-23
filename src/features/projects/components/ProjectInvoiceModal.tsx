@@ -113,16 +113,16 @@ export function ProjectInvoiceModal({ open, onClose, onSubmit, projectId, isLoad
       {project ? (
         <div style={{ display: 'grid', gap: 16 }}>
           {/* Project info */}
-          <div className="card" style={{ background: '#f7fafc' }}>
+          <div className="card" style={{ background: 'var(--color-surface-soft)' }}>
             <div style={{ fontWeight: 600 }}>{project.number}</div>
-            <div style={{ fontSize: 14, color: '#718096' }}>{project.name}{project.client_id ? '' : ' · brak klienta'}</div>
+            <div style={{ fontSize: 14, color: '#A7ABB3' }}>{project.name}{project.client_id ? '' : ' · brak klienta'}</div>
           </div>
 
           {/* Contract selector */}
           {projectContracts.length > 0 ? (
             <Select label="Umowa" value={selectedContractId} onChange={(e) => setSelectedContractId(e.target.value)} options={contractOptions} placeholder="Wybierz umowę" />
           ) : (
-            <div style={{ fontSize: 13, color: '#b7791f', background: '#fffff0', padding: '8px 12px', borderRadius: 6 }}>
+            <div style={{ fontSize: 13, color: '#D4960A', background: 'rgba(212,150,10,0.10)', padding: '8px 12px', borderRadius: 6 }}>
               Brak umów powiązanych z tym projektem. Dodaj transze ręcznie lub najpierw utwórz umowę.
             </div>
           )}
@@ -148,7 +148,7 @@ export function ProjectInvoiceModal({ open, onClose, onSubmit, projectId, isLoad
 
           {/* Summary */}
           {totalTranches > 0 ? (
-            <div className="card" style={{ background: '#f7fafc' }}>
+            <div className="card" style={{ background: 'var(--color-surface-soft)' }}>
               <div className="form-grid" style={{ fontSize: 13 }}>
                 <div>Suma transz: <strong>{formatCurrency(totalTranches)}</strong></div>
                 <div>Brutto (VAT {effectiveVat}%): <strong>{formatCurrency(Math.round(totalTranches * (1 + effectiveVat / 100) * 100) / 100)}</strong></div>
@@ -164,7 +164,7 @@ export function ProjectInvoiceModal({ open, onClose, onSubmit, projectId, isLoad
           </div>
         </div>
       ) : (
-        <div style={{ textAlign: 'center', padding: 24, color: '#718096' }}>Ładowanie projektu…</div>
+        <div style={{ textAlign: 'center', padding: 24, color: '#A7ABB3' }}>Ładowanie projektu…</div>
       )}
     </Modal>
   )

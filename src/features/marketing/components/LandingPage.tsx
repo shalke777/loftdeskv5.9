@@ -36,7 +36,7 @@ const proPlan = ['Nieograniczone projekty i uzytkownicy', 'KSeF - elektroniczne 
 
 const mockItems = [
   { Icon: Calculator, iBg: 'var(--color-brand-light)', iC: 'var(--color-brand)', label: 'Kosztorys - Remont Wilanow', sub: 'Wyslany do klienta - 38 400 zl', badge: 'Oczekuje', bBg: 'var(--color-brand-light)', bC: 'var(--color-brand)' },
-  { Icon: Receipt, iBg: 'var(--color-accent-soft)', iC: 'var(--color-accent)', label: 'FV/03/2026 - wyslana do KSeF', sub: 'Zaksiegowana - 12 300 zl', badge: 'KSeF ok', bBg: '#dcfce7', bC: '#15803d' },
+  { Icon: Receipt, iBg: 'var(--color-accent-soft)', iC: 'var(--color-accent)', label: 'FV/03/2026 - wyslana do KSeF', sub: 'Zaksiegowana - 12 300 zl', badge: 'KSeF ok', bBg: 'rgba(119,186,138,0.15)', bC: '#77BA8A' },
   { Icon: MessageSquareText, iBg: 'var(--color-surface-soft)', iC: 'var(--color-chart-4)', label: 'Portal - Kowalski Jan', sub: 'Nowy komentarz - 2 godz. temu', badge: 'Nowy', bBg: 'var(--color-muted)', bC: 'var(--color-text-secondary)' },
 ]
 

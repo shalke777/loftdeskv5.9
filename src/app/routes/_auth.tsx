@@ -130,7 +130,7 @@ export function AuthLayout() {
 			  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
 				Portal
 				{dbUnreadCount > 0 && (
-				  <span style={{ background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 20, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
+				  <span style={{ background: '#EF6B6B', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 20, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
 					{dbUnreadCount > 99 ? '99+' : dbUnreadCount}
 				  </span>
 				)}
@@ -158,7 +158,7 @@ export function AuthLayout() {
                 {unreadCount > 0 && (
                   <span style={{
                     position: 'absolute', top: 2, right: 2,
-                    background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700,
+                    background: '#EF6B6B', color: '#fff', fontSize: 11, fontWeight: 700,
                     borderRadius: '50%', minWidth: 18, height: 18,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     padding: '0 4px', lineHeight: 1,
@@ -170,33 +170,33 @@ export function AuthLayout() {
               {showNotifications && (
                 <div style={{
                   position: 'absolute', top: '100%', right: 0, zIndex: 999,
-                  background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.12)', width: 340, maxHeight: 400, overflow: 'auto',
+                  background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.32)', width: 340, maxHeight: 400, overflow: 'auto',
                 }}>
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', fontWeight: 600, fontSize: 14 }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-light)', fontWeight: 600, fontSize: 14 }}>
                     Powiadomienia z portalu
                   </div>
                   {notifications.length === 0 ? (
-                    <div style={{ padding: '20px 16px', color: '#9ca3af', fontSize: 13, textAlign: 'center' }}>
+                    <div style={{ padding: '20px 16px', color: '#8A8F98', fontSize: 13, textAlign: 'center' }}>
                       Brak powiadomień
                     </div>
                   ) : (
                     notifications.slice(0, 20).map((n) => (
                       <div key={n.id} style={{
-                        padding: '10px 16px', borderBottom: '1px solid #f9fafb',
-                        background: n.read ? '#fff' : '#f0f9ff',
+                        padding: '10px 16px', borderBottom: '1px solid var(--color-border-light)',
+                        background: n.read ? 'var(--color-surface)' : 'rgba(96,165,250,0.08)',
                         fontSize: 13,
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 600, fontSize: 12, color: n.type === 'accepted' ? '#16a34a' : n.type === 'rejected' ? '#dc2626' : '#1d4ed8' }}>
+                          <span style={{ fontWeight: 600, fontSize: 12, color: n.type === 'accepted' ? '#77BA8A' : n.type === 'rejected' ? '#EF6B6B' : '#60A5FA' }}>
                             {n.type === 'accepted' ? '✅ Akceptacja' : n.type === 'rejected' ? '❌ Odrzucenie' : '💬 Wiadomość'}
                           </span>
-                          <span style={{ fontSize: 11, color: '#9ca3af' }}>
+                          <span style={{ fontSize: 11, color: '#8A8F98' }}>
                             {new Date(n.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <div style={{ marginTop: 3, fontWeight: 500, fontSize: 12, color: '#374151' }}>{n.clientName}</div>
-                        <div style={{ marginTop: 2, fontSize: 12, color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ marginTop: 3, fontWeight: 500, fontSize: 12, color: '#D0D4DA' }}>{n.clientName}</div>
+                        <div style={{ marginTop: 2, fontSize: 12, color: '#A7ABB3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {n.text.replace(/\[img:data:image\/[^\]]{0,20}[^\]]*\]/g, '[zdjęcie]')}
                         </div>
                       </div>

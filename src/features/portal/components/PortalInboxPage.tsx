@@ -88,7 +88,7 @@ export function PortalInboxPage() {
           ))}
         </div>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#6b7280' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#A7ABB3' }}>
           Sortuj:&nbsp;
           <select
             value={sortBy}
@@ -105,9 +105,9 @@ export function PortalInboxPage() {
       </div>
 
       {displayed.length === 0 ? (
-        <div className="proj-list" style={{ padding: '40px 20px', textAlign: 'center', color: '#9ca3af' }}>
+        <div className="proj-list" style={{ padding: '40px 20px', textAlign: 'center', color: '#8A8F98' }}>
           <MessageSquare size={36} style={{ margin: '0 auto 14px', opacity: 0.35, display: 'block' }} />
-          <p style={{ fontSize: 15, fontWeight: 500, color: '#6b7280', margin: '0 0 6px' }}>
+          <p style={{ fontSize: 15, fontWeight: 500, color: '#A7ABB3', margin: '0 0 6px' }}>
             {filter === 'active' ? 'Brak aktywnych linków portalu' : 'Brak linków portalu'}
           </p>
           <p style={{ fontSize: 13, margin: 0 }}>Generuj nowe linki w widoku Wyceny → Portal klienta.</p>
@@ -169,7 +169,7 @@ export function PortalInboxPage() {
                         <span className="proj-row__client">{item.estimate_name}</span>
                       ) : null}
                       {last && (
-                        <span style={{ fontSize: 12, color: '#9ca3af' }}>
+                        <span style={{ fontSize: 12, color: '#8A8F98' }}>
                           {last.sender === 'client' ? '← ' : '→ '}
                           <span style={{
                             maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis',
@@ -199,9 +199,9 @@ export function PortalInboxPage() {
 
                 {isOpen && (
                   <div className="proj-row__detail">
-                    <div style={{ fontSize: 13, color: '#374151', marginBottom: 14, display: 'grid', gap: 6 }}>
+                    <div style={{ fontSize: 13, color: '#D0D4DA', marginBottom: 14, display: 'grid', gap: 6 }}>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <span style={{ color: '#6b7280', minWidth: 70 }}>Link:</span>
+                        <span style={{ color: '#A7ABB3', minWidth: 70 }}>Link:</span>
                         <a
                           href={fullUrl}
                           target="_blank"
@@ -212,11 +212,11 @@ export function PortalInboxPage() {
                         </a>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <span style={{ color: '#6b7280', minWidth: 70 }}>Wygasa:</span>
+                        <span style={{ color: '#A7ABB3', minWidth: 70 }}>Wygasa:</span>
                         <span>{expiresLabel}</span>
                       </div>
                       {!last && (
-                        <div style={{ color: '#9ca3af', fontSize: 12 }}>Brak wiadomości w tym portalu.</div>
+                        <div style={{ color: '#8A8F98', fontSize: 12 }}>Brak wiadomości w tym portalu.</div>
                       )}
                     </div>
                     <div className="proj-row__actions" style={{ gap: 8 }}>

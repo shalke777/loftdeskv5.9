@@ -128,8 +128,8 @@ export function TimelineEventItem({ event, isLast = false, compact = false }: Pr
                   padding:      '1px 6px',
                   borderRadius: 99,
                   fontSize:     10,
-                  background:   '#dbeafe',
-                  color:        '#1d4ed8',
+                  background:   'rgba(96,165,250,0.15)',
+                  color:        '#60A5FA',
                   fontWeight:   600,
                 }}
               >

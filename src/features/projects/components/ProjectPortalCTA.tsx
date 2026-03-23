@@ -162,7 +162,7 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
           <h3 style={{ margin: 0 }}>Portal klienta</h3>
         </div>
-        <p style={{ fontSize: 13, color: '#92400e', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 6, padding: '8px 12px', margin: 0 }}>
+        <p style={{ fontSize: 13, color: '#D4960A', background: 'rgba(212,150,10,0.15)', border: '1px solid rgba(212,150,10,0.30)', borderRadius: 6, padding: '8px 12px', margin: 0 }}>
           Portal klienta działa tylko w trybie produkcyjnym (wymaga Supabase + Netlify).
         </p>
       </Card>
@@ -185,18 +185,18 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
     return (
       <Card>
         <h3 style={{ margin: '0 0 12px' }}>Portal klienta</h3>
-        <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
-          <div style={{ fontWeight: 600, color: '#15803d', marginBottom: 6 }}>
+        <div style={{ background: 'rgba(119,186,138,0.12)', border: '1px solid rgba(119,186,138,0.30)', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
+          <div style={{ fontWeight: 600, color: '#77BA8A', marginBottom: 6 }}>
             ✅ Dostęp nadany dla {email}
           </div>
           {emailSent ? (
-            <p style={{ fontSize: 13, color: '#166534', margin: 0, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 13, color: '#77BA8A', margin: 0, lineHeight: 1.6 }}>
               📧 Email z linkiem logowania został wysłany automatycznie.
               Klient powinien go otrzymać w ciągu kilku minut.
             </p>
           ) : magicLink ? (
             <>
-              <p style={{ fontSize: 13, color: '#166534', margin: '0 0 10px', lineHeight: 1.6 }}>
+              <p style={{ fontSize: 13, color: '#77BA8A', margin: '0 0 10px', lineHeight: 1.6 }}>
                 Skopiuj link i wyślij do klienta (email, SMS, itp.).
                 Link jest jednorazowy — po użyciu klient może logować się ponownie przez email.
               </p>
@@ -204,19 +204,19 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
                 <input
                   readOnly
                   value={magicLink}
-                  style={{ flex: 1, fontSize: 11, padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac', background: '#fff', color: '#374151', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  style={{ flex: 1, fontSize: 11, padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(119,186,138,0.30)', background: 'var(--color-surface)', color: '#D0D4DA', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                   onFocus={e => e.currentTarget.select()}
                 />
                 <button
                   onClick={() => void copyLink()}
-                  style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #16a34a', background: copied ? '#16a34a' : '#fff', color: copied ? '#fff' : '#16a34a', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s' }}
+                  style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #77BA8A', background: copied ? '#77BA8A' : 'var(--color-surface)', color: copied ? '#fff' : '#77BA8A', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s' }}
                 >
                   {copied ? '✓ Skopiowano' : 'Kopiuj'}
                 </button>
               </div>
             </>
           ) : (
-            <p style={{ fontSize: 13, color: '#166534', margin: 0, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 13, color: '#77BA8A', margin: 0, lineHeight: 1.6 }}>
               Klient może zalogować się przez magic link na swój email.
             </p>
           )}
@@ -233,12 +233,12 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
     <Card>
       <div style={{ marginBottom: 12 }}>
         <h3 style={{ margin: 0 }}>Portal klienta</h3>
-        <p style={{ fontSize: 13, color: '#718096', marginTop: 4 }}>
+        <p style={{ fontSize: 13, color: '#A7ABB3', marginTop: 4 }}>
           Zaproś kontrahenta emailem — otrzyma link logowania do portalu projektu
         </p>
       </div>
 
-      <p style={{ fontSize: 13, color: '#4a5568', lineHeight: 1.6, marginBottom: 16 }}>
+      <p style={{ fontSize: 13, color: '#C0C4CC', lineHeight: 1.6, marginBottom: 16 }}>
         Klient otrzyma dostęp do aktualizacji projektu, wiadomości, dokumentów i akceptacji kosztów.
         Nie zobaczy kosztów wewnętrznych, marży ani notatek firmowych.
       </p>
@@ -247,11 +247,11 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
       {lastInvite && status === 'idle' && (
         <div style={{ marginBottom: 12 }}>
           {lastInvite.status === 'sent' ? (
-            <div style={{ fontSize: 12, color: '#15803d', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 6, padding: '8px 12px' }}>
+            <div style={{ fontSize: 12, color: '#77BA8A', background: 'rgba(119,186,138,0.12)', border: '1px solid rgba(119,186,138,0.30)', borderRadius: 6, padding: '8px 12px' }}>
               ✅ Poprzednio zaproszony: {lastInvite.email} — {new Date(lastInvite.timestamp).toLocaleDateString('pl-PL')}
             </div>
           ) : (
-            <div style={{ fontSize: 12, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, padding: '8px 12px' }}>
+            <div style={{ fontSize: 12, color: '#EF6B6B', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 6, padding: '8px 12px' }}>
               ⚠️ Poprzednie zaproszenie nie zostało wysłane ({lastInvite.error ?? 'błąd'})
             </div>
           )}
@@ -278,10 +278,10 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
           disabled={status === 'sending'}
         />
         {status === 'failed' && errorMsg && (
-          <div style={{ fontSize: 12, color: 'var(--color-error, #dc2626)', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, padding: '8px 12px' }}>
+          <div style={{ fontSize: 12, color: 'var(--color-error, #EF6B6B)', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 6, padding: '8px 12px' }}>
             ⚠️ {errorMsg}{' '}
             <button
-              style={{ background: 'none', border: 'none', color: '#dc2626', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: 12 }}
+              style={{ background: 'none', border: 'none', color: '#EF6B6B', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: 12 }}
               onClick={() => { setStatus('idle'); setErrorMsg(null) }}
             >
               Spróbuj ponownie

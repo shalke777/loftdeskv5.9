@@ -46,16 +46,16 @@ export function ProjectApprovalsTab({ projectId }: Props) {
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
           Akceptacje kosztów
           {approvals.length > 0 && (
-            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: 'var(--color-text-muted, #6b7280)' }}>
+            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: 'var(--color-text-muted)' }}>
               ({approvals.length})
             </span>
           )}
         </h3>
         {approvals.length > 0 && (
-          <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--color-text-muted, #6b7280)' }}>
+          <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--color-text-muted)' }}>
             {pendingCount > 0 && <span>⏳ {pendingCount} oczekują</span>}
             {acceptedCount > 0 && (
-              <span style={{ fontWeight: 600, color: 'var(--color-success, #16a34a)' }}>
+              <span style={{ fontWeight: 600, color: 'var(--color-success, #77BA8A)' }}>
                 ✅ {totalGross.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN zaakceptowane
               </span>
             )}
@@ -97,7 +97,7 @@ export function ProjectApprovalsTab({ projectId }: Props) {
 
       {/* Loading */}
       {isLoading && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted, #6b7280)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)' }}>
           <span className="spinner" style={{ width: 16, height: 16 }} />
           Ładowanie akceptacji…
         </div>
@@ -108,8 +108,8 @@ export function ProjectApprovalsTab({ projectId }: Props) {
         <div
           style={{
             textAlign: 'center', padding: '48px 24px',
-            border: '2px dashed var(--color-border, #e5e7eb)',
-            borderRadius: 10, color: 'var(--color-text-muted, #6b7280)',
+            border: '2px dashed var(--color-border)',
+            borderRadius: 10, color: 'var(--color-text-muted)',
           }}
         >
           <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
@@ -122,7 +122,7 @@ export function ProjectApprovalsTab({ projectId }: Props) {
 
       {/* Empty filter state */}
       {!isLoading && approvals.length > 0 && visible.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '32px 24px', color: 'var(--color-text-muted, #6b7280)', fontSize: 13 }}>
+        <div style={{ textAlign: 'center', padding: '32px 24px', color: 'var(--color-text-muted)', fontSize: 13 }}>
           Brak akceptacji w tej kategorii.
         </div>
       )}
@@ -136,8 +136,8 @@ export function ProjectApprovalsTab({ projectId }: Props) {
               style={{
                 display: 'flex', gap: 12, alignItems: 'flex-start',
                 padding: 14, borderRadius: 8,
-                border: '1px solid var(--color-border, #e5e7eb)',
-                background: 'var(--color-surface, #fff)',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
               }}
             >
               {/* Status badge */}
@@ -152,14 +152,14 @@ export function ProjectApprovalsTab({ projectId }: Props) {
                     {approval.snapshot_vendor ?? 'Nieznany sprzedawca'}
                   </span>
                   {approval.snapshot_invoice_number && (
-                    <span style={{ fontSize: 12, color: 'var(--color-text-muted, #6b7280)' }}>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
                       #{approval.snapshot_invoice_number}
                     </span>
                   )}
                   <ApprovalStatusBadge status={approval.status} />
                 </div>
 
-                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 4, fontSize: 12, color: 'var(--color-text-muted, #6b7280)' }}>
+                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 4, fontSize: 12, color: 'var(--color-text-muted)' }}>
                   {approval.snapshot_amount_gross != null && (
                     <span style={{ fontWeight: 600, color: 'var(--color-text, #111)' }}>
                       {approval.snapshot_amount_gross.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN
@@ -176,8 +176,8 @@ export function ProjectApprovalsTab({ projectId }: Props) {
                   <div
                     style={{
                       marginTop: 8, padding: '6px 10px', borderRadius: 6,
-                      background: 'var(--color-surface-soft, #f9fafb)',
-                      border: '1px solid var(--color-border, #e5e7eb)',
+                      background: 'var(--color-surface-soft)',
+                      border: '1px solid var(--color-border)',
                       fontSize: 13, fontStyle: 'italic',
                     }}
                   >
@@ -194,7 +194,7 @@ export function ProjectApprovalsTab({ projectId }: Props) {
                       <button
                         type="button"
                         className="btn"
-                        style={{ fontSize: 11, padding: '4px 10px', background: 'var(--color-danger, #dc2626)', borderColor: 'var(--color-danger, #dc2626)', color: '#fff' }}
+                        style={{ fontSize: 11, padding: '4px 10px', background: 'var(--color-danger, #EF6B6B)', borderColor: 'var(--color-danger, #EF6B6B)', color: '#fff' }}
                         disabled={cancel.isPending}
                         onClick={() => cancel.mutate({ approval_id: approval.id }, { onSuccess: () => setCancelId(null) })}
                       >

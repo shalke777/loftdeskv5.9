@@ -60,25 +60,25 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
     switch (thread.visibility) {
       case 'internal':
         return {
-          bg:    '#f0f9ff',
-          border: '#bae6fd',
-          color:  '#0c4a6e',
+          bg:    'rgba(96,165,250,0.12)',
+          border: 'rgba(96,165,250,0.30)',
+          color:  '#60A5FA',
           icon:   '🔒',
           text:   'Notatka wewnętrzna — widoczna tylko dla Twojego zespołu',
         }
       case 'client_shared':
         return {
-          bg:    '#f0fdf4',
-          border: '#86efac',
-          color:  '#14532d',
+          bg:    'rgba(119,186,138,0.12)',
+          border: 'rgba(119,186,138,0.30)',
+          color:  '#77BA8A',
           icon:   '💬',
           text:   'Wiadomość do klienta — klient zobaczy ją w portalu',
         }
       case 'approval':
         return {
-          bg:    '#fffbeb',
-          border: '#fde68a',
-          color:  '#78350f',
+          bg:    'rgba(212,150,10,0.12)',
+          border: 'rgba(212,150,10,0.30)',
+          color:  '#D4960A',
           icon:   '✅',
           text:   'Wiadomość w kontekście akceptacji — widoczna dla klienta',
         }

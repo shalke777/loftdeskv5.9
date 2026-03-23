@@ -152,7 +152,7 @@ function ClientMagicLinkForm({ onBack }: { onBack: () => void }) {
           placeholder="twoj@email.pl"
           required
         />
-        {error && <p style={{ color: '#dc2626', fontSize: 13, margin: 0 }}>{error}</p>}
+        {error && <p style={{ color: '#EF6B6B', fontSize: 13, margin: 0 }}>{error}</p>}
         <Button type="submit" disabled={loading || !email.trim()}>
           {loading ? 'Wysyłanie…' : 'Wyślij link logowania'}
         </Button>

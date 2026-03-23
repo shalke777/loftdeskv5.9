@@ -118,7 +118,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
     <Modal open={open} onClose={onClose} title={isPackage ? 'Wyślij pakiet dokumentów do klienta' : `Wyślij ${label.toLowerCase()} do klienta`} size="md">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {isPackage ? (
-          <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#0369a1' }}>
+          <div style={{ background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.30)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#60A5FA' }}>
             <strong>Projekt:</strong> {documentName.replace(/^Dokumenty projektu – /, '')}
             {docSummary && docSummary.length > 0 && (
               <div style={{ marginTop: 6, lineHeight: 1.7 }}>
@@ -126,7 +126,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
                 {docSummary.map(n => <div key={n} style={{ paddingLeft: 8 }}>• {n}</div>)}
               </div>
             )}
-            <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#A7ABB3' }}>
               Klient otrzyma email z linkiem do projektu. Żadne pliki nie są dołączane bezpośrednio — dokumenty są dostępne w portalu klienta.
             </div>
           </div>
@@ -139,7 +139,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
 
         <div>
           <label className="field__label" htmlFor="stc-email" style={{ display: 'block', marginBottom: 4 }}>
-            Adres email klienta <span style={{ color: '#dc2626' }}>*</span>
+            Adres email klienta <span style={{ color: '#EF6B6B' }}>*</span>
           </label>
           <input
             id="stc-email"
@@ -169,18 +169,18 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
         </div>
 
         {portalUrl ? (
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#166534' }}>
+          <div style={{ background: 'rgba(119,186,138,0.12)', border: '1px solid rgba(119,186,138,0.30)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#77BA8A' }}>
             ✓ Email będzie zawierał przycisk &ldquo;{isPackage ? 'Otwórz projekt w portalu' : 'Otwórz dokument w portalu'}&rdquo;
           </div>
         ) : (
           <div
             style={{
-              background: '#fefce8',
-              border: '1px solid #fde68a',
+              background: 'rgba(212,150,10,0.12)',
+              border: '1px solid rgba(212,150,10,0.30)',
               borderRadius: 8,
               padding: '10px 14px',
               fontSize: 13,
-              color: '#92400e',
+              color: '#D4960A',
             }}
           >
             Brak linku do portalu — klient otrzyma tylko informacj\u0119 o dokumencie.

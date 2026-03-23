@@ -45,12 +45,12 @@ export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
     <div
       style={{
         display: 'flex', flexDirection: 'column', gap: 12,
-        background: 'var(--color-surface-soft, #f9fafb)',
-        border: '1px solid var(--color-border, #e5e7eb)',
+        background: 'var(--color-surface-soft)',
+        border: '1px solid var(--color-border)',
         borderRadius: 8, padding: 16, minHeight: 200,
       }}
     >
-      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted, #6b7280)' }}>
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)' }}>
         Podgląd dokumentu
       </p>
 
@@ -62,7 +62,7 @@ export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
           style={{
             maxWidth: '100%', maxHeight: 320,
             objectFit: 'contain', borderRadius: 6,
-            border: '1px solid var(--color-border, #e5e7eb)',
+            border: '1px solid var(--color-border)',
           }}
         />
       )}
@@ -71,15 +71,15 @@ export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
       {file && isPDF && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 14,
-          padding: '14px 16px', background: '#fff', borderRadius: 6,
-          border: '1px solid var(--color-border, #e5e7eb)',
+          padding: '14px 16px', background: 'var(--color-surface)', borderRadius: 6,
+          border: '1px solid var(--color-border)',
         }}>
           <span style={{ fontSize: 40, flexShrink: 0, lineHeight: 1 }}>📄</span>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {file.name}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--color-text-muted, #6b7280)', marginTop: 3 }}>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 3 }}>
               {(file.size / 1024).toFixed(0)} KB · PDF
             </div>
           </div>
@@ -87,7 +87,7 @@ export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
       )}
 
       {file && !isImage && !isPDF && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 12, background: '#fff', borderRadius: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 12, background: 'var(--color-surface)', borderRadius: 6 }}>
           <span style={{ fontSize: 28 }}>📎</span>
           <span style={{ fontSize: 13 }}>{file.name}</span>
         </div>
@@ -95,14 +95,14 @@ export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
 
       {/* Parse status */}
       {parsing && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted, #6b7280)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)' }}>
           <span className="spinner" style={{ width: 16, height: 16 }} />
           {OCR_STEPS[ocrStep]}
         </div>
       )}
 
       {parseResult && !parsing && (
-        <div style={{ fontSize: 12, color: 'var(--color-text-muted, #6b7280)', lineHeight: 1.6 }}>
+        <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
           {parseResult.vendor_name && <div>🏢 <strong>{parseResult.vendor_name}</strong></div>}
           {parseResult.invoice_number && <div>🔢 {parseResult.invoice_number}</div>}
           {parseResult.issue_date && <div>📅 {parseResult.issue_date}</div>}

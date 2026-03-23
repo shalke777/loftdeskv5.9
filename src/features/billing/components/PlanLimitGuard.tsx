@@ -83,18 +83,18 @@ function UpgradeBannerInline({
         gap: 10,
         marginTop: 8,
         padding: '10px 14px',
-        background: isExceeded ? '#fef2f2' : '#fffbeb',
-        border: `1px solid ${isExceeded ? '#fca5a5' : '#fcd34d'}`,
+        background: isExceeded ? 'rgba(239,68,68,0.12)' : 'rgba(212,150,10,0.12)',
+        border: `1px solid ${isExceeded ? 'rgba(239,68,68,0.30)' : 'rgba(212,150,10,0.30)'}`,
         borderRadius: 8,
         fontSize: 13,
       }}
     >
       {isExceeded ? (
-        <TrendingUp size={15} color="#dc2626" style={{ flexShrink: 0 }} />
+        <TrendingUp size={15} color="#EF6B6B" style={{ flexShrink: 0 }} />
       ) : (
-        <Zap size={15} color="#d97706" style={{ flexShrink: 0 }} />
+        <Zap size={15} color="#D4960A" style={{ flexShrink: 0 }} />
       )}
-      <span style={{ flex: 1, color: isExceeded ? '#991b1b' : '#92400e' }}>
+      <span style={{ flex: 1, color: isExceeded ? '#EF6B6B' : '#D4960A' }}>
         {isExceeded
           ? `Osiągnięto limit ${label} (${status.used}/${status.limit}). Ulepsz plan, aby dodać więcej.`
           : `Zbliżasz się do limitu ${label} (${status.used}/${status.limit}).`}
@@ -102,7 +102,7 @@ function UpgradeBannerInline({
       <button
         onClick={onUpgrade}
         style={{
-          background: isExceeded ? '#dc2626' : '#d97706',
+          background: isExceeded ? '#EF6B6B' : '#D4960A',
           color: 'white',
           border: 'none',
           borderRadius: 6,

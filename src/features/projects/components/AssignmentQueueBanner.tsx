@@ -40,11 +40,11 @@ export function AssignmentQueueBanner() {
       style={{
         border: '2px solid #f6ad55',
         marginBottom: 16,
-        background: '#fffbf5',
+        background: 'rgba(212,150,10,0.10)',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <strong style={{ color: '#c05621', fontSize: 14 }}>
+        <strong style={{ color: '#D4960A', fontSize: 14 }}>
           ⚠ {pending.length} {pending.length === 1 ? 'dokument wymaga' : 'dokumenty wymagają'} przypisania do projektu
         </strong>
       </div>
@@ -60,27 +60,27 @@ export function AssignmentQueueBanner() {
               gap: 8,
               alignItems: 'center',
               padding: '8px 0',
-              borderTop: '1px solid #f6e05e',
+              borderTop: '1px solid rgba(212,150,10,0.30)',
               flexWrap: 'wrap',
               fontSize: 13,
             }}
           >
             <span style={{ flex: 1, minWidth: 0 }}>
               <strong>{DOC_LABEL[item.doc_type] ?? item.doc_type}</strong>
-              <span style={{ color: '#718096', fontSize: 12, marginLeft: 6 }}>
+              <span style={{ color: '#A7ABB3', fontSize: 12, marginLeft: 6 }}>
                 {resolveDocName(item.doc_type, item.doc_id)}
               </span>
               {suggested && (
-                <span style={{ color: '#718096', marginLeft: 8 }}>
+                <span style={{ color: '#A7ABB3', marginLeft: 8 }}>
                   → sugerowany:{' '}
-                  <strong style={{ color: '#2d3748' }}>{suggested.name}</strong>
-                  <span style={{ color: '#a0aec0', fontSize: 11, marginLeft: 4 }}>
+                  <strong style={{ color: '#D0D4DA' }}>{suggested.name}</strong>
+                  <span style={{ color: '#8A8F98', fontSize: 11, marginLeft: 4 }}>
                     ({item.confidence}%)
                   </span>
                 </span>
               )}
               {!suggested && (
-                <span style={{ color: '#a0aec0', marginLeft: 8 }}>brak sugestii</span>
+                <span style={{ color: '#8A8F98', marginLeft: 8 }}>brak sugestii</span>
               )}
             </span>
             {suggested && (
@@ -111,7 +111,7 @@ export function AssignmentQueueBanner() {
         )
       })}
       {pending.length > 5 && (
-        <p style={{ fontSize: 12, color: '#718096', marginTop: 8, paddingTop: 8, borderTop: '1px solid #f6e05e' }}>
+        <p style={{ fontSize: 12, color: '#A7ABB3', marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(212,150,10,0.30)' }}>
           … i {pending.length - 5} więcej
         </p>
       )}

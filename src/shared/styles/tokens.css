@@ -1,30 +1,35 @@
 :root {
-  --color-brand: #dc2626;
-  --color-brand-hover: #b91c1c;
-  --color-brand-2: #111827;
-  --color-brand-light: #fff1f1;
-  --color-brand-border: #fecaca;
+  /* ── LoftDesk Dark Premium Theme — Foundation Tokens ── */
+  --color-brand: #77BA8A;
+  --color-brand-hover: #7EB48D;
+  --color-brand-2: #1D3826;
+  --color-brand-light: #1D3826;
+  --color-brand-border: #2D5A3A;
 
-  --color-bg: #f6f7fb;
-  --color-bg-elevated: #eef2f7;
-  --color-surface: #ffffff;
-  --color-surface-soft: #f9fafc;
-  --color-border: #e5e7eb;
-  --color-border-light: #eef1f5;
+  --color-bg: #202125;
+  --color-bg-elevated: #282830;
+  --color-surface: #2A2A2E;
+  --color-surface-soft: #222226;
+  --color-border: #3A3D42;
+  --color-border-light: #32353A;
 
-  --color-text-primary: #111827;
-  --color-text-secondary: #5f6b7a;
-  --color-text-tertiary: #8b95a7;
-  --color-text-inverse: #f8fafc;
+  --color-text-primary: #F0F2F3;
+  --color-text-secondary: #A7ABB3;
+  --color-text-tertiary: #787E88;
+  --color-text-inverse: #202125;
+  --color-text-muted: #787E88;
 
-  --color-success: #15803d;
-  --color-success-soft: #e8f7ee;
-  --color-warning: #b45309;
-  --color-warning-soft: #fff4df;
-  --color-error: #b42318;
-  --color-error-soft: #fdecea;
-  --color-info: #1d4ed8;
-  --color-info-soft: #eaf1ff;
+  --color-success: #4CAF72;
+  --color-success-soft: rgba(76,175,114,0.12);
+  --color-warning: #D4960A;
+  --color-warning-soft: rgba(212,150,10,0.12);
+  --color-error: #D4453A;
+  --color-error-soft: rgba(212,69,58,0.12);
+  --color-info: #5B9BD5;
+  --color-info-soft: rgba(91,155,213,0.12);
+
+  --color-danger-soft: rgba(212,69,58,0.12);
+  --color-danger: #D4453A;
 
   --font-display: Inter, system-ui, sans-serif;
   --font-body: Inter, system-ui, sans-serif;
@@ -44,9 +49,9 @@
   --radius-lg: 20px;
   --radius-xl: 28px;
 
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-sm: 0 10px 24px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 22px 56px rgba(15, 23, 42, 0.10);
-  --shadow-lg: 0 32px 80px rgba(15, 23, 42, 0.14);
-  --ring-brand: 0 0 0 4px rgba(220, 38, 38, 0.12);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.18);
+  --shadow-md: 0 22px 56px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 32px 80px rgba(0, 0, 0, 0.32);
+  --ring-brand: 0 0 0 4px rgba(119, 186, 138, 0.25);
 }

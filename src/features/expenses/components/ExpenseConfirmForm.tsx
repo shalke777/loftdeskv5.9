@@ -143,21 +143,21 @@ export function ExpenseConfirmForm({
   const inputStyle: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box',
     padding: '8px 10px', borderRadius: 6, fontSize: 14,
-    border: '1px solid var(--color-border, #d1d5db)',
-    background: 'var(--color-surface, #fff)',
+    border: '1px solid var(--color-border)',
+    background: 'var(--color-surface)',
     color: 'var(--color-text, #111)',
   }
   const labelStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 6,
     fontSize: 12, fontWeight: 600,
-    color: 'var(--color-text-muted, #6b7280)', marginBottom: 4,
+    color: 'var(--color-text-muted)', marginBottom: 4,
   }
   const fieldStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column' }
 
   // Returns extra style for autofilled inputs (subtle left-border tint)
   function autoStyle(field: keyof FormState): React.CSSProperties {
     return autofilled.has(field)
-      ? { ...inputStyle, borderLeftColor: 'var(--color-success, #16a34a)', borderLeftWidth: 3 }
+      ? { ...inputStyle, borderLeftColor: 'var(--color-success, #77BA8A)', borderLeftWidth: 3 }
       : inputStyle
   }
 
@@ -181,7 +181,7 @@ export function ExpenseConfirmForm({
 
       {/* Section: sprzedawca */}
       <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted, #6b7280)', marginBottom: 4, padding: 0 }}>
+        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
           Sprzedawca
         </legend>
 
@@ -211,7 +211,7 @@ export function ExpenseConfirmForm({
 
       {/* Section: faktura */}
       <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted, #6b7280)', marginBottom: 4, padding: 0 }}>
+        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
           Faktura
         </legend>
 
@@ -259,7 +259,7 @@ export function ExpenseConfirmForm({
 
       {/* Section: kwoty */}
       <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted, #6b7280)', marginBottom: 4, padding: 0 }}>
+        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
           Kwoty
         </legend>
 
@@ -316,7 +316,7 @@ export function ExpenseConfirmForm({
 
       {/* Section: klasyfikacja */}
       <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted, #6b7280)', marginBottom: 4, padding: 0 }}>
+        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
           Klasyfikacja
         </legend>
 

@@ -145,9 +145,9 @@ export function ProjectDocuments({ project }: { project: Project }) {
       </div>
 
       {isLoading ? (
-        <p style={{ color: '#718096', fontSize: 14 }}>Ładowanie dokumentów…</p>
+        <p style={{ color: '#A7ABB3', fontSize: 14 }}>Ładowanie dokumentów…</p>
       ) : docs.length === 0 ? (
-        <p style={{ color: '#718096', fontSize: 14 }}>
+        <p style={{ color: '#A7ABB3', fontSize: 14 }}>
           Brak dokumentów. Dokumenty są przypisywane automatycznie po powiązaniu z projektem.
         </p>
       ) : (
@@ -157,7 +157,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
               style={{
                 fontWeight: 600,
                 fontSize: 12,
-                color: '#4a5568',
+                color: '#C0C4CC',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 marginBottom: 6,
@@ -175,7 +175,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
                   alignItems: 'center',
                   flexWrap: 'wrap',
                   padding: '6px 0',
-                  borderBottom: '1px solid #f7fafc',
+                  borderBottom: '1px solid var(--color-surface-soft)',
                   fontSize: 13,
                 }}
               >
@@ -195,7 +195,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
                   <Badge variant="warning">ręcznie</Badge>
                 )}
                 {doc.source_doc_type && (
-                  <span style={{ fontSize: 11, color: '#a0aec0' }}>
+                  <span style={{ fontSize: 11, color: '#8A8F98' }}>
                     z: {TYPE_LABEL[doc.source_doc_type] ?? doc.source_doc_type}
                   </span>
                 )}
@@ -232,7 +232,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    style={confirmDeleteId === doc.id ? { color: 'var(--color-danger, #e53e3e)' } : {}}
+                    style={confirmDeleteId === doc.id ? { color: 'var(--color-danger, #EF6B6B)' } : {}}
                     disabled={isDeleting}
                     onClick={() => {
                       if (confirmDeleteId === doc.id) {

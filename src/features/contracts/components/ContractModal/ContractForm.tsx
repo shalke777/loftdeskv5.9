@@ -152,16 +152,16 @@ export function ContractForm({ companyId, onSubmit, initialContract }: { company
           <Select label="Wycena" value={estimateId} onChange={(e) => setEstimateId(e.target.value)} options={estimates.map((est) => ({ value: est.id, label: `${est.number} · ${est.name}` }))} placeholder="Wybierz wycenę" />
           <div className="field">
             <span className="field__label">Klient (z wyceny)</span>
-            <div className="input" style={{ background: '#f7f4f1', color: selectedClient ? '#1f2937' : '#aaa', cursor: 'default' }}>
+            <div className="input" style={{ background: 'var(--color-surface-soft)', color: selectedClient ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)', cursor: 'default' }}>
               {selectedClient?.name || (initialContract?.client_id ? '— wczytywanie —' : '— wybierz wycenę —')}
             </div>
           </div>
         </div>
         {totalGross > 0 ? (
-          <div className="form-grid" style={{ marginTop: 10, padding: '10px 14px', background: '#fdf8f3', borderRadius: 8, border: '1px solid #e8e0d8' }}>
+          <div className="form-grid" style={{ marginTop: 10, padding: '10px 14px', background: 'var(--color-surface-soft)', borderRadius: 8, border: '1px solid var(--color-border)' }}>
             <div><div className="field__label">Netto</div><strong>{formatCurrency(totalNet)}</strong></div>
             <div><div className="field__label">VAT ({vatRate}%)</div><strong>{formatCurrency(vatAmount)}</strong></div>
-            <div><div className="field__label">Brutto (wartość umowy)</div><strong style={{ color: '#d32f2f' }}>{formatCurrency(totalGross)}</strong></div>
+            <div><div className="field__label">Brutto (wartość umowy)</div><strong style={{ color: '#EF6B6B' }}>{formatCurrency(totalGross)}</strong></div>
           </div>
         ) : null}
       </div>
@@ -196,13 +196,13 @@ export function ContractForm({ companyId, onSubmit, initialContract }: { company
           />
         </div>
         {tranches.length === 0 && totalGross === 0 ? (
-          <div style={{ padding: 12, border: '1px dashed #d8cfc8', borderRadius: 8, color: '#aaa', textAlign: 'center', fontSize: 13 }}>
+          <div style={{ padding: 12, border: '1px dashed var(--color-border)', borderRadius: 8, color: 'var(--color-text-tertiary)', textAlign: 'center', fontSize: 13 }}>
             Wybierz wycenę — transze zostaną wygenerowane automatycznie
           </div>
         ) : null}
         <div style={{ display: 'grid', gap: 8 }}>
           {tranches.map((t, index) => (
-            <div key={t.id} style={{ border: '1px solid #e8e0d8', borderRadius: 8, padding: '10px 12px', background: index === 0 ? '#fffbf7' : '#fff' }}>
+            <div key={t.id} style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '10px 12px', background: index === 0 ? 'var(--color-surface-soft)' : 'var(--color-surface)' }}>
               <div className="grid-2" style={{ gap: 8 }}>
                 <Input label={index === 0 ? 'Nazwa (Zaliczka)' : 'Nazwa transzy'} value={t.label} onChange={(e) => updateTranche(t.id, 'label', e.target.value)} />
                 <div className="form-grid" style={{ gap: 8 }}>
@@ -227,11 +227,11 @@ export function ContractForm({ companyId, onSubmit, initialContract }: { company
           <Button variant="secondary" size="sm" onClick={addParagraph} icon={<Plus size={14} />}>Dodaj §</Button>
         </div>
         {customParagraphs.length === 0 ? (
-          <div style={{ padding: 12, border: '1px dashed #d8cfc8', borderRadius: 8, color: '#aaa', textAlign: 'center', fontSize: 13 }}>Brak paragrafów dodatkowych</div>
+          <div style={{ padding: 12, border: '1px dashed var(--color-border)', borderRadius: 8, color: 'var(--color-text-tertiary)', textAlign: 'center', fontSize: 13 }}>Brak paragrafów dodatkowych</div>
         ) : (
           <div style={{ display: 'grid', gap: 10 }}>
             {customParagraphs.map((p, index) => (
-              <div key={p.id} style={{ border: '1px solid #e8e0d8', borderRadius: 8, padding: 12 }}>
+              <div key={p.id} style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: 12 }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'flex-end' }}>
                   <div style={{ flex: 1 }}>
                     <Input label={`§${6 + index} — Tytuł`} value={p.title} onChange={(e) => updateParagraph(p.id, 'title', e.target.value)} placeholder="np. Materiały powierzone, Kary umowne…" />

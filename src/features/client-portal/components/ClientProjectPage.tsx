@@ -102,7 +102,7 @@ function ProjectStageRail({ status }: { status: string }) {
   if (status === 'cancelled') {
     return (
       <div className="client-stage-rail" style={{ padding: '10px 0' }}>
-        <span style={{ fontSize: 13, color: '#dc2626', fontWeight: 600 }}>⛔ Projekt anulowany</span>
+        <span style={{ fontSize: 13, color: '#EF6B6B', fontWeight: 600 }}>⛔ Projekt anulowany</span>
       </div>
     )
   }
@@ -514,7 +514,7 @@ export function ClientProjectPage({ projectId }: Props) {
           style={{
             display: 'inline-block', marginTop: 16,
             padding: '10px 20px', borderRadius: 8,
-            background: 'var(--color-primary, #2563eb)', color: '#fff',
+            background: 'var(--color-primary, #77BA8A)', color: '#fff',
             fontWeight: 600, fontSize: 14, textDecoration: 'none',
           }}
         >

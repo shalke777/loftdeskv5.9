@@ -233,8 +233,8 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
       </div>
 
       {/* ── Daty ── */}
-      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 16px' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Daty</div>
+      <div style={{ background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Daty</div>
         <div className="form-grid">
           <Input label="Data wystawienia" type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
           <Input label="Data sprzedaży / wyk. usługi" type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} />
@@ -245,7 +245,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
             options={DUE_DAYS_OPTIONS}
           />
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 4, fontWeight: 500 }}>
               Termin płatności — data
             </label>
             <input
@@ -253,7 +253,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              style={{ width: '100%', height: 38, padding: '0 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
+              style={{ width: '100%', height: 38, padding: '0 10px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
             />
           </div>
         </div>
@@ -274,7 +274,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
           <Input label="Suma wcześniejszych zaliczek (potrącenie)" type="number" value={advanceTotal} onChange={(e) => setAdvanceTotal(e.target.value)} />
         ) : null}
         <div className="form-grid--full">
-          <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>Uwagi</label>
+          <label style={{ display: 'block', fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 4, fontWeight: 500 }}>Uwagi</label>
           <textarea
             className="input"
             value={notes}
@@ -287,10 +287,10 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
 
       {/* ── Pozycje ── */}
       <div style={{ display: 'grid', gap: 10 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pozycje faktury</div>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pozycje faktury</div>
         {items.map((item, idx) => (
           <div key={item.id} className="card" style={{ display: 'grid', gap: 10, padding: '12px 14px' }}>
-            <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>Pozycja {idx + 1}</div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontWeight: 600 }}>Pozycja {idx + 1}</div>
             <div className="form-grid">
               <div className="form-grid--full">
                 <Input label="Opis pozycji" value={item.description} onChange={(e) => patchItem(item.id, 'description', e.target.value)} />
@@ -302,7 +302,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
               <Input label="Etykieta transzy" value={item.tranche_label || ''} onChange={(e) => patchItem(item.id, 'tranche_label', e.target.value)} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: '#6b7280' }}>
+              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                 Netto: {formatCurrency(item.unit_price * item.quantity)} · Brutto: {formatCurrency(item.unit_price * item.quantity * (1 + item.vat_rate / 100))}
               </span>
               <Button variant="danger" size="sm" onClick={() => removeItem(item.id)}>Usuń</Button>
@@ -313,18 +313,18 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
       </div>
 
       {/* ── Podsumowanie ── */}
-      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 18px' }}>
-        <div style={{ fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 10 }}>Podsumowanie</div>
+      <div style={{ background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 18px' }}>
+        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)', marginBottom: 10 }}>Podsumowanie</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '5px 24px', fontSize: 13 }}>
-          <span style={{ color: '#6b7280' }}>Netto</span>
+          <span style={{ color: 'var(--color-text-secondary)' }}>Netto</span>
           <span style={{ fontWeight: 500, textAlign: 'right' }}>{formatCurrency(totals.totalNet)}</span>
-          <span style={{ color: '#6b7280' }}>VAT</span>
+          <span style={{ color: 'var(--color-text-secondary)' }}>VAT</span>
           <span style={{ fontWeight: 500, textAlign: 'right' }}>{formatCurrency(vatDiff)}</span>
-          <span style={{ color: '#111827', fontWeight: 700, borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>Brutto</span>
-          <span style={{ fontWeight: 700, textAlign: 'right', borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>{formatCurrency(totals.totalGross)}</span>
+          <span style={{ color: 'var(--color-text-primary)', fontWeight: 700, borderTop: '1px solid var(--color-border)', paddingTop: 8 }}>Brutto</span>
+          <span style={{ fontWeight: 700, textAlign: 'right', borderTop: '1px solid var(--color-border)', paddingTop: 8 }}>{formatCurrency(totals.totalGross)}</span>
         </div>
         {invoiceType === 'final' && Number(advanceTotal) > 0 ? (
-          <div style={{ marginTop: 8, fontSize: 13, color: '#374151' }}>
+          <div style={{ marginTop: 8, fontSize: 13, color: 'var(--color-text-primary)' }}>
             Pozostało do zapłaty: <strong>{formatCurrency(remainsToPay)}</strong>
           </div>
         ) : null}

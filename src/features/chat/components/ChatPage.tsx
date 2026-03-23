@@ -173,7 +173,7 @@ export function ChatPage() {
               padding: '10px 14px',
               borderTop: '1px solid var(--color-border-light)',
               fontSize: 11,
-              color: '#9ca3af',
+              color: '#8A8F98',
               marginTop: 'auto',
             }}
           >

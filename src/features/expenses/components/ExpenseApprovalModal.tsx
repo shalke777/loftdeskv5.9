@@ -23,7 +23,7 @@ const s = {
   } satisfies React.CSSProperties,
 
   modal: {
-    background:   'var(--color-surface, #fff)',
+    background:   'var(--color-surface)',
     borderRadius: 12,
     width:        '100%',
     maxWidth:     520,
@@ -39,7 +39,7 @@ const s = {
     display:    'block',
     fontSize:   12,
     fontWeight: 600,
-    color:      'var(--color-text-muted, #6b7280)',
+    color:      'var(--color-text-muted)',
     marginBottom: 4,
   } satisfies React.CSSProperties,
 
@@ -49,8 +49,8 @@ const s = {
     padding:       '8px 10px',
     borderRadius:  6,
     fontSize:      14,
-    border:        '1px solid var(--color-border, #d1d5db)',
-    background:    'var(--color-surface, #fff)',
+    border:        '1px solid var(--color-border)',
+    background:    'var(--color-surface)',
     color:         'var(--color-text, #111)',
   } satisfies React.CSSProperties,
 }
@@ -59,7 +59,7 @@ function Row({ label, value }: { label: string; value: string | null | undefined
   if (!value) return null
   return (
     <div style={{ display: 'flex', gap: 8, fontSize: 13 }}>
-      <span style={{ color: 'var(--color-text-muted, #6b7280)', minWidth: 130 }}>{label}</span>
+      <span style={{ color: 'var(--color-text-muted)', minWidth: 130 }}>{label}</span>
       <span style={{ fontWeight: 600 }}>{value}</span>
     </div>
   )
@@ -109,29 +109,29 @@ export function ExpenseApprovalModal({ projectId, expense, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted, #6b7280)', lineHeight: 1, padding: 4 }}
+            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)', lineHeight: 1, padding: 4 }}
             aria-label="Zamknij"
           >×</button>
         </div>
 
         {/* Existing approval warning */}
         {pendingApproval && (
-          <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fef3c7', border: '1px solid #f59e0b', fontSize: 13 }}>
+          <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(212,150,10,0.15)', border: '1px solid rgba(212,150,10,0.30)', fontSize: 13 }}>
             ⚠️ Ten koszt ma już aktywną prośbę o akceptację.
             Wysłanie nowej spowoduje konflikt — anuluj poprzednią akceptację lub poczekaj na odpowiedź klienta.
           </div>
         )}
 
         {latestApproval && latestApproval.status !== 'pending_client' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted, #6b7280)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)' }}>
             Poprzedni status:
             <ApprovalStatusBadge status={latestApproval.status} />
           </div>
         )}
 
         {/* Snapshot — what the client will see */}
-        <div style={{ background: 'var(--color-surface-soft, #f9fafb)', border: '1px solid var(--color-border, #e5e7eb)', borderRadius: 8, padding: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted, #6b7280)' }}>
+        <div style={{ background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)' }}>
             Snapshot wysyłany do klienta
           </p>
           <Row label="Sprzedawca"   value={vendorName} />
@@ -154,12 +154,12 @@ export function ExpenseApprovalModal({ projectId, expense, onClose }: Props) {
               placeholder="Proszę o zatwierdzenie poniższego kosztu w ramach projektu…"
               maxLength={500}
             />
-            <span style={{ fontSize: 11, color: 'var(--color-text-muted, #6b7280)' }}>{message.length}/500</span>
+            <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{message.length}/500</span>
           </div>
 
           {/* Error */}
           {create.isError && (
-            <div style={{ padding: '8px 12px', borderRadius: 6, background: '#fef2f2', border: '1px solid #dc2626', fontSize: 13, color: '#dc2626' }}>
+            <div style={{ padding: '8px 12px', borderRadius: 6, background: 'rgba(239,68,68,0.12)', border: '1px solid #EF6B6B', fontSize: 13, color: '#EF6B6B' }}>
               Błąd: {(create.error as Error)?.message ?? 'Nieznany błąd'}
             </div>
           )}

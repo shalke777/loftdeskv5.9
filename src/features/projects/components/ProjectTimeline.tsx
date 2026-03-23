@@ -14,7 +14,7 @@ export function ProjectTimeline({ project }: { project: Project }) {
     return (
       <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
         <strong style={{ fontSize: 13 }}>Etap projektu</strong>
-        <span style={{ fontSize: 13, color: 'var(--color-error, #dc2626)', fontWeight: 600 }}>⛔ Anulowany</span>
+        <span style={{ fontSize: 13, color: 'var(--color-error, #EF6B6B)', fontWeight: 600 }}>⛔ Anulowany</span>
       </div>
     )
   }
@@ -52,9 +52,9 @@ export function ProjectTimeline({ project }: { project: Project }) {
                     fontWeight: 700,
                     fontSize: 12,
                     flexShrink: 0,
-                    background: isFuture ? 'var(--color-border-light, #e2e8f0)' : 'var(--color-brand, #7a2230)',
-                    color: isFuture ? 'var(--color-text-muted, #94a3b8)' : '#fff',
-                    border: isCurrent ? '2px solid var(--color-brand, #7a2230)' : '2px solid transparent',
+                    background: isFuture ? 'var(--color-border-light, #3A3D42)' : 'var(--color-brand, #77BA8A)',
+                    color: isFuture ? 'var(--color-text-muted, #8A8F98)' : '#fff',
+                    border: isCurrent ? '2px solid var(--color-brand, #77BA8A)' : '2px solid transparent',
                     boxShadow: isCurrent ? '0 0 0 3px rgba(122,34,48,.18)' : 'none',
                   }}
                 >
@@ -65,10 +65,10 @@ export function ProjectTimeline({ project }: { project: Project }) {
                     fontSize: 11,
                     fontWeight: isCurrent ? 700 : 500,
                     color: isFuture
-                      ? 'var(--color-text-muted, #94a3b8)'
+                      ? 'var(--color-text-muted, #8A8F98)'
                       : isCurrent
-                        ? 'var(--color-brand, #7a2230)'
-                        : 'var(--color-text-secondary, #6b7280)',
+                        ? 'var(--color-brand, #77BA8A)'
+                        : 'var(--color-text-secondary, #A7ABB3)',
                     whiteSpace: 'nowrap',
                   }}
                 >
@@ -84,8 +84,8 @@ export function ProjectTimeline({ project }: { project: Project }) {
                     flex: 1,
                     height: 2,
                     background: currentIdx > i
-                      ? 'var(--color-brand, #7a2230)'
-                      : 'var(--color-border-light, #e2e8f0)',
+                      ? 'var(--color-brand, #77BA8A)'
+                      : 'var(--color-border-light, #3A3D42)',
                     marginBottom: 20,
                     minWidth: 16,
                   }}

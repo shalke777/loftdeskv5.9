@@ -15,8 +15,8 @@ const VAT_OPTIONS = [
   { value: '0', label: '0%' },
 ]
 const baseInput: CSSProperties = {
-  height: 34, fontSize: 13, padding: '4px 8px', background: '#fff',
-  border: '1px solid #d1d5db', borderRadius: 6, outline: 'none',
+  height: 34, fontSize: 13, padding: '4px 8px', background: 'var(--color-surface)',
+  border: '1px solid var(--color-border)', borderRadius: 6, outline: 'none',
   width: '100%', boxSizing: 'border-box',
 }
 
@@ -86,15 +86,15 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* ── Fast-add form ── */}
-      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '14px 16px' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#166534', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <div style={{ background: 'rgba(119,186,138,0.12)', border: '1px solid rgba(119,186,138,0.30)', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#77BA8A', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Dodaj pozycję
         </div>
         {/* Row 1: Nazwa + j.m. + Ilość + VAT + Dodaj */}
         <div className="items-fast-add-row" style={{ display: 'grid', gridTemplateColumns: '1fr 70px 74px 74px auto', gap: 8, alignItems: 'flex-end' }}>
           <div>
-            <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>
-              Nazwa <span style={{ color: '#ef4444' }}>*</span>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>
+              Nazwa <span style={{ color: '#EF6B6B' }}>*</span>
             </label>
             <input
               className="input"
@@ -106,7 +106,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>j.m.</label>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>j.m.</label>
             <input
               className="input"
               placeholder="m²"
@@ -116,8 +116,8 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>
-              Ilość <span style={{ color: '#ef4444' }}>*</span>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>
+              Ilość <span style={{ color: '#EF6B6B' }}>*</span>
             </label>
             <input
               className="input"
@@ -131,7 +131,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>VAT</label>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>VAT</label>
             <select
               className="input"
               value={String(fastVat)}
@@ -156,7 +156,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
         {/* Row 2: Materiał + Robocizna */}
         <div className="items-fast-add-row--wide" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>Materiał netto / j.m.</label>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>Materiał netto / j.m.</label>
             <input
               className="input"
               type="number"
@@ -169,7 +169,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>Robocizna netto / j.m.</label>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>Robocizna netto / j.m.</label>
             <input
               className="input"
               type="number"
@@ -184,30 +184,30 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
         </div>
         {/* Row 3: Opis */}
         <div style={{ marginTop: 8 }}>
-          <label style={{ display: 'block', fontSize: 11, color: '#374151', marginBottom: 3, fontWeight: 500 }}>Opis / uwagi</label>
+          <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>Opis / uwagi</label>
           <textarea
             className="input"
             placeholder="Opis, szczegóły, uwagi... (opcjonalnie)"
             value={fastDescription}
             onChange={e => setFastDescription(e.target.value)}
-            style={{ width: '100%', fontSize: 12, padding: '6px 8px', resize: 'vertical', minHeight: 40, border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', boxSizing: 'border-box' }}
+            style={{ width: '100%', fontSize: 12, padding: '6px 8px', resize: 'vertical', minHeight: 40, border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-surface)', boxSizing: 'border-box' }}
           />
         </div>
       </div>
 
       {/* ── Items table ── */}
       {items.length > 0 && (
-        <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+        <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid var(--color-border)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, color: '#9ca3af', fontSize: 11, width: 30 }}>#</th>
-                <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, color: '#6b7280', fontSize: 11 }}>Nazwa</th>
-                <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600, color: '#6b7280', fontSize: 11, width: 52 }}>j.m.</th>
-                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: '#6b7280', fontSize: 11, width: 58 }}>Ilość</th>
-                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: '#6b7280', fontSize: 11, width: 90 }}>Netto j.m.</th>
-                <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600, color: '#6b7280', fontSize: 11, width: 52 }}>VAT</th>
-                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: '#6b7280', fontSize: 11, width: 90 }}>Brutto</th>
+              <tr style={{ background: 'var(--color-surface-soft)', borderBottom: '2px solid var(--color-border)' }}>
+                <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-tertiary)', fontSize: 11, width: 30 }}>#</th>
+                <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-secondary)', fontSize: 11 }}>Nazwa</th>
+                <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600, color: 'var(--color-text-secondary)', fontSize: 11, width: 52 }}>j.m.</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: 'var(--color-text-secondary)', fontSize: 11, width: 58 }}>Ilość</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: 'var(--color-text-secondary)', fontSize: 11, width: 90 }}>Netto j.m.</th>
+                <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600, color: 'var(--color-text-secondary)', fontSize: 11, width: 52 }}>VAT</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: 'var(--color-text-secondary)', fontSize: 11, width: 90 }}>Brutto</th>
                 <th style={{ width: 110 }}></th>
               </tr>
             </thead>
@@ -215,29 +215,29 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
               {items.map((item) =>
                 editId === item.id ? (
                   <Fragment key={item.id}>
-                    <tr style={{ background: '#fff7ed', borderBottom: '1px solid #fed7aa' }}>
-                      <td style={{ padding: '7px 10px', color: '#9ca3af', fontSize: 12 }}>{item.sort_order}</td>
+                    <tr style={{ background: 'rgba(212,150,10,0.12)', borderBottom: '1px solid rgba(212,150,10,0.30)' }}>
+                      <td style={{ padding: '7px 10px', color: 'var(--color-text-tertiary)', fontSize: 12 }}>{item.sort_order}</td>
                       <td style={{ padding: '7px 10px' }}>
-                        <input className="input" value={editValues.name ?? ''} onChange={e => setEditValues(v => ({ ...v, name: e.target.value }))} style={{ width: '100%', height: 28, fontSize: 13, padding: '3px 7px', border: '1px solid #d1d5db', borderRadius: 5 }} />
+                        <input className="input" value={editValues.name ?? ''} onChange={e => setEditValues(v => ({ ...v, name: e.target.value }))} style={{ width: '100%', height: 28, fontSize: 13, padding: '3px 7px', border: '1px solid var(--color-border)', borderRadius: 5 }} />
                       </td>
                       <td style={{ padding: '7px 10px' }}>
-                        <input className="input" value={editValues.unit ?? ''} onChange={e => setEditValues(v => ({ ...v, unit: e.target.value }))} style={{ width: 44, height: 28, fontSize: 13, padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 5, textAlign: 'center' }} />
+                        <input className="input" value={editValues.unit ?? ''} onChange={e => setEditValues(v => ({ ...v, unit: e.target.value }))} style={{ width: 44, height: 28, fontSize: 13, padding: '3px 6px', border: '1px solid var(--color-border)', borderRadius: 5, textAlign: 'center' }} />
                       </td>
                       <td style={{ padding: '7px 10px' }}>
-                        <input className="input" type="number" value={String(editValues.quantity ?? '')} onChange={e => setEditValues(v => ({ ...v, quantity: Number(e.target.value) }))} style={{ width: 52, height: 28, fontSize: 13, padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 5, textAlign: 'right' }} />
+                        <input className="input" type="number" value={String(editValues.quantity ?? '')} onChange={e => setEditValues(v => ({ ...v, quantity: Number(e.target.value) }))} style={{ width: 52, height: 28, fontSize: 13, padding: '3px 6px', border: '1px solid var(--color-border)', borderRadius: 5, textAlign: 'right' }} />
                       </td>
                       <td style={{ padding: '7px 10px' }}>
-                        <input className="input" type="number" value={String(editValues.unit_price ?? '')} onChange={e => setEditValues(v => ({ ...v, unit_price: Number(e.target.value) }))} style={{ width: 80, height: 28, fontSize: 13, padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 5, textAlign: 'right' }} />
+                        <input className="input" type="number" value={String(editValues.unit_price ?? '')} onChange={e => setEditValues(v => ({ ...v, unit_price: Number(e.target.value) }))} style={{ width: 80, height: 28, fontSize: 13, padding: '3px 6px', border: '1px solid var(--color-border)', borderRadius: 5, textAlign: 'right' }} />
                       </td>
                       <td style={{ padding: '7px 10px' }}>
                         <Select
                           value={String(editValues.vat_rate ?? '')}
                           onChange={e => setEditValues(v => ({ ...v, vat_rate: Number(e.target.value) }))}
                           options={VAT_OPTIONS}
-                          style={{ width: 60, height: 28, fontSize: 12, padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: 5 }}
+                          style={{ width: 60, height: 28, fontSize: 12, padding: '2px 4px', border: '1px solid var(--color-border)', borderRadius: 5 }}
                         />
                       </td>
-                      <td style={{ padding: '7px 10px', textAlign: 'right', color: '#9ca3af', fontSize: 12 }}>—</td>
+                      <td style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--color-text-tertiary)', fontSize: 12 }}>—</td>
                       <td style={{ padding: '7px 10px' }}>
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button className="btn btn--sm btn--primary" onClick={saveEdit} style={{ height: 26, padding: '0 10px', fontSize: 12 }}>Zapisz</button>
@@ -245,14 +245,14 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
                         </div>
                       </td>
                     </tr>
-                    <tr style={{ background: '#fff7ed', borderBottom: '1px solid #fed7aa' }}>
+                    <tr style={{ background: 'rgba(212,150,10,0.12)', borderBottom: '1px solid rgba(212,150,10,0.30)' }}>
                       <td colSpan={8} style={{ padding: '2px 10px 8px 44px' }}>
                         <textarea
                           className="input"
                           value={editValues.description ?? item.description ?? ''}
                           onChange={e => setEditValues(v => ({ ...v, description: e.target.value }))}
                           placeholder="Opis, szczegóły, uwagi..."
-                          style={{ width: '100%', minHeight: 32, resize: 'vertical', fontSize: 12, padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: 5 }}
+                          style={{ width: '100%', minHeight: 32, resize: 'vertical', fontSize: 12, padding: '4px 8px', border: '1px solid var(--color-border)', borderRadius: 5 }}
                         />
                       </td>
                     </tr>
@@ -261,26 +261,26 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
                   <Fragment key={item.id}>
                     <tr
                       style={{ borderBottom: '1px solid #f1f5f9' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#fafbfc')}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-soft)')}
                       onMouseLeave={e => (e.currentTarget.style.background = '')}
                     >
-                      <td style={{ padding: '9px 10px', color: '#9ca3af', fontSize: 12 }}>{item.sort_order}</td>
+                      <td style={{ padding: '9px 10px', color: 'var(--color-text-tertiary)', fontSize: 12 }}>{item.sort_order}</td>
                       <td style={{ padding: '9px 10px', fontWeight: 500 }}>{item.name}</td>
-                      <td style={{ padding: '9px 10px', textAlign: 'center', color: '#6b7280' }}>{item.unit}</td>
-                      <td style={{ padding: '9px 10px', textAlign: 'right', color: '#374151' }}>{item.quantity}</td>
-                      <td style={{ padding: '9px 10px', textAlign: 'right', color: '#374151' }}>{item.unit_price.toFixed(2)}</td>
-                      <td style={{ padding: '9px 10px', textAlign: 'center', color: '#6b7280' }}>{item.vat_rate}%</td>
-                      <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 600, color: '#111827' }}>{calcItemGross(item).toFixed(2)} zł</td>
+                      <td style={{ padding: '9px 10px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{item.unit}</td>
+                      <td style={{ padding: '9px 10px', textAlign: 'right', color: 'var(--color-text-primary)' }}>{item.quantity}</td>
+                      <td style={{ padding: '9px 10px', textAlign: 'right', color: 'var(--color-text-primary)' }}>{item.unit_price.toFixed(2)}</td>
+                      <td style={{ padding: '9px 10px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{item.vat_rate}%</td>
+                      <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 600, color: 'var(--color-text-primary)' }}>{calcItemGross(item).toFixed(2)} zł</td>
                       <td style={{ padding: '9px 10px' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                           <button className="btn btn--sm btn--secondary" onClick={() => startEdit(item)} style={{ height: 26, padding: '0 10px', fontSize: 12 }}>Edytuj</button>
-                          <button className="btn btn--sm btn--ghost" onClick={() => removeRow(item.id)} style={{ height: 26, padding: '0 8px', fontSize: 12, color: '#ef4444' }}>Usuń</button>
+                          <button className="btn btn--sm btn--ghost" onClick={() => removeRow(item.id)} style={{ height: 26, padding: '0 8px', fontSize: 12, color: '#EF6B6B' }}>Usuń</button>
                         </div>
                       </td>
                     </tr>
                     {item.description?.trim() && (
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td colSpan={8} style={{ padding: '2px 10px 8px 44px', fontSize: 12, color: '#6b7280' }}>
+                        <td colSpan={8} style={{ padding: '2px 10px 8px 44px', fontSize: 12, color: 'var(--color-text-secondary)' }}>
                           {item.description}
                         </td>
                       </tr>

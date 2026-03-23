@@ -122,7 +122,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
             Koszty projektu
             {expenses.length > 0 && (
-              <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: 'var(--color-text-muted, #6b7280)' }}>
+              <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: 'var(--color-text-muted)' }}>
                 ({expenses.length})
               </span>
             )}
@@ -134,7 +134,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
 
         {/* Loading */}
         {isLoading && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted, #6b7280)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)' }}>
             <span className="spinner" style={{ width: 16, height: 16 }} />
             Ładowanie kosztów…
           </div>
@@ -145,8 +145,8 @@ export function ProjectExpensesTab({ projectId }: Props) {
           <div
             style={{
               textAlign: 'center', padding: '48px 24px',
-              border: '2px dashed var(--color-border, #e5e7eb)',
-              borderRadius: 10, color: 'var(--color-text-muted, #6b7280)',
+              border: '2px dashed var(--color-border)',
+              borderRadius: 10, color: 'var(--color-text-muted)',
             }}
           >
             <div style={{ fontSize: 36, marginBottom: 12 }}>🧾</div>
@@ -168,10 +168,10 @@ export function ProjectExpensesTab({ projectId }: Props) {
                 style={{
                   display: 'flex', alignItems: 'flex-start', gap: 12,
                   padding: 14, borderRadius: 8,
-                  border: '1px solid var(--color-border, #e5e7eb)',
+                  border: '1px solid var(--color-border)',
                   background: exp.possible_duplicate
-                    ? 'var(--color-warning-soft, #fffbeb)'
-                    : 'var(--color-surface, #fff)',
+                    ? 'var(--color-warning-soft, rgba(212,150,10,0.12))'
+                    : 'var(--color-surface)',
                 }}
               >
                 <span style={{ fontSize: 22, lineHeight: 1 }}>
@@ -184,7 +184,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
                       {exp.vendor_name ?? exp.vendor ?? 'Nieznany sprzedawca'}
                     </span>
                     {exp.invoice_number && (
-                      <span style={{ fontSize: 12, color: 'var(--color-text-muted, #6b7280)' }}>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
                         #{exp.invoice_number}
                       </span>
                     )}
@@ -192,7 +192,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
                       <span
                         style={{
                           fontSize: 11, padding: '2px 6px', borderRadius: 99,
-                          background: 'var(--color-warning, #ca8a04)', color: '#fff', fontWeight: 600,
+                          background: 'var(--color-warning, #D4960A)', color: '#fff', fontWeight: 600,
                         }}
                       >
                         Możliwy duplikat
@@ -200,7 +200,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
                     )}
                   </div>
 
-                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 4, fontSize: 12, color: 'var(--color-text-muted, #6b7280)' }}>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 4, fontSize: 12, color: 'var(--color-text-muted)' }}>
                     {exp.issue_date && <span>📅 {exp.issue_date}</span>}
                     {exp.amount_gross != null && (
                       <span style={{ fontWeight: 600, color: 'var(--color-text, #111)' }}>
@@ -239,8 +239,8 @@ export function ProjectExpensesTab({ projectId }: Props) {
               style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 padding: '10px 14px', borderRadius: 8,
-                background: 'var(--color-surface-soft, #f9fafb)',
-                border: '1px solid var(--color-border, #e5e7eb)',
+                background: 'var(--color-surface-soft)',
+                border: '1px solid var(--color-border)',
                 fontSize: 13, fontWeight: 600,
               }}
             >
@@ -293,14 +293,14 @@ export function ProjectExpensesTab({ projectId }: Props) {
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             gap: 20, padding: '52px 24px',
-            background: 'var(--color-surface-soft, #f9fafb)',
-            border: '1px solid var(--color-border, #e5e7eb)',
+            background: 'var(--color-surface-soft)',
+            border: '1px solid var(--color-border)',
             borderRadius: 8, minHeight: 280,
           }}>
             <div className="spinner" style={{ width: 40, height: 40 }} />
             <div style={{ textAlign: 'center' }}>
               <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: 15 }}>Odczytuję tekst z faktury…</p>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted, #6b7280)', lineHeight: 1.6 }}>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
                 OCR analizuje obraz — zazwyczaj trwa 10–25&nbsp;sekund.<br />
                 Pola zostaną wypełnione automatycznie.
               </p>
@@ -327,9 +327,9 @@ export function ProjectExpensesTab({ projectId }: Props) {
         <div
           style={{
             marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: 13,
-            background: 'var(--color-danger-soft, #fef2f2)',
-            border: '1px solid var(--color-danger, #dc2626)',
-            color: 'var(--color-danger, #dc2626)',
+            background: 'var(--color-danger-soft, rgba(239,68,68,0.12))',
+            border: '1px solid var(--color-danger, #EF6B6B)',
+            color: 'var(--color-danger, #EF6B6B)',
           }}
         >
           Błąd zapisu: {translateError(createExpense.error)}
@@ -340,8 +340,8 @@ export function ProjectExpensesTab({ projectId }: Props) {
         <div
           style={{
             marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: 13,
-            background: 'var(--color-warning-soft, #fffbeb)',
-            border: '1px solid #f59e0b',
+            background: 'var(--color-warning-soft, rgba(212,150,10,0.12))',
+            border: '1px solid rgba(212,150,10,0.30)',
             color: 'var(--color-text, #111)',
           }}
         >

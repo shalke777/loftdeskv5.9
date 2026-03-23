@@ -128,9 +128,9 @@ export function BillingPage() {
 
       {/* Past-due or unpaid — high-urgency alert */}
       {isPastDue && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, fontSize: 13 }}>
-          <AlertTriangle size={16} color="#dc2626" style={{ flexShrink: 0 }} />
-          <span style={{ flex: 1, color: '#991b1b' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '12px 16px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 10, fontSize: 13 }}>
+          <AlertTriangle size={16} color="#EF6B6B" style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1, color: '#EF6B6B' }}>
             <strong>Płatność nie powiodła się.</strong> Zaktualizuj metodę płatności, aby uniknąć przerwy w dostępie.
           </span>
           {stripeEnabled && (
@@ -143,9 +143,9 @@ export function BillingPage() {
 
       {/* Canceled — softer info */}
       {isCanceled && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '12px 16px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, fontSize: 13 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '12px 16px', background: 'rgba(212,150,10,0.12)', border: '1px solid rgba(212,150,10,0.30)', borderRadius: 10, fontSize: 13 }}>
           <Clock size={16} color="#c2410c" style={{ flexShrink: 0 }} />
-          <span style={{ flex: 1, color: '#9a3412' }}>
+          <span style={{ flex: 1, color: '#D4960A' }}>
             Subskrypcja została anulowana. Dostęp do funkcji premium wygasł.
           </span>
         </div>
@@ -169,7 +169,7 @@ export function BillingPage() {
             </span>
           </div>
           {data.subscriptionStatus === 'trialing' && daysLeft !== null && (
-            <p style={{ fontSize: 12, color: daysLeft <= 3 ? '#dc2626' : '#92400e', marginBottom: 6 }}>
+            <p style={{ fontSize: 12, color: daysLeft <= 3 ? '#EF6B6B' : '#D4960A', marginBottom: 6 }}>
               {daysLeft === 0
                 ? '⏰ Trial wygasa dziś — aktywuj płatność, aby zachować dostęp.'
                 : `⏰ ${daysLeft} • dni trialu pozostało.${daysLeft <= 5 ? ' Aktywuj plan.' : ''}`}
@@ -214,16 +214,16 @@ export function BillingPage() {
               <div key={key} style={{ marginBottom: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
                   <span>{label}</span>
-                  <span style={{ fontWeight: 600, color: warn ? '#d97706' : undefined }}>
+                    <span style={{ fontWeight: 600, color: warn ? '#D4960A' : undefined }}>
                     {renderLimit(limit, used)}
                   </span>
                 </div>
-                <div style={{ height: 6, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden' }}>
+                <div style={{ height: 6, borderRadius: 999, background: '#3A3D42', overflow: 'hidden' }}>
                   <div
                     style={{
                       width: pct === null ? '4%' : `${Math.min(pct, 100)}%`,
                       height: '100%',
-                      background: pct !== null && pct >= 100 ? '#dc2626' : warn ? '#f59e0b' : 'var(--color-brand, #7a2230)',
+                      background: pct !== null && pct >= 100 ? '#EF6B6B' : warn ? '#D4960A' : 'var(--color-brand, #77BA8A)',
                       transition: 'width 0.4s ease',
                     }}
                   />
@@ -246,17 +246,17 @@ export function BillingPage() {
                     : 'Przej dź na Business, aby odblokować pełne możliwości systemu.'}
           </p>
           {data.subscriptionStatus === 'trialing' && daysLeft !== null && daysLeft <= 7 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: daysLeft <= 2 ? '#fef2f2' : '#fffbeb', border: `1px solid ${daysLeft <= 2 ? '#fca5a5' : '#fcd34d'}`, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>
-              <Clock size={13} color={daysLeft <= 2 ? '#dc2626' : '#d97706'} />
-              <span style={{ color: daysLeft <= 2 ? '#991b1b' : '#92400e', flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: daysLeft <= 2 ? 'rgba(239,68,68,0.12)' : 'rgba(212,150,10,0.12)', border: `1px solid ${daysLeft <= 2 ? 'rgba(239,68,68,0.30)' : 'rgba(212,150,10,0.30)'}`, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>
+              <Clock size={13} color={daysLeft <= 2 ? '#EF6B6B' : '#D4960A'} />
+              <span style={{ color: daysLeft <= 2 ? '#EF6B6B' : '#D4960A', flex: 1 }}>
                 {daysLeft === 0 ? 'Trial wygasa dziś.' : `${daysLeft} dni trialu pozostało.`}
               </span>
             </div>
           )}
           {(data.currentPlan === 'free' || data.subscriptionStatus === 'canceled') && !isPastDue && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, fontSize: 12, marginBottom: 10 }}>
-              <Zap size={13} color="#d97706" />
-              <span style={{ color: '#92400e', flex: 1 }}>Plan <strong>Free</strong> — ograniczone limity.</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'rgba(212,150,10,0.12)', border: '1px solid rgba(212,150,10,0.30)', borderRadius: 8, fontSize: 12, marginBottom: 10 }}>
+              <Zap size={13} color="#D4960A" />
+              <span style={{ color: '#D4960A', flex: 1 }}>Plan <strong>Free</strong> — ograniczone limity.</span>
             </div>
           )}
           <div className="actions-row" style={{ marginTop: 8 }}>
@@ -267,7 +267,7 @@ export function BillingPage() {
       </div>
 
       {isDemoMode && (
-        <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fffbeb', border: '1px solid #fbbf24', borderRadius: 10, fontSize: 13 }}>
+        <div style={{ marginBottom: 16, padding: '12px 16px', background: 'rgba(212,150,10,0.12)', border: '1px solid rgba(212,150,10,0.30)', borderRadius: 10, fontSize: 13 }}>
           <strong>Tryb demo</strong> — zmiana planu działa natychmiast bez płatności. W produkcji płatności obsługuje Stripe.
         </div>
       )}
@@ -296,7 +296,7 @@ export function BillingPage() {
               <Card
                 key={plan.id}
                 style={{
-                  border: isActive ? '2px solid var(--color-brand, #7a2230)' : undefined,
+                  border: isActive ? '2px solid var(--color-brand, #77BA8A)' : undefined,
                   position: 'relative',
                 }}
               >
@@ -329,7 +329,7 @@ export function BillingPage() {
                 <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', display: 'grid', gap: 6 }}>
                   {plan.features.map((feature) => (
                     <li key={feature} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                      <CheckCircle2 size={14} color="var(--color-success, #16a34a)" style={{ flexShrink: 0 }} />
+                      <CheckCircle2 size={14} color="var(--color-success, #77BA8A)" style={{ flexShrink: 0 }} />
                       {feature}
                     </li>
                   ))}

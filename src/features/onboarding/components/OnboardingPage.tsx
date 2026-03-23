@@ -58,7 +58,7 @@ export function OnboardingPage() {
               style={{
                 width: `${progress.progress}%`,
                 height: '100%',
-                background: progress.progress >= 80 ? 'var(--color-success, #16a34a)' : 'var(--color-brand, #7a2230)',
+                background: progress.progress >= 80 ? 'var(--color-success, #77BA8A)' : 'var(--color-brand, #77BA8A)',
                 transition: 'width 0.4s ease',
               }}
             />
@@ -70,7 +70,7 @@ export function OnboardingPage() {
             Plan: <strong style={{ color: planDef.color }}>{planDef.name}</strong>
           </p>
           {progress.isComplete && (
-            <div style={{ marginTop: 12, padding: '10px 14px', background: '#dcfce7', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#166534', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(119,186,138,0.15)', border: '1px solid rgba(119,186,138,0.30)', borderRadius: 8, fontSize: 13, color: '#77BA8A', display: 'flex', alignItems: 'center', gap: 8 }}>
               <CheckCircle2 size={15} />
               <strong>Workspace gotowy!</strong>&nbsp;Masz skonfigurowane wszystkie podstawowe funkcje.
             </div>
@@ -93,7 +93,7 @@ export function OnboardingPage() {
                       fontSize: 13, fontWeight: 500, color: 'var(--color-text)',
                     }}
                   >
-                    <Icon size={15} color="var(--color-brand, #7a2230)" />
+                    <Icon size={15} color="var(--color-brand, #77BA8A)" />
                     {item.label}
                     <ArrowRight size={13} color="var(--color-text-tertiary)" style={{ marginLeft: 'auto' }} />
                   </button>
@@ -123,7 +123,7 @@ export function OnboardingPage() {
                 }}
               >
                 {step.done ? (
-                  <CheckCircle2 size={20} color="var(--color-success, #16a34a)" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <CheckCircle2 size={20} color="var(--color-success, #77BA8A)" style={{ flexShrink: 0, marginTop: 1 }} />
                 ) : (
                   <Circle size={20} color="var(--color-text-tertiary, #94a3b8)" style={{ flexShrink: 0, marginTop: 1 }} />
                 )}

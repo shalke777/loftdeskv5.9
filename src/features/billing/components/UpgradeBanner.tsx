@@ -31,14 +31,14 @@ export function UpgradeBanner({ onDismiss }: Props) {
   // Demo mode: thin informational pill only
   if (isDemoMode) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: '#fef3c7', borderBottom: '1px solid #fcd34d', fontSize: 12 }}>
-        <Zap size={13} color="#d97706" />
-        <span style={{ color: '#92400e', flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: 'rgba(212,150,10,0.15)', borderBottom: '1px solid rgba(212,150,10,0.30)', fontSize: 12 }}>
+        <Zap size={13} color="#D4960A" />
+        <span style={{ color: '#D4960A', flex: 1 }}>
           <strong>Tryb demo</strong> React dane sa przykladowe i nie sa zapisywane na serwerze.
         </span>
         {onDismiss && (
           <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px' }}>
-            <X size={13} color="#92400e" />
+            <X size={13} color="#D4960A" />
           </button>
         )}
       </div>
@@ -56,10 +56,10 @@ export function UpgradeBanner({ onDismiss }: Props) {
     if (daysLeft > TRIAL_WARN_DAYS) return null  // plenty of time, stay quiet
 
     const isUrgent = daysLeft <= 2
-    const bg     = isUrgent ? '#fef2f2' : '#fffbeb'
-    const border = isUrgent ? '#fca5a5' : '#fcd34d'
-    const color  = isUrgent ? '#991b1b' : '#92400e'
-    const btnBg  = isUrgent ? '#dc2626' : '#d97706'
+    const bg     = isUrgent ? 'rgba(239,68,68,0.12)' : 'rgba(212,150,10,0.12)'
+    const border = isUrgent ? 'rgba(239,68,68,0.30)' : 'rgba(212,150,10,0.30)'
+    const color  = isUrgent ? '#EF6B6B' : '#D4960A'
+    const btnBg  = isUrgent ? '#EF6B6B' : '#D4960A'
 
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: bg, borderBottom: `1px solid ${border}`, fontSize: 13, flexWrap: 'wrap' }}>
@@ -88,20 +88,20 @@ export function UpgradeBanner({ onDismiss }: Props) {
   // Payment failed / unpaid
   if (status === 'past_due' || status === 'unpaid') {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: '#fef2f2', borderBottom: '1px solid #fca5a5', fontSize: 13, flexWrap: 'wrap' }}>
-        <AlertTriangle size={15} color="#dc2626" style={{ flexShrink: 0 }} />
-        <span style={{ color: '#991b1b', flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: 'rgba(239,68,68,0.12)', borderBottom: '1px solid rgba(239,68,68,0.30)', fontSize: 13, flexWrap: 'wrap' }}>
+        <AlertTriangle size={15} color="#EF6B6B" style={{ flexShrink: 0 }} />
+        <span style={{ color: '#EF6B6B', flex: 1 }}>
           <strong>Platnosc nie powiodla sie.</strong> Zaktualizuj metode platnosci, aby uniknac przerwy w dostepie.
         </span>
         <button
           onClick={() => navigate({ to: '/billing' })}
-          style={{ background: '#dc2626', color: 'white', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+          style={{ background: '#EF6B6B', color: 'white', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
         >
           Napraw platnosc
         </button>
         {onDismiss && (
           <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>
-            <X size={14} color="#991b1b" />
+            <X size={14} color="#EF6B6B" />
           </button>
         )}
       </div>
@@ -111,20 +111,20 @@ export function UpgradeBanner({ onDismiss }: Props) {
   // Free plan (canceled, none, or expired trial) — generic upgrade CTA
   if (plan === 'free') {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: 'linear-gradient(90deg, #fefce8 0%, #fff7ed 100%)', borderBottom: '1px solid #fcd34d', fontSize: 13, flexWrap: 'wrap' }}>
-        <Zap size={15} color="#d97706" style={{ flexShrink: 0 }} />
-        <span style={{ color: '#92400e', flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: 'linear-gradient(90deg, rgba(212,150,10,0.12) 0%, rgba(212,150,10,0.12) 100%)', borderBottom: '1px solid rgba(212,150,10,0.30)', fontSize: 13, flexWrap: 'wrap' }}>
+        <Zap size={15} color="#D4960A" style={{ flexShrink: 0 }} />
+        <span style={{ color: '#D4960A', flex: 1 }}>
           Korzystasz z planu <strong>Free</strong> React niektore funkcje sa ograniczone.
         </span>
         <button
           onClick={() => navigate({ to: '/billing' })}
-          style={{ background: '#d97706', color: 'white', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+          style={{ background: '#D4960A', color: 'white', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
         >
           Ulepsz plan
         </button>
         {onDismiss && (
           <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>
-            <X size={14} color="#92400e" />
+            <X size={14} color="#D4960A" />
           </button>
         )}
       </div>

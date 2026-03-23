@@ -17,7 +17,7 @@ export function OnboardingChecklist() {
   const nextStep = progress.steps.find((s) => !s.done)
 
   return (
-    <Card style={{ marginBottom: 16, borderLeft: '4px solid var(--color-brand, #7a2230)' }}>
+    <Card style={{ marginBottom: 16, borderLeft: '4px solid var(--color-brand, #77BA8A)' }}>
       <div
         style={{
           display: 'flex',
@@ -30,14 +30,14 @@ export function OnboardingChecklist() {
         {/* Left: progress */}
         <div style={{ flex: '1 1 280px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <Rocket size={16} color="var(--color-brand, #7a2230)" />
+            <Rocket size={16} color="var(--color-brand, #77BA8A)" />
             <strong style={{ fontSize: 14 }}>Pierwsze kroki</strong>
             <span
               style={{
                 marginLeft: 'auto',
                 fontSize: 12,
                 fontWeight: 600,
-                color: 'var(--color-brand, #7a2230)',
+                color: 'var(--color-brand, #77BA8A)',
               }}
             >
               {progress.done}/{progress.total}
@@ -58,7 +58,7 @@ export function OnboardingChecklist() {
               style={{
                 width: `${progress.progress}%`,
                 height: '100%',
-                background: 'var(--color-brand, #7a2230)',
+                background: 'var(--color-brand, #77BA8A)',
                 transition: 'width 0.4s ease',
               }}
             />
@@ -85,7 +85,7 @@ export function OnboardingChecklist() {
                 }}
               >
                 {step.done ? (
-                  <CheckCircle2 size={16} color="var(--color-success, #16a34a)" style={{ flexShrink: 0 }} />
+                  <CheckCircle2 size={16} color="var(--color-success, #77BA8A)" style={{ flexShrink: 0 }} />
                 ) : (
                   <Circle size={16} color="var(--color-text-tertiary, #94a3b8)" style={{ flexShrink: 0 }} />
                 )}

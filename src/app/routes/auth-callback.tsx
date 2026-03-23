@@ -220,7 +220,7 @@ export function AuthCallbackRoutePage() {
       {status === 'loading' && (
         <Card style={{ maxWidth: 440, textAlign: 'center', padding: 40 }}>
           <Spinner />
-          <p style={{ marginTop: 16, color: '#64748b' }}>Weryfikacja e-maila...</p>
+          <p style={{ marginTop: 16, color: '#A7ABB3' }}>Weryfikacja e-maila...</p>
         </Card>
       )}
 
@@ -230,29 +230,29 @@ export function AuthCallbackRoutePage() {
         <Card style={{ maxWidth: 500, textAlign: 'center', padding: 48 }}>
           <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
           <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Witaj w LoftDesk!</h1>
-          <p style={{ fontSize: 16, color: '#475569', marginBottom: 24, lineHeight: 1.6 }}>
+          <p style={{ fontSize: 16, color: '#A7ABB3', marginBottom: 24, lineHeight: 1.6 }}>
             Twoje konto zostało pomyślnie potwierdzone.<br />
             Wszystko gotowe — możesz zacząć korzystać z aplikacji.
           </p>
 
           <div style={{
-            background: '#f0fdf4',
+            background: 'rgba(119,186,138,0.12)',
             border: '1px solid #bbf7d0',
             borderRadius: 12,
             padding: '20px 24px',
             marginBottom: 28,
             textAlign: 'left',
           }}>
-            <p style={{ fontWeight: 600, marginBottom: 10, color: '#166534' }}>Co możesz teraz zrobić:</p>
+            <p style={{ fontWeight: 600, marginBottom: 10, color: '#77BA8A' }}>Co możesz teraz zrobić:</p>
             {isClientMode ? (
-              <ul style={{ margin: 0, paddingLeft: 20, color: '#15803d', lineHeight: 1.8, fontSize: 14 }}>
+              <ul style={{ margin: 0, paddingLeft: 20, color: '#77BA8A', lineHeight: 1.8, fontSize: 14 }}>
                 <li>Przeglądaj dokumenty swoich projektów</li>
                 <li>Odpowiadaj na akceptacje kosztorysów</li>
                 <li>Przesyłaj wiadomości do wykonawcy</li>
                 <li>Uzupełnij swój profil</li>
               </ul>
             ) : (
-              <ul style={{ margin: 0, paddingLeft: 20, color: '#15803d', lineHeight: 1.8, fontSize: 14 }}>
+              <ul style={{ margin: 0, paddingLeft: 20, color: '#77BA8A', lineHeight: 1.8, fontSize: 14 }}>
                 <li>Uzupełnij dane firmy w ustawieniach</li>
                 <li>Dodaj pierwszego klienta i kosztorys</li>
                 <li>Wystaw pierwszą fakturę</li>
@@ -269,7 +269,7 @@ export function AuthCallbackRoutePage() {
           </Button>
 
           {!hasSession && (
-            <p style={{ marginTop: 12, fontSize: 13, color: '#94a3b8' }}>
+            <p style={{ marginTop: 12, fontSize: 13, color: '#8A8F98' }}>
               Konto potwierdzone — zaloguj się, aby rozpocząć pracę.
             </p>
           )}
@@ -278,9 +278,9 @@ export function AuthCallbackRoutePage() {
 
       {status === 'error' && (
         <Card style={{ maxWidth: 440, textAlign: 'center', padding: 40 }}>
-          <div style={{ fontSize: 48, marginBottom: 12, color: '#dc2626' }}>&#10007;</div>
-          <h2 style={{ marginBottom: 8, color: '#dc2626' }}>Błąd weryfikacji</h2>
-          <p style={{ marginBottom: 20, color: '#64748b' }}>{errorMsg}</p>
+          <div style={{ fontSize: 48, marginBottom: 12, color: '#EF6B6B' }}>&#10007;</div>
+          <h2 style={{ marginBottom: 8, color: '#EF6B6B' }}>Błąd weryfikacji</h2>
+          <p style={{ marginBottom: 20, color: '#A7ABB3' }}>{errorMsg}</p>
           <Button variant="secondary" onClick={() => window.location.assign('/login')}>
             Przejdź do logowania
           </Button>
