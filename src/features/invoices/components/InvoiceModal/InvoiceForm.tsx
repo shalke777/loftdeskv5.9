@@ -199,7 +199,7 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
         client_id: clientId || null,
         project_id: projectId || null,
         contract_id: contractId || null,
-        status: 'unpaid',
+        status: initialInvoice?.status || 'unpaid',
         invoice_type: invoiceType as Invoice['invoice_type'],
         issue_date: issueDate,
         sale_date: saleDate || null,

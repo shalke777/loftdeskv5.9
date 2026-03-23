@@ -3,7 +3,7 @@ import { translateError } from '@/shared/lib/errorMessages'
 import type { ExpenseSourceType, CreateExpenseForProjectInput, ExpenseInvoiceV4 } from '@/features/expenses/api/expenses.api'
 import { useProjectExpenses } from '@/features/expenses/hooks/useProjectExpenses'
 import { useCreateExpense }   from '@/features/expenses/hooks/useCreateExpense'
-import { useParseInvoice }    from '@/features/expenses/hooks/useParseInvoice'
+import { useParseInvoice, callParseInvoiceAI } from '@/features/expenses/hooks/useParseInvoice'
 import { ExpenseCameraCapture } from './ExpenseCameraCapture'
 import { ExpensePreviewPane }   from './ExpensePreviewPane'
 import { ExpenseConfirmForm }   from './ExpenseConfirmForm'
@@ -68,14 +68,40 @@ export function ProjectExpensesTab({ projectId }: Props) {
     setFileState(file)
     setSourceType(type)
     setParseResult(null)
-    // Stay on processing screen until OCR completes — don't show empty form immediately
     setMode('processing')
 
     parseInvoice.mutate(
       { file, sourceType: type },
       {
-        onSuccess: (result) => { setParseResult(result); setParseError(null); setMode('confirm') },
-        onError:   (err)   => { setParseError(err instanceof Error ? err.message : 'Nie udało się odczytać faktury.'); setMode('confirm') },
+        onSuccess: async (ocrResult) => {
+          const ocrConf = ocrResult?.extraction_confidence ?? 0
+          if (ocrConf < 65) {
+            // AI fallback — OCR returned low confidence
+            try {
+              const aiResult = await callParseInvoiceAI(file)
+              const aiConf = aiResult.extraction_confidence ?? 0
+              if (aiConf > 0 && aiConf >= ocrConf) {
+                setParseResult(aiResult); setParseError(null); setMode('confirm')
+                return
+              }
+            } catch { /* AI failed — keep OCR result */ }
+          }
+          setParseResult(ocrResult); setParseError(null); setMode('confirm')
+        },
+        onError: async (err) => {
+          // OCR failed entirely — try AI before showing error
+          const msg = err instanceof Error ? err.message : 'Nie udało się odczytać faktury.'
+          if (!msg.includes('Sesja wygasła') && !msg.includes('Za dużo żądań')) {
+            try {
+              const aiResult = await callParseInvoiceAI(file)
+              if ((aiResult.extraction_confidence ?? 0) > 0) {
+                setParseResult(aiResult); setParseError(null); setMode('confirm')
+                return
+              }
+            } catch { /* AI also failed */ }
+          }
+          setParseError(msg); setMode('confirm')
+        },
       },
     )
   }

@@ -273,7 +273,25 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   if (!textContent && !imageBase64) {
-    return err(400, 'missing_input', 'Provide text_content, image_base64, or pdf_base64', { aiAttempted: false })
+    // PDF was provided but yielded no extractable content — return graceful empty result
+    // instead of 400, so the client can fall back to manual entry without an error toast.
+    return {
+      statusCode: 200,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({
+        result: {
+          document_type: null,
+          vendor_name: null, vendor_nip: null, invoice_number: null,
+          issue_date: null, sale_date: null, net_amount: null,
+          vat_amount: null, vat_rate: null, gross_amount: null, currency: 'PLN',
+          payment_due_date: null, notes: null,
+          extraction_confidence: 0,
+          extraction_warnings: ['Nie udało się odczytać treści z dokumentu — wpisz pola ręcznie.'],
+          requires_user_confirmation: true,
+          parser_source: 'ai',
+        },
+      }),
+    }
   }
 
   // ── Validate image MIME — never accept PDF in vision path ────────────────
