@@ -2234,6 +2234,9 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   /* Bigger touch targets for row icon-only action buttons */
   .proj-action-btn { padding: 10px; }
 
+  /* Stats: override 1024px 1fr → 2-col compact grid on mobile */
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
   /* Reduce card padding inside the accordion detail area on phone */
   .proj-row__detail .card { padding: 16px 14px; }
 
@@ -2256,6 +2259,13 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .stat-card__value { font-size: 22px; }
   .kpi-card { padding: 14px 12px; }
+
+  /* Compact mobile tiles — reduce viewport dominance */
+  .mobile-home-grid { gap: 10px; margin-bottom: 14px; }
+  .mobile-tile { min-height: 88px; padding: 14px 14px 12px; gap: 8px; border-radius: 14px; }
+  .mobile-tile__icon { width: 34px; height: 34px; border-radius: 10px; }
+  .mobile-tile__label { font-size: 14px; }
+  .mobile-tile__sub { font-size: 11px; }
 
   /* Grids */
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
@@ -2375,6 +2385,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   transform: translateY(-2px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
+.kpi-card--alert { border-left: 3px solid var(--color-error); }
+.kpi-card--alert .stat-card__value { color: var(--color-error); }
 
 /* =============================================================================
    CLIENT PORTAL SHELL (v6.0)

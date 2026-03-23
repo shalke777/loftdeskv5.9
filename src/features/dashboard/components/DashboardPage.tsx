@@ -39,12 +39,22 @@ export function DashboardPage() {
     { label: 'Pipeline projektów', value: formatCurrency(data.pipeline) },
     { label: 'Aktywne projekty', value: String(data.activeProjects) },
     { label: 'Faktury', value: String(data.invoicesCount) },
-    { label: 'Przeterminowane', value: String(data.overdueCount) },
+    { label: 'Przeterminowane', value: String(data.overdueCount), alert: data.overdueCount > 0 },
   ]
 
   return (
     <div>
       <PageHeader title={data.companyName} />
+
+      {/* ── KPI — widoczne wszędzie, priorytet dnia ────────────────────── */}
+      <div className="stats-grid" style={{ marginBottom: 18 }}>
+        {stats.map((stat) => (
+          <Card key={stat.label} className={`kpi-card${stat.alert ? ' kpi-card--alert' : ''}`}>
+            <div className="field__label">{stat.label}</div>
+            <div className="stat-card__value">{stat.value}</div>
+          </Card>
+        ))}
+      </div>
 
       {/* ── Mobile home — 6 kafli (tylko mobile) ─────────────────────────── */}
       <nav className="mobile-home-grid" aria-label="Główne moduły">
@@ -88,15 +98,6 @@ export function DashboardPage() {
             })}
           </div>
         </Card>
-
-      <div className="stats-grid">
-        {stats.map((stat) => (
-          <Card key={stat.label} className="kpi-card">
-            <div className="field__label">{stat.label}</div>
-            <div className="stat-card__value">{stat.value}</div>
-          </Card>
-        ))}
-      </div>
 
       {pipelineProjects.length > 0 && (
         <Card style={{ marginTop: 16 }}>
