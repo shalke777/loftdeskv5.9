@@ -19,6 +19,8 @@ export function useLegalAcceptances() {
     enabled: Boolean(user) && user?.role !== 'client',
     // Stale time: 5 min — acceptances rarely change mid-session
     staleTime: 5 * 60 * 1_000,
+    // Retry once — covers transient network glitches without long delays
+    retry: 1,
   })
 }
 
@@ -27,8 +29,11 @@ export function useLegalAcceptances() {
  * current version.  Returns undefined while still loading.
  */
 export function useMissingAcceptances(): string[] | undefined {
-  const { data, isLoading } = useLegalAcceptances()
-  if (isLoading || data === undefined) return undefined
+  const { data, isLoading, isError } = useLegalAcceptances()
+  if (isLoading) return undefined
+  // Backend error (table missing, auth issue, network) — don't permanently
+  // block the user. Let them through; the gate will re-check on next load.
+  if (isError || data === undefined) return []
   return legalApi.getMissingRequired(data)
 }
 

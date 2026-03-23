@@ -25,8 +25,8 @@ const demoAcceptances: AcceptanceRecord[] = []
 export const legalApi = {
   /**
    * Fetch all acceptance records for the authenticated user.
-   * Returns an empty array on error rather than throwing, so the gate
-   * can treat "unknown" as "not yet accepted" (safe default).
+   * Throws on backend errors so react-query can track the error state
+   * and the gate can distinguish "no acceptances" from "backend broken".
    */
   async getAcceptances(): Promise<AcceptanceRecord[]> {
     if (isDemoMode || !supabase) return demoAcceptances
@@ -38,9 +38,9 @@ export const legalApi = {
 
     if (error) {
       if (import.meta.env.DEV) {
-        console.warn('[legal] getAcceptances error — treating as no acceptances', error.message)
+        console.warn('[legal] getAcceptances error', error.code, error.message)
       }
-      return []
+      throw new Error(`legal_acceptances query failed: ${error.code ?? 'UNKNOWN'}`)
     }
     return (data ?? []) as AcceptanceRecord[]
   },
@@ -66,7 +66,9 @@ export const legalApi = {
 
     const rows = inputs.map((inp) => ({
       user_id: inp.userId,
-      company_id: inp.companyId ?? null,
+      // Null-out company_id when it equals user_id — that's the
+      // resolveSupabaseSession fallback value and won't exist in companies.
+      company_id: (inp.companyId && inp.companyId !== inp.userId) ? inp.companyId : null,
       document_key: inp.documentKey,
       document_version: inp.documentVersion,
       source: inp.source,
@@ -83,9 +85,9 @@ export const legalApi = {
 
     if (error) {
       if (import.meta.env.DEV) {
-        console.error('[legal] saveAcceptances error', error.message)
+        console.error('[legal] saveAcceptances error', error.code, error.message, error.details)
       }
-      throw new Error('Nie udało się zapisać akceptacji dokumentów. Spróbuj ponownie.')
+      throw new Error(`Nie udało się zapisać akceptacji (${error.code ?? 'UNKNOWN'}). Spróbuj ponownie.`)
     }
 
     if (import.meta.env.DEV) {
