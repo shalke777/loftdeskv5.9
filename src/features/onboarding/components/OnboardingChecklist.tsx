@@ -87,7 +87,7 @@ export function OnboardingChecklist() {
                 {step.done ? (
                   <CheckCircle2 size={16} color="var(--color-success, #77BA8A)" style={{ flexShrink: 0 }} />
                 ) : (
-                  <Circle size={16} color="var(--color-text-tertiary, #94a3b8)" style={{ flexShrink: 0 }} />
+                  <Circle size={16} color="var(--color-text-tertiary, #8A8F98)" style={{ flexShrink: 0 }} />
                 )}
                 <span
                   style={{

@@ -152,7 +152,7 @@ export function PortalInboxPage() {
                     ) : (
                       <span style={{
                         width: 22, height: 22, borderRadius: 20,
-                        background: 'var(--color-border-light, #f3f4f6)',
+                        background: 'var(--color-border-light, #3A3D42)',
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       }}>
                         <MessageSquare size={12} color="#9ca3af" />

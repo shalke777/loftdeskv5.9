@@ -237,7 +237,7 @@ export function AuthCallbackRoutePage() {
 
           <div style={{
             background: 'rgba(119,186,138,0.12)',
-            border: '1px solid #bbf7d0',
+            border: '1px solid rgba(119,186,138,0.30)',
             borderRadius: 12,
             padding: '20px 24px',
             marginBottom: 28,

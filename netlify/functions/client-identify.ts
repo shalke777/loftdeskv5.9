@@ -63,7 +63,7 @@ async function sendInviteEmail(opts: {
     ? `Dzie\u0144 dobry, ${firstName},`
     : 'Dzie\u0144 dobry,'
   const replyBlock = opts.replyTo
-    ? `W razie pyta\u0144 napisz bezpo\u015Brednio na: <a href="mailto:${opts.replyTo}" style="color:#1a5c32">${opts.replyTo}</a>.`
+    ? `W razie pyta\u0144 napisz bezpo\u015Brednio na: <a href="mailto:${opts.replyTo}" style="color:#4a8f5e">${opts.replyTo}</a>.`
     : ''
   const subject    = `Masz dost\u0119p do portalu klienta \u2013 ${opts.fromName}`
   const previewText = `${opts.fromName} udost\u0119pni\u0142a Ci dost\u0119p do realizacji: ${opts.projectName}`
@@ -75,14 +75,14 @@ async function sendInviteEmail(opts: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${subject}</title>
 </head>
-<body style="margin:0;padding:0;background:#f5f0e8;font-family:'Segoe UI',Arial,sans-serif">
+<body style="margin:0;padding:0;background:#eef0f3;font-family:'Segoe UI',Arial,sans-serif">
   <span style="display:none;max-height:0;overflow:hidden;mso-hide:all">${previewText}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</span>
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;padding:40px 16px">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef0f3;padding:40px 16px">
     <tr><td align="center">
       <table width="540" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,.08)">
 
         <!-- Header -->
-        <tr><td style="background:#1a5c32;padding:22px 32px">
+        <tr><td style="background:#202125;padding:22px 32px">
           <table width="100%" cellpadding="0" cellspacing="0"><tr>
             <td><span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-.5px">LoftDesk</span></td>
             <td align="right"><span style="color:rgba(255,255,255,.60);font-size:12px">Portal klienta</span></td>
@@ -114,8 +114,8 @@ async function sendInviteEmail(opts: {
 
           <!-- CTA -->
           <table cellpadding="0" cellspacing="0" style="margin:0 0 32px">
-            <tr><td style="background:#1a5c32;border-radius:12px;padding:14px 36px">
-              <a href="${opts.magicLink}" style="color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;display:block">
+            <tr><td style="background:#77BA8A;border-radius:12px;padding:14px 36px">
+              <a href="${opts.magicLink}" style="color:#202125;font-size:15px;font-weight:700;text-decoration:none;display:block">
                 Przejd\u017A do portalu klienta &rarr;
               </a>
             </td></tr>
@@ -124,7 +124,7 @@ async function sendInviteEmail(opts: {
           <!-- Fallback link -->
           <p style="font-size:12px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:16px;margin:0;line-height:1.6">
             Je\u015Bli przycisk nie dzia\u0142a, skopiuj ten adres i wklej w przegl\u0105dark\u0119:<br />
-            <a href="${opts.magicLink}" style="color:#1a5c32;word-break:break-all;font-size:11px">${opts.magicLink}</a>
+            <a href="${opts.magicLink}" style="color:#4a8f5e;word-break:break-all;font-size:11px">${opts.magicLink}</a>
           </p>
         </td></tr>
 

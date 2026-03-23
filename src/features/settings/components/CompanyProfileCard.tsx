@@ -100,7 +100,7 @@ export function CompanyProfileCard() {
           <p className="field__label" style={{ marginBottom: 8, fontWeight: 600, fontSize: 13 }}>LOGO FIRMY</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo firmy" style={{ maxWidth: 200, maxHeight: 80, objectFit: 'contain', borderRadius: 8, border: '1px solid #e5e7eb' }} />
+              <img src={logoUrl} alt="Logo firmy" style={{ maxWidth: 200, maxHeight: 80, objectFit: 'contain', borderRadius: 8, border: '1px solid #3A3D42' }} />
             ) : (
               <div style={{ width: 200, height: 80, borderRadius: 8, border: '2px dashed var(--color-border)', display: 'grid', placeItems: 'center', color: '#8A8F98', fontSize: 13 }}>
                 Brak logo

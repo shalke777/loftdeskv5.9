@@ -87,8 +87,8 @@ export function OnboardingPage() {
                   <button
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                      background: 'var(--color-surface-secondary, #f8fafc)',
-                      border: '1px solid var(--color-border-light, #e5e7eb)',
+                      background: 'var(--color-surface-secondary, #2A2A2E)',
+                      border: '1px solid var(--color-border-light, #3A3D42)',
                       borderRadius: 8, padding: '10px 14px', cursor: 'pointer',
                       fontSize: 13, fontWeight: 500, color: 'var(--color-text)',
                     }}
@@ -125,13 +125,13 @@ export function OnboardingPage() {
                 {step.done ? (
                   <CheckCircle2 size={20} color="var(--color-success, #77BA8A)" style={{ flexShrink: 0, marginTop: 1 }} />
                 ) : (
-                  <Circle size={20} color="var(--color-text-tertiary, #94a3b8)" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <Circle size={20} color="var(--color-text-tertiary, #8A8F98)" style={{ flexShrink: 0, marginTop: 1 }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, fontWeight: 600, fontSize: 14, textDecoration: step.done ? 'line-through' : 'none', color: step.done ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
                     {step.label}
                   </p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted, #6b7280)' }}>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted, #8A8F98)' }}>
                     {step.description}
                   </p>
                 </div>

@@ -31,10 +31,10 @@ function NoProjectNotice() {
         alignItems: 'flex-start',
         padding: '12px 14px',
         borderRadius: 10,
-        background: 'var(--color-warning-bg, #fef9c3)',
-        border: '1px solid var(--color-warning-border, #fde047)',
+        background: 'var(--color-warning-bg, rgba(212,150,10,0.12))',
+        border: '1px solid var(--color-warning-border, rgba(212,150,10,0.35))',
         fontSize: 13,
-        color: 'var(--color-warning-text, #713f12)',
+        color: 'var(--color-warning-text, #D4960A)',
       }}
     >
       <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2 }} />

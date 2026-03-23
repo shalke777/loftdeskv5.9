@@ -26,7 +26,7 @@ export function ExpenseCameraCapture({ onCapture, onManual, disabled }: Props) {
         padding: 24, maxWidth: 400, margin: '0 auto',
       }}
     >
-      <p style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--color-text-muted, #6b7280)', textAlign: 'center' }}>
+      <p style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--color-text-muted, #8A8F98)', textAlign: 'center' }}>
         Wybierz źródło faktury / paragonu
       </p>
 
@@ -63,7 +63,7 @@ export function ExpenseCameraCapture({ onCapture, onManual, disabled }: Props) {
         <span>📄</span> Dodaj PDF
       </button>
 
-      <div style={{ margin: '4px 0', textAlign: 'center', fontSize: 12, color: 'var(--color-text-muted, #6b7280)' }}>
+      <div style={{ margin: '4px 0', textAlign: 'center', fontSize: 12, color: 'var(--color-text-muted, #8A8F98)' }}>
         — lub —
       </div>
 

@@ -33,7 +33,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '32px 0', color: 'var(--color-text-muted, #6b7280)', fontSize: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '32px 0', color: 'var(--color-text-muted, #8A8F98)', fontSize: 14 }}>
         <span className="spinner" style={{ width: 16, height: 16 }} />
         Ładowanie osi czasu…
       </div>
@@ -63,9 +63,9 @@ export function ProjectTimelineTab({ projectId }: Props) {
         style={{
           textAlign:    'center',
           padding:      '48px 24px',
-          border:       '2px dashed var(--color-border, #e5e7eb)',
+          border:       '2px dashed var(--color-border, #3A3D42)',
           borderRadius: 10,
-          color:        'var(--color-text-muted, #6b7280)',
+          color:        'var(--color-text-muted, #8A8F98)',
         }}
       >
         <div style={{ fontSize: 40, marginBottom: 12 }}>🕒</div>
@@ -85,7 +85,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
           Oś czasu projektu
           {events.length > 0 && (
-            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: 'var(--color-text-muted, #6b7280)' }}>
+            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: 'var(--color-text-muted, #8A8F98)' }}>
               ({events.length} zdarzeń)
             </span>
           )}
@@ -111,7 +111,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
           style={{
             textAlign:    'center',
             padding:      '32px 16px',
-            color:        'var(--color-text-muted, #6b7280)',
+            color:        'var(--color-text-muted, #8A8F98)',
             fontSize:     13,
           }}
         >
