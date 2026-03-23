@@ -13,6 +13,7 @@ interface Props<T> {
 
 export function Table<T extends Record<string, unknown>>({ data, columns }: Props<T>) {
   return (
+    <div className="table-wrap">
     <table className="table">
       <thead>
         <tr>
@@ -31,5 +32,6 @@ export function Table<T extends Record<string, unknown>>({ data, columns }: Prop
         ))}
       </tbody>
     </table>
+    </div>
   )
 }
