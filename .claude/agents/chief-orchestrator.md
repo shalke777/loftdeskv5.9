@@ -1,7 +1,7 @@
 ---
 name: chief-orchestrator
 description: Use for any non-trivial LoftDesk task spanning multiple modules, roles, tiers, or modal flows.
-tools: ['agent', 'changes', 'codebase', 'problems', 'usages']
+tools: ['agent', 'search', 'edit', 'read', 'execute']
 ---
 
 
@@ -58,7 +58,7 @@ Use EXACT format from report-template.md (all 10 sections, Polish).
 ---
 name: chief-orchestrator
 description: Koordynuje złożone zadania LoftDesk, deleguje analizę i wdrożenie do wyspecjalizowanych agentów, scala wyniki i pilnuje bezpieczeństwa zmian.
-tools: ['agent', 'codebase', 'changes', 'problems', 'usages']
+tools: ['agent', 'search', 'edit', 'read', 'execute']
 agents:
   - code-guardian
   - supabase-rls-agent

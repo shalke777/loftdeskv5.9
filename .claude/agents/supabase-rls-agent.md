@@ -9,7 +9,7 @@ Own schema correctness, migrations, RLS, auth boundaries and backend truth behin
 ---
 name: supabase-rls-agent
 description: Analizuje auth, RLS, migracje, dane klientów, role i ryzyka integralności danych.
-tools: ['codebase', 'problems', 'usages']
+tools: ['search', 'read']
 user-invocable: false
 ---
 

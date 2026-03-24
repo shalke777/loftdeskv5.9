@@ -9,7 +9,7 @@ Own client portal, client views, messages, approvals, shared-doc visibility and 
 ---
 name: client-portal-communication-agent
 description: Analizuje portal klienta, zaproszenia, linki do portalu, wysyłkę dokumentów i komunikację wykonawca-klient.
-tools: ['codebase', 'problems', 'usages']
+tools: ['search', 'read']
 user-invocable: false
 ---
 

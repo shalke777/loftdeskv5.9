@@ -9,7 +9,7 @@ Own manual QA paths, E2E scenarios, role/tier checks and mobile validation.
 ---
 name: qa-scenario-agent
 description: Buduje checklisty testowe i scenariusze końcowe dla napraw LoftDesk.
-tools: ['codebase', 'problems']
+tools: ['search', 'read']
 user-invocable: false
 ---
 

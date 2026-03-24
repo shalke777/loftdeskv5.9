@@ -23,7 +23,7 @@ Output:
 ---
 name: code-guardian
 description: Sprawdza ryzyka zmian, regresje i potencjalne skutki uboczne przed wdrożeniem.
-tools: ['codebase', 'problems', 'usages']
+tools: ['search', 'read']
 user-invocable: false
 ---
 

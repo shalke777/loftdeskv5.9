@@ -1,7 +1,7 @@
 ---
 name: Orchestrator
 description: Klasyfikuje zadania, deleguje do subagentów, pilnuje quality gates i eskaluje tylko gdy to konieczne.
-tools: ["codebase", "editFiles", "search", "runInTerminal", "problems", "usages", "agent"]
+tools: ["search", "edit", "execute", "read", "agent"]
 agents: ["backend-supabase", "frontend-specialist", "qa-reviewer", "product-architect", "visual-design-director", "ux-modern-apps", "code-guardian", "supabase-rls-agent", "client-portal-communication-agent", "qa-scenario-agent", "service-maintenance-agent", "release-environment-agent"]
 user-invocable: true
 ---
