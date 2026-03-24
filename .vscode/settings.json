@@ -1,6 +1,7 @@
 {
   "chat.customAgentInSubagent.enabled": true,
   "chat.agentFilesLocations": {
+    ".github/agents": true,
     ".claude/agents": true
   },
   "github.copilot.chat.organizationInstructions.enabled": true,

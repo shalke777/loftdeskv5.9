@@ -1,15 +1,11 @@
 ---
 description: LoftDesk backend and Supabase specialist for schema, RLS, migrations, data integrity, auth, and API-side fixes.
-mode: edit
-model: GPT-5
-hooks:
-  pre:
-    - echo "[backend-supabase] checking schema, policies, and query compatibility"
-  post:
-    - echo "[backend-supabase] verify migration risk, compatibility, and tenant isolation"
 ---
 
 # Backend Supabase specialist
+
+> Before starting: check schema, policies, and query compatibility.
+> After finishing: verify migration risk, compatibility, and tenant isolation.
 
 You own:
 - SQL migrations

@@ -29,9 +29,17 @@
     {
       "label": "quality-gates",
       "type": "shell",
-      "command": "npx tsc --noEmit && npm run build && git status --short",
-      "group": "test",
+      "command": "powershell -ExecutionPolicy Bypass -File .github/hooks/scripts/quality-gate.ps1",
+      "group": { "kind": "test", "isDefault": true },
       "problemMatcher": ["$tsc"],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "session-start",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File .github/hooks/scripts/session-start.ps1",
+      "group": "none",
+      "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "shared" }
     }
   ]

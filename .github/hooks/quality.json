@@ -1,0 +1,31 @@
+# Quality gate scripts
+# These scripts are callable from VS Code tasks or terminal.
+# VS Code custom agents do NOT support auto-triggering hooks.
+# Quality gates are enforced via:
+# 1. Agent instructions (embedded in orchestrator body)
+# 2. VS Code tasks (.vscode/tasks.json → "quality-gates")
+# 3. CI workflow (.github/workflows/quality.yml)
+
+scripts:
+  session-start: ".github/hooks/scripts/session-start.ps1"
+  quality-gate: ".github/hooks/scripts/quality-gate.ps1"
+
+gates:
+  - name: typecheck
+    command: "npx tsc --noEmit"
+    blocking: true
+  - name: build
+    command: "npm run build"
+    blocking: true
+  - name: git-clean
+    command: "git status --short"
+    blocking: false
+
+operational-docs:
+  - ".claude/operational/task-classification.md"
+  - ".claude/operational/routing-decision-tree.md"
+  - ".claude/operational/quality-gates.md"
+  - ".claude/operational/definition-of-done.md"
+  - ".claude/operational/needs-human-decision.md"
+  - ".claude/operational/report-template.md"
+  - ".claude/operational/handoff-protocol.md"
