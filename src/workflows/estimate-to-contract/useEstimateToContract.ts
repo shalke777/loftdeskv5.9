@@ -24,7 +24,7 @@ export function useEstimateToContract() {
         projectId: contract.project_id ?? null,
         sourceType: 'estimate',
         sourceId: estimateId,
-      }).catch(() => {})
+      }).catch((err) => console.warn('[autoLink] estimate-to-contract link failed:', err))
     },
     onError: (error) => {
       toast.error('Nie udało się utworzyć umowy', error instanceof Error ? error.message : 'Spróbuj ponownie.')

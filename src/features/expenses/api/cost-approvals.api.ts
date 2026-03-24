@@ -282,7 +282,7 @@ export const costApprovalsApi = {
         gross_amount:    input.snapshot_amount_gross,
         invoice_number:  input.snapshot_invoice_number,
       },
-    }).catch(() => {})
+    }).catch((err) => console.warn('[cost-approvals] timeline event failed:', err))
 
     return approval
   },
