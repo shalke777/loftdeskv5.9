@@ -27,8 +27,8 @@ const authLayoutRoute = createRoute({ getParentRoute: () => rootRoute, id: '_aut
 const publicLayoutRoute = createRoute({ getParentRoute: () => rootRoute, id: '_public', component: PublicLayout })
 
 const landingRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: '/', component: LandingRoutePage })
-const portalRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'portal/$token', component: PortalTokenRoutePage })
-const joinRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'join/$token', component: JoinInvitationRoutePage })
+const portalRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'portal/$token', component: lazyRouteComponent(() => import('@/app/routes/portal/$token'), 'PortalTokenRoutePage') })
+const joinRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'join/$token', component: lazyRouteComponent(() => import('@/app/routes/join.$token'), 'JoinInvitationRoutePage') })
 const colorDemoRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'color-demo', component: lazyRouteComponent(() => import('@/app/routes/color-demo'), 'ColorDemoRoutePage') })
 const authCallbackRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'auth/callback', component: lazyRouteComponent(() => import('@/app/routes/auth-callback'), 'AuthCallbackRoutePage') })
 const legalIndexRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'legal', component: lazyRouteComponent(() => import('@/app/routes/legal'), 'LegalIndexRoutePage') })
@@ -58,9 +58,9 @@ const chatRoute = createRoute({
 })
 const expensesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'expenses', component: ExpensesRoutePage })
 
-const clientDashboardRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'client/dashboard', component: ClientDashboardRoutePage })
-const clientProjectRoute   = createRoute({ getParentRoute: () => authLayoutRoute, path: 'client/project/$id', component: ClientProjectRoutePage })
-const clientProfileRoute   = createRoute({ getParentRoute: () => authLayoutRoute, path: 'client/profile', component: ClientProfileRoutePage })
+const clientDashboardRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'client/dashboard', component: lazyRouteComponent(() => import('@/app/routes/client/dashboard'), 'ClientDashboardRoutePage') })
+const clientProjectRoute   = createRoute({ getParentRoute: () => authLayoutRoute, path: 'client/project/$id', component: lazyRouteComponent(() => import('@/app/routes/client/project.$id'), 'ClientProjectRoutePage') })
+const clientProfileRoute   = createRoute({ getParentRoute: () => authLayoutRoute, path: 'client/profile', component: lazyRouteComponent(() => import('@/app/routes/client/profile'), 'ClientProfileRoutePage') })
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
