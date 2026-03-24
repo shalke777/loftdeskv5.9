@@ -95,6 +95,13 @@ export interface ClientPhotoDoc {
   created_at?: string
 }
 
+export interface ClientTimelineEvent {
+  id: string
+  body: string
+  event_type: string
+  created_at: string
+}
+
 export const clientPortalApi = {
   async listProjects(): Promise<ClientProject[]> {
     if (!supabase) return []
@@ -255,5 +262,18 @@ export const clientPortalApi = {
       .order('taken_at', { ascending: false })
     if (error) throw error
     return (data ?? []) as ClientPhotoDoc[]
+  },
+
+  async listTimelineEvents(projectId: string): Promise<ClientTimelineEvent[]> {
+    if (!supabase) return []
+    const { data, error } = await supabase
+      .from('project_timeline_events')
+      .select('id, body, event_type, created_at')
+      .eq('project_id', projectId)
+      .eq('visibility', 'client_shared')
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (error) throw error
+    return (data ?? []) as ClientTimelineEvent[]
   },
 }

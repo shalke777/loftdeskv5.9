@@ -11,6 +11,7 @@ export const clientKeys = {
   approvals:  (id: string) => ['client-approvals',  id] as const,
   documents:  (id: string) => ['client-documents',  id] as const,
   photoDocs:  (id: string) => ['client-photo-docs', id] as const,
+  timeline:   (id: string) => ['client-timeline',   id] as const,
   account:    ['client-account'] as const,
 }
 
@@ -112,6 +113,14 @@ export function useClientPhotoDocs(projectId: string) {
   return useQuery({
     queryKey: clientKeys.photoDocs(projectId),
     queryFn:  () => clientPortalApi.listPhotoDocs(projectId),
+    enabled:  Boolean(projectId),
+  })
+}
+
+export function useClientTimeline(projectId: string) {
+  return useQuery({
+    queryKey: clientKeys.timeline(projectId),
+    queryFn:  () => clientPortalApi.listTimelineEvents(projectId),
     enabled:  Boolean(projectId),
   })
 }

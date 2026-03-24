@@ -18,6 +18,7 @@ import {
   useClientRespondApproval,
   useClientPhotoDocs,
   useClientDocuments,
+  useClientTimeline,
 } from '@/features/client-portal/hooks/useClientPortal'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Badge } from '@/shared/ui/Badge/Badge'
@@ -519,33 +520,11 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
 // ── Zakładka Oś czasu ─────────────────────────────────────────────────────────
 
 function TimelineTab({ projectId }: { projectId: string }) {
-  const [events, setEvents] = useState<Array<{ id: string; body: string; created_at: string; event_type: string }>>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const { data: events, isLoading, isError } = useClientTimeline(projectId)
 
-  // RLS (migr. 042) ensures client can only see visibility='client_shared' events
-  useEffect(() => {
-    setLoading(true)
-    setError(false)
-    import('@/shared/lib/supabase').then(({ supabase }) => {
-      if (!supabase) { setLoading(false); return }
-      supabase
-        .from('project_timeline_events')
-        .select('id, body, event_type, created_at')
-        .eq('project_id', projectId)
-        .eq('visibility', 'client_shared')
-        .order('created_at', { ascending: false })
-        .limit(50)
-        .then(({ data, error: err }) => {
-          if (err) { setError(true) } else { setEvents(data ?? []) }
-          setLoading(false)
-        })
-    })
-  }, [projectId])
-
-  if (loading) return <div className="client-tab-loading">Ładowanie historii projektu...</div>
-  if (error)   return <div className="client-tab-empty"><p>Nie udało się załadować historii.</p><p className="client-tab-empty__hint">Odśwież stronę lub skontaktuj się z wykonawcą.</p></div>
-  if (!events.length) return <div className="client-tab-empty"><p>Historia projektu jest pusta.</p><p className="client-tab-empty__hint">Pierwsze wpisy pojawią się, gdy zaczną się prace.</p></div>
+  if (isLoading) return <div className="client-tab-loading">Ładowanie historii projektu...</div>
+  if (isError)   return <div className="client-tab-empty"><p>Nie udało się załadować historii.</p><p className="client-tab-empty__hint">Odśwież stronę lub skontaktuj się z wykonawcą.</p></div>
+  if (!events?.length) return <div className="client-tab-empty"><p>Historia projektu jest pusta.</p><p className="client-tab-empty__hint">Pierwsze wpisy pojawią się, gdy zaczną się prace.</p></div>
 
   return (
     <ul className="client-timeline">
