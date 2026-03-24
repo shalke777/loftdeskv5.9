@@ -1,5 +1,5 @@
 import { RouterProvider, createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
-import { RootDocument } from '@/app/routes/__root'
+import { RootDocument, RootErrorFallback } from '@/app/routes/__root'
 import { AuthLayout } from '@/app/routes/_auth'
 import { PublicLayout } from '@/app/routes/_public'
 import { AuthScreen } from '@/features/auth/components/AuthScreen'
@@ -29,7 +29,7 @@ import { ClientDashboardRoutePage } from '@/app/routes/client/dashboard'
 import { ClientProjectRoutePage } from '@/app/routes/client/project.$id'
 import { ClientProfileRoutePage } from '@/app/routes/client/profile'
 
-const rootRoute = createRootRoute({ component: RootDocument })
+const rootRoute = createRootRoute({ component: RootDocument, errorComponent: RootErrorFallback })
 
 const loginRoute = createRoute({ getParentRoute: () => rootRoute, path: 'login', component: AuthScreen })
 const authLayoutRoute = createRoute({ getParentRoute: () => rootRoute, id: '_auth', component: AuthLayout })
