@@ -81,3 +81,13 @@ For major tasks, return:
 - Do not invent architecture that is not needed.
 - Do not rename broad areas without reason.
 - Do not assume data shape without checking nearby code.
+
+## Agent system
+This repo has a full agent system. See:
+- `.claude/operational/` — task classification, routing, quality gates, report template, escalation rules
+- `.claude/agents/` — 28 specialized agents (Claude Code)
+- `.github/agents/` — 7 Copilot agents (orchestrator, backend, frontend, qa, product, visual, ux)
+- `.github/prompts/` — reusable prompt templates (full-delivery, bugfix, feature, release, sprint-batch, ui-ux)
+
+For non-trivial tasks, the orchestrator classifies, routes, implements, validates, and reports autonomously.
+Quality gates (tsc + build + git clean) are mandatory before reporting done.
