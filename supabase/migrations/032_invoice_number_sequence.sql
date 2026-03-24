@@ -23,15 +23,17 @@ CREATE TABLE IF NOT EXISTS public.invoice_counters (
 
 -- Pre-seed counters from existing invoices so we don't restart at 1 for
 -- companies that already have data in the table.
+-- INNER JOIN companies to skip orphaned invoices with missing FK.
 INSERT INTO public.invoice_counters (company_id, year, last_seq)
 SELECT
-  company_id,
-  date_part('year', issue_date)::int AS year,
-  count(*)::int                      AS last_seq
-FROM public.invoices
-WHERE company_id IS NOT NULL
-  AND issue_date IS NOT NULL
-GROUP BY company_id, date_part('year', issue_date)::int
+  i.company_id,
+  date_part('year', i.issue_date)::int AS year,
+  count(*)::int                        AS last_seq
+FROM public.invoices i
+INNER JOIN public.companies c ON c.id = i.company_id
+WHERE i.company_id IS NOT NULL
+  AND i.issue_date IS NOT NULL
+GROUP BY i.company_id, date_part('year', i.issue_date)::int
 ON CONFLICT (company_id, year) DO NOTHING;
 
 -- ── RLS ───────────────────────────────────────────────────────────────────────
