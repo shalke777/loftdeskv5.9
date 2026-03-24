@@ -27,7 +27,7 @@ export const estimatesApi = {
       const { error: itemsError } = await supabase.from('cost_estimate_items').insert(itemRows)
       if (itemsError) throw itemsError
     }
-    if (input.project_id) { try { await projectDocumentsApi.link(input.company_id, input.project_id, 'estimate', data.id, { manual: true }) } catch {} }
+    if (input.project_id) { try { await projectDocumentsApi.link(input.company_id, input.project_id, 'estimate', data.id, { manual: true }) } catch (err) { console.warn('[estimates] project doc link failed on create:', err) } }
     return { id: data.id, company_id: data.company_id ?? input.company_id, client_id: data.client_id, number: data.number, name: data.name, status: data.status, total_net: totals.net, total_gross: totals.gross, notes: data.notes ?? '', valid_until: data.valid_until ?? null, created_at: data.created_at, items }
   },
   async update(id: string, input: Partial<Estimate>, companyId?: string) {
@@ -59,7 +59,7 @@ export const estimatesApi = {
       }
     }
     if (payload.project_id && companyId) {
-      try { await projectDocumentsApi.link(companyId, payload.project_id, 'estimate', id, { manual: true }) } catch {}
+      try { await projectDocumentsApi.link(companyId, payload.project_id, 'estimate', id, { manual: true }) } catch (err) { console.warn('[estimates] project doc link failed on update:', err) }
     }
     const { data: refreshed } = await supabase.from('cost_estimates').select('*, items:cost_estimate_items(*)').eq('id', id).single()
     return refreshed ?? data
@@ -76,6 +76,6 @@ export const estimatesApi = {
       .eq('doc_type', 'estimate')
       .eq('doc_id', id)
       .is('archived_at', null)
-      .then(() => {})
+      .then(() => {}, (err) => console.warn('[estimates] archive project doc failed on delete:', err))
   },
 }
