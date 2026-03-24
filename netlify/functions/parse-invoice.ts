@@ -31,10 +31,26 @@ const inflateAsync    = promisify(zlib.inflate)
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export interface ParseInvoiceLineItem {
+  name:         string | null
+  quantity:     number | null
+  unit:         string | null
+  unit_net:     number | null
+  vat_rate:     number | null
+  net_amount:   number | null
+  vat_amount:   number | null
+  gross_amount: number | null
+}
+
 export interface ParseInvoiceResult {
   document_type:  'invoice' | 'receipt' | 'bill' | 'other' | null  // detected document type
   vendor_name:    string | null
   vendor_nip:     string | null
+  vendor_address?: string | null   // from AI path
+  buyer_name?:    string | null    // from AI path
+  buyer_nip?:     string | null    // from AI path
+  buyer_address?: string | null    // from AI path
+  line_items?:    ParseInvoiceLineItem[]  // from AI path
   invoice_number: string | null
   issue_date:     string | null
   sale_date:      string | null
