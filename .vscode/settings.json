@@ -1,9 +1,11 @@
 {
-  "chat.customAgentInSubagent.enabled": true,
-  "chat.agentFilesLocations": {
-    ".github/agents": true,
-    ".claude/agents": true
-  },
-  "github.copilot.chat.organizationInstructions.enabled": true,
-  "github.copilot.chat.agentDebugLog.enabled": true
+    "diffEditor.maxComputationTime": 0,
+    "chat.restoreLastPanelSession": true,
+    "git.autofetch": true,
+    "chat.viewSessions.orientation": "stacked",
+    "chat.agent.maxRequests": 300,
+    "githubPullRequests.notifications": "pullRequests",
+    "githubPullRequests.experimental.notificationsMarkPullRequests": "markAsDone",
+    "githubPullRequests.experimental.useQuickChat": true,
+    "security.workspace.trust.untrustedFiles": "open"
 }
