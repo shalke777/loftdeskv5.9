@@ -78,6 +78,23 @@ export interface ClientApproval {
   created_at: string
 }
 
+export interface ClientProjectDocument {
+  id: string
+  doc_type: string
+  doc_id: string
+  created_at: string
+}
+
+export interface ClientPhotoDoc {
+  id: string
+  title: string
+  category: string
+  image_url: string | null
+  note: string | null
+  taken_at: string | null
+  created_at?: string
+}
+
 export const clientPortalApi = {
   async listProjects(): Promise<ClientProject[]> {
     if (!supabase) return []
@@ -215,5 +232,28 @@ export const clientPortalApi = {
       .update({ ...fields, updated_at: new Date().toISOString() })
       .eq('auth_user_id', authData.user.id)
     if (error) throw error
+  },
+
+  async listProjectDocuments(projectId: string): Promise<ClientProjectDocument[]> {
+    if (!supabase) return []
+    const { data, error } = await supabase
+      .from('project_documents')
+      .select('id, doc_type, doc_id, created_at')
+      .eq('project_id', projectId)
+      .is('archived_at', null)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return (data ?? []) as ClientProjectDocument[]
+  },
+
+  async listPhotoDocs(projectId: string): Promise<ClientPhotoDoc[]> {
+    if (!supabase) return []
+    const { data, error } = await supabase
+      .from('project_photo_docs')
+      .select('id, title, category, image_url, note, taken_at')
+      .eq('project_id', projectId)
+      .order('taken_at', { ascending: false })
+    if (error) throw error
+    return (data ?? []) as ClientPhotoDoc[]
   },
 }

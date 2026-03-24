@@ -16,10 +16,11 @@ import {
   useClientDeleteMessage,
   useClientApprovals,
   useClientRespondApproval,
+  useClientPhotoDocs,
 } from '@/features/client-portal/hooks/useClientPortal'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Badge } from '@/shared/ui/Badge/Badge'
-import type { ClientEstimate, ClientInvoice, ClientContract, ClientApproval, ClientMessage } from '@/features/client-portal/api/client-portal.api'
+import type { ClientEstimate, ClientInvoice, ClientContract, ClientApproval, ClientMessage, ClientPhotoDoc } from '@/features/client-portal/api/client-portal.api'
 
 // ── Status labels ─────────────────────────────────────────────────────────────
 
@@ -149,12 +150,22 @@ const TABS: { key: TabKey; label: string }[] = [
 
 // ── Zakładka Dokumenty ────────────────────────────────────────────────────────
 
+const PHOTO_CATEGORY_LABEL: Record<string, string> = {
+  progress: 'Postęp prac',
+  before:   'Stan przed',
+  after:    'Stan po',
+  issue:    'Problem',
+  delivery: 'Dostawa',
+  other:    'Inne',
+}
+
 function DocumentsTab({ projectId }: { projectId: string }) {
   const { data: estimates, isLoading: loadingEst, isError: errorEst } = useClientEstimates(projectId)
   const { data: invoices,  isLoading: loadingInv, isError: errorInv } = useClientInvoices(projectId)
   const { data: contracts, isLoading: loadingCon, isError: errorCon } = useClientContracts(projectId)
+  const { data: photoDocs, isLoading: loadingPh,  isError: errorPh  } = useClientPhotoDocs(projectId)
 
-  const loading = loadingEst || loadingInv || loadingCon
+  const loading = loadingEst || loadingInv || loadingCon || loadingPh
 
   if (loading) return <div className="client-tab-loading">Ładowanie dokumentów...</div>
 
@@ -235,6 +246,45 @@ function DocumentsTab({ projectId }: { projectId: string }) {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      {/* Zdjęcia / dokumentacja fotograficzna */}
+      <section className="client-docs__section">
+        <h4 className="client-docs__section-title">Zdjęcia z realizacji</h4>
+        {errorPh ? (
+          <p className="client-docs__error">Nie udało się załadować zdjęć.</p>
+        ) : !photoDocs?.length ? (
+          <p className="client-docs__empty">Zdjęcia pojawią się w trakcie realizacji projektu.</p>
+        ) : (
+          <div className="client-photos">
+            {photoDocs.map((ph: ClientPhotoDoc) => (
+              <div key={ph.id} className="client-photos__card">
+                {ph.image_url ? (
+                  <img
+                    src={ph.image_url}
+                    alt={ph.title}
+                    className="client-photos__img"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="client-photos__placeholder">Brak podglądu</div>
+                )}
+                <div className="client-photos__info">
+                  <span className="client-photos__title">{ph.title}</span>
+                  <span className="client-photos__category">
+                    {PHOTO_CATEGORY_LABEL[ph.category] ?? ph.category}
+                  </span>
+                  {ph.note && <p className="client-photos__note">{ph.note}</p>}
+                  {ph.taken_at && (
+                    <span className="client-photos__date">
+                      {new Date(ph.taken_at).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </section>
     </div>

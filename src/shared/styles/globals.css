@@ -2975,6 +2975,73 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   font-weight: 600;
   color: var(--color-text-primary);
 }
+.client-docs__error {
+  font-size: 13px;
+  color: var(--color-danger, #EF6B6B);
+  margin: 0;
+  padding: 8px 0;
+}
+
+/* ── Photo docs (client portal) ─────────────────────────────────────────────── */
+.client-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+.client-photos__card {
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-bg);
+  transition: border-color 0.12s;
+}
+.client-photos__card:hover {
+  border-color: var(--color-brand-border);
+}
+.client-photos__img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+}
+.client-photos__placeholder {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-muted, #f0f0f0);
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+}
+.client-photos__info {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.client-photos__title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+.client-photos__category {
+  font-size: 11px;
+  color: var(--color-muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.client-photos__note {
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+  margin: 2px 0 0;
+  line-height: 1.4;
+}
+.client-photos__date {
+  font-size: 11px;
+  color: var(--color-muted-foreground);
+  opacity: 0.8;
+}
 
 /* ── Chat tab ───────────────────────────────────────────────────────────────── */
 .client-chat {

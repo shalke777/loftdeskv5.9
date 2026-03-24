@@ -9,6 +9,8 @@ export const clientKeys = {
   contracts:  (id: string) => ['client-contracts',  id] as const,
   messages:   (id: string) => ['client-messages',   id] as const,
   approvals:  (id: string) => ['client-approvals',  id] as const,
+  documents:  (id: string) => ['client-documents',  id] as const,
+  photoDocs:  (id: string) => ['client-photo-docs', id] as const,
   account:    ['client-account'] as const,
 }
 
@@ -95,6 +97,22 @@ export function useClientRespondApproval(projectId: string) {
     mutationFn: ({ id, status, comment }: { id: string; status: 'accepted' | 'rejected' | 'questioned'; comment?: string }) =>
       clientPortalApi.respondApproval(id, status, comment),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: clientKeys.approvals(projectId) }),
+  })
+}
+
+export function useClientDocuments(projectId: string) {
+  return useQuery({
+    queryKey: clientKeys.documents(projectId),
+    queryFn:  () => clientPortalApi.listProjectDocuments(projectId),
+    enabled:  Boolean(projectId),
+  })
+}
+
+export function useClientPhotoDocs(projectId: string) {
+  return useQuery({
+    queryKey: clientKeys.photoDocs(projectId),
+    queryFn:  () => clientPortalApi.listPhotoDocs(projectId),
+    enabled:  Boolean(projectId),
   })
 }
 
