@@ -205,8 +205,6 @@ export function useProjectExport(projectId: string) {
           }
         }
 
-        console.log('[LoftDesk] ZIP Export – starting', { projectId, docsCount: active.length })
-
         for (let i = 0; i < active.length; i++) {
           const doc = active[i]
           const idx = String(ORDER[doc.doc_type] ?? 9).padStart(2, '0')
@@ -281,12 +279,6 @@ export function useProjectExport(projectId: string) {
             throw new Error(`[LoftDesk] ZIP Export: expected application/pdf Blob for ${fileName} but got MIME "${pdfBlob.type}"`)
           }
 
-          console.log('[LoftDesk] ZIP Export – adding file', {
-            file: fileName,
-            type: pdfBlob.type,
-            size: pdfBlob.size,
-          })
-
           zip.file(fileName, pdfBlob)
           manifest.push({
             index: i + 1,
@@ -314,7 +306,6 @@ export function useProjectExport(projectId: string) {
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
 
-        console.log('[LoftDesk] ZIP Export – done', { files: manifest.length })
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : String(e))
         console.error('[LoftDesk] ZIP Export – error', e)

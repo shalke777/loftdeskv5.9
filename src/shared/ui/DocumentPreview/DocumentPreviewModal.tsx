@@ -38,13 +38,6 @@ export function DocumentPreviewModal({
       const { generatePdfBlob } = await import('@/services/pdf/pdfGenerator')
       const pdfBlob = await generatePdfBlob(tab.content)
       const filename = `${title.replace(/\s+/g, '_')}.pdf`
-      console.log('[LoftDesk] PDF Download', {
-        action: 'downloadPdf',
-        isBlob: pdfBlob instanceof Blob,
-        type: pdfBlob.type,
-        size: pdfBlob.size,
-        filename,
-      })
       await downloadBlob(filename, pdfBlob)
     } catch (err) {
       console.error('[LoftDesk] PDF generation failed – falling back to HTML download', err)

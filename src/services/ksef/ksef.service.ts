@@ -314,15 +314,6 @@ export const ksefService = {
    * Returns { accessToken, sessionRef, symmetricKey, iv, validUntil }
    */
   async initSession(nip: string, token: string, env: KsefEnv = 'test') {
-    console.log('[ksef-service] initSession', {
-      env,
-      base: { demo: 'api-demo.ksef.mf.gov.pl', test: 'api-test.ksef.mf.gov.pl', prod: 'api.ksef.mf.gov.pl' }[env] ?? '?',
-      nip,
-      tokenExists: !!token,
-      tokenLen: token?.length ?? 0,
-      tokenHead: token ? token.slice(0, 4) : '??',
-      tokenTail: token ? token.slice(-4) : '??',
-    })
     return callProxy('ksef-session', { action: 'init', nip, token, env })
   },
   async closeSession(sessionToken: string, referenceNumber: string, env: KsefEnv = 'test') {
