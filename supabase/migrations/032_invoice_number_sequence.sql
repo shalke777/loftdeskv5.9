@@ -21,18 +21,29 @@ CREATE TABLE IF NOT EXISTS public.invoice_counters (
 
 -- Pre-seed counters from existing invoices so we don't restart at 1 for
 -- companies that already have data in the table.
+-- Uses NOT EXISTS instead of ON CONFLICT so the query works even when the
+-- PK constraint isn't yet visible (supabase db query --linked batches DDL+DML).
 -- INNER JOIN companies to skip orphaned invoices with missing FK.
 INSERT INTO public.invoice_counters (company_id, year, last_seq)
 SELECT
-  i.company_id,
-  date_part('year', i.issue_date)::int AS year,
-  count(*)::int                        AS last_seq
-FROM public.invoices i
-INNER JOIN public.companies c ON c.id = i.company_id
-WHERE i.company_id IS NOT NULL
-  AND i.issue_date IS NOT NULL
-GROUP BY i.company_id, date_part('year', i.issue_date)::int
-ON CONFLICT (company_id, year) DO NOTHING;
+  sub.company_id,
+  sub.year,
+  sub.last_seq
+FROM (
+  SELECT
+    i.company_id,
+    date_part('year', i.issue_date)::int AS year,
+    count(*)::int                        AS last_seq
+  FROM public.invoices i
+  INNER JOIN public.companies c ON c.id = i.company_id
+  WHERE i.company_id IS NOT NULL
+    AND i.issue_date IS NOT NULL
+  GROUP BY i.company_id, date_part('year', i.issue_date)::int
+) sub
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.invoice_counters ic
+  WHERE ic.company_id = sub.company_id AND ic.year = sub.year
+);
 
 -- ── RLS ───────────────────────────────────────────────────────────────────────
 ALTER TABLE public.invoice_counters ENABLE ROW LEVEL SECURITY;
