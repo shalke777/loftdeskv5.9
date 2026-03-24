@@ -10,8 +10,6 @@
 -- is a single atomic operation in PostgreSQL — no race conditions.
 -- =============================================================================
 
-BEGIN;
-
 -- ── Counter table ─────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.invoice_counters (
@@ -71,5 +69,3 @@ $$;
 -- Grant execute to the anon/authenticated roles used by Supabase's API
 GRANT EXECUTE ON FUNCTION public.next_invoice_number(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.next_invoice_number(uuid) TO service_role;
-
-COMMIT;

@@ -5,8 +5,6 @@
 -- All columns are nullable or have safe defaults — zero breaking risk.
 -- =============================================================================
 
-BEGIN;
-
 ALTER TABLE public.companies
   ADD COLUMN IF NOT EXISTS stripe_customer_id               text,
   ADD COLUMN IF NOT EXISTS stripe_subscription_id           text,
@@ -64,5 +62,3 @@ COMMENT ON COLUMN public.companies.subscription_status IS
   'none=no history | trialing=14d trial | active=paid | past_due=payment failed | canceled=ended | unpaid=charged off';
 COMMENT ON COLUMN public.companies.plan_source IS
   'manual=app/admin set | stripe=synced from webhook | admin=sysop override';
-
-COMMIT;

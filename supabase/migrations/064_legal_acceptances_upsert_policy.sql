@@ -10,8 +10,6 @@
 -- both INSERT and UPDATE policies for upsert operations.
 -- =============================================================================
 
-BEGIN;
-
 -- ── 1. Create table if missing ──────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.legal_acceptances (
   id                     uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -50,5 +48,3 @@ CREATE POLICY "legal_acceptances_update_own" ON public.legal_acceptances
   FOR UPDATE
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
-
-COMMIT;
