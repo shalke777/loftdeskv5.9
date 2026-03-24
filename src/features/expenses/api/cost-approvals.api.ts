@@ -216,13 +216,17 @@ export const costApprovalsApi = {
     const approval = data as CostApproval
 
     // ── 3. Update expense approval_status + approval_sent_at ──────────────
-    await supabase
+    const { error: expenseErr } = await supabase
       .from('expense_invoices')
       .update({
         approval_status:  'pending_client',
         approval_sent_at: approval.sent_at,
       })
       .eq('id', input.expense_id)
+
+    if (expenseErr) {
+      console.warn('[cost-approvals] expense_invoices update failed:', expenseErr.message)
+    }
 
     // ── 4. Insert system message into approvals thread ────────────────────
     if (threadId) {
@@ -237,7 +241,7 @@ export const costApprovalsApi = {
         input.message_to_client ? `\nWiadomość do klienta: ${input.message_to_client}` : null,
       ].filter(Boolean).join('\n')
 
-      await supabase
+      const { error: msgErr } = await supabase
         .from('project_messages')
         .insert({
           thread_id:     threadId,
@@ -250,6 +254,10 @@ export const costApprovalsApi = {
           read_by_operator: true,
           read_by_client:   false,
         })
+
+      if (msgErr) {
+        console.warn('[cost-approvals] system message insert failed:', msgErr.message)
+      }
     }
 
     // ── 5. Timeline event (fire-and-forget) ───────────────────────────────
