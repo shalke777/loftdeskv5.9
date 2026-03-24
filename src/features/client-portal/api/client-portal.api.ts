@@ -250,7 +250,7 @@ export const clientPortalApi = {
     if (!supabase) return []
     const { data, error } = await supabase
       .from('project_photo_docs')
-      .select('id, title, category, image_url, note, taken_at')
+      .select('id, title, category, image_url, note, taken_at, created_at')
       .eq('project_id', projectId)
       .order('taken_at', { ascending: false })
     if (error) throw error

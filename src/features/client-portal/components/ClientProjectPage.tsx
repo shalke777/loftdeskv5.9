@@ -17,10 +17,11 @@ import {
   useClientApprovals,
   useClientRespondApproval,
   useClientPhotoDocs,
+  useClientDocuments,
 } from '@/features/client-portal/hooks/useClientPortal'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Badge } from '@/shared/ui/Badge/Badge'
-import type { ClientEstimate, ClientInvoice, ClientContract, ClientApproval, ClientMessage, ClientPhotoDoc } from '@/features/client-portal/api/client-portal.api'
+import type { ClientEstimate, ClientInvoice, ClientContract, ClientApproval, ClientMessage, ClientPhotoDoc, ClientProjectDocument } from '@/features/client-portal/api/client-portal.api'
 
 // ── Status labels ─────────────────────────────────────────────────────────────
 
@@ -159,13 +160,22 @@ const PHOTO_CATEGORY_LABEL: Record<string, string> = {
   other:    'Inne',
 }
 
+const DOC_TYPE_LABEL: Record<string, string> = {
+  estimate: 'Wycena',
+  invoice:  'Faktura',
+  contract: 'Umowa',
+  photo:    'Zdjęcie',
+  other:    'Dokument',
+}
+
 function DocumentsTab({ projectId }: { projectId: string }) {
   const { data: estimates, isLoading: loadingEst, isError: errorEst } = useClientEstimates(projectId)
   const { data: invoices,  isLoading: loadingInv, isError: errorInv } = useClientInvoices(projectId)
   const { data: contracts, isLoading: loadingCon, isError: errorCon } = useClientContracts(projectId)
   const { data: photoDocs, isLoading: loadingPh,  isError: errorPh  } = useClientPhotoDocs(projectId)
+  const { data: projDocs,  isLoading: loadingPD,  isError: errorPD  } = useClientDocuments(projectId)
 
-  const loading = loadingEst || loadingInv || loadingCon || loadingPh
+  const loading = loadingEst || loadingInv || loadingCon || loadingPh || loadingPD
 
   if (loading) return <div className="client-tab-loading">Ładowanie dokumentów...</div>
 
@@ -243,6 +253,29 @@ function DocumentsTab({ projectId }: { projectId: string }) {
                     {INVOICE_STATUS[inv.status] ?? inv.status}
                   </Badge>
                 </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Powiązane dokumenty projektu */}
+      <section className="client-docs__section">
+        <h4 className="client-docs__section-title">Dokumenty projektu</h4>
+        {errorPD ? (
+          <p className="client-docs__error">Nie udało się załadować dokumentów projektu.</p>
+        ) : !projDocs?.length ? (
+          <p className="client-docs__empty">Brak powiązanych dokumentów.</p>
+        ) : (
+          <ul className="client-docs__list">
+            {projDocs.map((d: ClientProjectDocument) => (
+              <li key={d.id} className="client-docs__row">
+                <div>
+                  <Badge variant="default">{DOC_TYPE_LABEL[d.doc_type] ?? d.doc_type}</Badge>
+                </div>
+                <span className="client-docs__row-date">
+                  {fmtDate(d.created_at)}
+                </span>
               </li>
             ))}
           </ul>
