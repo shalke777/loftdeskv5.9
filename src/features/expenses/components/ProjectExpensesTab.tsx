@@ -84,7 +84,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
                 setParseResult(aiResult); setParseError(null); setMode('confirm')
                 return
               }
-            } catch { /* AI failed — keep OCR result */ }
+            } catch (aiErr) { console.warn('[expenses] AI fallback failed (low OCR confidence):', aiErr) }
           }
           setParseResult(ocrResult); setParseError(null); setMode('confirm')
         },
@@ -98,7 +98,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
                 setParseResult(aiResult); setParseError(null); setMode('confirm')
                 return
               }
-            } catch { /* AI also failed */ }
+            } catch (aiErr) { console.warn('[expenses] AI fallback failed (OCR error):', aiErr) }
           }
           setParseError(msg); setMode('confirm')
         },

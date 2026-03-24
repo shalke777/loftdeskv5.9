@@ -69,7 +69,8 @@ async function preprocessForOCR(file: File): Promise<File> {
         0.90,
       )
     })
-  } catch {
+  } catch (err) {
+    console.warn('[OCR] image preprocessing failed, using original:', err)
     return file // graceful fallback — use original
   }
 }
@@ -137,7 +138,10 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
   }
 
   if (!resp.ok) {
-    const errData = await resp.json().catch(() => ({})) as Record<string, unknown>
+    const errData = await resp.json().catch((jsonErr) => {
+      console.warn('[OCR] error response body is not JSON:', jsonErr)
+      return {}
+    }) as Record<string, unknown>
     if (resp.status === 401 || errData.error === 'unauthorized')
       throw new Error('Sesja wygasła — zaloguj się ponownie, aby korzystać z OCR.')
     if (resp.status === 429 || errData.error === 'too_many_requests')

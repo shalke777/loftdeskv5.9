@@ -147,8 +147,9 @@ export function ExpensesPage() {
             parsed = await parseInvoiceFromText(rawText)
             usedLocalParser = true
           }
-        } catch {
-          // local extraction failed — fall through to Netlify OCR
+        } catch (extractErr) {
+          console.warn('[expenses] local PDF text extraction failed:', extractErr)
+          // fall through to Netlify OCR
         }
       }
 
@@ -185,7 +186,7 @@ export function ExpensesPage() {
             // For PDFs, pass any locally-extracted raw text as a hint to the AI
             let pdfHintText: string | undefined
             if (isPDF) {
-              try { pdfHintText = await extractRawPdfText(file) } catch { /* non-fatal */ }
+              try { pdfHintText = await extractRawPdfText(file) } catch (hintErr) { console.warn('[expenses] PDF hint extraction failed:', hintErr) }
             }
             const aiResult = await callParseInvoiceAI(file, pdfHintText)
             const aiConf   = aiResult.extraction_confidence ?? 0
