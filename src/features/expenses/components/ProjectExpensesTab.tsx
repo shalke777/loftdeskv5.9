@@ -5,6 +5,7 @@ import { rehydrateAnalysisResult } from '@/features/expenses/api/expenses.api'
 import { useProjectExpenses } from '@/features/expenses/hooks/useProjectExpenses'
 import { useCreateExpense }   from '@/features/expenses/hooks/useCreateExpense'
 import { useParseInvoice, callParseInvoiceAI, normalizeParseResult } from '@/features/expenses/hooks/useParseInvoice'
+import { useAnalyzeRoomPhoto } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import { ExpenseCameraCapture } from './ExpenseCameraCapture'
 import { ExpensePreviewPane }   from './ExpensePreviewPane'
 import { ExpenseConfirmForm }   from './ExpenseConfirmForm'
@@ -33,10 +34,11 @@ const APPROVAL_LABELS: Record<ApprovalStatus | 'not_sent', string> = {
 }
 
 const SOURCE_ICONS: Record<string, string> = {
-  camera:  '📷',
-  gallery: '🖼️',
-  pdf:     '📄',
-  manual:  '✏️',
+  camera:     '📷',
+  gallery:    '🖼️',
+  pdf:        '📄',
+  manual:     '✏️',
+  room_photo: '🏠',
 }
 
 export function ProjectExpensesTab({ projectId }: Props) {
@@ -51,6 +53,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
   const { data: expenses = [], isLoading } = useProjectExpenses(projectId)
   const createExpense = useCreateExpense(projectId)
   const parseInvoice  = useParseInvoice()
+  const analyzeRoom   = useAnalyzeRoomPhoto()
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -69,6 +72,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
     setParseResult(null)
     setParseError(null)
     parseInvoice.reset()
+    analyzeRoom.reset()
     createExpense.reset()
   }
 
@@ -77,6 +81,23 @@ export function ProjectExpensesTab({ projectId }: Props) {
     setSourceType(type)
     setParseResult(null)
     setMode('processing')
+
+    // Room / site photo — skip OCR, go directly to vision analysis
+    if (type === 'room_photo') {
+      analyzeRoom.mutate({ file }, {
+        onSuccess: (result) => {
+          setParseResult(result)
+          setParseError(null)
+          setMode('confirm')
+        },
+        onError: (err) => {
+          const msg = err instanceof Error ? err.message : 'Analiza zdjęcia pokoju nie powiodła się.'
+          setParseError(msg)
+          setMode('confirm')
+        },
+      })
+      return
+    }
 
     parseInvoice.mutate(
       { file, sourceType: type },
@@ -335,11 +356,14 @@ export function ProjectExpensesTab({ projectId }: Props) {
   // ── Rendering: processing (OCR w toku) ─────────────────────────────────────
 
   if (mode === 'processing') {
+    const isRoomPhoto = sourceType === 'room_photo'
     return (
       <div style={{ padding: '16px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
           <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 13 }}>← Anuluj</button>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Odczytuję fakturę…</h3>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
+            {isRoomPhoto ? 'Analizuję zdjęcie pomieszczenia…' : 'Odczytuję fakturę…'}
+          </h3>
         </div>
         <div className="form-grid" style={{ gridTemplateColumns: fileState ? 'minmax(0,1fr) minmax(0,1.4fr)' : '1fr', gap: 20, alignItems: 'start' }}>
           {fileState && (
@@ -354,10 +378,14 @@ export function ProjectExpensesTab({ projectId }: Props) {
           }}>
             <div className="spinner" style={{ width: 40, height: 40 }} />
             <div style={{ textAlign: 'center' }}>
-              <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: 15 }}>Odczytuję tekst z faktury…</p>
+              <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: 15 }}>
+                {isRoomPhoto ? 'Rozpoznaję materiały i zakres prac…' : 'Odczytuję tekst z faktury…'}
+              </p>
               <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-                OCR analizuje obraz — zazwyczaj trwa 10–25&nbsp;sekund.<br />
-                Pola zostaną wypełnione automatycznie.
+                {isRoomPhoto
+                  ? <>AI analizuje zdjęcie — zazwyczaj trwa 15–30&nbsp;sekund.<br />Wykryte materiały i zakres prac zostaną wyświetlone do sprawdzenia.</>
+                  : <>OCR analizuje obraz — zazwyczaj trwa 10–25&nbsp;sekund.<br />Pola zostaną wypełnione automatycznie.</>
+                }
               </p>
             </div>
           </div>
@@ -374,7 +402,9 @@ export function ProjectExpensesTab({ projectId }: Props) {
           ← Wróć
         </button>
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
-          {fileState ? 'Potwierdź koszt' : 'Wpisz dane faktury'}
+          {sourceType === 'room_photo'
+            ? 'Wyniki analizy pomieszczenia'
+            : fileState ? 'Potwierdź koszt' : 'Wpisz dane faktury'}
         </h3>
       </div>
 
@@ -416,7 +446,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
           <ExpensePreviewPane
             file={fileState}
             parseResult={parseResult}
-            parsing={parseInvoice.isPending}
+            parsing={parseInvoice.isPending || analyzeRoom.isPending}
           />
         )}
 

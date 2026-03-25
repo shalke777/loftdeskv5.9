@@ -73,9 +73,22 @@ export function ExpenseConfirmForm({
   // Track which fields were populated from the parse result (for autofill badge)
   const [autofilled, setAutofilled] = useState<Set<keyof FormState>>(new Set())
 
+  const isRoomPhoto = parseResult?.input_type === 'room_photo'
+
   // Pre-fill from parse result (reads from AnalysisResult.document_fields)
   useEffect(() => {
     if (!parseResult) return
+
+    // Room photo analysis has no document_fields — only materials / work scope
+    if (isRoomPhoto) {
+      setForm({
+        ...emptyState(),
+        notes: parseResult.document_fields?.notes ?? '',
+        cost_type: 'material',
+      })
+      return
+    }
+
     const df = parseResult.document_fields
     const next: FormState = {
       vendor_name:      df?.vendor_name      ?? '',
@@ -122,12 +135,16 @@ export function ExpenseConfirmForm({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.vendor_name.trim()) return alert('Podaj nazwę sprzedawcy')
+    if (!isRoomPhoto && !form.vendor_name.trim()) return alert('Podaj nazwę sprzedawcy')
+
+    const vendorName = isRoomPhoto
+      ? (form.vendor_name.trim() || `Analiza pomieszczenia ${new Date().toLocaleDateString('pl-PL')}`)
+      : form.vendor_name.trim()
 
     onSave({
       file,
       source_type:    sourceType,
-      vendor_name:    form.vendor_name.trim(),
+      vendor_name:    vendorName,
       vendor_nip:     form.vendor_nip.trim()  || null,
       invoice_number: form.invoice_number.trim() || null,
       issue_date:     form.issue_date    || null,
@@ -203,7 +220,8 @@ export function ExpenseConfirmForm({
         <SuggestedEstimateSection items={parseResult.suggested_estimate_items} />
       )}
 
-      {/* Section: sprzedawca */}
+      {/* Section: sprzedawca — hidden for room_photo */}
+      {!isRoomPhoto && (
       <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
           Sprzedawca
@@ -232,8 +250,10 @@ export function ExpenseConfirmForm({
           />
         </div>
       </fieldset>
+      )}
 
-      {/* Section: faktura */}
+      {/* Section: faktura — hidden for room_photo */}
+      {!isRoomPhoto && (
       <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
           Faktura
@@ -280,8 +300,10 @@ export function ExpenseConfirmForm({
           />
         </div>
       </fieldset>
+      )}
 
-      {/* Section: kwoty */}
+      {/* Section: kwoty — hidden for room_photo */}
+      {!isRoomPhoto && (
       <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
           Kwoty
@@ -337,6 +359,7 @@ export function ExpenseConfirmForm({
           </select>
         </div>
       </fieldset>
+      )}
 
       {/* Section: klasyfikacja */}
       <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -393,9 +416,9 @@ export function ExpenseConfirmForm({
         <button
           type="submit"
           className="btn"
-          disabled={saving || !form.vendor_name.trim()}
+          disabled={saving || (!isRoomPhoto && !form.vendor_name.trim())}
         >
-          {saving ? 'Zapisywanie…' : 'Zapisz koszt'}
+          {saving ? 'Zapisywanie…' : isRoomPhoto ? 'Zapisz analizę' : 'Zapisz koszt'}
         </button>
       </div>
     </form>

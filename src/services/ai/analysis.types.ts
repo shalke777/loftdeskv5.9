@@ -316,6 +316,7 @@ export function classifyInputType(
   sourceHint?: 'camera' | 'gallery' | 'pdf' | 'manual' | string,
 ): AnalysisInputType {
   if (sourceHint === 'camera')  return 'camera_capture'
+  if (sourceHint === 'room_photo') return 'room_photo'
   if (sourceHint === 'manual')  return 'text_input'
   if (!file) return 'unknown'
 

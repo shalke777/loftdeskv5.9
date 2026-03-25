@@ -8,9 +8,10 @@ interface Props {
 }
 
 export function ExpenseCameraCapture({ onCapture, onManual, disabled }: Props) {
-  const cameraRef  = useRef<HTMLInputElement>(null)
-  const galleryRef = useRef<HTMLInputElement>(null)
-  const pdfRef     = useRef<HTMLInputElement>(null)
+  const cameraRef    = useRef<HTMLInputElement>(null)
+  const galleryRef   = useRef<HTMLInputElement>(null)
+  const pdfRef       = useRef<HTMLInputElement>(null)
+  const roomPhotoRef = useRef<HTMLInputElement>(null)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>, sourceType: ExpenseSourceType) {
     const file = e.target.files?.[0]
@@ -67,6 +68,17 @@ export function ExpenseCameraCapture({ onCapture, onManual, disabled }: Props) {
         — lub —
       </div>
 
+      {/* Room / site photo — vision analysis (materials + work scope) */}
+      <button
+        type="button"
+        className="btn btn-secondary"
+        disabled={disabled}
+        onClick={() => roomPhotoRef.current?.click()}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', fontSize: 15, padding: '14px 20px' }}
+      >
+        <span>🏠</span> Zdjęcie pokoju / obiektu
+      </button>
+
       {/* Manual entry — no file */}
       <button
         type="button"
@@ -100,6 +112,14 @@ export function ExpenseCameraCapture({ onCapture, onManual, disabled }: Props) {
         accept="application/pdf"
         style={{ display: 'none' }}
         onChange={(e) => handleFile(e, 'pdf')}
+      />
+      <input
+        ref={roomPhotoRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={(e) => handleFile(e, 'room_photo')}
       />
     </div>
   )

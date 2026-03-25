@@ -442,7 +442,7 @@ export const expensesApi = {
 // Etap 4 — Project-centric expenses with OCR metadata (new types + methods)
 // =============================================================================
 
-export type ExpenseSourceType    = 'camera' | 'gallery' | 'pdf' | 'manual'
+export type ExpenseSourceType    = 'camera' | 'gallery' | 'pdf' | 'manual' | 'room_photo'
 export type ExpenseCostType      = 'material' | 'service' | 'equipment' | 'labor' | 'transport' | 'other'
 export type ExpenseApprovalStatus = 'not_sent' | 'pending_client' | 'accepted' | 'rejected' | 'questioned'
 
