@@ -133,6 +133,9 @@ export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateIt
 
   return (
     <AnalysisSectionCard title="Proponowane pozycje wyceny" count={items.length} icon="📊">
+      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 6, fontStyle: 'italic' }}>
+        Draft — propozycja AI do weryfikacji. Ilości i pozycje wymagają potwierdzenia.
+      </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
@@ -147,7 +150,12 @@ export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateIt
           <tbody>
             {items.map((item, i) => (
               <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <td style={colStyle}>{item.name}</td>
+                <td style={colStyle}>
+                  {item.name}
+                  {item.notes && (
+                    <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{item.notes}</div>
+                  )}
+                </td>
                 <td style={colStyle}>{item.unit ?? '—'}</td>
                 <td style={rightCol}>{item.quantity != null ? item.quantity : '—'}</td>
                 <td style={rightCol}>{item.unit_price != null ? item.unit_price.toFixed(2) : '—'}</td>

@@ -39,13 +39,24 @@ interface WorkScopeItem {
   notes?:         string | null
 }
 
+interface SuggestedEstimateItem {
+  name:        string
+  unit:        string
+  quantity:    number
+  unit_price?: number | null
+  confidence:  number
+  source:      'ai_suggestion' | 'market_data' | 'historical'
+  notes?:      string | null
+}
+
 export interface RoomAnalysisResult {
-  room_type:            string | null
-  detected_materials:   DetectedMaterial[]
-  work_scope:           WorkScopeItem[]
-  extraction_confidence: number
-  extraction_warnings:   string[]
-  notes:                string | null
+  room_type:               string | null
+  detected_materials:      DetectedMaterial[]
+  work_scope:              WorkScopeItem[]
+  suggested_estimate_items: SuggestedEstimateItem[]
+  extraction_confidence:   number
+  extraction_warnings:     string[]
+  notes:                   string | null
 }
 
 // ── Infra ────────────────────────────────────────────────────────────────────
@@ -131,6 +142,21 @@ const WORK_SCOPE_SCHEMA = {
   additionalProperties: false,
 }
 
+const ESTIMATE_ITEM_SCHEMA = {
+  type: 'object',
+  properties: {
+    name:       { type: 'string' },
+    unit:       { type: 'string' },
+    quantity:   { type: 'number' },
+    unit_price: nn,
+    confidence: { type: 'number' },
+    source:     { type: 'string', enum: ['ai_suggestion', 'market_data', 'historical'] },
+    notes:      ns,
+  },
+  required: ['name', 'unit', 'quantity', 'unit_price', 'confidence', 'source', 'notes'],
+  additionalProperties: false,
+}
+
 const ROOM_ANALYSIS_SCHEMA_FORMAT = {
   type:   'json_schema',
   name:   'room_analysis',
@@ -138,14 +164,15 @@ const ROOM_ANALYSIS_SCHEMA_FORMAT = {
   schema: {
     type: 'object',
     properties: {
-      room_type:          ns,
-      detected_materials: { type: 'array', items: MATERIAL_SCHEMA },
-      work_scope:         { type: 'array', items: WORK_SCOPE_SCHEMA },
-      confidence:         { type: 'number' },
-      warnings:           { type: 'array', items: { type: 'string' } },
-      notes:              ns,
+      room_type:                ns,
+      detected_materials:       { type: 'array', items: MATERIAL_SCHEMA },
+      work_scope:               { type: 'array', items: WORK_SCOPE_SCHEMA },
+      suggested_estimate_items: { type: 'array', items: ESTIMATE_ITEM_SCHEMA },
+      confidence:               { type: 'number' },
+      warnings:                 { type: 'array', items: { type: 'string' } },
+      notes:                    ns,
     },
-    required: ['room_type', 'detected_materials', 'work_scope', 'confidence', 'warnings', 'notes'],
+    required: ['room_type', 'detected_materials', 'work_scope', 'suggested_estimate_items', 'confidence', 'warnings', 'notes'],
     additionalProperties: false,
   },
 }
@@ -156,6 +183,7 @@ const INSTRUCTIONS = `Jesteś ekspertem od remontów i wykończeń wnętrz w Pol
 Analizujesz zdjęcia pomieszczeń (łazienka, kuchnia, pokój, korytarz, itp.) i identyfikujesz:
 1. Widoczne materiały wykończeniowe (płytki, farba, panele, gres, itp.)
 2. Proponowany zakres prac remontowych / wykończeniowych
+3. Propozycje pozycji do wyceny (draft estimate items) na podstawie materiałów i zakresu prac
 
 Zwróć TYLKO poprawny JSON zgodny z podanym schematem.
 
@@ -173,6 +201,19 @@ Zasady zakresu prac (work_scope):
 - estimated_unit: m², mb, szt., kpl., ryczałt
 - estimated_qty: TYLKO gdy da się oszacować z obrazu
 - Podaj confidence 0-100
+
+Zasady pozycji wyceny (suggested_estimate_items):
+- Wygeneruj propozycje pozycji do kosztorysu / wyceny na podstawie materiałów i zakresu prac
+- Każda pozycja: name (po polsku, np. "Ułożenie płytek podłogowych"), unit (m², mb, szt., kpl., ryczałt), quantity (DRAFT — przybliżona ilość)
+- unit_price: null (NIE wymyślaj cen — to zrobi użytkownik lub system cenowy)
+- confidence: 0-100 — jak pewny jesteś tej pozycji
+- source: zawsze "ai_suggestion"
+- notes: opcjonalny komentarz o niepewności, założeniach lub warunkach
+- Pozycje powinny łączyć materiały z pracą — np. jeśli widzisz płytki + praca "układanie płytek", utwórz pozycję "Ułożenie płytek ściennych" z jednostką i ilością
+- Nie duplikuj — jedna pozycja wyceny na logiczną jednostkę pracy
+- Preferuj mniej pozycji o wyższej pewności niż wiele niepewnych
+- Jeśli nie da się oszacować ilości, podaj quantity=0 i niski confidence z notes wyjaśniającym dlaczego
+- To jest DRAFT — nie udawaj precyzji, której nie masz
 
 Zasady ogólne:
 - room_type: łazienka, kuchnia, pokój, korytarz, salon, sypialnia, biuro, inne
@@ -231,7 +272,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   type InputItem = { type: string; text?: string; image_url?: string }
   const content: InputItem[] = [
     { type: 'input_image', image_url: `data:${imageType};base64,${imageBase64}` },
-    { type: 'input_text',  text: `Przeanalizuj to zdjęcie pomieszczenia. Zidentyfikuj materiały wykończeniowe i zaproponuj zakres prac remontowych.${context ? `\n\nKontekst od użytkownika: ${context}` : ''}` },
+    { type: 'input_text',  text: `Przeanalizuj to zdjęcie pomieszczenia. Zidentyfikuj materiały wykończeniowe, zaproponuj zakres prac remontowych, i wygeneruj propozycje pozycji do wyceny.${context ? `\n\nKontekst od użytkownika: ${context}` : ''}` },
   ]
 
   // ── Call OpenAI ─────────────────────────────────────────────────────────
@@ -249,7 +290,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         instructions: INSTRUCTIONS,
         input: [{ role: 'user', content }],
         text:  { format: ROOM_ANALYSIS_SCHEMA_FORMAT },
-        max_output_tokens: 3_000,
+        max_output_tokens: 4_500,
       }),
     })
 
@@ -307,26 +348,41 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   const warnings = Array.isArray(ai.warnings) ? (ai.warnings as unknown[]).map(String) : []
 
+  const rawEstimate = Array.isArray(ai.suggested_estimate_items) ? ai.suggested_estimate_items : []
+
+  const VALID_SOURCES = new Set(['ai_suggestion', 'market_data', 'historical'])
+  const estimateItems: SuggestedEstimateItem[] = rawEstimate.map((e: Record<string, unknown>) => ({
+    name:       String(e.name ?? ''),
+    unit:       String(e.unit ?? 'szt.'),
+    quantity:   typeof e.quantity === 'number' ? Math.max(0, e.quantity) : 0,
+    unit_price: typeof e.unit_price === 'number' ? e.unit_price : null,
+    confidence: typeof e.confidence === 'number' ? Math.min(100, Math.max(0, e.confidence)) : 30,
+    source:     (VALID_SOURCES.has(String(e.source)) ? String(e.source) : 'ai_suggestion') as SuggestedEstimateItem['source'],
+    notes:      typeof e.notes === 'string' ? e.notes : null,
+  })).filter((e: SuggestedEstimateItem) => e.name.length > 0)
+
   if (materials.length === 0 && workScope.length === 0) {
     warnings.push('Nie wykryto materiałów ani zakresu prac — zdjęcie może nie przedstawiać pomieszczenia.')
   }
 
   const result: RoomAnalysisResult = {
-    room_type:            typeof ai.room_type === 'string' ? ai.room_type : null,
-    detected_materials:   materials,
-    work_scope:           workScope,
-    extraction_confidence: confidence,
-    extraction_warnings:   warnings,
-    notes:                typeof ai.notes === 'string' ? ai.notes : null,
+    room_type:               typeof ai.room_type === 'string' ? ai.room_type : null,
+    detected_materials:      materials,
+    work_scope:              workScope,
+    suggested_estimate_items: estimateItems,
+    extraction_confidence:   confidence,
+    extraction_warnings:     warnings,
+    notes:                   typeof ai.notes === 'string' ? ai.notes : null,
   }
 
   console.info('ROOM_ANALYSIS_DONE', JSON.stringify({
     model,
-    roomType:   result.room_type,
-    materials:  materials.length,
-    workScope:  workScope.length,
-    confidence: result.extraction_confidence,
-    warnings:   warnings.length,
+    roomType:       result.room_type,
+    materials:      materials.length,
+    workScope:      workScope.length,
+    estimateItems:  estimateItems.length,
+    confidence:     result.extraction_confidence,
+    warnings:       warnings.length,
   }))
 
   return ok(result)

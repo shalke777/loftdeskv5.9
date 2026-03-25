@@ -96,6 +96,10 @@ interface RoomAnalysisRaw {
     description: string; category: string; estimated_unit?: string | null
     estimated_qty?: number | null; confidence: number; notes?: string | null
   }>
+  suggested_estimate_items?: Array<{
+    name: string; unit: string; quantity: number; unit_price?: number | null
+    confidence: number; source: string; notes?: string | null
+  }>
   extraction_confidence: number
   extraction_warnings:   string[]
   notes:                string | null
@@ -169,6 +173,10 @@ export async function callAnalyzeRoomPhoto(file: File, context?: string): Promis
 
     detected_materials: raw.detected_materials ?? [],
     work_scope:         raw.work_scope ?? [],
+    suggested_estimate_items: (raw.suggested_estimate_items ?? []).map(item => ({
+      ...item,
+      source: (item.source || 'ai_suggestion') as 'ai_suggestion' | 'market_data' | 'historical',
+    })),
 
     extraction_confidence:      raw.extraction_confidence ?? 0,
     extraction_warnings:        raw.extraction_warnings ?? [],
