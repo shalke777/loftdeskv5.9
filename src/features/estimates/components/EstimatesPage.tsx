@@ -7,6 +7,7 @@ import { Button } from '@/shared/ui/Button/Button'
 import { Modal } from '@/shared/ui/Modal/Modal'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
+import { QueryError } from '@/shared/ui/QueryError/QueryError'
 import { EstimateRow } from '@/features/estimates/components/EstimateRow'
 import { EstimateForm } from '@/features/estimates/components/EstimateModal/EstimateForm'
 import { useEstimateToContract } from '@/workflows/estimate-to-contract/useEstimateToContract'
@@ -32,7 +33,7 @@ export function EstimatesPage() {
   const [editing, setEditing] = useState<Estimate | null>(null)
 
   const companyId = useCompanyId()
-  const { data, isLoading } = useEstimates()
+  const { data, isLoading, isError, refetch } = useEstimates()
   const { data: clients = [] } = useClients()
   const { data: projects = [] } = useProjects()
   const createEstimate = useCreateEstimate()
@@ -105,6 +106,8 @@ export function EstimatesPage() {
 
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><Spinner /></div>
+      ) : isError ? (
+        <QueryError onRetry={() => refetch()} />
       ) : visible.length === 0 ? (
         <EmptyState
           title={filterStatus === 'all' ? 'Brak wycen' : 'Brak wycen w tej kategorii'}

@@ -5,6 +5,7 @@ import { Card } from '@/shared/ui/Card/Card'
 import { Table } from '@/shared/ui/Table/Table'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
+import { QueryError } from '@/shared/ui/QueryError/QueryError'
 import { Button } from '@/shared/ui/Button/Button'
 import { useClients, useDeleteClient } from '@/features/clients/hooks/useClients'
 import { ClientModal } from '@/features/clients/components/ClientModal'
@@ -52,7 +53,7 @@ export function ClientsPage() {
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<Client | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
-  const { data, isLoading } = useClients()
+  const { data, isLoading, isError, refetch } = useClients()
   const deleteClient = useDeleteClient()
   const canCreate = useCan('clients.create')
   const canDelete = useCan('clients.delete')
@@ -65,7 +66,8 @@ export function ClientsPage() {
       </div>
       <Card>
         {isLoading ? <Spinner /> : null}
-        {!isLoading && !data?.length ? (
+        {!isLoading && isError ? <QueryError onRetry={() => refetch()} /> : null}
+        {!isLoading && !isError && !data?.length ? (
           <EmptyState
             title="Brak kontrahentów"
             description="Dodaj swojego pierwszego klienta lub inwestora. Kontrahenci trafią do kosztorysów, umów i faktur."

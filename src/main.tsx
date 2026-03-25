@@ -1,9 +1,14 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
+import { initMonitoring, captureError } from '@/shared/lib/monitoring'
 import { App } from '@/app/App'
 import '@/shared/styles/tokens.css'
 import '@/shared/styles/globals.css'
+
+// Initialize monitoring before anything else — must be first operational call.
+// No-op when VITE_SENTRY_DSN is not set (safe for local dev).
+initMonitoring()
 
 // Supabase email confirmation may redirect to root (/) with auth tokens.
 // Detect and redirect to /auth/callback before React mounts.
@@ -30,7 +35,7 @@ registerSW({ immediate: true })
 
 // Global unhandled rejection handler — catches async errors not caught by React error boundaries
 window.addEventListener('unhandledrejection', (event) => {
-  console.error('[LoftDesk] unhandled promise rejection:', event.reason)
+  captureError(event.reason, { area: 'unknown', level: 'error', extra: { source: 'unhandledrejection' } })
 })
 
 // Register appUrlOpen deep-link handler for Capacitor native shell.

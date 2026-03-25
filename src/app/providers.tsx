@@ -8,6 +8,7 @@ import { useLocalStorage } from '@/shared/hooks/useLocalStorage'
 import { demoDb, type DemoRole } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { resolveSupabaseSession } from '@/shared/lib/backend'
+import { setMonitoringUser } from '@/shared/lib/monitoring'
 
 export type UserRole = DemoRole | 'client'
 
@@ -120,6 +121,15 @@ function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription?.data.subscription.unsubscribe()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Sync user context to monitoring (Sentry)
+  useEffect(() => {
+    setMonitoringUser(
+      user
+        ? { id: user.id, companyId: user.companyId, role: user.role, plan: user.plan }
+        : null,
+    )
+  }, [user])
 
   const value = useMemo<AuthContextValue>(
     () => ({

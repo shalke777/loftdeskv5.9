@@ -2,6 +2,7 @@ import { Outlet, useRouter } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
+import { captureError } from '@/shared/lib/monitoring'
 
 export function RootDocument() {
   return <Outlet />
@@ -10,7 +11,7 @@ export function RootDocument() {
 export function RootErrorFallback({ error, reset }: ErrorComponentProps) {
   const router = useRouter()
   const message = error instanceof Error ? error.message : 'Nieoczekiwany błąd nawigacji.'
-  console.error('[router] route error caught:', error)
+  captureError(error, { area: 'ui', extra: { source: 'RootErrorFallback', route: window.location.pathname } })
 
   return (
     <main className="auth-shell">

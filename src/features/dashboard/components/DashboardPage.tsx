@@ -6,6 +6,7 @@ import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { useDashboardStats } from '@/features/dashboard/hooks/useDashboardStats'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
+import { QueryError } from '@/shared/ui/QueryError/QueryError'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 
@@ -29,9 +30,10 @@ export function DashboardPage() {
   const navigate = useNavigate()
   const companyId = useCompanyId()
   const canUsePortal = useFeatureAccess('portal')
-  const { data, isLoading } = useDashboardStats()
+  const { data, isLoading, isError, refetch } = useDashboardStats()
 
-  if (isLoading || !data) return <Spinner />
+  if (isLoading) return <Spinner />
+  if (isError || !data) return <QueryError onRetry={() => refetch()} />
 
   const pipelineProjects: { id: string; name: string; number: string; status: string; clientName: string; contractValue: number; estimateValue: number; invoicedTotal: number; paidTotal: number; completeness_score?: number | null }[] = (data as any).pipelineProjects ?? []
 

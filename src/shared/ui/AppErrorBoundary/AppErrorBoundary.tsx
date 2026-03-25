@@ -2,6 +2,7 @@ import { Component, ReactNode } from 'react'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
 import { translateError } from '@/shared/lib/errorMessages'
+import { captureError } from '@/shared/lib/monitoring'
 
 interface Props {
   children: ReactNode
@@ -20,7 +21,7 @@ export class AppErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error) {
-    console.error('LoftDesk boundary captured error', error)
+    captureError(error, { area: 'ui', extra: { source: 'AppErrorBoundary' } })
   }
 
   render() {

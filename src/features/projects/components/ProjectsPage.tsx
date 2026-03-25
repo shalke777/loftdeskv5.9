@@ -5,6 +5,7 @@ import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import { Modal } from '@/shared/ui/Modal/Modal'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
+import { QueryError } from '@/shared/ui/QueryError/QueryError'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import {
   useCreateInvoiceFromProject,
@@ -41,7 +42,7 @@ export function ProjectsPage() {
   const [invoiceProjectId, setInvoiceProjectId] = useState<string | null>(null)
 
   const companyId   = useCompanyId()
-  const { data, isLoading } = useProjects()
+  const { data, isLoading, isError, refetch } = useProjects()
   const { data: clients = [] } = useClients()
   const createProject  = useCreateProject()
   const updateProject  = useUpdateProject()
@@ -121,6 +122,8 @@ export function ProjectsPage() {
         <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
           <Spinner />
         </div>
+      ) : isError ? (
+        <QueryError onRetry={() => refetch()} />
       ) : visible.length === 0 ? (
         <EmptyState
           title={filterStatus === 'all' ? 'Brak projektów' : 'Brak projektów w tej kategorii'}
