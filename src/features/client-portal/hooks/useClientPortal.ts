@@ -97,7 +97,10 @@ export function useClientRespondApproval(projectId: string) {
   return useMutation({
     mutationFn: ({ id, status, comment }: { id: string; status: 'accepted' | 'rejected' | 'questioned'; comment?: string }) =>
       clientPortalApi.respondApproval(id, status, comment),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: clientKeys.approvals(projectId) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: clientKeys.approvals(projectId) })
+      queryClient.invalidateQueries({ queryKey: clientKeys.timeline(projectId) })
+    },
   })
 }
 
@@ -122,6 +125,8 @@ export function useClientTimeline(projectId: string) {
     queryKey: clientKeys.timeline(projectId),
     queryFn:  () => clientPortalApi.listTimelineEvents(projectId),
     enabled:  Boolean(projectId),
+    refetchInterval: 30_000,
+    staleTime: 10_000,
   })
 }
 

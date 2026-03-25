@@ -55,6 +55,7 @@ const APPROVAL_STATUS_LABEL: Record<string, string> = {
   accepted:       'Zaakceptowane',
   rejected:       'Odrzucone',
   questioned:     'Zapytanie',
+  cancelled:      'Anulowane',
   not_sent:       'Nie wysłano',
 }
 
@@ -64,6 +65,7 @@ const APPROVAL_STATUS_VARIANT: Record<string, 'default' | 'success' | 'warning' 
   accepted:       'success',
   rejected:       'danger',
   questioned:     'default',
+  cancelled:      'danger',
   not_sent:       'default',
 }
 
