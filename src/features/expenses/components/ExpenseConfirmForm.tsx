@@ -51,8 +51,15 @@ type FormState = ReturnType<typeof emptyState>
 
 // ── Line items read-only display (AI extraction) ─────────────────────────────
 
-function LineItemsSection({ items }: { items: ParseInvoiceLineItem[] }) {
+function LineItemsSection({ items: rawItems }: { items: ParseInvoiceLineItem[] }) {
   const [open, setOpen] = useState(false)
+
+  // Filter out rows where every display field is null/empty
+  const items = rawItems.filter(it =>
+    it.name != null || it.quantity != null || it.net_amount != null || it.gross_amount != null
+  )
+
+  if (items.length === 0) return null
 
   return (
     <div

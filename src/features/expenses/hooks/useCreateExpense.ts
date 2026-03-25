@@ -30,8 +30,9 @@ export function useCreateExpense(projectId: string) {
           const uploaded = await expensesApi.uploadFile(file, companyId)
           fileUrl  = uploaded.url
           fileName = uploaded.name
-        } catch {
-          // Non-blocking: expense can be saved without file
+        } catch (uploadErr) {
+          // Non-blocking: expense saved without file — log for debugging
+          console.warn('[expenses] File upload failed, saving expense without attachment:', uploadErr)
         }
       }
 

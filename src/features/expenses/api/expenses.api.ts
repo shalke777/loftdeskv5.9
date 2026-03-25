@@ -375,6 +375,7 @@ export const expensesApi = {
         amount_gross: input.parsed?.amount_gross ?? null,
         description: input.parsed?.description ?? null,
         status: input.status ?? deriveExpenseStatus(input.extractionConfidence, input.projectId),
+        extraction_confidence: normalizeConfidenceForDb(input.extractionConfidence),
       })
       .select('*')
       .single()
