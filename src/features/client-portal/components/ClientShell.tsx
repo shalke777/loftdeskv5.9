@@ -12,6 +12,7 @@ import { FolderKanban, LogOut, MessageSquare, User } from 'lucide-react'
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { ClientInstallBanner } from '@/features/client-portal/components/ClientInstallBanner'
+import { ClientNotificationBell } from '@/features/client-portal/components/ClientNotificationBell'
 import { useClientProjects } from '@/features/client-portal/hooks/useClientPortal'
 
 export function ClientShell() {
@@ -48,6 +49,7 @@ export function ClientShell() {
           <span className="client-topbar__badge">Portal klienta</span>
         </div>
         <div className="client-topbar__right">
+          <ClientNotificationBell />
           <span className="client-topbar__email">{user?.fullName || user?.email}</span>
           <button
             className="client-topbar__signout"

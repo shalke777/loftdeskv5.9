@@ -11,6 +11,7 @@
 
 import { supabase, isDemoMode } from '@/shared/lib/supabase'
 import { getDataScope, applyScope } from '@/shared/lib/dataScope'
+import { createClientNotification } from '@/features/client-portal/api/client-notifications.api'
 import type {
   ProjectThread,
   ProjectMessage,
@@ -383,6 +384,19 @@ export const threadsApi = {
       .from('project_threads')
       .update(threadUpdate)
       .eq('id', input.thread_id)
+
+    // 3. Client notification — tylko dla wiadomości widocznych przez klienta
+    if (input.visibility === 'client_shared') {
+      createClientNotification({
+        companyId:     scope.companyId,
+        projectId:     input.project_id,
+        type:          'new_message',
+        title:         'Nowa wiadomość od wykonawcy',
+        body:          preview,
+        referenceType: 'message',
+        referenceId:   (msg as ProjectMessage).id,
+      }).catch((err) => console.warn('[threads] client notification failed:', err))
+    }
 
     return msg as ProjectMessage
   },

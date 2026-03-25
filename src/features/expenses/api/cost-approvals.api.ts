@@ -13,6 +13,7 @@
 
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { createTimelineEvent } from '@/features/projects/lib/timeline'
+import { createClientNotification } from '@/features/client-portal/api/client-notifications.api'
 import type {
   CostApproval,
   ApprovalStatus,
@@ -283,6 +284,19 @@ export const costApprovalsApi = {
         invoice_number:  input.snapshot_invoice_number,
       },
     }).catch((err) => console.warn('[cost-approvals] timeline event failed:', err))
+
+    // ── 6. Client notification (fire-and-forget) ──────────────────────────
+    createClientNotification({
+      companyId:     input.company_id,
+      projectId:     input.project_id,
+      type:          'approval_requested',
+      title:         'Nowa akceptacja do zatwierdzenia',
+      body:          input.snapshot_vendor
+        ? `${input.snapshot_vendor} — ${input.snapshot_amount_gross?.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN`
+        : undefined,
+      referenceType: 'approval',
+      referenceId:   approval.id,
+    }).catch((err) => console.warn('[cost-approvals] client notification failed:', err))
 
     return approval
   },

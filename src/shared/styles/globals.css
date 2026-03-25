@@ -2616,6 +2616,186 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   filter: drop-shadow(0 0 4px rgba(119,186,138,0.35));
 }
 
+/* ── Notification bell ──────────────────────────────────────────────────────── */
+.cn-bell-wrap {
+  position: relative;
+}
+.cn-bell {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  cursor: pointer;
+  color: rgba(232,240,235,0.7);
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  position: relative;
+}
+.cn-bell:hover {
+  background: rgba(255,255,255,0.12);
+  color: var(--color-sidebar-text);
+}
+.cn-bell__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  background: #EF6B6B;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ── Notification panel ─────────────────────────────────────────────────────── */
+.cn-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(360px, calc(100vw - 32px));
+  max-height: 420px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.cn-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border-light);
+  flex-shrink: 0;
+}
+.cn-panel__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+.cn-panel__mark-all {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-brand);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.cn-panel__mark-all:hover {
+  background: rgba(119,186,138,0.10);
+}
+.cn-panel__list {
+  overflow-y: auto;
+  flex: 1;
+  -webkit-overflow-scrolling: touch;
+}
+.cn-panel__empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--color-muted-foreground);
+  font-size: 13px;
+}
+
+/* ── Notification item ──────────────────────────────────────────────────────── */
+.cn-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-border-light);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+.cn-item:last-child {
+  border-bottom: none;
+}
+.cn-item:hover {
+  background: rgba(119,186,138,0.05);
+}
+.cn-item--unread {
+  background: rgba(119,186,138,0.06);
+}
+.cn-item--unread:hover {
+  background: rgba(119,186,138,0.10);
+}
+.cn-item__icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(119,186,138,0.10);
+  color: var(--color-brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+.cn-item__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cn-item__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+.cn-item__body {
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cn-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.cn-item__project {
+  font-size: 11px;
+  color: var(--color-brand);
+  font-weight: 500;
+}
+.cn-item__time {
+  font-size: 11px;
+  color: var(--color-muted-foreground);
+}
+.cn-item__dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  margin-top: 4px;
+}
+
 /* ── Section title ──────────────────────────────────────────────────────────── */
 .client-section-title {
   font-size: 17px;

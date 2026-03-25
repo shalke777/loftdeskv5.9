@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { useState, useEffect, useRef, Fragment } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useSearch } from '@tanstack/react-router'
 import {
   useClientProject,
   useClientEstimates,
@@ -553,7 +553,11 @@ interface Props {
 }
 
 export function ClientProjectPage({ projectId }: Props) {
-  const [activeTab, setActiveTab] = useState<TabKey>('documents')
+  const search = useSearch({ strict: false }) as { tab?: string }
+  const initialTab = (['documents', 'chat', 'approvals', 'timeline'] as TabKey[]).includes(search.tab as TabKey)
+    ? (search.tab as TabKey)
+    : 'documents'
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
   const { data: project, isLoading, isError } = useClientProject(projectId)
   // Gate on project?.id so approvals query doesn't fire (and return 406)
   // when the project is deleted / inaccessible.
