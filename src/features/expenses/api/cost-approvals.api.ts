@@ -310,16 +310,30 @@ export const costApprovalsApi = {
       return
     }
 
-    const { error } = await supabase
+    const { data: cancelled, error } = await supabase
       .from('cost_approvals')
       .update({ status: 'cancelled', updated_at: new Date().toISOString() })
       .eq('id', input.approval_id)
       .eq('company_id', input.company_id)
       .eq('status', 'pending_client') // only cancel if still pending
+      .select('id, project_id, snapshot_vendor, snapshot_amount_gross')
+      .maybeSingle()
 
     if (error) throw error
 
-    // Also reset expense approval_status to not_sent? (only if no other pending approvals)
-    // This is intentionally left to the hook layer where we can check more context.
+    // ── Client notification: approval cancelled (fire-and-forget) ─────────
+    if (cancelled?.project_id) {
+      createClientNotification({
+        companyId:     input.company_id,
+        projectId:     cancelled.project_id,
+        type:          'approval_status_changed',
+        title:         'Akceptacja została anulowana',
+        body:          cancelled.snapshot_vendor
+          ? `${cancelled.snapshot_vendor} — ${cancelled.snapshot_amount_gross?.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN`
+          : undefined,
+        referenceType: 'approval',
+        referenceId:   cancelled.id,
+      }).catch((err) => console.warn('[cost-approvals] cancel notification failed:', err))
+    }
   },
 }

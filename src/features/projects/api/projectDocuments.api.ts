@@ -2,6 +2,7 @@ import type { AssignmentQueueItem, ProjectDocument } from '@/entities/project/mo
 import { demoDb } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { applyScope, getDataScope } from '@/shared/lib/dataScope'
+import { createClientNotification } from '@/features/client-portal/api/client-notifications.api'
 
 export const projectDocumentsApi = {
   async listForProject(projectId: string, companyId: string): Promise<ProjectDocument[]> {
@@ -72,6 +73,23 @@ export const projectDocumentsApi = {
       { onConflict: 'company_id,project_id,doc_type,doc_id' },
     )
     if (error) throw error
+
+    // ── Client notification: document shared (fire-and-forget) ────────────
+    const docTypeLabels: Record<string, string> = {
+      estimate: 'Kosztorys',
+      contract: 'Umowa',
+      invoice:  'Faktura',
+    }
+    const label = docTypeLabels[docType] ?? 'Dokument'
+    createClientNotification({
+      companyId,
+      projectId,
+      type:          'document_shared',
+      title:         `Nowy dokument: ${label}`,
+      body:          `Dodano ${label.toLowerCase()} do projektu`,
+      referenceType: 'document',
+      referenceId:   docId,
+    }).catch((err) => console.warn('[project-documents] notification failed:', err))
   },
 
   async unlink(companyId: string, projectId: string, docType: string, docId: string): Promise<void> {
