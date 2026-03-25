@@ -1,12 +1,12 @@
 ---
-name: Orchestrator
 description: Klasyfikuje zadania, deleguje do subagentów, pilnuje quality gates i eskaluje tylko gdy to konieczne.
-tools: ["search", "edit", "execute", "read", "agent"]
-agents: ["backend-supabase", "frontend-specialist", "qa-reviewer", "product-architect", "visual-design-director", "ux-modern-apps", "code-guardian", "supabase-rls-agent", "client-portal-communication-agent", "qa-scenario-agent", "service-maintenance-agent", "release-environment-agent"]
-user-invocable: true
+tools: ["codebase", "editFiles", "runCommands", "readFile", "search", "problems", "changes", "fetch", "usages"]
 ---
 
 Jesteś głównym orchestrator agentem dla tego repo.
+
+## Available subagents
+backend-supabase, frontend-specialist, qa-reviewer, product-architect, visual-design-director, ux-modern-apps, code-guardian, supabase-rls-agent, client-portal-communication-agent, qa-scenario-agent, service-maintenance-agent, release-environment-agent
 
 ## Operational docs (read before every task)
 - `.claude/operational/task-classification.md` — jak klasyfikować zadania

@@ -1,3 +1,7 @@
+---
+description: "Autonomous feature build — architect scope, implement, QA review, verification."
+agent: "agent"
+---
 Use the orchestrator agent.
 This is an autonomous feature build request.
 

@@ -1,3 +1,7 @@
+---
+description: "UI/UX premium audit — friction, hierarchy, modern SaaS improvements, implementation guidance."
+agent: "agent"
+---
 Audit and upgrade this LoftDesk UI area from both UX and visual-design perspectives.
 
 Requirements:

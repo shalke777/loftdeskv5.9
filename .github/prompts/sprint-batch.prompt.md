@@ -1,3 +1,7 @@
+---
+description: "Sprint batch — classify, sort by risk, execute sequentially, combined report."
+agent: "agent"
+---
 Use the orchestrator agent.
 This is a multi-task sprint request.
 

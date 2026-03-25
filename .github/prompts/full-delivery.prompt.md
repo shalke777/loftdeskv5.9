@@ -1,3 +1,7 @@
+---
+description: "Full end-to-end delivery — analyze, implement, self-check, review, return finished result."
+agent: "agent"
+---
 Use the orchestrator agent.
 Treat this as a full delivery request.
 

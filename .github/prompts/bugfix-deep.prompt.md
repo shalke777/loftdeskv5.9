@@ -1,3 +1,7 @@
+---
+description: "Deep bugfix — root-cause analysis, minimal safe fix, regression check, QA verdict."
+agent: "agent"
+---
 Use the orchestrator agent.
 This is a deep bugfix request.
 
