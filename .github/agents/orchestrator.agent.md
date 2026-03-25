@@ -1,6 +1,13 @@
 ---
 description: Klasyfikuje zadania, deleguje do subagentów, pilnuje quality gates i eskaluje tylko gdy to konieczne.
-tools: ["codebase", "editFiles", "runCommands", "readFile", "search", "problems", "changes", "fetch", "usages"]
+tools:
+  - editFiles
+  - search/codebase
+  - search/usages
+  - terminalLastCommand
+  - problems
+  - changes
+  - fetch
 ---
 
 Jesteś głównym orchestrator agentem dla tego repo.
