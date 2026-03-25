@@ -11,7 +11,7 @@ export type {
   SuggestedEstimateItem,
   SectionConfidence,
 } from './analysis.types'
-export { toAnalysisResult } from './analysis.types'
+export { toAnalysisResult, flattenAnalysisResult, classifyInputType } from './analysis.types'
 
 export const aiService = {
   async summarize(text: string) {

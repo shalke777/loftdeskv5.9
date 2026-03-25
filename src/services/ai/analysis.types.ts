@@ -214,7 +214,7 @@ export function toAnalysisResult(
     extraction_confidence: number
     extraction_warnings: string[]
     requires_user_confirmation: boolean
-    parser_source: 'ai' | 'regex' | 'manual'
+    parser_source: 'ai' | 'regex' | 'manual' | 'vision'
   },
   inputType: AnalysisInputType = 'unknown',
 ): AnalysisResult {
@@ -248,4 +248,82 @@ export function toAnalysisResult(
     requires_user_confirmation: flat.requires_user_confirmation,
     parser_source:              flat.parser_source,
   }
+}
+
+// ── Reverse mapper: AnalysisResult → flat fields for legacy consumers ────────
+
+/**
+ * Extract flat document fields from an AnalysisResult envelope.
+ * Used by form components that pre-fill from the structured result.
+ * Returns the same shape as ParseInvoiceResult so existing forms work unchanged.
+ */
+export function flattenAnalysisResult(ar: AnalysisResult): {
+  document_type:  string | null
+  vendor_name:    string | null
+  vendor_nip:     string | null
+  vendor_address: string | null
+  buyer_name:     string | null
+  buyer_nip:      string | null
+  buyer_address:  string | null
+  invoice_number: string | null
+  issue_date:     string | null
+  sale_date:      string | null
+  payment_due_date: string | null
+  net_amount:     number | null
+  vat_amount:     number | null
+  vat_rate:       number | null
+  gross_amount:   number | null
+  currency:       string
+  notes:          string | null
+  line_items:     DocumentLineItem[]
+  extraction_confidence:      number
+  extraction_warnings:        string[]
+  requires_user_confirmation: boolean
+  parser_source:              'ai' | 'regex' | 'manual' | 'vision'
+} {
+  const df = ar.document_fields
+  return {
+    document_type:   ar.document_type,
+    vendor_name:     df?.vendor_name ?? null,
+    vendor_nip:      df?.vendor_nip ?? null,
+    vendor_address:  df?.vendor_address ?? null,
+    buyer_name:      df?.buyer_name ?? null,
+    buyer_nip:       df?.buyer_nip ?? null,
+    buyer_address:   df?.buyer_address ?? null,
+    invoice_number:  df?.document_number ?? null,
+    issue_date:      df?.issue_date ?? null,
+    sale_date:       df?.sale_date ?? null,
+    payment_due_date: df?.payment_due_date ?? null,
+    net_amount:      df?.net_amount ?? null,
+    vat_amount:      df?.vat_amount ?? null,
+    vat_rate:        df?.vat_rate ?? null,
+    gross_amount:    df?.gross_amount ?? null,
+    currency:        df?.currency ?? 'PLN',
+    notes:           df?.notes ?? null,
+    line_items:      ar.line_items ?? [],
+    extraction_confidence:      ar.extraction_confidence,
+    extraction_warnings:        ar.extraction_warnings,
+    requires_user_confirmation: ar.requires_user_confirmation,
+    parser_source:              ar.parser_source,
+  }
+}
+
+// ── Input type classifier ────────────────────────────────────────────────────
+
+/** Map file MIME / source type hint to AnalysisInputType */
+export function classifyInputType(
+  file: { type: string; name: string } | null,
+  sourceHint?: 'camera' | 'gallery' | 'pdf' | 'manual' | string,
+): AnalysisInputType {
+  if (sourceHint === 'camera')  return 'camera_capture'
+  if (sourceHint === 'manual')  return 'text_input'
+  if (!file) return 'unknown'
+
+  const t = file.type.toLowerCase()
+  const n = file.name.toLowerCase()
+
+  if (t === 'application/pdf' || n.endsWith('.pdf')) return 'document_pdf'
+  if (t.startsWith('image/')) return sourceHint === 'gallery' ? 'document_image' : 'document_image'
+
+  return 'unknown'
 }

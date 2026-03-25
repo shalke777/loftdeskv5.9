@@ -468,7 +468,7 @@ export interface ExpenseInvoiceV4 extends ExpenseInvoice {
 /** The result returned by /.netlify/functions/parse-invoice */
 export type { DocumentLineItem as ParseInvoiceLineItem } from '@/services/ai/analysis.types'
 export type { AnalysisResult as ParseDocumentResult }     from '@/services/ai/analysis.types'
-export {       toAnalysisResult }                          from '@/services/ai/analysis.types'
+export {       toAnalysisResult, flattenAnalysisResult, classifyInputType } from '@/services/ai/analysis.types'
 export type {
   AnalysisResult,
   AnalysisInputType,

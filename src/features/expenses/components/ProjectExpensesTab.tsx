@@ -3,13 +3,13 @@ import { translateError } from '@/shared/lib/errorMessages'
 import type { ExpenseSourceType, CreateExpenseForProjectInput, ExpenseInvoiceV4 } from '@/features/expenses/api/expenses.api'
 import { useProjectExpenses } from '@/features/expenses/hooks/useProjectExpenses'
 import { useCreateExpense }   from '@/features/expenses/hooks/useCreateExpense'
-import { useParseInvoice, callParseInvoiceAI } from '@/features/expenses/hooks/useParseInvoice'
+import { useParseInvoice, callParseInvoiceAI, normalizeParseResult } from '@/features/expenses/hooks/useParseInvoice'
 import { ExpenseCameraCapture } from './ExpenseCameraCapture'
 import { ExpensePreviewPane }   from './ExpensePreviewPane'
 import { ExpenseConfirmForm }   from './ExpenseConfirmForm'
 import { ApprovalStatusBadge } from './ApprovalStatusBadge'
 import { ExpenseApprovalModal } from './ExpenseApprovalModal'
-import type { ParseInvoiceResult } from '@/features/expenses/api/expenses.api'
+import type { AnalysisResult } from '@/services/ai/analysis.types'
 import type { ApprovalStatus } from '@/features/expenses/api/cost-approvals.api'
 
 type TabMode = 'list' | 'capture' | 'processing' | 'confirm'
@@ -36,7 +36,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
   const [mode,        setMode]        = useState<TabMode>('list')
   const [fileState,   setFileState]   = useState<File | null>(null)
   const [sourceType,  setSourceType]  = useState<ExpenseSourceType>('manual')
-  const [parseResult, setParseResult] = useState<ParseInvoiceResult | null>(null)
+  const [parseResult, setParseResult] = useState<AnalysisResult | null>(null)
   const [parseError,  setParseError]  = useState<string | null>(null)
   const [approvalExpense, setApprovalExpense] = useState<ExpenseInvoiceV4 | null>(null)
 
@@ -81,12 +81,12 @@ export function ProjectExpensesTab({ projectId }: Props) {
               const aiResult = await callParseInvoiceAI(file)
               const aiConf = aiResult.extraction_confidence ?? 0
               if (aiConf > 0 && aiConf >= ocrConf) {
-                setParseResult(aiResult); setParseError(null); setMode('confirm')
+                setParseResult(normalizeParseResult(aiResult, file, type)); setParseError(null); setMode('confirm')
                 return
               }
             } catch (aiErr) { console.warn('[expenses] AI fallback failed (low OCR confidence):', aiErr) }
           }
-          setParseResult(ocrResult); setParseError(null); setMode('confirm')
+          setParseResult(normalizeParseResult(ocrResult, file, type)); setParseError(null); setMode('confirm')
         },
         onError: async (err) => {
           // OCR failed entirely — try AI before showing error
@@ -95,7 +95,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
             try {
               const aiResult = await callParseInvoiceAI(file)
               if ((aiResult.extraction_confidence ?? 0) > 0) {
-                setParseResult(aiResult); setParseError(null); setMode('confirm')
+                setParseResult(normalizeParseResult(aiResult, file, type)); setParseError(null); setMode('confirm')
                 return
               }
             } catch (aiErr) { console.warn('[expenses] AI fallback failed (OCR error):', aiErr) }

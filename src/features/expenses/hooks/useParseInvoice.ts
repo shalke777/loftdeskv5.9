@@ -1,6 +1,8 @@
 import { useMutation } from '@tanstack/react-query'
 import { netlifyFn } from '@/shared/lib/functions'
 import type { ParseInvoiceResult, ExpenseSourceType } from '@/features/expenses/api/expenses.api'
+import type { AnalysisResult } from '@/services/ai/analysis.types'
+import { toAnalysisResult, classifyInputType } from '@/services/ai/analysis.types'
 import { supabase } from '@/shared/lib/supabase'
 
 async function getAuthHeader(): Promise<Record<string, string>> {
@@ -241,4 +243,46 @@ export function useParseInvoice() {
     mutationFn: ({ file, sourceType }: { file: File; sourceType: ExpenseSourceType }) =>
       callParseInvoice(file, sourceType),
   })
+}
+
+// ── Normalized ingestion boundary ────────────────────────────────────────────
+
+/**
+ * Normalize a flat ParseInvoiceResult from any source (OCR / AI / manual) into
+ * the canonical AnalysisResult envelope.
+ *
+ * Call this at the ingestion point — immediately after receiving the result from
+ * the Netlify function. All downstream state should hold AnalysisResult.
+ */
+export function normalizeParseResult(
+  flat: ParseInvoiceResult,
+  file: File | null,
+  sourceType: ExpenseSourceType,
+): AnalysisResult {
+  const inputType = classifyInputType(file, sourceType)
+  return toAnalysisResult(flat, inputType)
+}
+
+/**
+ * Hook variant that parses AND normalizes in one step.
+ * Returns AnalysisResult instead of flat ParseInvoiceResult.
+ */
+export function useParseAndNormalize() {
+  return useMutation({
+    mutationFn: async ({ file, sourceType }: { file: File; sourceType: ExpenseSourceType }): Promise<AnalysisResult> => {
+      const flat = await callParseInvoice(file, sourceType)
+      return normalizeParseResult(flat, file, sourceType)
+    },
+  })
+}
+
+/**
+ * Normalize AI fallback result into AnalysisResult.
+ */
+export async function callParseInvoiceAINormalized(
+  file: File,
+  extractedText?: string,
+): Promise<AnalysisResult> {
+  const flat = await callParseInvoiceAI(file, extractedText)
+  return normalizeParseResult(flat, file, 'manual')
 }

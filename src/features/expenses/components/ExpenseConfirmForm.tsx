@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react'
 import type {
-  ParseInvoiceResult,
-  ParseInvoiceLineItem,
   CreateExpenseForProjectInput,
   ExpenseSourceType,
   ExpenseCostType,
 } from '@/features/expenses/api/expenses.api'
+import type { AnalysisResult, DocumentLineItem } from '@/services/ai/analysis.types'
 import { ExpenseConfidenceBadge } from './ExpenseConfidenceBadge'
 
 interface Props {
   projectId:   string
-  parseResult: ParseInvoiceResult | null
+  parseResult: AnalysisResult | null
   sourceType:  ExpenseSourceType
   file:        File | null
   onSave:      (data: Omit<CreateExpenseForProjectInput, 'company_id' | 'project_id'> & { file?: File | null }) => void
@@ -51,7 +50,7 @@ type FormState = ReturnType<typeof emptyState>
 
 // ── Line items read-only display (AI extraction) ─────────────────────────────
 
-function LineItemsSection({ items: rawItems }: { items: ParseInvoiceLineItem[] }) {
+function LineItemsSection({ items: rawItems }: { items: DocumentLineItem[] }) {
   const [open, setOpen] = useState(false)
 
   // Filter out rows where every display field is null/empty
@@ -146,23 +145,24 @@ export function ExpenseConfirmForm({
   // Track which fields were populated from the parse result (for autofill badge)
   const [autofilled, setAutofilled] = useState<Set<keyof FormState>>(new Set())
 
-  // Pre-fill from parse result
+  // Pre-fill from parse result (reads from AnalysisResult.document_fields)
   useEffect(() => {
     if (!parseResult) return
+    const df = parseResult.document_fields
     const next: FormState = {
-      vendor_name:      parseResult.vendor_name      ?? '',
-      vendor_nip:       parseResult.vendor_nip        ?? '',
-      invoice_number:   parseResult.invoice_number   ?? '',
-      issue_date:       parseResult.issue_date        ?? '',
-      sale_date:        parseResult.sale_date         ?? '',
-      net_amount:       parseResult.net_amount        != null ? String(parseResult.net_amount)    : '',
-      vat_amount:       parseResult.vat_amount        != null ? String(parseResult.vat_amount)    : '',
-      gross_amount:     parseResult.gross_amount      != null ? String(parseResult.gross_amount)  : '',
-      currency:         parseResult.currency          ?? 'PLN',
+      vendor_name:      df?.vendor_name      ?? '',
+      vendor_nip:       df?.vendor_nip        ?? '',
+      invoice_number:   df?.document_number   ?? '',
+      issue_date:       df?.issue_date        ?? '',
+      sale_date:        df?.sale_date         ?? '',
+      net_amount:       df?.net_amount        != null ? String(df.net_amount)    : '',
+      vat_amount:       df?.vat_amount        != null ? String(df.vat_amount)    : '',
+      gross_amount:     df?.gross_amount      != null ? String(df.gross_amount)  : '',
+      currency:         df?.currency          ?? 'PLN',
       cost_type:        '',
       category:         '',
-      payment_due_date: parseResult.payment_due_date ?? '',
-      notes:            parseResult.notes             ?? '',
+      payment_due_date: df?.payment_due_date ?? '',
+      notes:            df?.notes             ?? '',
     }
     setForm(next)
     // Mark which fields actually got a value from the parser
@@ -258,7 +258,7 @@ export function ExpenseConfirmForm({
         />
       )}
 
-      {/* Line items from AI extraction (read-only) */}
+      {/* Line items from extraction (read-only) */}
       {parseResult?.line_items && parseResult.line_items.length > 0 && (
         <LineItemsSection items={parseResult.line_items} />
       )}

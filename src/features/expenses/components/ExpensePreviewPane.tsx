@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ParseInvoiceResult } from '@/features/expenses/api/expenses.api'
+import type { AnalysisResult } from '@/services/ai/analysis.types'
 
 const OCR_STEPS = [
   'Przygotowuję obraz…',
@@ -10,7 +10,7 @@ const OCR_STEPS = [
 
 interface Props {
   file:        File | null
-  parseResult: ParseInvoiceResult | null
+  parseResult: AnalysisResult | null
   parsing:     boolean
 }
 
@@ -103,11 +103,11 @@ export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
 
       {parseResult && !parsing && (
         <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-          {parseResult.vendor_name && <div>🏢 <strong>{parseResult.vendor_name}</strong></div>}
-          {parseResult.invoice_number && <div>🔢 {parseResult.invoice_number}</div>}
-          {parseResult.issue_date && <div>📅 {parseResult.issue_date}</div>}
-          {parseResult.gross_amount != null && (
-            <div>💰 {parseResult.gross_amount.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} {parseResult.currency}</div>
+          {parseResult.document_fields?.vendor_name && <div>🏢 <strong>{parseResult.document_fields.vendor_name}</strong></div>}
+          {parseResult.document_fields?.document_number && <div>🔢 {parseResult.document_fields.document_number}</div>}
+          {parseResult.document_fields?.issue_date && <div>📅 {parseResult.document_fields.issue_date}</div>}
+          {parseResult.document_fields?.gross_amount != null && (
+            <div>💰 {parseResult.document_fields.gross_amount.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} {parseResult.document_fields.currency ?? 'PLN'}</div>
           )}
         </div>
       )}
