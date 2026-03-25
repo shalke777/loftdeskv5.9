@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type {
   ParseInvoiceResult,
+  ParseInvoiceLineItem,
   CreateExpenseForProjectInput,
   ExpenseSourceType,
   ExpenseCostType,
@@ -47,6 +48,77 @@ function emptyState() {
 }
 
 type FormState = ReturnType<typeof emptyState>
+
+// ── Line items read-only display (AI extraction) ─────────────────────────────
+
+function LineItemsSection({ items }: { items: ParseInvoiceLineItem[] }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div
+      style={{
+        border: '1px solid var(--color-border)',
+        borderRadius: 8, overflow: 'hidden',
+        background: 'var(--color-surface-soft, rgba(0,0,0,0.02))',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 14px', border: 'none', background: 'none', cursor: 'pointer',
+          fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+          color: 'var(--color-text-muted)',
+        }}
+      >
+        <span>Pozycje faktury ({items.length})</span>
+        <span style={{ fontSize: 14 }}>{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div style={{ padding: '0 14px 12px', overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                <th style={{ padding: '6px 4px', fontWeight: 600 }}>#</th>
+                <th style={{ padding: '6px 4px', fontWeight: 600 }}>Nazwa</th>
+                <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'right' }}>Ilość</th>
+                <th style={{ padding: '6px 4px', fontWeight: 600 }}>J.m.</th>
+                <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'right' }}>Netto</th>
+                <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'right' }}>VAT%</th>
+                <th style={{ padding: '6px 4px', fontWeight: 600, textAlign: 'right' }}>Brutto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <td style={{ padding: '6px 4px', color: 'var(--color-text-muted)' }}>{i + 1}</td>
+                  <td style={{ padding: '6px 4px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.name ?? '—'}
+                  </td>
+                  <td style={{ padding: '6px 4px', textAlign: 'right' }}>
+                    {item.quantity != null ? item.quantity : '—'}
+                  </td>
+                  <td style={{ padding: '6px 4px' }}>{item.unit ?? '—'}</td>
+                  <td style={{ padding: '6px 4px', textAlign: 'right' }}>
+                    {item.net_amount != null ? item.net_amount.toFixed(2) : '—'}
+                  </td>
+                  <td style={{ padding: '6px 4px', textAlign: 'right' }}>
+                    {item.vat_rate != null ? `${item.vat_rate}%` : '—'}
+                  </td>
+                  <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: 600 }}>
+                    {item.gross_amount != null ? item.gross_amount.toFixed(2) : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Fields that can be auto-filled from OCR result
 const AUTOFILL_FIELDS: (keyof FormState)[] = [
@@ -177,6 +249,11 @@ export function ExpenseConfirmForm({
           confidence={parseResult.extraction_confidence}
           warnings={parseResult.extraction_warnings}
         />
+      )}
+
+      {/* Line items from AI extraction (read-only) */}
+      {parseResult?.line_items && parseResult.line_items.length > 0 && (
+        <LineItemsSection items={parseResult.line_items} />
       )}
 
       {/* Section: sprzedawca */}

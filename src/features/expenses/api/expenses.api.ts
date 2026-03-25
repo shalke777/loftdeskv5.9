@@ -21,6 +21,18 @@ function deriveExpenseStatus(
   return 'review'
 }
 
+/**
+ * Normalize extraction_confidence from JS scale (0–100) to DB scale (0.00–1.00).
+ * The numeric(3,2) column with CHECK(>=0 AND <=1) rejects values >1.
+ */
+function normalizeConfidenceForDb(confidence: number | null | undefined): number | null {
+  if (confidence == null) return null
+  // Already in 0–1 range (e.g. from a future fix) — pass through
+  if (confidence >= 0 && confidence <= 1) return Math.round(confidence * 100) / 100
+  // 0–100 → 0.00–1.00
+  return Math.round(Math.min(100, Math.max(0, confidence))) / 100
+}
+
 /** Remove diacritics and replace unsafe Storage path characters */
 function sanitizeFilename(name: string): string {
   return name
@@ -597,7 +609,7 @@ export const projectExpensesApi = {
         source_type: input.source_type,
         cost_type: input.cost_type ?? null,
         approval_status: 'not_sent',
-        extraction_confidence: input.extraction_confidence ?? null,
+        extraction_confidence: normalizeConfidenceForDb(input.extraction_confidence),
         extraction_warnings: input.extraction_warnings ?? null,
         requires_user_confirmation: input.requires_user_confirmation ?? null,
         parser_source: input.parser_source ?? null,
@@ -647,7 +659,7 @@ export const projectExpensesApi = {
         source_type:   input.source_type,
         cost_type:     input.cost_type ?? null,
         approval_status: 'not_sent',
-        extraction_confidence:      input.extraction_confidence ?? null,
+        extraction_confidence:      normalizeConfidenceForDb(input.extraction_confidence),
         extraction_warnings:        input.extraction_warnings ?? null,
         requires_user_confirmation: input.requires_user_confirmation ?? null,
         parser_source:              input.parser_source ?? null,
