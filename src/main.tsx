@@ -28,6 +28,11 @@ import '@/shared/styles/globals.css'
 
 registerSW({ immediate: true })
 
+// Global unhandled rejection handler — catches async errors not caught by React error boundaries
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[LoftDesk] unhandled promise rejection:', event.reason)
+})
+
 // Register appUrlOpen deep-link handler for Capacitor native shell.
 // Fires when the OS hands a URL to the app (Universal Link / Custom Scheme).
 // We extract the path+query and navigate within the WebView.
