@@ -5,20 +5,7 @@ import { PublicLayout } from '@/app/routes/_public'
 import { AuthScreen } from '@/features/auth/components/AuthScreen'
 import { LandingRoutePage } from '@/app/routes/index'
 import { DashboardRoutePage } from '@/app/routes/dashboard'
-import { ClientsRoutePage } from '@/app/routes/clients'
-import { EstimatesRoutePage } from '@/app/routes/estimates'
-import { InvoicesRoutePage } from '@/app/routes/invoices'
-import { ContractsRoutePage } from '@/app/routes/contracts'
-import { ProjectsRoutePage } from '@/app/routes/projects'
-import { KsefRoutePage } from '@/app/routes/ksef'
-import { SettingsRoutePage } from '@/app/routes/settings'
-import { PortalTokenRoutePage } from '@/app/routes/portal/$token'
-import { JoinInvitationRoutePage } from '@/app/routes/join.$token'
-import { ChatRoutePage } from '@/app/routes/chat'
-import { ExpensesRoutePage } from '@/app/routes/expenses'
-import { ClientDashboardRoutePage } from '@/app/routes/client/dashboard'
-import { ClientProjectRoutePage } from '@/app/routes/client/project.$id'
-import { ClientProfileRoutePage } from '@/app/routes/client/profile'
+
 
 const rootRoute = createRootRoute({ component: RootDocument, errorComponent: RootErrorFallback })
 
@@ -35,28 +22,28 @@ const legalIndexRoute = createRoute({ getParentRoute: () => publicLayoutRoute, p
 const legalDocRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'legal/$doc', component: lazyRouteComponent(() => import('@/app/routes/legal'), 'LegalDocRoutePage') })
 
 const dashboardRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'dashboard', component: DashboardRoutePage })
-const clientsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'clients', component: ClientsRoutePage })
-const estimatesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'estimates', component: EstimatesRoutePage })
-const invoicesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'invoices', component: InvoicesRoutePage })
-const contractsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'contracts', component: ContractsRoutePage })
-const projectsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'projects', component: ProjectsRoutePage })
+const clientsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'clients', component: lazyRouteComponent(() => import('@/app/routes/clients'), 'ClientsRoutePage') })
+const estimatesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'estimates', component: lazyRouteComponent(() => import('@/app/routes/estimates'), 'EstimatesRoutePage') })
+const invoicesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'invoices', component: lazyRouteComponent(() => import('@/app/routes/invoices'), 'InvoicesRoutePage') })
+const contractsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'contracts', component: lazyRouteComponent(() => import('@/app/routes/contracts'), 'ContractsRoutePage') })
+const projectsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'projects', component: lazyRouteComponent(() => import('@/app/routes/projects'), 'ProjectsRoutePage') })
 const reportsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'reports', component: lazyRouteComponent(() => import('@/app/routes/reports'), 'ReportsRoutePage') })
-const ksefRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'ksef', component: KsefRoutePage })
-const settingsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'settings', component: SettingsRoutePage })
+const ksefRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'ksef', component: lazyRouteComponent(() => import('@/app/routes/ksef'), 'KsefRoutePage') })
+const settingsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'settings', component: lazyRouteComponent(() => import('@/app/routes/settings'), 'SettingsRoutePage') })
+const expensesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'expenses', component: lazyRouteComponent(() => import('@/app/routes/expenses'), 'ExpensesRoutePage') })
+const chatRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: 'chat',
+  component: lazyRouteComponent(() => import('@/app/routes/chat'), 'ChatRoutePage'),
+  validateSearch: (search: Record<string, unknown>) => ({
+    threadId: typeof search.threadId === 'string' ? search.threadId : undefined,
+  }),
+})
 const billingRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'billing', component: lazyRouteComponent(() => import('@/app/routes/billing'), 'BillingRoutePage') })
 const teamRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'team', component: lazyRouteComponent(() => import('@/app/routes/team'), 'TeamRoutePage') })
 const onboardingRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'onboarding', component: lazyRouteComponent(() => import('@/app/routes/onboarding'), 'OnboardingRoutePage') })
 const documentationRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'documentation', component: lazyRouteComponent(() => import('@/app/routes/documentation'), 'DocumentationRoutePage') })
 const portalInboxRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'portal-inbox', component: lazyRouteComponent(() => import('@/app/routes/portal-inbox'), 'PortalInboxRoutePage') })
-const chatRoute = createRoute({
-  getParentRoute: () => authLayoutRoute,
-  path: 'chat',
-  component: ChatRoutePage,
-  validateSearch: (search: Record<string, unknown>) => ({
-    threadId: typeof search.threadId === 'string' ? search.threadId : undefined,
-  }),
-})
-const expensesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'expenses', component: ExpensesRoutePage })
 
 const clientDashboardRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'client/dashboard', component: lazyRouteComponent(() => import('@/app/routes/client/dashboard'), 'ClientDashboardRoutePage') })
 const clientProjectRoute   = createRoute({ getParentRoute: () => authLayoutRoute, path: 'client/project/$id', component: lazyRouteComponent(() => import('@/app/routes/client/project.$id'), 'ClientProjectRoutePage') })
