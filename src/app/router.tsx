@@ -23,7 +23,14 @@ const legalDocRoute = createRoute({ getParentRoute: () => publicLayoutRoute, pat
 
 const dashboardRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'dashboard', component: DashboardRoutePage })
 const clientsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'clients', component: lazyRouteComponent(() => import('@/app/routes/clients'), 'ClientsRoutePage') })
-const estimatesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'estimates', component: lazyRouteComponent(() => import('@/app/routes/estimates'), 'EstimatesRoutePage') })
+const estimatesRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: 'estimates',
+  component: lazyRouteComponent(() => import('@/app/routes/estimates'), 'EstimatesRoutePage'),
+  validateSearch: (search: Record<string, unknown>) => ({
+    create: search.create === '1' || search.create === 'true' ? true : undefined,
+  }),
+})
 const invoicesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'invoices', component: lazyRouteComponent(() => import('@/app/routes/invoices'), 'InvoicesRoutePage') })
 const contractsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'contracts', component: lazyRouteComponent(() => import('@/app/routes/contracts'), 'ContractsRoutePage') })
 const projectsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'projects', component: lazyRouteComponent(() => import('@/app/routes/projects'), 'ProjectsRoutePage') })

@@ -24,7 +24,7 @@ function loadDraft() {
 function saveDraft(data: object) {
   try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(data)) } catch { /* ignore */ }
 }
-function clearDraft() {
+export function clearDraft() {
   try { sessionStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
 }
 
@@ -46,6 +46,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
   const [projectId, setProjectId] = useState('')
   const [items, setItems] = useState<EstimateItem[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [isAiDraft, setIsAiDraft] = useState(false)
 
   const { data: clients = [] } = useClients()
   const { data: projects = [] } = useProjects()
@@ -85,9 +86,11 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
         setValidUntil((draft.validUntil as string) ?? todayStr())
         setProjectId((draft.projectId as string) ?? '')
         setItems((draft.items as EstimateItem[]) ?? [])
+        setIsAiDraft(draft._source === 'ai_analysis')
       } else {
         setName(''); setNotes(''); setClientId(''); setStatus('draft')
         setValidUntil(todayStr()); setProjectId(''); setItems([])
+        setIsAiDraft(false)
       }
     }
     const t = setTimeout(() => { saveGuard.current = true }, 0)
@@ -126,6 +129,24 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
 
   return (
     <div style={{ display: 'grid', gap: 20 }}>
+      {/* ── AI draft provenance banner ── */}
+      {isAiDraft && (
+        <div style={{
+          background: 'rgba(234,179,8,0.10)', border: '1px solid rgba(234,179,8,0.35)',
+          borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.6,
+          color: 'var(--color-text-primary)',
+        }}>
+          <div style={{ fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>🤖</span> Pozycje z analizy AI — draft do weryfikacji
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--color-text-secondary)', fontSize: 11 }}>
+            <li>Ceny jednostkowe wymagają uzupełnienia (domyślnie 0,00 zł)</li>
+            <li>Stawka VAT ustawiona na 8% — zweryfikuj dla każdej pozycji</li>
+            <li>Ilości i jednostki oszacowane przez AI — sprawdź przed wysyłką</li>
+          </ul>
+        </div>
+      )}
+
       {/* ── Pola nagłówkowe ── */}
       <div className="form-grid">
         <div className="form-grid--full">

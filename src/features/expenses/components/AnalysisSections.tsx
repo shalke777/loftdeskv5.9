@@ -6,12 +6,15 @@
 //   - uses AnalysisSectionCard for consistent collapsible UI
 //   - is ready for future pipeline output
 
+import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import type {
   DocumentLineItem,
   DetectedMaterial,
   WorkScopeItem,
   SuggestedEstimateItem,
 } from '@/services/ai/analysis.types'
+import type { EstimateItem } from '@/entities/estimate/model'
 import { AnalysisSectionCard } from './AnalysisSectionCard'
 
 // ── Line Items (active today) ────────────────────────────────────────────────
@@ -128,8 +131,40 @@ export function WorkScopeSection({ items }: { items: WorkScopeItem[] }) {
 
 // ── Suggested Estimate Items (future — renders only with real data) ──────────
 
+const ESTIMATE_DRAFT_KEY = 'estimate_form_draft'
+
+function suggestedToEstimateItems(items: SuggestedEstimateItem[]): EstimateItem[] {
+  return items.map((s, i) => ({
+    id: crypto.randomUUID(),
+    name: s.name,
+    description: s.notes ?? '',
+    unit: s.unit,
+    quantity: s.quantity,
+    unit_price: s.unit_price ?? 0,
+    vat_rate: 8,
+    sort_order: i + 1,
+  }))
+}
+
 export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateItem[] }) {
   if (!items || items.length === 0) return null
+
+  const navigate = useNavigate()
+  const [transferring, setTransferring] = useState(false)
+
+  function handleTransfer() {
+    if (transferring) return
+    setTransferring(true)
+    const estimateItems = suggestedToEstimateItems(items)
+    const draft = {
+      name: `Wycena z analizy AI — ${new Date().toLocaleDateString('pl-PL')}`,
+      notes: 'Pozycje wygenerowane z analizy AI. Sprawdź ilości i uzupełnij ceny.',
+      items: estimateItems,
+      _source: 'ai_analysis' as const,
+    }
+    try { sessionStorage.setItem(ESTIMATE_DRAFT_KEY, JSON.stringify(draft)) } catch { /* ignore */ }
+    navigate({ to: '/estimates', search: { create: true } })
+  }
 
   return (
     <AnalysisSectionCard title="Proponowane pozycje wyceny" count={items.length} icon="📊">
@@ -164,6 +199,27 @@ export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateIt
             ))}
           </tbody>
         </table>
+      </div>
+      <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={handleTransfer}
+          disabled={transferring}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '7px 14px', fontSize: 12, fontWeight: 600,
+            color: transferring ? 'var(--color-text-muted)' : 'var(--color-primary)',
+            background: 'var(--color-primary-soft)',
+            border: `1px solid ${transferring ? 'var(--color-border)' : 'var(--color-primary)'}`,
+            borderRadius: 8,
+            cursor: transferring ? 'default' : 'pointer', transition: 'background 0.15s',
+            opacity: transferring ? 0.6 : 1,
+          }}
+          onMouseEnter={e => { if (!transferring) { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = '#fff' } }}
+          onMouseLeave={e => { if (!transferring) { e.currentTarget.style.background = 'var(--color-primary-soft)'; e.currentTarget.style.color = 'var(--color-primary)' } }}
+        >
+          {transferring ? '⏳ Przenoszenie…' : '📋 Przenieś do wyceny'}
+        </button>
       </div>
     </AnalysisSectionCard>
   )

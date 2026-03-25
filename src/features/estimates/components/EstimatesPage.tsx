@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
+import { useSearch } from '@tanstack/react-router'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useCreateEstimate, useDeleteEstimate, useEstimates, useUpdateEstimate } from '@/features/estimates/hooks/useEstimates'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
@@ -9,7 +10,7 @@ import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import { QueryError } from '@/shared/ui/QueryError/QueryError'
 import { EstimateRow } from '@/features/estimates/components/EstimateRow'
-import { EstimateForm } from '@/features/estimates/components/EstimateModal/EstimateForm'
+import { EstimateForm, clearDraft as clearEstimateDraft } from '@/features/estimates/components/EstimateModal/EstimateForm'
 import { useEstimateToContract } from '@/workflows/estimate-to-contract/useEstimateToContract'
 import { useCan } from '@/features/auth/hooks/usePermissions'
 import { PlanLimitGuard } from '@/features/billing/components/PlanLimitGuard'
@@ -32,6 +33,8 @@ export function EstimatesPage() {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Estimate | null>(null)
 
+  const { create: autoCreate } = useSearch({ from: '/_auth/estimates' as any }) as { create?: boolean }
+
   const companyId = useCompanyId()
   const { data, isLoading, isError, refetch } = useEstimates()
   const { data: clients = [] } = useClients()
@@ -43,6 +46,14 @@ export function EstimatesPage() {
   const canCreate = useCan('estimates.create')
   const canDelete = useCan('estimates.delete')
   const canConvert = useCan('estimates.convert')
+
+  // Auto-open create modal when navigated with ?create=1
+  useEffect(() => {
+    if (autoCreate && canCreate) {
+      setEditing(null)
+      setOpen(true)
+    }
+  }, [autoCreate, canCreate])
 
   const clientMap = useMemo(
     () => Object.fromEntries(clients.map(c => [c.id, c.name])),
@@ -133,7 +144,7 @@ export function EstimatesPage() {
       )}
 
       {canCreate && (
-        <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edytuj wycenę' : 'Nowa wycena'}>
+        <Modal open={open} onClose={() => { if (!editing) clearEstimateDraft(); setOpen(false) }} title={editing ? 'Edytuj wycenę' : 'Nowa wycena'}>
           <EstimateForm companyId={companyId} initialEstimate={editing} onSubmit={submit} />
         </Modal>
       )}
