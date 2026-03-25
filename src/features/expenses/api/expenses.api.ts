@@ -3,6 +3,7 @@
 // =============================================================================
 
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
+import type { DocumentLineItem } from '@/services/ai/analysis.types'
 
 /**
  * Pick a meaningful initial status based on OCR extraction confidence and
@@ -455,7 +456,7 @@ export interface ExpenseInvoiceV4 extends ExpenseInvoice {
   extraction_confidence?:    number | null
   extraction_warnings?:      string[] | null
   requires_user_confirmation?: boolean | null
-  parser_source?:            'ai' | 'regex' | 'manual' | null
+  parser_source?:            'ai' | 'regex' | 'manual' | 'vision' | null
   possible_duplicate?:       boolean | null
   duplicate_of_expense_id?:  string | null
   category?:                 string | null
@@ -465,32 +466,42 @@ export interface ExpenseInvoiceV4 extends ExpenseInvoice {
 }
 
 /** The result returned by /.netlify/functions/parse-invoice */
-export interface ParseInvoiceLineItem {
-  name:         string | null
-  quantity:     number | null
-  unit:         string | null
-  unit_net:     number | null
-  vat_rate:     number | null
-  net_amount:   number | null
-  vat_amount:   number | null
-  gross_amount: number | null
-}
+export type { DocumentLineItem as ParseInvoiceLineItem } from '@/services/ai/analysis.types'
+export type { AnalysisResult as ParseDocumentResult }     from '@/services/ai/analysis.types'
+export {       toAnalysisResult }                          from '@/services/ai/analysis.types'
+export type {
+  AnalysisResult,
+  AnalysisInputType,
+  AnalysisDocumentType,
+  DocumentFields,
+  DocumentLineItem,
+  DetectedEntity,
+  DetectedMaterial,
+  WorkScopeItem,
+  SuggestedEstimateItem,
+  SectionConfidence,
+} from '@/services/ai/analysis.types'
 
+/**
+ * Flat parse result from Netlify OCR/AI functions.
+ * Active consumers use this shape directly — it maps 1:1 from the server response.
+ * For the generalized envelope, see AnalysisResult (via toAnalysisResult()).
+ */
 export interface ParseInvoiceResult {
-  document_type:  'invoice' | 'receipt' | 'bill' | 'other' | null  // detected doc type
+  document_type:  'invoice' | 'receipt' | 'bill' | 'other' | null
   vendor_name:      string | null
   vendor_nip:       string | null
-  vendor_address?:  string | null  // from AI path
-  buyer_name?:      string | null  // from AI path
-  buyer_nip?:       string | null  // from AI path
-  buyer_address?:   string | null  // from AI path
-  line_items?:      ParseInvoiceLineItem[]  // from AI path
+  vendor_address?:  string | null
+  buyer_name?:      string | null
+  buyer_nip?:       string | null
+  buyer_address?:   string | null
+  line_items?:      DocumentLineItem[]
   invoice_number:   string | null
   issue_date:       string | null
   sale_date:        string | null
   net_amount:       number | null
   vat_amount:       number | null
-  vat_rate:         number | null   // dominant VAT rate e.g. 23, 8, 5, 0
+  vat_rate:         number | null
   gross_amount:     number | null
   currency:         string
   payment_due_date: string | null
@@ -499,7 +510,7 @@ export interface ParseInvoiceResult {
   extraction_confidence:      number   // 0–100
   extraction_warnings:        string[]
   requires_user_confirmation: boolean
-  parser_source:              'ai' | 'regex' | 'manual'
+  parser_source:              'ai' | 'regex' | 'manual' | 'vision'
 }
 
 /** Input to create an expense and link it to a project */
@@ -528,7 +539,7 @@ export interface CreateExpenseForProjectInput {
   extraction_confidence?:     number | null
   extraction_warnings?:       string[] | null
   requires_user_confirmation?: boolean | null
-  parser_source?:              'ai' | 'regex' | 'manual' | null
+  parser_source?:              'ai' | 'regex' | 'manual' | 'vision' | null
 }
 
 // In-memory demo store for v4 project expenses
