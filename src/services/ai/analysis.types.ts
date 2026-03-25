@@ -327,3 +327,22 @@ export function classifyInputType(
 
   return 'unknown'
 }
+
+// ── Rehydration: JSONB → AnalysisResult ──────────────────────────────────────
+
+/**
+ * Safely rehydrate a `parse_raw` JSONB value from the database back into
+ * a typed AnalysisResult, or null if the data is missing / invalid.
+ * Used when reading stored expenses to recover the full analysis envelope.
+ */
+export function rehydrateAnalysisResult(
+  raw: unknown,
+): AnalysisResult | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, unknown>
+
+  // Minimum viable check: must have extraction_confidence (always present on AnalysisResult)
+  if (typeof obj.extraction_confidence !== 'number') return null
+
+  return raw as AnalysisResult
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { translateError } from '@/shared/lib/errorMessages'
 import type { ExpenseSourceType, CreateExpenseForProjectInput, ExpenseInvoiceV4 } from '@/features/expenses/api/expenses.api'
+import { rehydrateAnalysisResult } from '@/features/expenses/api/expenses.api'
 import { useProjectExpenses } from '@/features/expenses/hooks/useProjectExpenses'
 import { useCreateExpense }   from '@/features/expenses/hooks/useCreateExpense'
 import { useParseInvoice, callParseInvoiceAI, normalizeParseResult } from '@/features/expenses/hooks/useParseInvoice'
@@ -9,6 +10,12 @@ import { ExpensePreviewPane }   from './ExpensePreviewPane'
 import { ExpenseConfirmForm }   from './ExpenseConfirmForm'
 import { ApprovalStatusBadge } from './ApprovalStatusBadge'
 import { ExpenseApprovalModal } from './ExpenseApprovalModal'
+import {
+  LineItemsSection,
+  DetectedMaterialsSection,
+  WorkScopeSection,
+  SuggestedEstimateSection,
+} from './AnalysisSections'
 import type { AnalysisResult } from '@/services/ai/analysis.types'
 import type { ApprovalStatus } from '@/features/expenses/api/cost-approvals.api'
 
@@ -39,6 +46,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
   const [parseResult, setParseResult] = useState<AnalysisResult | null>(null)
   const [parseError,  setParseError]  = useState<string | null>(null)
   const [approvalExpense, setApprovalExpense] = useState<ExpenseInvoiceV4 | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const { data: expenses = [], isLoading } = useProjectExpenses(projectId)
   const createExpense = useCreateExpense(projectId)
@@ -162,18 +170,35 @@ export function ProjectExpensesTab({ projectId }: Props) {
         {/* Expense list */}
         {!isLoading && expenses.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {expenses.map((exp) => (
+            {expenses.map((exp) => {
+              const isExpanded = expandedId === exp.id
+              const storedAnalysis = isExpanded ? rehydrateAnalysisResult(exp.parse_raw) : null
+              const hasAnalysis = exp.parse_raw != null
+
+              return (
               <div
                 key={exp.id}
                 style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 12,
-                  padding: 14, borderRadius: 8,
+                  borderRadius: 8,
                   border: '1px solid var(--color-border)',
                   background: exp.possible_duplicate
                     ? 'var(--color-warning-soft, rgba(212,150,10,0.12))'
                     : 'var(--color-surface)',
+                  overflow: 'hidden',
                 }}
               >
+                {/* Row header — clickable when analysis data exists */}
+                <div
+                  role={hasAnalysis ? 'button' : undefined}
+                  tabIndex={hasAnalysis ? 0 : undefined}
+                  onClick={hasAnalysis ? () => setExpandedId(isExpanded ? null : exp.id) : undefined}
+                  onKeyDown={hasAnalysis ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedId(isExpanded ? null : exp.id) } } : undefined}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                    padding: 14,
+                    cursor: hasAnalysis ? 'pointer' : 'default',
+                  }}
+                >
                 <span style={{ fontSize: 22, lineHeight: 1 }}>
                   {SOURCE_ICONS[exp.source_type ?? 'manual'] ?? '🧾'}
                 </span>
@@ -214,20 +239,50 @@ export function ProjectExpensesTab({ projectId }: Props) {
                   </div>
                 </div>
 
-                {/* Send to approval button */}
-                {(!exp.approval_status || (exp.approval_status as string) === 'not_sent') && (
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    style={{ fontSize: 11, padding: '4px 10px', flexShrink: 0 }}
-                    onClick={() => setApprovalExpense(exp)}
-                    title="Wyślij do akceptacji klienta"
-                  >
-                    📤 Akceptacja
-                  </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  {/* Send to approval button */}
+                  {(!exp.approval_status || (exp.approval_status as string) === 'not_sent') && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ fontSize: 11, padding: '4px 10px' }}
+                      onClick={(e) => { e.stopPropagation(); setApprovalExpense(exp) }}
+                      title="Wyślij do akceptacji klienta"
+                    >
+                      📤 Akceptacja
+                    </button>
+                  )}
+                  {hasAnalysis && (
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)', userSelect: 'none' }}>
+                      {isExpanded ? '▲' : '▼'}
+                    </span>
+                  )}
+                </div>
+                </div>
+
+                {/* Expandable analysis detail — rehydrated from stored parse_raw */}
+                {isExpanded && storedAnalysis && (
+                  <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--color-border)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)', paddingTop: 10 }}>
+                      Zapisana analiza · {storedAnalysis.parser_source} · pewność {storedAnalysis.extraction_confidence}%
+                    </div>
+                    {storedAnalysis.line_items && storedAnalysis.line_items.length > 0 && (
+                      <LineItemsSection items={storedAnalysis.line_items} />
+                    )}
+                    {storedAnalysis.detected_materials && storedAnalysis.detected_materials.length > 0 && (
+                      <DetectedMaterialsSection items={storedAnalysis.detected_materials} />
+                    )}
+                    {storedAnalysis.work_scope && storedAnalysis.work_scope.length > 0 && (
+                      <WorkScopeSection items={storedAnalysis.work_scope} />
+                    )}
+                    {storedAnalysis.suggested_estimate_items && storedAnalysis.suggested_estimate_items.length > 0 && (
+                      <SuggestedEstimateSection items={storedAnalysis.suggested_estimate_items} />
+                    )}
+                  </div>
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

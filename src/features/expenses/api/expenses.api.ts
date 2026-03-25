@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
-import type { DocumentLineItem } from '@/services/ai/analysis.types'
+import type { DocumentLineItem, AnalysisResult } from '@/services/ai/analysis.types'
 
 /**
  * Pick a meaningful initial status based on OCR extraction confidence and
@@ -463,12 +463,14 @@ export interface ExpenseInvoiceV4 extends ExpenseInvoice {
   currency?:                 string | null
   sale_date?:                string | null
   payment_due_date?:         string | null
+  // Full analysis envelope (from parse_raw JSONB)
+  parse_raw?:                AnalysisResult | Record<string, unknown> | null
 }
 
 /** The result returned by /.netlify/functions/parse-invoice */
 export type { DocumentLineItem as ParseInvoiceLineItem } from '@/services/ai/analysis.types'
 export type { AnalysisResult as ParseDocumentResult }     from '@/services/ai/analysis.types'
-export {       toAnalysisResult, flattenAnalysisResult, classifyInputType } from '@/services/ai/analysis.types'
+export {       toAnalysisResult, flattenAnalysisResult, classifyInputType, rehydrateAnalysisResult } from '@/services/ai/analysis.types'
 export type {
   AnalysisResult,
   AnalysisInputType,
@@ -540,6 +542,8 @@ export interface CreateExpenseForProjectInput {
   extraction_warnings?:       string[] | null
   requires_user_confirmation?: boolean | null
   parser_source?:              'ai' | 'regex' | 'manual' | 'vision' | null
+  // Full analysis envelope (persisted to parse_raw JSONB for future use)
+  analysis_payload?:          AnalysisResult | null
 }
 
 // In-memory demo store for v4 project expenses
@@ -633,6 +637,7 @@ export const projectExpensesApi = {
         payment_due_date: input.payment_due_date ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        parse_raw: input.analysis_payload ?? null,
       }
       demoProjectExpenses.unshift(item)
       return item
@@ -679,6 +684,7 @@ export const projectExpensesApi = {
         category:      input.category ?? null,
         currency:      input.currency ?? 'PLN',
         payment_due_date: input.payment_due_date ?? null,
+        parse_raw:     input.analysis_payload ?? null,
       })
       .select('*')
       .single()
