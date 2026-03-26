@@ -28,66 +28,21 @@ import type { RoomAnalysisResult }      from './room.types'
 import type { ProjectAnalysisResult, ProjectComparisonResult } from './project.types'
 import type { AnalysisResult } from '../analysis.types'
 
+import type {
+  ReliabilityState,
+  ReliabilityIssue,
+  ReliabilityEvidence,
+  ReliabilityReport,
+} from './reliability.types'
+
 import { validateDocumentResult }    from '../validators/document.validator'
 import { validateRoomResult }        from '../validators/room.validator'
 import { validateProjectResult }     from '../validators/project.validator'
 import { validateComparisonResult }  from '../validators/comparison.validator'
 
-// ── Core types ─────────────────────────────────────────────────────────────
-
-/** Quality tier for an AI engine result. */
-export type ReliabilityState = 'strong' | 'partial' | 'weak' | 'blocked'
-
-/**
- * A single quality-control finding.
- * critical → blocks handoff
- * warning  → requires human review / confirmation
- * info     → surfaced for transparency, no action required
- */
-export interface ReliabilityIssue {
-  /** Machine-readable code, UPPER_SNAKE_CASE */
-  code: string
-  severity: 'critical' | 'warning' | 'info'
-  /** Polish human-readable explanation */
-  message: string
-  /** Optional: which field or section triggered this */
-  field?: string
-}
-
-/**
- * A single piece of evidence supporting a field or finding.
- * Provides traceability from output back to data source.
- */
-export interface ReliabilityEvidence {
-  field: string
-  /** Where this value came from */
-  source: 'ocr' | 'ai_inferred' | 'computed' | 'user_input' | 'deterministic_check'
-  /** Confidence 0–100 for this specific field */
-  confidence: number
-  note?: string
-}
-
-/**
- * Full quality report returned for every AI engine result.
- */
-export interface ReliabilityReport {
-  state: ReliabilityState
-  /** Overall confidence 0–100 (from the engine result, not recomputed) */
-  confidence: number
-  /** All detected issues, sorted critical-first */
-  issues: ReliabilityIssue[]
-  /** Traceability: which fields are supported by what evidence */
-  evidence: ReliabilityEvidence[]
-  /** true when human review is recommended (partial or worse) */
-  requires_review: boolean
-  /**
-   * true when a confirmation dialog must be shown before any downstream
-   * action (estimate handoff, save, etc.) — set for weak & blocked states
-   */
-  requires_confirmation: boolean
-  /** Polish one-liner suitable for display next to confidence badge */
-  summary: string
-}
+// Re-export types so existing consumers (AiReliabilityBanner etc.) keep working
+// without changing their import paths.
+export type { ReliabilityState, ReliabilityIssue, ReliabilityEvidence, ReliabilityReport } from './reliability.types'
 
 // ── State derivation ────────────────────────────────────────────────────────
 
@@ -194,8 +149,8 @@ export function computeDocumentReliability(
   }
 
   const sorted = [...issues].sort((a, b) => {
-    const rank = { critical: 0, warning: 1, info: 2 }
-    return rank[a.severity] - rank[b.severity]
+    const rank: Record<'critical' | 'warning' | 'info', number> = { critical: 0, warning: 1, info: 2 }
+    return rank[a.severity as keyof typeof rank] - rank[b.severity as keyof typeof rank]
   })
 
   return {
@@ -242,8 +197,8 @@ export function computeRoomReliability(
   }
 
   const sorted = [...issues].sort((a, b) => {
-    const rank = { critical: 0, warning: 1, info: 2 }
-    return rank[a.severity] - rank[b.severity]
+    const rank: Record<'critical' | 'warning' | 'info', number> = { critical: 0, warning: 1, info: 2 }
+    return rank[a.severity as keyof typeof rank] - rank[b.severity as keyof typeof rank]
   })
 
   return {
@@ -290,7 +245,7 @@ export function computeProjectReliability(
   }
 
   const sorted = [...issues].sort((a, b) => {
-    const rank = { critical: 0, warning: 1, info: 2 }
+    const rank: Record<'critical' | 'warning' | 'info', number> = { critical: 0, warning: 1, info: 2 }
     return rank[a.severity] - rank[b.severity]
   })
 
@@ -349,8 +304,8 @@ export function computeComparisonReliability(
   }
 
   const sorted = [...issues].sort((a, b) => {
-    const rank = { critical: 0, warning: 1, info: 2 }
-    return rank[a.severity] - rank[b.severity]
+    const rank: Record<'critical' | 'warning' | 'info', number> = { critical: 0, warning: 1, info: 2 }
+    return rank[a.severity as keyof typeof rank] - rank[b.severity as keyof typeof rank]
   })
 
   return {
@@ -393,7 +348,7 @@ export function computeRoomReliabilityFromAnalysis(
 
   const state  = deriveReliabilityState(confidence, issues)
   const sorted = [...issues].sort((a, b) => {
-    const rank = { critical: 0, warning: 1, info: 2 }
+    const rank: Record<'critical' | 'warning' | 'info', number> = { critical: 0, warning: 1, info: 2 }
     return rank[a.severity] - rank[b.severity]
   })
 
@@ -448,7 +403,7 @@ export function computeDocumentReliabilityFromParseResult(
 
   const state  = deriveReliabilityState(confidence, issues)
   const sorted = [...issues].sort((a, b) => {
-    const rank = { critical: 0, warning: 1, info: 2 }
+    const rank: Record<'critical' | 'warning' | 'info', number> = { critical: 0, warning: 1, info: 2 }
     return rank[a.severity] - rank[b.severity]
   })
 

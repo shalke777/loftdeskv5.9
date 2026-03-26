@@ -276,6 +276,12 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                         {item.notes && !item.libId && (
                           <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{item.notes}</div>
                         )}
+                        {item.provenance === 'dependency_inferred' && (
+                          <div style={{ fontSize: 9, color: '#60A5FA', marginTop: 2, fontStyle: 'italic' }}>⚙ wynika z zależności</div>
+                        )}
+                        {item.provenance === 'confirmation_needed' && (
+                          <div style={{ fontSize: 9, color: '#D4960A', marginTop: 2, fontStyle: 'italic' }}>? wymaga potwierdzenia</div>
+                        )}
                       </td>
                       <td style={colStyle}>{item.unit ?? '—'}</td>
                       <td style={rightCol}>

@@ -53,6 +53,8 @@ export interface ScopeItem {
   confidence:    number         // 0–100 — how sure we are this work is needed
   notes?:        string | null
   dependencies?: string[]       // library_ids this task depends on (must also appear in scope)
+  /** Set by post-processing dependency engine — not by the AI model */
+  provenance?:   'direct_detected' | 'dependency_inferred' | 'confirmation_needed'
 }
 
 /** A dimensional quantity hint computed from user inputs or visual estimation */
@@ -72,8 +74,10 @@ export interface SuggestedEstimateItem {
   quantity:    number
   unit_price?: number | null    // always null — AI does not suggest prices
   confidence:  number
-  source:      'ai_suggestion' | 'market_data' | 'historical'
+  source:      'ai_suggestion' | 'market_data' | 'historical' | 'dependency_inferred' | 'confirmation_needed'
   notes?:      string | null
+  /** Set by post-processing dependency engine — not by the AI model */
+  provenance?:  'direct_detected' | 'dependency_inferred' | 'confirmation_needed'
 }
 
 /**

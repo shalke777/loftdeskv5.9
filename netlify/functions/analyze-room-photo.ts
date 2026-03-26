@@ -20,6 +20,7 @@
 
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
+import { detectBathroomTriggers, expandDependencies, isBathroomSpace } from './shared/bathroom-triggers'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 // Local interfaces match src/services/ai/engines/room.types.ts (RoomAnalysisResult v2)
@@ -56,6 +57,7 @@ interface ScopeItem {
   confidence:    number
   notes?:        string | null
   dependencies?: string[]
+  provenance?:   'direct_detected' | 'dependency_inferred' | 'confirmation_needed'
 }
 
 interface QuantityHint {
@@ -73,8 +75,9 @@ interface SuggestedEstimateItem {
   quantity:    number
   unit_price?: number | null
   confidence:  number
-  source:      'ai_suggestion' | 'market_data' | 'historical'
+  source:      'ai_suggestion' | 'market_data' | 'historical' | 'dependency_inferred' | 'confirmation_needed'
   notes?:      string | null
+  provenance?: 'direct_detected' | 'dependency_inferred' | 'confirmation_needed'
 }
 
 /** v2 — matches src/services/ai/engines/room.types.ts RoomAnalysisResult */
@@ -801,6 +804,90 @@ export const handler: Handler = async (event: HandlerEvent) => {
     confidence,
     notes: typeof ai.notes === 'string' ? ai.notes : null,
   }
+
+  // ── Bathroom Dependency Engine — post-processing ─────────────────────────
+  // Runs after AI normalises its response. Injects preceding/hidden/conditional
+  // tasks that AI consistently under-generates. No src/ import needed.
+  if (isBathroomSpace(result.space_type)) {
+    const allLabels = [
+      ...result.observed_elements.map(e => e.label),
+      ...result.detected_installations.map(e => e.label),
+    ]
+    const triggerIds = detectBathroomTriggers(allLabels, clarification)
+    if (triggerIds.length > 0) {
+      const existingIds = new Set(
+        [
+          ...result.required_work_scope,
+          ...result.likely_work_scope,
+          ...result.optional_work_scope,
+        ]
+          .map(s => s.library_id ?? '')
+          .filter(Boolean)
+      )
+      const expanded = expandDependencies(triggerIds, existingIds)
+
+      // Inject preceding as 'required' items
+      for (const item of expanded.preceding) {
+        existingIds.add(item.library_id)
+        result.required_work_scope.push(item)
+      }
+      // Inject hidden as 'likely' items
+      for (const item of expanded.hidden) {
+        existingIds.add(item.library_id)
+        result.likely_work_scope.push(item)
+      }
+      // Inject conditional as 'optional' items
+      for (const item of expanded.conditional) {
+        existingIds.add(item.library_id)
+        result.optional_work_scope.push(item)
+      }
+
+      // Mirror inferred items into suggested_estimate_items (no price, quantity=0)
+      const existingEstimateIds = new Set(
+        result.suggested_estimate_items.map(e => e.library_id ?? '').filter(Boolean)
+      )
+      for (const item of [...expanded.preceding, ...expanded.hidden]) {
+        if (!existingEstimateIds.has(item.library_id)) {
+          existingEstimateIds.add(item.library_id)
+          result.suggested_estimate_items.push({
+            library_id: item.library_id,
+            name:       item.description,
+            unit:       item.unit,
+            quantity:   0,
+            unit_price: null,
+            confidence: item.confidence,
+            source:     'dependency_inferred',
+            provenance: 'dependency_inferred',
+            notes:      item.notes ?? null,
+          })
+        }
+      }
+      for (const item of expanded.conditional) {
+        if (!existingEstimateIds.has(item.library_id)) {
+          existingEstimateIds.add(item.library_id)
+          result.suggested_estimate_items.push({
+            library_id: item.library_id,
+            name:       item.description,
+            unit:       item.unit,
+            quantity:   0,
+            unit_price: null,
+            confidence: item.confidence,
+            source:     'confirmation_needed',
+            provenance: 'confirmation_needed',
+            notes:      item.notes ?? null,
+          })
+        }
+      }
+
+      // Surface confirmation questions
+      for (const q of expanded.questions) {
+        if (!result.missing_information.includes(q)) {
+          result.missing_information.push(q)
+        }
+      }
+    }
+  }
+  // ── End bathroom dependency injection ─────────────────────────────────────
 
   console.info('ROOM_ANALYSIS_DONE', JSON.stringify({
     model,

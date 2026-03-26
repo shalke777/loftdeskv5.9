@@ -65,6 +65,8 @@ export interface ProjectScopeItem {
   priority:    'required' | 'likely' | 'optional'
   confidence:  number              // 0–100: how certain this is actually required per the project
   notes:       string | null
+  /** Set by post-processing dependency engine — not by the AI model */
+  provenance?: 'direct_detected' | 'dependency_inferred' | 'confirmation_needed'
 }
 
 /** An estimate item ready for pre-fill in the estimate form */
@@ -74,8 +76,10 @@ export interface ProjectEstimateItem {
   quantity:    number
   unit_price:  number | null       // always null — AI does not suggest prices
   confidence:  number
-  source:      'project_derived' | 'ai_suggestion'
+  source:      'project_derived' | 'ai_suggestion' | 'dependency_inferred' | 'confirmation_needed'
   notes:       string | null
+  /** Set by post-processing dependency engine — not by the AI model */
+  provenance?: 'direct_detected' | 'dependency_inferred' | 'confirmation_needed'
 }
 
 // ── Comparison (project vs. observed reality) ── MVP types ──────────────────

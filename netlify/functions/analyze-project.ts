@@ -26,6 +26,7 @@
 
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
+import { detectBathroomTriggers, expandDependencies } from './shared/bathroom-triggers'
 
 // ── Local type definitions (mirrors src/services/ai/engines/project.types.ts) ─
 // Netlify functions cannot import from src/. Keep in sync manually.
@@ -69,6 +70,7 @@ interface ProjectScopeItem {
   priority:    'required' | 'likely' | 'optional'
   confidence:  number
   notes:       string | null
+  provenance?: 'direct_detected' | 'dependency_inferred' | 'confirmation_needed'
 }
 
 interface ProjectEstimateItem {
@@ -77,8 +79,9 @@ interface ProjectEstimateItem {
   quantity:    number
   unit_price:  number | null
   confidence:  number
-  source:      'project_derived' | 'ai_suggestion'
+  source:      'project_derived' | 'ai_suggestion' | 'dependency_inferred' | 'confirmation_needed'
   notes:       string | null
+  provenance?: 'direct_detected' | 'dependency_inferred' | 'confirmation_needed'
 }
 
 interface ProjectAnalysisResult {
@@ -581,6 +584,123 @@ export const handler: Handler = async (event) => {
     warnings,
     comparison_ready:         comparisonReady,
   }
+
+  // ── Bathroom Dependency Engine — post-processing ─────────────────────────
+  const bathroomRooms = result.rooms_detected.filter(
+    r => r.room_type === 'bathroom' || r.name.toLowerCase().includes('lazienk') || r.name.toLowerCase().includes('łazienk')
+  )
+  if (bathroomRooms.length > 0) {
+    const allLabels = bathroomRooms.flatMap(r => [
+      ...r.fixtures.map(f => f.toLowerCase()),
+      ...r.installations.map(i => i.toLowerCase()),
+    ])
+    const triggerIds = detectBathroomTriggers(allLabels)
+    if (triggerIds.length > 0) {
+      // Dedup by normalised description (project items lack library_id)
+      const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9ąćęłóśźż]/g, '')
+      const existingDescs = new Set(
+        result.work_scope_from_project.map(s => normalize(s.description))
+      )
+      const existingIds = new Set(
+        result.work_scope_from_project.map(s => (s as { library_id?: string }).library_id ?? '').filter(Boolean)
+      )
+      const expanded = expandDependencies(triggerIds, existingIds)
+
+      const bathroomRoomName = bathroomRooms[0]?.name ?? 'łazienka'
+
+      for (const item of expanded.preceding) {
+        if (!existingDescs.has(normalize(item.description))) {
+          existingDescs.add(normalize(item.description))
+          result.work_scope_from_project.push({
+            room:        bathroomRoomName,
+            description: item.description,
+            category:    item.category,
+            unit:        item.unit,
+            quantity:    null,
+            priority:    item.priority,
+            confidence:  item.confidence,
+            notes:       item.notes,
+            provenance:  'dependency_inferred',
+          })
+        }
+      }
+      for (const item of expanded.hidden) {
+        if (!existingDescs.has(normalize(item.description))) {
+          existingDescs.add(normalize(item.description))
+          result.work_scope_from_project.push({
+            room:        bathroomRoomName,
+            description: item.description,
+            category:    item.category,
+            unit:        item.unit,
+            quantity:    null,
+            priority:    item.priority,
+            confidence:  item.confidence,
+            notes:       item.notes,
+            provenance:  'dependency_inferred',
+          })
+        }
+      }
+      for (const item of expanded.conditional) {
+        if (!existingDescs.has(normalize(item.description))) {
+          existingDescs.add(normalize(item.description))
+          result.work_scope_from_project.push({
+            room:        bathroomRoomName,
+            description: item.description,
+            category:    item.category,
+            unit:        item.unit,
+            quantity:    null,
+            priority:    item.priority,
+            confidence:  item.confidence,
+            notes:       item.notes,
+            provenance:  'confirmation_needed',
+          })
+        }
+      }
+
+      // Mirror into estimate items
+      const existingEstimateDescs = new Set(
+        result.suggested_estimate_items.map(e => normalize(e.name))
+      )
+      for (const item of [...expanded.preceding, ...expanded.hidden]) {
+        if (!existingEstimateDescs.has(normalize(item.description))) {
+          existingEstimateDescs.add(normalize(item.description))
+          result.suggested_estimate_items.push({
+            name:       item.description,
+            unit:       item.unit,
+            quantity:   0,
+            unit_price: null,
+            confidence: item.confidence,
+            source:     'dependency_inferred',
+            provenance: 'dependency_inferred',
+            notes:      item.notes ?? null,
+          })
+        }
+      }
+      for (const item of expanded.conditional) {
+        if (!existingEstimateDescs.has(normalize(item.description))) {
+          existingEstimateDescs.add(normalize(item.description))
+          result.suggested_estimate_items.push({
+            name:       item.description,
+            unit:       item.unit,
+            quantity:   0,
+            unit_price: null,
+            confidence: item.confidence,
+            source:     'confirmation_needed',
+            provenance: 'confirmation_needed',
+            notes:      item.notes ?? null,
+          })
+        }
+      }
+
+      // Surface confirmation questions
+      for (const q of expanded.questions) {
+        if (!result.missing_information.includes(q)) {
+          result.missing_information.push(q)
+        }
+      }
+    }
+  }
+  // ── End bathroom dependency injection ─────────────────────────────────────
 
   console.info('PROJECT_ANALYSIS_DONE', JSON.stringify({
     model,

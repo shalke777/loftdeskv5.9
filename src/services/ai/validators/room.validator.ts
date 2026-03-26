@@ -16,7 +16,7 @@
 // =============================================================================
 
 import type { RoomAnalysisResult, ScopeItem } from '../engines/room.types'
-import type { ReliabilityIssue }              from '../engines/reliability'
+import type { ReliabilityIssue }              from '../engines/reliability.types'
 
 /**
  * Run all deterministic validators on a RoomAnalysisResult.

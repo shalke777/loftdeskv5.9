@@ -120,8 +120,11 @@ export interface SuggestedEstimateItem {
   quantity:     number
   unit_price?:  number | null   // from market data or AI suggestion
   confidence:   number          // 0–100
-  source:       'ai_suggestion' | 'market_data' | 'historical'
+  source:       'ai_suggestion' | 'market_data' | 'historical' | 'dependency_inferred' | 'confirmation_needed'
   notes?:       string | null
+  /** Set by post-processing dependency engine — not by the AI model */
+  provenance?:  'direct_detected' | 'dependency_inferred' | 'confirmation_needed'
+  library_id?:  string | null
 }
 
 // ── Section confidence ───────────────────────────────────────────────────────
