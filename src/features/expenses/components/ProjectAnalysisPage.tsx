@@ -8,7 +8,9 @@
 
 import { useRef, useState } from 'react'
 import { useAnalyzeProject } from '@/features/expenses/hooks/useAnalyzeProject'
-import type { ProjectAnalysisResult } from '@/services/ai/engines/project.types'
+import { useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
+import { compareProjectToReality } from '@/services/ai/engines/comparison'
+import type { ProjectAnalysisResult, ProjectComparisonResult } from '@/services/ai/engines/project.types'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import {
   ProjectSummaryBar,
@@ -18,6 +20,7 @@ import {
   ProjectEstimateSection,
   ProjectTransparencySection,
 } from './ProjectAnalysisSections'
+import { ComparisonResultView } from './ComparisonResultView'
 
 type Step = 'upload' | 'processing' | 'results'
 
@@ -39,8 +42,21 @@ function fileLabel(file: File): string {
   return `${file.name} (${ext}, ${kb} kB)`
 }
 
+/** Map project room_type to RoomTypeId used by room engine */
+function inferRoomType(r: ProjectAnalysisResult): string {
+  const rt = r.rooms_detected[0]?.room_type ?? 'other'
+  const MAP: Record<string, string> = {
+    bathroom: 'bathroom', kitchen: 'kitchen',
+    bedroom: 'room',      living_room: 'room',
+    hallway: 'hallway',   garage: 'other',
+    utility_room: 'other', other: 'other',
+  }
+  return MAP[rt] ?? 'other'
+}
+
 export function ProjectAnalysisPage() {
-  const analyze = useAnalyzeProject()
+  const analyze     = useAnalyzeProject()
+  const analyzeRoom = useAnalyzeRoomPhotos()
 
   const [step, setStep]       = useState<Step>('upload')
   const [file, setFile]       = useState<File | null>(null)
@@ -48,7 +64,15 @@ export function ProjectAnalysisPage() {
   const [result, setResult]   = useState<ProjectAnalysisResult | null>(null)
   const [error, setError]     = useState<string | null>(null)
 
-  const inputRef = useRef<HTMLInputElement>(null)
+  // ── Comparison state ──
+  const [showCompare, setShowCompare]             = useState(false)
+  const [compareFiles, setCompareFiles]           = useState<File[]>([])
+  const [comparingRoom, setComparingRoom]         = useState(false)
+  const [comparisonResult, setComparisonResult]   = useState<ProjectComparisonResult | null>(null)
+  const [comparisonError, setComparisonError]     = useState<string | null>(null)
+
+  const inputRef        = useRef<HTMLInputElement>(null)
+  const compareInputRef = useRef<HTMLInputElement>(null)
 
   function reset() {
     setStep('upload')
@@ -56,8 +80,43 @@ export function ProjectAnalysisPage() {
     setContext('')
     setResult(null)
     setError(null)
+    setShowCompare(false)
+    setCompareFiles([])
+    setComparingRoom(false)
+    setComparisonResult(null)
+    setComparisonError(null)
     analyze.reset()
+    analyzeRoom.reset()
     if (inputRef.current) inputRef.current.value = ''
+    if (compareInputRef.current) compareInputRef.current.value = ''
+  }
+
+  function handleCompareFiles(files: FileList | null) {
+    if (!files) return
+    const imgs = Array.from(files).filter(f => f.type.startsWith('image/'))
+    if (imgs.length > 0) setCompareFiles(imgs)
+  }
+
+  function startComparison() {
+    if (!result || compareFiles.length === 0) return
+    setComparingRoom(true)
+    setComparisonError(null)
+    analyzeRoom.mutate(
+      { files: compareFiles, roomType: inferRoomType(result) },
+      {
+        onSuccess: (roomResult) => {
+          const comparison = compareProjectToReality(result, roomResult)
+          setComparisonResult(comparison)
+          setComparingRoom(false)
+        },
+        onError: (err) => {
+          setComparisonError(
+            err instanceof Error ? err.message : 'Analiza zdjęć nie powiodła się.'
+          )
+          setComparingRoom(false)
+        },
+      }
+    )
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -287,6 +346,189 @@ export function ProjectAnalysisPage() {
               notes={result.project_notes}
               warnings={result.warnings}
             />
+
+            {/* ── Comparison section ──────────────────────────────────── */}
+            <div style={{
+              marginTop: 16,
+              borderTop: '1px solid var(--color-border)',
+              paddingTop: 16,
+            }}>
+
+              {/* Entry CTA — shown when comparison not yet started */}
+              {!showCompare && (
+                <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => setShowCompare(true)}
+                    style={{ fontSize: 13 }}
+                  >
+                    🔍 Porównaj z rzeczywistością → wgraj zdjęcia pomieszczenia
+                  </button>
+                </div>
+              )}
+
+              {/* Photo upload for room comparison */}
+              {showCompare && !comparisonResult && !comparingRoom && (
+                <div style={{ maxWidth: 520, margin: '0 auto' }}>
+                  <h4 style={{
+                    margin: '0 0 8px', fontSize: 14, fontWeight: 700,
+                    color: 'var(--color-text-primary)',
+                  }}>
+                    Porównaj projekt ze stanem faktycznym
+                  </h4>
+                  <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+                    Wgraj zdjęcia pomieszczenia (JPEG/PNG). AI wykryje materiały i zakres prac,
+                    a&nbsp;następnie porówna je z projektem. Dodaj zdjęcia z różnych kątów dla lepszych wyników.
+                  </p>
+
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => compareInputRef.current?.click()}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') compareInputRef.current?.click() }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      handleCompareFiles(e.dataTransfer.files)
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    style={{
+                      border: `2px dashed ${compareFiles.length > 0 ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      borderRadius: 8, padding: '20px 16px',
+                      textAlign: 'center', cursor: 'pointer',
+                      background: compareFiles.length > 0
+                        ? 'rgba(var(--color-primary-rgb,74,144,226),0.04)'
+                        : 'var(--color-surface-soft)',
+                      transition: 'border-color 0.15s',
+                      marginBottom: 12,
+                    }}
+                  >
+                    <input
+                      ref={compareInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => handleCompareFiles(e.target.files)}
+                    />
+                    {compareFiles.length > 0 ? (
+                      <div>
+                        <div style={{ fontSize: 24, marginBottom: 6 }}>📸</div>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>
+                          {compareFiles.length} {compareFiles.length === 1 ? 'zdjęcie' : 'zdjęcia'} gotowe
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                          Kliknij, żeby zmienić
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: 28, marginBottom: 8 }}>📷</div>
+                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
+                          Przeciągnij zdjęcia lub kliknij
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                          Akceptowane: JPEG, PNG, WEBP · Maks. 8 MB / zdjęcie
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={() => { setShowCompare(false); setCompareFiles([]) }}
+                      style={{ fontSize: 13 }}
+                    >
+                      Anuluj
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={compareFiles.length === 0}
+                      onClick={startComparison}
+                      style={{ flex: 1, fontSize: 13, fontWeight: 600 }}
+                    >
+                      Analizuj i porównaj →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Spinner while room analysis + comparison running */}
+              {comparingRoom && (
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  gap: 14, padding: '32px 16px',
+                  background: 'var(--color-surface-soft)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 8,
+                }}>
+                  <div className="spinner" style={{ width: 32, height: 32 }} />
+                  <div style={{ textAlign: 'center', fontSize: 13 }}>
+                    <p style={{ margin: '0 0 4px', fontWeight: 600 }}>
+                      Analizuję zdjęcia i porównuję z projektem…
+                    </p>
+                    <p style={{ margin: 0, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                      AI wykrywa materiały i zakres prac, porównuje je z projektem.<br />
+                      Trwa 15–30&nbsp;sekund.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Comparison error */}
+              {comparisonError && !comparingRoom && (
+                <div style={{
+                  padding: '12px 14px', borderRadius: 7, marginBottom: 8,
+                  background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.3)',
+                  fontSize: 13, color: 'var(--color-danger, #E57373)',
+                }}>
+                  <strong>Błąd porównania:</strong> {comparisonError}
+                  <div style={{ marginTop: 8 }}>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={() => {
+                        setComparisonError(null)
+                        setCompareFiles([])
+                        analyzeRoom.reset()
+                      }}
+                      style={{ fontSize: 12 }}
+                    >
+                      Spróbuj ponownie
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Comparison result */}
+              {comparisonResult && !comparingRoom && (
+                <div>
+                  <ComparisonResultView
+                    result={comparisonResult}
+                    projectName={result.project_name}
+                  />
+                  <div style={{ marginTop: 10, textAlign: 'right' }}>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={() => {
+                        setComparisonResult(null)
+                        setCompareFiles([])
+                        setComparisonError(null)
+                        analyzeRoom.reset()
+                      }}
+                      style={{ fontSize: 12 }}
+                    >
+                      🔄 Porównaj z innymi zdjęciami
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* ── end comparison ─────────────────────────────────────────  */}
           </>
         )}
 
