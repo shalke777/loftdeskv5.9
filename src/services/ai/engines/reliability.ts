@@ -26,6 +26,7 @@
 import type { DocumentAnalysisResult } from './document.types'
 import type { RoomAnalysisResult }      from './room.types'
 import type { ProjectAnalysisResult, ProjectComparisonResult } from './project.types'
+import type { AnalysisResult } from '../analysis.types'
 
 import { validateDocumentResult }    from '../validators/document.validator'
 import { validateRoomResult }        from '../validators/room.validator'
@@ -360,5 +361,118 @@ export function computeComparisonReliability(
     requires_review:       state !== 'strong',
     requires_confirmation: state === 'weak' || state === 'blocked',
     summary: buildSummary(state, result.confidence, issues),
+  }
+}
+
+// ── Bridge functions ──────────────────────────────────────────────────────────
+
+/**
+ * Bridge: compute reliability from AnalysisResult (room engine envelope).
+ * RoomAnalysisPage uses AnalysisResult from analysis.types, not the internal
+ * RoomAnalysisResult from engines/room.types.
+ */
+export function computeRoomReliabilityFromAnalysis(
+  result: AnalysisResult,
+): ReliabilityReport {
+  const issues: ReliabilityIssue[] = []
+  const confidence = result.extraction_confidence ?? 0
+
+  const hasScope     = (result.work_scope?.length ?? 0) > 0
+  const hasMaterials = (result.detected_materials?.length ?? 0) > 0
+  if (!hasScope && !hasMaterials) {
+    issues.push({
+      code:     'ZERO_SCOPE',
+      severity: 'warning',
+      message:  'AI nie wykrył zakresu prac ani materiałów — wyniki mogą być niekompletne.',
+    })
+  }
+
+  for (const w of result.extraction_warnings ?? []) {
+    issues.push({ code: 'EXTRACTION_WARNING', severity: 'warning', message: w })
+  }
+
+  const state  = deriveReliabilityState(confidence, issues)
+  const sorted = [...issues].sort((a, b) => {
+    const rank = { critical: 0, warning: 1, info: 2 }
+    return rank[a.severity] - rank[b.severity]
+  })
+
+  const evidence: ReliabilityEvidence[] = []
+  if (hasMaterials) {
+    evidence.push({ field: 'detected_materials', source: 'ai_inferred', confidence, note: `${result.detected_materials!.length} materiałów` })
+  }
+  if (hasScope) {
+    evidence.push({ field: 'work_scope', source: 'ai_inferred', confidence, note: `${result.work_scope!.length} prac` })
+  }
+
+  return {
+    state,
+    confidence,
+    issues: sorted,
+    evidence,
+    requires_review:       state !== 'strong',
+    requires_confirmation: state === 'weak' || state === 'blocked',
+    summary: buildSummary(state, confidence, issues),
+  }
+}
+
+/**
+ * Bridge: compute reliability from flat ParseInvoiceResult amounts.
+ * ExpensesPage uses ParseInvoiceResult from expenses.api, not DocumentAnalysisResult.
+ * Call this right after OCR extraction to get a reliability report for the modal banner.
+ */
+export function computeDocumentReliabilityFromParseResult(
+  net:        number | null,
+  vat:        number | null,
+  gross:      number | null,
+  confidence: number,
+  warnings?:  string[],
+): ReliabilityReport {
+  const issues: ReliabilityIssue[] = []
+
+  if (net !== null && vat !== null && gross !== null) {
+    const computed = Math.round((net + vat) * 100) / 100
+    if (Math.abs(computed - gross) > 0.02) {
+      issues.push({
+        code:     'ARITHMETIC_MISMATCH',
+        severity: 'critical',
+        message:  `Niezgodność kwot: netto (${net}) + VAT (${vat}) = ${computed}, brutto = ${gross}. Sprawdź liczby przed zapisem.`,
+        field:    'amounts',
+      })
+    }
+  }
+
+  for (const w of warnings ?? []) {
+    issues.push({ code: 'EXTRACTION_WARNING', severity: 'warning', message: w })
+  }
+
+  const state  = deriveReliabilityState(confidence, issues)
+  const sorted = [...issues].sort((a, b) => {
+    const rank = { critical: 0, warning: 1, info: 2 }
+    return rank[a.severity] - rank[b.severity]
+  })
+
+  const evidence: ReliabilityEvidence[] = []
+  if (gross !== null) {
+    evidence.push({ field: 'amounts.gross', source: 'ocr', confidence, note: `${gross} PLN` })
+  }
+  if (net !== null && vat !== null) {
+    const sum = Math.round((net + vat) * 100) / 100
+    evidence.push({
+      field:      'amounts.net+vat',
+      source:     'deterministic_check',
+      confidence: (gross !== null && Math.abs(sum - gross) < 0.03) ? 100 : 0,
+      note:       `netto+VAT=${sum}, brutto=${gross}`,
+    })
+  }
+
+  return {
+    state,
+    confidence,
+    issues: sorted,
+    evidence,
+    requires_review:       state !== 'strong',
+    requires_confirmation: state === 'weak' || state === 'blocked',
+    summary: buildSummary(state, confidence, issues),
   }
 }

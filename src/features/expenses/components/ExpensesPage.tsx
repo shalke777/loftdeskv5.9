@@ -4,7 +4,9 @@ import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } fro
 import { expensesApi, ExpenseInvoice, ParsedExpenseData, parseInvoiceFromText } from '../api/expenses.api'
 import type { ParseInvoiceResult, ExpenseSourceType } from '../api/expenses.api'
 import { callParseInvoice, callParseInvoiceAI } from '../hooks/useParseInvoice'
-import { aiPreflightValidate } from '@/shared/ui/AiGuidance'
+import { aiPreflightValidate, AiReliabilityBanner } from '@/shared/ui/AiGuidance'
+import { computeDocumentReliabilityFromParseResult } from '@/services/ai/engines/reliability'
+import type { ReliabilityReport } from '@/services/ai/engines/reliability'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Button } from '@/shared/ui/Button/Button'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
@@ -115,6 +117,7 @@ export function ExpensesPage() {
   const [parseStatus, setParseStatus] = useState<{ level: 'success'|'partial'|'empty'|'error'|'ocr-unavailable', message: string } | null>(null)
   // Raw OCR confidence (0–100) captured during extraction — used for status derivation on save
   const [ocrConfidence, setOcrConfidence] = useState<number | null>(null)
+  const [docReliability, setDocReliability] = useState<ReliabilityReport | null>(null)
 
   // modal: 'add' or 'edit'
   const [modal, setModal] = useState<{ type: 'add'; fileUrl: string; fileName: string; parsed: ParsedExpenseData; previewBlobUrl?: string } | { type: 'edit'; expense: ExpenseInvoice } | null>(null)
@@ -220,6 +223,13 @@ export function ExpensesPage() {
         // Step C: map final result → form fields
         if (ocrResult) {
           setOcrConfidence(ocrResult.extraction_confidence ?? null)
+          setDocReliability(computeDocumentReliabilityFromParseResult(
+            ocrResult.net_amount    ?? null,
+            ocrResult.vat_amount    ?? null,
+            ocrResult.gross_amount  ?? null,
+            ocrResult.extraction_confidence,
+            ocrResult.extraction_warnings ?? [],
+          ))
 
           parsed = {
             invoice_number: ocrResult.invoice_number ?? undefined,
@@ -305,6 +315,18 @@ export function ExpensesPage() {
     setDuplicateWarning(null)
     try {
       if (modal.type === 'add') {
+        // Arithmetic guard — catch net+vat≠gross before committing to DB
+        const net   = parseFloat(form.amount_net)
+        const vat   = parseFloat(form.amount_vat)
+        const gross = parseFloat(form.amount_gross)
+        if (!isNaN(net) && !isNaN(vat) && !isNaN(gross)) {
+          const computed = Math.round((net + vat) * 100) / 100
+          if (Math.abs(computed - gross) > 0.02) {
+            setParseStatus({ level: 'error', message: `Kwoty niezgodne: netto (${net}) + VAT (${vat}) = ${computed}, a brutto = ${gross} — popraw przed zapisem.` })
+            setSaving(false)
+            return
+          }
+        }
         // Check duplicate
         const dupId = await expensesApi.checkDuplicate(
           companyId,
@@ -343,6 +365,7 @@ export function ExpensesPage() {
       setDuplicateWarning(null)
       setParseStatus(null)
       setOcrConfidence(null)
+      setDocReliability(null)
     } catch (err: any) {
       setUploadError(err?.message ?? 'Błąd zapisu')
     } finally {
@@ -608,6 +631,12 @@ export function ExpensesPage() {
               </div>
             )}
 
+            {docReliability && docReliability.state !== 'strong' && (
+              <div style={{ marginTop: 4 }}>
+                <AiReliabilityBanner report={docReliability} compact />
+              </div>
+            )}
+
             {duplicateWarning && (
               <div className="exp-form__dup-warn">
                 <AlertTriangle size={14} /> {duplicateWarning}
@@ -712,7 +741,7 @@ export function ExpensesPage() {
             <div className="exp-form__actions">
               <Button variant="secondary" onClick={() => {
                 if (modal?.type === 'add' && modal.previewBlobUrl) URL.revokeObjectURL(modal.previewBlobUrl)
-                setModal(null); setDuplicateWarning(null); setParseStatus(null); setOcrConfidence(null)
+                setModal(null); setDuplicateWarning(null); setParseStatus(null); setOcrConfidence(null); setDocReliability(null)
               }}>
                 Anuluj
               </Button>

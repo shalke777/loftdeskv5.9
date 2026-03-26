@@ -12,7 +12,8 @@ import type { BathroomClarification } from '@/features/expenses/hooks/useAnalyze
 import type { RoomTypeId } from '@/services/ai/room-types'
 import { getRoomTypeName } from '@/services/ai/room-types'
 import type { AnalysisResult } from '@/services/ai/analysis.types'
-import { AiErrorState, AiQualityBadge, AiUploadRules } from '@/shared/ui/AiGuidance'
+import { AiErrorState, AiReliabilityBanner, AiUploadRules } from '@/shared/ui/AiGuidance'
+import { computeRoomReliabilityFromAnalysis } from '@/services/ai/engines/reliability'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { ExpenseCameraCapture } from './ExpenseCameraCapture'
 import { BathroomClarificationForm } from './BathroomClarificationForm'
@@ -47,6 +48,8 @@ export function RoomAnalysisPage() {
   const [roomType, setRoomType] = useState<RoomTypeId>('bathroom')
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const reliabilityReport = result ? computeRoomReliabilityFromAnalysis(result) : null
 
   function reset() {
     setStep('capture')
@@ -202,34 +205,9 @@ export function RoomAnalysisPage() {
 
         {result && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* Overall confidence */}
-            {result.extraction_confidence != null && (
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '8px 12px', borderRadius: 8,
-                background: 'var(--color-surface-soft)',
-                border: '1px solid var(--color-border)',
-                fontSize: 12,
-              }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>
-                  Pewność analizy
-                </span>
-                <AiQualityBadge confidence={result.extraction_confidence} />
-              </div>
-            )}
-
-            {/* Warnings */}
-            {result.extraction_warnings && result.extraction_warnings.length > 0 && (
-              <div style={{
-                padding: '8px 12px', borderRadius: 8, fontSize: 12,
-                background: 'rgba(212,150,10,0.08)',
-                border: '1px solid rgba(212,150,10,0.2)',
-                color: 'var(--color-text-secondary)',
-              }}>
-                {result.extraction_warnings.map((w, i) => (
-                  <div key={i}>⚠️ {w}</div>
-                ))}
-              </div>
+            {/* Reliability banner — covers confidence and extraction warnings */}
+            {reliabilityReport && (
+              <AiReliabilityBanner report={reliabilityReport} />
             )}
 
             {/* Analysis sections */}
@@ -240,7 +218,7 @@ export function RoomAnalysisPage() {
               <WorkScopeSection items={result.work_scope} />
             )}
             {result.suggested_estimate_items && result.suggested_estimate_items.length > 0 && (
-              <SuggestedEstimateSection items={result.suggested_estimate_items} />
+              <SuggestedEstimateSection items={result.suggested_estimate_items} reliabilityReport={reliabilityReport ?? undefined} />
             )}
 
             {/* No results */}

@@ -12,6 +12,8 @@ import type {
   SuggestedEstimateItem,
 } from '@/services/ai/analysis.types'
 import type { EstimateItem } from '@/entities/estimate/model'
+import { AiReliabilityBanner } from '@/shared/ui/AiGuidance'
+import type { ReliabilityReport } from '@/services/ai/engines/reliability'
 import { AnalysisSectionCard } from './AnalysisSectionCard'
 
 // ── Line Items (active today) ────────────────────────────────────────────────
@@ -171,15 +173,20 @@ function getCategoryName(categoryId: string): string {
   return BATHROOM_CATEGORIES.find(c => c.id === categoryId)?.name ?? ''
 }
 
-export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateItem[] }) {
+export function SuggestedEstimateSection({ items, reliabilityReport }: { items: SuggestedEstimateItem[]; reliabilityReport?: ReliabilityReport }) {
   if (!items || items.length === 0) return null
 
   const navigate = useNavigate()
   const [transferring, setTransferring] = useState(false)
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false)
 
-  function handleTransfer() {
+  const isBlocked    = reliabilityReport?.state === 'blocked'
+  const needsConfirm = reliabilityReport?.requires_confirmation ?? false
+
+  function doTransfer() {
     if (transferring) return
     setTransferring(true)
+    setAwaitingConfirm(false)
     const estimateItems = suggestedToEstimateItems(items)
     const draft = {
       name: `Wycena z analizy AI — ${new Date().toLocaleDateString('pl-PL')}`,
@@ -189,6 +196,15 @@ export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateIt
     }
     try { sessionStorage.setItem(ESTIMATE_DRAFT_KEY, JSON.stringify(draft)) } catch { /* ignore */ }
     navigate({ to: '/estimates', search: { create: true } })
+  }
+
+  function handleTransfer() {
+    if (isBlocked || transferring) return
+    if (needsConfirm && !awaitingConfirm) {
+      setAwaitingConfirm(true)
+      return
+    }
+    doTransfer()
   }
 
   // Enrich items with library data for categorization
@@ -292,25 +308,63 @@ export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateIt
       {/* Missing tasks section */}
       <MissingTasksSection coverage={coverage} />
 
+      {reliabilityReport && reliabilityReport.state !== 'strong' && (
+        <div style={{ marginTop: 8 }}>
+          <AiReliabilityBanner report={reliabilityReport} compact />
+        </div>
+      )}
+
+      {awaitingConfirm && (
+        <div style={{
+          padding: '10px 12px', marginTop: 8, borderRadius: 6,
+          background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.3)',
+          fontSize: 12,
+        }}>
+          <p style={{ margin: '0 0 8px', fontWeight: 600, color: '#C62828' }}>
+            ⚠ Pewność analizy jest niska — pozycje wymagają ręcznej weryfikacji.
+          </p>
+          <p style={{ margin: '0 0 10px', color: 'var(--color-text-secondary)' }}>
+            Sprawdź ilości i ceny po przeniesieniu. Czy kontynuować?
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              onClick={doTransfer}
+              style={{ padding: '5px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', color: '#C62828', background: 'rgba(229,115,115,0.12)', border: '1px solid rgba(229,115,115,0.4)' }}
+            >
+              Tak, przenieś mimo to
+            </button>
+            <button
+              type="button"
+              onClick={() => setAwaitingConfirm(false)}
+              style={{ padding: '5px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', color: 'var(--color-text-muted)', background: 'transparent', border: '1px solid var(--color-border)' }}
+            >
+              Anuluj
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
         <button
           type="button"
           onClick={handleTransfer}
-          disabled={transferring}
+          disabled={transferring || isBlocked}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '7px 14px', fontSize: 12, fontWeight: 600,
-            color: transferring ? 'var(--color-text-muted)' : 'var(--color-primary)',
-            background: 'var(--color-primary-soft)',
-            border: `1px solid ${transferring ? 'var(--color-border)' : 'var(--color-primary)'}`,
+            color: isBlocked ? 'var(--color-text-muted)' : transferring ? 'var(--color-text-muted)' : 'var(--color-primary)',
+            background: isBlocked ? 'var(--color-surface-soft)' : 'var(--color-primary-soft)',
+            border: `1px solid ${isBlocked || transferring ? 'var(--color-border)' : 'var(--color-primary)'}`,
             borderRadius: 8,
-            cursor: transferring ? 'default' : 'pointer', transition: 'background 0.15s',
-            opacity: transferring ? 0.6 : 1,
+            cursor: (transferring || isBlocked) ? 'not-allowed' : 'pointer', transition: 'background 0.15s',
+            opacity: (transferring || isBlocked) ? 0.55 : 1,
           }}
-          onMouseEnter={e => { if (!transferring) { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = '#fff' } }}
-          onMouseLeave={e => { if (!transferring) { e.currentTarget.style.background = 'var(--color-primary-soft)'; e.currentTarget.style.color = 'var(--color-primary)' } }}
+          title={isBlocked ? 'Analiza zablokowana — popraw błędy przed przeniesieniem' : undefined}
+          onMouseEnter={e => { if (!transferring && !isBlocked) { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = '#fff' } }}
+          onMouseLeave={e => { if (!transferring && !isBlocked) { e.currentTarget.style.background = 'var(--color-primary-soft)'; e.currentTarget.style.color = 'var(--color-primary)' } }}
         >
-          {transferring ? '⏳ Przenoszenie…' : '📋 Przenieś do wyceny'}
+          {isBlocked ? '⛔ Analiza zablokowana' : transferring ? '⏳ Przenoszenie…' : '📋 Przenieś do wyceny'}
         </button>
       </div>
     </AnalysisSectionCard>

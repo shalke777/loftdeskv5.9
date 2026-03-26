@@ -12,7 +12,8 @@ import { useAnalyzeProject } from '@/features/expenses/hooks/useAnalyzeProject'
 import { useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import { compareProjectToReality } from '@/services/ai/engines/comparison'
 import type { ProjectAnalysisResult, ProjectComparisonResult } from '@/services/ai/engines/project.types'
-import { AiErrorState, AiQualityBadge, AiUploadRules, aiPreflightValidate, sniffFileIntent } from '@/shared/ui/AiGuidance'
+import { AiErrorState, AiQualityBadge, AiReliabilityBanner, AiUploadRules, aiPreflightValidate, sniffFileIntent } from '@/shared/ui/AiGuidance'
+import { computeProjectReliability } from '@/services/ai/engines/reliability'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import {
   ProjectSummaryBar,
@@ -78,6 +79,8 @@ export function ProjectAnalysisPage() {
   const [context, setContext] = useState('')
   const [result, setResult]   = useState<ProjectAnalysisResult | null>(null)
   const [error, setError]     = useState<string | null>(null)
+
+  const reliabilityReport = result ? computeProjectReliability(result) : null
   const [fileHint, setFileHint]           = useState<'document' | null>(null)
   const [fileHintDismissed, setFileHintDismissed] = useState(false)
 
@@ -372,7 +375,7 @@ export function ProjectAnalysisPage() {
       <PageHeader title="AI Analiza projektu" />
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 16px 40px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          {result && <AiQualityBadge confidence={result.confidence} />}
+          {reliabilityReport && <AiReliabilityBanner report={reliabilityReport} compact />}
           <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 13, marginLeft: 'auto' }}>
             ← Nowa analiza
           </button>
@@ -402,7 +405,7 @@ export function ProjectAnalysisPage() {
             <ProjectRoomsSection rooms={result.rooms_detected} />
             <ProjectMaterialsSection materials={result.finish_materials} />
             <ProjectScopeSection items={result.work_scope_from_project} />
-            <ProjectEstimateSection items={result.suggested_estimate_items} projectName={result.project_name} />
+            <ProjectEstimateSection items={result.suggested_estimate_items} projectName={result.project_name} reliabilityReport={reliabilityReport ?? undefined} />
             <ProjectTransparencySection
               assumptions={result.assumptions}
               missingInfo={result.missing_information}
