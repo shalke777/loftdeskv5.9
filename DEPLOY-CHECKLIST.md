@@ -1,7 +1,7 @@
 # LoftDesk v5.9 — Deploy & Release Checklist (Etap 10)
 
 > Wersja: v5.9  
-> Data: 2026-03-12  
+> Data: 2026-03-26  
 > Branch deploy: `main`  
 > Build: `npm install && cd netlify/functions && npm install && cd ../.. && npx vite build`  
 > Publish dir: `dist`  
@@ -16,8 +16,8 @@
 | `tsc --noEmit` (src/) | ✅ PASS |
 | `tsc --noEmit` (netlify/functions/) | ✅ PASS |
 | `npm run build` | ✅ PASS |
-| Uncommitted changes | ✅ czyściwe (webhook fix scommitowany) |
-| Branch main | ✅ 14 commitów przed origin |
+| Uncommitted changes | ⚠️ TAK — Q/C Engine v1 + tuning fixes (nie pushowane celowo) |
+| Branch main | ✅ aktualny |
 | SPA fallback `/*` → `index.html` | ✅ w netlify.toml |
 | Stripe webhook pola (SDK v20) | ✅ naprawione |
 
@@ -50,7 +50,7 @@
 
 | # | Problem | Uwagi |
 |---|---------|-------|
-| M1 | `OPENAI_API_KEY` nie ustawiony | parse-invoice fallbackuje do regex — działa, ale AI parsing wyłączony |
+| M1 | `OPENAI_API_KEY` nie ustawiony | parse-invoice fallbackuje do regex — działa, ale AI parsing wyłączony. Analiza pokoju (`analyze-room-photo`) i analiza projektu (`analyze-project`) również wyłączone — Q/C Engine nie wygeneruje pytań bez AI |
 | M2 | `SITE_URL` nie ustawiony | portal_url w odpowiedzi funkcji użyje `process.env.URL` które Netlify ustawia automatycznie. OK dla preview deploys. Dla custom domeny — ustaw ręcznie |
 | M3 | `VITE_DATA_MODE` nie ustawiony | Jeśli SUPABASE vars są ustawione, app automatycznie wejdzie w tryb supabase. Ale lepiej jawnie ustawić `VITE_DATA_MODE=live` |
 | M4 | Chunk size warning w buildzie | index.js: 560 kB. Nie blokuje, ale warto code-split w przyszłości |
@@ -248,6 +248,15 @@ Po deployu wykonaj ręcznie:
 ## 5. RELEASE NOTES — CO WIDOCZNE PO WDROŻENIU v5.9
 
 Funkcjonalności dostępne dla użytkowników po tym deployu:
+
+**AI — Question/Clarification Engine v1** *(nowe w tej sesji, nie pushowane)*
+- 40 pytań doprecyzowujących dla 17 triggerów łazienkowych — teraz w pełni typowane (`ClarificationQuestion`)
+- Klasyfikacja pytań: `critical_for_scope` / `important_for_accuracy` / `optional_detail`
+- Każde pytanie ma: `id`, `text`, `severity`, `category`, `answerType`, `relatedTaskIds`, `affects`
+- Wyniki analizy zawierają `clarification_questions[]` (sortowane wg severity)
+- UI: `ClarificationQuestionsSection` — 3 grupy z kodowaniem kolorystycznym, renderowane pod wycenami
+- Backward compat: tekst pytań nadal trafia do `missing_information[]`
+- Tuning: 4 fixes over-inference (stelaż, podtynkow, dekor, waterproof_wet)
 
 **Billing & Stripe**
 - Plan Business z przyciskiem „Kup plan" → Stripe Checkout

@@ -5,13 +5,15 @@
 // Flow: room type selector → multi-photo → clarification → AI analysis → results.
 // Results can be transferred to estimates via session storage.
 
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import type { BathroomClarification } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import type { RoomTypeId } from '@/services/ai/room-types'
 import { getRoomTypeName } from '@/services/ai/room-types'
 import type { AnalysisResult } from '@/services/ai/analysis.types'
+import type { ClarificationAnswer } from '@/services/ai/engines/clarification.types'
+import { applyAnswersToResult } from '@/services/ai/engines/clarification-effects'
 import { AiErrorState, AiReliabilityBanner, AiUploadRules } from '@/shared/ui/AiGuidance'
 import { computeRoomReliabilityFromAnalysis } from '@/services/ai/engines/reliability'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
@@ -21,6 +23,7 @@ import {
   DetectedMaterialsSection,
   WorkScopeSection,
   SuggestedEstimateSection,
+  ClarificationQuestionsSection,
 } from './AnalysisSections'
 
 type Step = 'capture' | 'clarification' | 'processing' | 'results'
@@ -48,8 +51,20 @@ export function RoomAnalysisPage() {
   const [roomType, setRoomType] = useState<RoomTypeId>('bathroom')
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [clarificationAnswers, setClarificationAnswers] = useState<ClarificationAnswer[]>([])
 
-  const reliabilityReport = result ? computeRoomReliabilityFromAnalysis(result) : null
+  // Reset answers when a new analysis result arrives so stale answers don't bleed in
+  useEffect(() => { setClarificationAnswers([]) }, [result])
+
+  // Derive displayResult from current answers — stays referentially stable when answers=[]
+  const displayResult = useMemo(
+    () => result
+      ? applyAnswersToResult(result, clarificationAnswers, result.clarification_questions ?? [])
+      : null,
+    [result, clarificationAnswers],
+  )
+
+  const reliabilityReport = displayResult ? computeRoomReliabilityFromAnalysis(displayResult) : null
 
   function reset() {
     setStep('capture')
@@ -57,6 +72,7 @@ export function RoomAnalysisPage() {
     setRoomType('bathroom')
     setResult(null)
     setError(null)
+    setClarificationAnswers([])
     analyzeRooms.reset()
   }
 
@@ -83,6 +99,7 @@ export function RoomAnalysisPage() {
 
   function startAnalysis(clarification?: BathroomClarification) {
     setStep('processing')
+    setClarificationAnswers([])
     analyzeRooms.mutate({ files: roomFiles, clarification, roomType }, {
       onSuccess: (res) => { setResult(res); setError(null); setStep('results') },
       onError: (err) => {
@@ -90,6 +107,13 @@ export function RoomAnalysisPage() {
         setStep('results')
       },
     })
+  }
+
+  function handleAnswer(answer: ClarificationAnswer) {
+    setClarificationAnswers(prev => [
+      ...prev.filter(a => a.questionId !== answer.questionId),
+      answer,
+    ])
   }
 
   // ── Capture ──
@@ -205,20 +229,28 @@ export function RoomAnalysisPage() {
 
         {result && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* Reliability banner — covers confidence and extraction warnings */}
+            {/* Reliability banner — reflects answers via displayResult */}
             {reliabilityReport && (
               <AiReliabilityBanner report={reliabilityReport} />
             )}
 
-            {/* Analysis sections */}
+            {/* Analysis sections — displayResult carries answer effects */}
             {result.detected_materials && result.detected_materials.length > 0 && (
               <DetectedMaterialsSection items={result.detected_materials} />
             )}
-            {result.work_scope && result.work_scope.length > 0 && (
-              <WorkScopeSection items={result.work_scope} />
+            {displayResult?.work_scope && displayResult.work_scope.length > 0 && (
+              <WorkScopeSection items={displayResult.work_scope} />
             )}
-            {result.suggested_estimate_items && result.suggested_estimate_items.length > 0 && (
-              <SuggestedEstimateSection items={result.suggested_estimate_items} reliabilityReport={reliabilityReport ?? undefined} />
+            {displayResult?.suggested_estimate_items && displayResult.suggested_estimate_items.length > 0 && (
+              <SuggestedEstimateSection items={displayResult.suggested_estimate_items} reliabilityReport={reliabilityReport ?? undefined} />
+            )}
+            {/* Interactive Q/C questions — always from original result so user can revisit any answer */}
+            {result.clarification_questions && result.clarification_questions.length > 0 && (
+              <ClarificationQuestionsSection
+                questions={result.clarification_questions}
+                answers={clarificationAnswers}
+                onAnswer={handleAnswer}
+              />
             )}
 
             {/* No results */}

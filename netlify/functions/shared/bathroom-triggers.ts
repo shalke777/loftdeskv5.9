@@ -16,6 +16,36 @@
 
 export type Provenance = 'direct_detected' | 'dependency_inferred' | 'confirmation_needed'
 
+// ── Clarification Question types (mirrors src/services/ai/engines/clarification.types.ts) ─
+
+export type QuestionSeverity =
+  | 'critical_for_scope'
+  | 'important_for_accuracy'
+  | 'optional_detail'
+
+export type QuestionAnswerType = 'yes_no' | 'single_choice' | 'number' | 'text'
+
+export type QuestionCategory = 'scope' | 'installation' | 'location' | 'material' | 'electrical' | 'other'
+
+export interface ClarificationQuestion {
+  id:             string
+  text:           string
+  severity:       QuestionSeverity
+  category:       QuestionCategory
+  answerType:     QuestionAnswerType
+  relatedTrigger: string
+  relatedTaskIds: string[]
+  affects:        string[]
+  source:         'dependency_rule'
+  /** Selectable Polish labels for single_choice questions */
+  options?:       string[]
+}
+
+/** Strip to plain text — for backward-compat missing_information push */
+export function extractQuestionTexts(questions: ClarificationQuestion[]): string[] {
+  return questions.map(q => q.text)
+}
+
 export interface InferredScopeItem {
   library_id:   string
   description:  string
@@ -33,18 +63,63 @@ interface ConditionalTask extends Omit<InferredScopeItem, 'provenance'> {
   confirmQuestion: string
 }
 
+/** Internal per-trigger question (before relatedTrigger is stamped) */
+interface InternalQuestion {
+  id:             string
+  text:           string
+  severity:       QuestionSeverity
+  category:       QuestionCategory
+  answerType:     QuestionAnswerType
+  relatedTaskIds: string[]
+  affects:        string[]
+}
+
+/** Helper — builds an InternalQuestion with positional args for brevity */
+function q(
+  id:             string,
+  text:           string,
+  severity:       QuestionSeverity,
+  category:       QuestionCategory,
+  answerType:     QuestionAnswerType,
+  relatedTaskIds: string[] = [],
+  affects:        string[] = [],
+): InternalQuestion {
+  return { id, text, severity, category, answerType, relatedTaskIds, affects }
+}
+
+/**
+ * Options for single_choice questions, keyed by question id.
+ * Injected at expansion time — avoids an extra param on every q() call.
+ */
+const QUESTION_OPTIONS: Record<string, string[] | undefined> = {
+  'wi_q1': ['Wolnostojąca', 'Mocowana do ściany'],
+  'wi_q2': ['Podtynkowa', 'Natynkowa'],
+  'bt_q2': ['Wolnostojąca', 'Zabudowana w GK'],
+  'bt_q3': ['Podtynkowa', 'Natynkowa'],
+  'wc_q2': ['W narożniku', 'W ścianie'],
+  'wt_q1': ['Pełna ściana', 'Do połowy ściany', 'Pas dekoracyjny'],
+  'mo_q2': ['Całość', 'Fragment/pas'],
+  'uh_q1': ['Elektryczne', 'Wodne (C.O.)'],
+  'bc_q1': ['Wykafelkowana', 'Malowana'],
+  'pc_q2': ['Wykafelkowana', 'Malowana'],
+  'sc_q1': ['Całość pomieszczenia', 'Fragment'],
+  'tr_q1': ['Wodny (C.O.)', 'Elektryczny'],
+  'db_q1': ['Wspólny blat', 'Oddzielne umywalki'],
+  'bw_q2': ['Z płytki', 'Konglomeratowy', 'PVC'],
+}
+
 interface TriggerDef {
-  triggerId:             string
+  triggerId:          string
   /** Lowercase keyword fragments for detection from Polish labels/descriptions */
-  keywords:              string[]
+  keywords:           string[]
   /** Must exist before direct tasks — always injected */
-  preceding:             Omit<InferredScopeItem, 'provenance'>[]
+  preceding:          Omit<InferredScopeItem, 'provenance'>[]
   /** Often omitted in flat estimates — injected with 'dependency_inferred' */
-  hidden:                Omit<InferredScopeItem, 'provenance'>[]
+  hidden:             Omit<InferredScopeItem, 'provenance'>[]
   /** Only when specific site condition confirmed */
-  conditional:           ConditionalTask[]
-  /** Polish questions to add to missing_information */
-  confirmationQuestions: string[]
+  conditional:        ConditionalTask[]
+  /** Structured clarification questions — replaces plain confirmationQuestions[] */
+  structuredQuestions: InternalQuestion[]
 }
 
 // ── Task lookup helpers ───────────────────────────────────────────────────────
@@ -99,9 +174,13 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli pod posadzką prysznica jest ogrzewanie podłogowe',
         'Czy pod strefą prysznicową jest ogrzewanie podłogowe?'),
     ],
-    confirmationQuestions: [
-      'Czy lokalizacja odpływu liniowego zmienia się względem obecnej?',
-      'Czy kucie posadzki jest wymagane pod nową lokalizację odpływu?',
+    structuredQuestions: [
+      q('ld_q1', 'Czy lokalizacja odpływu liniowego zmienia się względem obecnej?',
+        'critical_for_scope', 'location', 'yes_no', ['screed_shower_slope', 'plumb_sewer_point'],
+        ['Nowa lokalizacja wymaga kucia posadzki i przeróbki kanalizacji']),
+      q('ld_q2', 'Czy kucie posadzki jest wymagane pod nową lokalizację odpływu?',
+        'critical_for_scope', 'scope', 'yes_no', ['screed_shower_slope'],
+        ['Wpływa na zakres robót wyburzeniowych']),
     ],
   },
 
@@ -128,9 +207,13 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli bateria prysznicowa natynkowa',
         'Czy bateria prysznicowa będzie natynkowa?'),
     ],
-    confirmationQuestions: [
-      'Czy szyba walk-in jest wolnostojąca czy mocowana do ściany?',
-      'Czy bateria prysznicowa jest podtynkowa czy natynkowa?',
+    structuredQuestions: [
+      q('wi_q1', 'Czy szyba walk-in jest wolnostojąca czy mocowana do ściany?',
+        'important_for_accuracy', 'installation', 'single_choice', [],
+        ['Wpływa na sposób mocowania i rodzaj kołków rozporowych']),
+      q('wi_q2', 'Czy bateria prysznicowa jest podtynkowa czy natynkowa?',
+        'critical_for_scope', 'installation', 'single_choice', ['plumb_mixing_valve', 'fit_shower_set'],
+        ['Podtynkowa wymaga zabudowy GK i dodatkowego punktu w ścianie']),
     ],
   },
 
@@ -160,17 +243,23 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli usuwana jest istniejąca wanna',
         'Czy usuwamy istniejącą wannę?'),
     ],
-    confirmationQuestions: [
-      'Czy wanna zastępuje istniejącą (wymagany demontaż)?',
-      'Czy wanna wolnostojąca czy zabudowana w zabudowie GK?',
-      'Czy bateria wannowa podtynkowa czy natynkowa?',
+    structuredQuestions: [
+      q('bt_q1', 'Czy wanna zastępuje istniejącą (wymagany demontaż)?',
+        'critical_for_scope', 'scope', 'yes_no', ['demo_bathtub'],
+        ['Dodaje pozycję demontażu starej wanny']),
+      q('bt_q2', 'Czy wanna wolnostojąca czy zabudowana w zabudowie GK?',
+        'important_for_accuracy', 'installation', 'single_choice', ['fix_freestanding_bath', 'gk_bath_panel'],
+        ['Wolnostojąca: montaz na stopkach; zabudowana: obudowa GK z płytką']),
+      q('bt_q3', 'Czy bateria wannowa podtynkowa czy natynkowa?',
+        'important_for_accuracy', 'installation', 'single_choice', ['fit_bathtub_tap'],
+        ['Podtynkowa: dodatkowe prace instalacyjne i zabudowa']),
     ],
   },
 
   // ── 4. WC podtynkowe ──────────────────────────────────────────────────────
   {
     triggerId: 'concealed_wc',
-    keywords: ['wc podtynkowe', 'stelaż wc', 'stelaż', 'stelaz wc', 'miska wisząca', 'miska wiszaca', 'podtynkowe wc'],
+    keywords: ['wc podtynkowe', 'stelaż wc', 'stelaz wc', 'miska wisząca', 'miska wiszaca', 'podtynkowe wc'],
     preceding: [
       p('gk_wc_frame',          'Zabudowa stelaża WC podtynkowego (GK)',                   'drywall',       'kpl.', 'required', 95, 'Wymagana przed montażem misy wiszącej'),
       p('plumb_wc_supply',      'Podejście wodne do WC',                                   'plumbing',      'szt.', 'required', 90),
@@ -184,17 +273,23 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli lokalizacja WC zmienia się względem istniejącej',
         'Czy lokalizacja WC ulega zmianie względem obecnej?'),
     ],
-    confirmationQuestions: [
-      'Czy lokalizacja WC jest zmieniana względem obecnej?',
-      'Czy stelaż WC jest w narożniku czy ścianie (wpływa na wymiary zabudowy)?',
-      'Czy potrzebna rewizja serwisowa do stelaża?',
+    structuredQuestions: [
+      q('wc_q1', 'Czy lokalizacja WC jest zmieniana względem obecnej?',
+        'critical_for_scope', 'location', 'yes_no', ['plumb_sewer_point'],
+        ['Zmiana lokalizacji wymaga prze róbki kanalizacji']),
+      q('wc_q2', 'Czy stelaż WC jest w naroŻniku czy ścianie (wpływa na wymiary zabudowy)?',
+        'important_for_accuracy', 'installation', 'single_choice', ['gk_wc_frame'],
+        ['Narożnik: większy modul GK; ściana: standard']),
+      q('wc_q3', 'Czy potrzebna rewizja serwisowa do stelaża?',
+        'important_for_accuracy', 'installation', 'yes_no', ['gk_inspection'],
+        ['Wymaga drzwiczek rewizyjnych w zabudowie GK']),
     ],
   },
 
   // ── 5. Bateria podtynkowa ─────────────────────────────────────────────────
   {
     triggerId: 'concealed_mixer',
-    keywords: ['bateria podtynkowa', 'bateria concealed', 'zawór podtynkowy', 'termostat podtynk', 'podtynkow'],
+    keywords: ['bateria podtynkowa', 'bateria concealed', 'zawór podtynkowy', 'zawor podtynkowy', 'termostat podtynk'],
     preceding: [
       p('plumb_cold_point',     'Przeróbka / przesunięcie punktu zimnej wody',             'plumbing',      'szt.', 'required', 80),
       p('plumb_hot_point',      'Przeróbka / przesunięcie punktu ciepłej wody',            'plumbing',      'szt.', 'required', 80),
@@ -207,9 +302,13 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli lokalizacja baterii wymaga przeróbki instalacji w innej lokalizacji',
         'Czy lokalizacja baterii ulega zmianie względem obecnej?'),
     ],
-    confirmationQuestions: [
-      'Czy lokalizacja baterii zmienia się względem istniejącej?',
-      'Czy potrzebna rewizja serwisowa do zaworu podtynkowego?',
+    structuredQuestions: [
+      q('cm_q1', 'Czy lokalizacja baterii zmienia się względem istniejącej?',
+        'critical_for_scope', 'location', 'yes_no', ['plumb_cold_point', 'plumb_hot_point'],
+        ['Nowa lokalizacja: przeróbka punktów wody zimnej i ciepłej']),
+      q('cm_q2', 'Czy potrzebna rewizja serwisowa do zaworu podtynkowego?',
+        'important_for_accuracy', 'installation', 'yes_no', ['gk_inspection'],
+        ['Drzwiczki rewizyjne w zabudowie GK']),
     ],
   },
 
@@ -219,9 +318,9 @@ const TRIGGER_DEFS: TriggerDef[] = [
     keywords: ['płytki ścienne', 'plytki scienne', 'okładziny ścian', 'okladziny scian', 'kafelki ścienne', 'oblicowanie ścian'],
     preceding: [
       p('substrate_wall_priming','Gruntowanie ścian pod płytki',                           'substrate',     'm2',   'required', 92),
-      p('waterproof_wet',        'Hydroizolacja strefy mokrej — ściany',                   'waterproofing', 'm2',   'required', 85, 'Zawsze w strefach mokrych (prysznic, wanna)'),
     ],
     hidden: [
+      p('waterproof_wet',        'Hydroizolacja strefy mokrej — ściany',                   'waterproofing', 'm2',   'likely',   82, 'Wymagana w strefach mokrych — potwierdź zakres'),
       p('profile_corner',       'Profile narożnikowe (aluminium/PVC)',                     'profiles',      'mb',   'required', 88),
       p('profile_edge',         'Listwy krawędziowe / wykończeniowe',                      'profiles',      'mb',   'likely',   75),
       p('grout_walls',          'Fugowanie płytek ściennych',                              'grouting',      'm2',   'required', 95),
@@ -232,9 +331,16 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli ściany wymagają tynkowania przed układaniem płytek',
         'Czy ściany wymagają tynkowania lub wyrównania przed płytką?'),
     ],
-    confirmationQuestions: [
-      'Do jakiej wysokości idą płytki (pełna ściana czy pas)?',
-      'Czy ściany wymagają tynkowania lub wyrównania?',
+    structuredQuestions: [
+      q('wt_q1', 'Do jakiej wysokości idą płytki (ściana pełna czy pas)?',
+        'important_for_accuracy', 'scope', 'single_choice', [],
+        ['Wpływa na ilość m2 okładzin i spoiny']),
+      q('wt_q2', 'Czy ściany w strefie mokrej (prysznic / wanna) wymagają hydroizolacji?',
+        'critical_for_scope', 'scope', 'yes_no', ['waterproof_wet'],
+        ['Dodaje hydroizolację ścian strefy mokrej']),
+      q('wt_q3', 'Czy ściany wymagają tynkowania lub wyrównania?',
+        'important_for_accuracy', 'material', 'yes_no', ['substrate_plastering'],
+        ['Tynkowanie przed okładziną to oddzielna pozycja']),
     ],
   },
 
@@ -258,9 +364,13 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli podkład wymaga pełnej wylewki (np. po skuciu starej)',
         'Czy podkład wymaga pełnej wylewki cementowej?'),
     ],
-    confirmationQuestions: [
-      'Czy istniejąca posadzka wymaga skucia przed układaniem nowej?',
-      'Czy próg między łazienką a korytarzem jest potrzebny?',
+    structuredQuestions: [
+      q('ft_q1', 'Czy istniejąca posadzka wymaga skucia przed układaniem nowej?',
+        'critical_for_scope', 'scope', 'yes_no', ['screed_float'],
+        ['Skucie: kucie + wylewka — znaczna pozycja kosztowa']),
+      q('ft_q2', 'Czy próg między łazienką a korytarzem jest potrzebny?',
+        'optional_detail', 'material', 'yes_no', ['tile_threshold'],
+        ['Listwa progowa lub płytka']),
     ],
   },
 
@@ -283,16 +393,20 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli cięcia otworów lub nieregularne krawędzie w wielkim formacie',
         'Czy wielki format wymaga skomplikowanych docinek?'),
     ],
-    confirmationQuestions: [
-      'Czy podłoże ma wymaganą płaskość (≤ 3 mm / 2 m) dla wielkoformatowych?',
-      'Czy spoiny mają być maksymalnie wąskie (rectified)?',
+    structuredQuestions: [
+      q('lf_q1', 'Czy podłoże ma wymagana płaszczyznowość (≤ 3 mm / 2 m) dla wielkoformatowych?',
+        'critical_for_scope', 'scope', 'yes_no', ['substrate_floor_leveling'],
+        ['Brak płaszczyznowości: wylewka lub szlifowanie — dodatkowa pozycja']),
+      q('lf_q2', 'Czy spoiny mają być maksymalnie wąskie (rectified)?',
+        'optional_detail', 'material', 'yes_no', ['grout_floor'],
+        ['Rectified: wyższa dokładność cicia, spoiny 1–2 mm']),
     ],
   },
 
   // ── 9. Mozaika / dekor ────────────────────────────────────────────────────
   {
     triggerId: 'mosaic',
-    keywords: ['mozaika', 'mozaik', 'dekor', 'siatka mozaikowa', 'płytki 2x2', 'płytki 5x5'],
+    keywords: ['mozaika', 'mozaik', 'siatka mozaikowa', 'płytki 2x2', 'płytki 5x5'],
     preceding: [
       p('substrate_floor_priming','Gruntowanie podłoża pod mozaikę',                        'substrate',     'm2',   'required', 85),
     ],
@@ -309,9 +423,13 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli cięcia mozaiki wymagają pracy ręcznej',
         'Czy mozaika obejmuje całą powierzchnię czy tylko fragment/pas?'),
     ],
-    confirmationQuestions: [
-      'Czy mozaika jest w strefie mokrej?',
-      'Czy mozaika obejmuje całą powierzchnię czy tylko fragment/pas?',
+    structuredQuestions: [
+      q('mo_q1', 'Czy mozaika jest w strefie mokrej (prysznic, wanna)?',
+        'critical_for_scope', 'scope', 'yes_no', ['waterproof_wet'],
+        ['W strefie mokrej: obowiązkowa hydroizolacja pod mozaiką']),
+      q('mo_q2', 'Czy mozaika obejmuje całą powierzchnię czy tylko fragment/pas?',
+        'important_for_accuracy', 'scope', 'single_choice', [],
+        ['Wpływa na ilość m2 i złożoność fugowania']),
     ],
   },
 
@@ -336,10 +454,16 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli brak dedykowanego obwodu elektrycznego',
         'Czy instalacja ma dedykowany obwód pod ogrzewanie podłogowe?'),
     ],
-    confirmationQuestions: [
-      'Czy ogrzewanie podłogowe elektryczne czy wodne?',
-      'Czy mata grzewcza jest zakupiona przez klienta?',
-      'Czy wylewka pod ogrzewanie jest uwzględniona w harmonogramie?',
+    structuredQuestions: [
+      q('uh_q1', 'Czy ogrzewanie podłogowe elektryczne czy wodne?',
+        'critical_for_scope', 'installation', 'single_choice', ['underfloor_hydro', 'underfloor_thermostat'],
+        ['Elektryczne: termostat + obwód; wodne: pętla C.O. + przewód']),
+      q('uh_q2', 'Czy mata grzewcza jest zakupiona przez klienta?',
+        'optional_detail', 'material', 'yes_no', ['screed_heated'],
+        ['Wpływa na materiał w wycenie']),
+      q('uh_q3', 'Czy wylewka pod ogrzewanie jest uwzględniona w harmonogramie?',
+        'important_for_accuracy', 'scope', 'yes_no', ['screed_heated'],
+        ['Wylewka schnietnie min. 28 dni — krytyczne dla harmonogramu']),
     ],
   },
 
@@ -357,9 +481,13 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli zabudowa kotła będzie obłożona płytką',
         'Czy zabudowa kotła ma być wykafelkowana?'),
     ],
-    confirmationQuestions: [
-      'Czy zabudowa kotła/bojlera ma być wykafelkowana czy malowana?',
-      'Czy rewizja serwisowa jest dostępna z zewnątrz zabudowy?',
+    structuredQuestions: [
+      q('bc_q1', 'Czy zabudowa kotła/bojlera ma być wykafelkowana czy malowana?',
+        'important_for_accuracy', 'material', 'single_choice', ['tile_wall_full'],
+        ['Kafelkowanie: dodatkowa pozycja płytek i kleju na zabudowie']),
+      q('bc_q2', 'Czy rewizja serwisowa jest dostępna z zewnątrz zabudowy?',
+        'critical_for_scope', 'installation', 'yes_no', ['gk_inspection'],
+        ['Brak rewizji: niezgodne z normą — drzwiczki obowiązkowe']),
     ],
   },
 
@@ -378,9 +506,13 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli zabudowa pionów będzie wykafelkowana',
         'Czy zabudowa pionów ma być wykafelkowana?'),
     ],
-    confirmationQuestions: [
-      'Czy piony wymagają rewizji serwisowej?',
-      'Czy zabudowa pionów wykafelkowana czy malowana?',
+    structuredQuestions: [
+      q('pc_q1', 'Czy piony wymagają rewizji serwisowej?',
+        'critical_for_scope', 'installation', 'yes_no', ['gk_inspection'],
+        ['Drzwiczki rewizyjne w zabudowie GK — obowiązkowe per norma']),
+      q('pc_q2', 'Czy zabudowa pionów wykafelkowana czy malowana?',
+        'important_for_accuracy', 'material', 'single_choice', ['tile_wall_full'],
+        ['Kafelkowanie: dodatkowa pozycja płytek i kleju']),
     ],
   },
 
@@ -404,10 +536,16 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli wentylator w suficie wymaga nowego kanału',
         'Czy wentylacja mechaniczna wymaga nowego kanału wentylacyjnego?'),
     ],
-    confirmationQuestions: [
-      'Czy sufit podwieszany obejmuje całość pomieszczenia czy fragment?',
-      'Czy planowane jest oświetlenie punktowe w suficie?',
-      'Czy wentylacja mechaniczna jest prowadzona przez sufit?',
+    structuredQuestions: [
+      q('sc_q1', 'Czy sufit podwieszany obejmuje całość pomieszczenia czy fragment?',
+        'important_for_accuracy', 'scope', 'single_choice', ['gk_ceiling'],
+        ['Całość vs fragment: wpływa na ilość m2 płyt GK']),
+      q('sc_q2', 'Czy planowane jest oświetlenie punktowe w suficie?',
+        'important_for_accuracy', 'electrical', 'yes_no', ['elec_lighting'],
+        ['Oprawy punktowe: dodatkowe punkty elektryczne przed zamknięciem sufitu']),
+      q('sc_q3', 'Czy wentylacja mechaniczna jest prowadzona przez sufit?',
+        'important_for_accuracy', 'installation', 'yes_no', ['vent_fan_exchange'],
+        ['Kanał wentylacyjny w suficie: układany przed zamknięciem']),
     ],
   },
 
@@ -427,9 +565,13 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli brak dedykowanego obwodu przy lustrze',
         'Czy gniazdko lub punkt elektryczny przy lustrze wymaga nowego obwodu?'),
     ],
-    confirmationQuestions: [
-      'Czy lustro ma wbudowane podgrzewanie anti-fog?',
-      'Czy potrzebne gniazdko przy lustrze (np. do suszarki)?',
+    structuredQuestions: [
+      q('ml_q1', 'Czy lustro ma wbudowane podgrzewanie anti-fog?',
+        'optional_detail', 'material', 'yes_no', ['elec_circuit_breaker'],
+        ['Anti-fog: większy pobór prądu — może wymagać dedykowanego obwodu']),
+      q('ml_q2', 'Czy potrzebne gniazdko przy lustrze (np. do suszarki)?',
+        'optional_detail', 'electrical', 'yes_no', ['elec_circuit_breaker'],
+        ['Gniazdko: dodatkowy punkt elektryczny']),
     ],
   },
 
@@ -450,9 +592,13 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli grzejnik elektryczny (nie wodny)',
         'Czy grzejnik jest elektryczny czy podłączony do C.O.?'),
     ],
-    confirmationQuestions: [
-      'Czy grzejnik łazienkowy jest wodny (C.O.) czy elektryczny?',
-      'Czy lokalizacja grzejnika zmienia się względem istniejącej?',
+    structuredQuestions: [
+      q('tr_q1', 'Czy grzejnik łazienkowy jest wodny (C.O.) czy elektryczny?',
+        'critical_for_scope', 'installation', 'single_choice', ['plumb_cold_point', 'elec_underfloor'],
+        ['Wodny: przerobka C.O.; elektryczny: obwód elektryczny']),
+      q('tr_q2', 'Czy lokalizacja grzejnika zmienia się względem istniejącej?',
+        'critical_for_scope', 'location', 'yes_no', ['plumb_cold_point', 'plumb_hot_point'],
+        ['Zmiana lokalizacji: przeróbka punktów wodnych']),
     ],
   },
 
@@ -475,9 +621,13 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli umywalki wpuszczane w blat lub nablatowe',
         'Czy umywalki są wpuszczane w blat czy wolnostojące?'),
     ],
-    confirmationQuestions: [
-      'Czy obie umywalki są na tym samym blacie (double vanity) czy oddzielne?',
-      'Czy istniejąca instalacja wody wymaga rozbudowy do 2 punktów?',
+    structuredQuestions: [
+      q('db_q1', 'Czy obie umywalki są na tym samym blacie (double vanity) czy oddzielne?',
+        'important_for_accuracy', 'installation', 'single_choice', ['fix_double_basin'],
+        ['Blat wspólny: jedna pozycja montazu; oddzielne: dwie']),
+      q('db_q2', 'Czy istniejąca instalacja wody wymaga rozbudowy do 2 punktów?',
+        'critical_for_scope', 'scope', 'yes_no', ['plumb_cold_point', 'plumb_hot_point'],
+        ['Rozbudowa: przełożenie rur + nowe punkty wody']),
     ],
   },
 
@@ -501,9 +651,13 @@ const TRIGGER_DEFS: TriggerDef[] = [
         'Jeśli kratka wentylacyjna w okolicach okna',
         'Czy przy oknie potrzebna kratka wentylacyjna?'),
     ],
-    confirmationQuestions: [
-      'Czy okno będzie obłożone płytką (glif i parapet)?',
-      'Czy parapet jest z płytki, konglomeratowy czy PVC?',
+    structuredQuestions: [
+      q('bw_q1', 'Czy okno będzie obłożone płytką (glif i parapet)?',
+        'critical_for_scope', 'scope', 'yes_no', ['tile_wall_window', 'tile_window_sill'],
+        ['Glif + parapet z płytki: dodatkowe pozycje okładzin i profili']),
+      q('bw_q2', 'Czy parapet jest z płytki, konglomeratowy czy PVC?',
+        'optional_detail', 'material', 'single_choice', [],
+        ['Wybor materiału parapetu']),
     ],
   },
 ]
@@ -549,7 +703,14 @@ export interface ExpandResult {
   preceding:   InferredScopeItem[]
   hidden:      InferredScopeItem[]
   conditional: InferredScopeItem[]
-  questions:   string[]
+  /** Structured questions sorted by severity: critical → important → optional */
+  questions:   ClarificationQuestion[]
+}
+
+const SEVERITY_ORDER: Record<QuestionSeverity, number> = {
+  critical_for_scope:     0,
+  important_for_accuracy: 1,
+  optional_detail:        2,
 }
 
 /**
@@ -563,10 +724,10 @@ export function expandDependencies(
   triggerIds:  string[],
   existingIds: Set<string>,
 ): ExpandResult {
-  const preceding:   Map<string, InferredScopeItem> = new Map()
-  const hidden:      Map<string, InferredScopeItem> = new Map()
-  const conditional: Map<string, InferredScopeItem> = new Map()
-  const questions:   Set<string>                    = new Set()
+  const preceding:   Map<string, InferredScopeItem>    = new Map()
+  const hidden:      Map<string, InferredScopeItem>    = new Map()
+  const conditional: Map<string, InferredScopeItem>    = new Map()
+  const questionMap: Map<string, ClarificationQuestion> = new Map()
 
   for (const id of triggerIds) {
     const def = TRIGGER_DEFS.find(t => t.triggerId === id)
@@ -592,20 +753,35 @@ export function expandDependencies(
           provenance: 'confirmation_needed',
           notes: item.notes ? `${item.notes} — ${item.condition}` : item.condition,
         })
-        questions.add(confirmQuestion)
       }
     }
 
-    for (const q of def.confirmationQuestions) {
-      questions.add(q)
+    for (const sq of def.structuredQuestions) {
+      if (!questionMap.has(sq.id)) {
+        questionMap.set(sq.id, {
+          id:             sq.id,
+          text:           sq.text,
+          severity:       sq.severity,
+          category:       sq.category,
+          answerType:     sq.answerType,
+          relatedTrigger: def.triggerId,
+          relatedTaskIds: sq.relatedTaskIds,
+          affects:        sq.affects,
+          options:        QUESTION_OPTIONS[sq.id],
+          source:         'dependency_rule',
+        })
+      }
     }
   }
+
+  const sortedQuestions = Array.from(questionMap.values())
+    .sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity])
 
   return {
     preceding:   Array.from(preceding.values()),
     hidden:      Array.from(hidden.values()),
     conditional: Array.from(conditional.values()),
-    questions:   Array.from(questions),
+    questions:   sortedQuestions,
   }
 }
 

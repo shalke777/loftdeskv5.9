@@ -113,6 +113,7 @@ interface RoomAnalysisRaw {
     name: string; unit: string; quantity: number; unit_price?: number | null
     confidence: number; source: string; notes?: string | null
   }>
+  clarification_questions?: unknown[]  // ClarificationQuestion[] — passed through as-is
   confidence:   number
   warnings:     string[]
   notes:        string | null
@@ -235,7 +236,9 @@ export async function callAnalyzeRoomPhoto(file: File, context?: string): Promis
       `Notatka AI: ${raw.notes}`,
     ]
   }
-
+  if (raw.clarification_questions && raw.clarification_questions.length > 0) {
+    result.clarification_questions = raw.clarification_questions as AnalysisResult['clarification_questions']
+  }
   return result
 }
 
@@ -375,6 +378,10 @@ export async function callAnalyzeRoomPhotos(
       ...result.extraction_warnings,
       `Notatka AI: ${raw.notes}`,
     ]
+  }
+
+  if (raw.clarification_questions && raw.clarification_questions.length > 0) {
+    result.clarification_questions = raw.clarification_questions as AnalysisResult['clarification_questions']
   }
 
   return result

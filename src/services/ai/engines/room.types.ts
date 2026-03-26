@@ -13,6 +13,8 @@
 //   - coverage: how well the library was applied
 // =============================================================================
 
+import type { ClarificationQuestion } from './clarification.types'
+
 /** Observable stage of the space being analyzed */
 export type StageOfWork =
   | 'before_renovation'    // stan przed — stara łazienka do remontu, widoczne zużycie
@@ -128,4 +130,7 @@ export interface RoomAnalysisResult {
   warnings:    string[]
   confidence:  number     // 0–100 overall
   notes?:      string | null
+
+  /** Structured clarification questions from the dependency engine (v1) */
+  clarification_questions?: ClarificationQuestion[]
 }

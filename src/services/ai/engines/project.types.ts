@@ -22,6 +22,8 @@
 //   comparison_ready  → compare() utility in comparison.ts
 // =============================================================================
 
+import type { ClarificationQuestion } from './clarification.types'
+
 /** Type of project document uploaded */
 export type ProjectDocumentType =
   | 'architectural_drawing'    // rzut techniczny z wymiarami
@@ -156,4 +158,7 @@ export interface ProjectAnalysisResult {
 
   // ── Comparison readiness
   comparison_ready:  boolean   // true if enough data to compare with room photo result
+
+  /** Structured clarification questions from the dependency engine (v1) */
+  clarification_questions?: ClarificationQuestion[]
 }

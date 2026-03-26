@@ -14,6 +14,8 @@
 //   - New analysis types add new sections without breaking old consumers
 // =============================================================================
 
+import type { ClarificationQuestion } from '@/services/ai/engines/clarification.types'
+
 // ── Analysis input classification ────────────────────────────────────────────
 
 /**
@@ -183,6 +185,9 @@ export interface AnalysisResult {
   // ── raw data (for debugging / future reprocessing) ──
   raw_text?:       string | null
   raw_response?:   unknown
+
+  /** Structured clarification questions from the bathroom dependency engine (v1) */
+  clarification_questions?: ClarificationQuestion[]
 }
 
 // ── Backward-compatible aliases ──────────────────────────────────────────────

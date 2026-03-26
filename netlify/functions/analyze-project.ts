@@ -27,6 +27,7 @@
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
 import { detectBathroomTriggers, expandDependencies } from './shared/bathroom-triggers'
+import type { ClarificationQuestion } from './shared/bathroom-triggers'
 
 // ── Local type definitions (mirrors src/services/ai/engines/project.types.ts) ─
 // Netlify functions cannot import from src/. Keep in sync manually.
@@ -100,6 +101,7 @@ interface ProjectAnalysisResult {
   confidence:               number
   warnings:                 string[]
   comparison_ready:         boolean
+  clarification_questions?: ClarificationQuestion[]
 }
 
 // ── Infra ────────────────────────────────────────────────────────────────────
@@ -692,10 +694,19 @@ export const handler: Handler = async (event) => {
         }
       }
 
-      // Surface confirmation questions
+      // Surface confirmation questions (backward compat: text → missing_information)
       for (const q of expanded.questions) {
-        if (!result.missing_information.includes(q)) {
-          result.missing_information.push(q)
+        if (!result.missing_information.includes(q.text)) {
+          result.missing_information.push(q.text)
+        }
+      }
+      // Structured questions channel
+      if (!result.clarification_questions) result.clarification_questions = []
+      const existingQIds = new Set(result.clarification_questions.map(cq => cq.id))
+      for (const q of expanded.questions) {
+        if (!existingQIds.has(q.id)) {
+          existingQIds.add(q.id)
+          result.clarification_questions.push(q)
         }
       }
     }

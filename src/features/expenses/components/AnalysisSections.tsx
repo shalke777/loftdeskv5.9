@@ -463,3 +463,229 @@ function MissingTasksSection({ coverage }: { coverage: CoverageResult }) {
     </div>
   )
 }
+
+// ── Clarification Questions Section (Interactive v1) ─────────────────────────
+
+import type { ClarificationQuestion, ClarificationAnswer, QuestionSeverity } from '@/services/ai/engines/clarification.types'
+
+const SEVERITY_CONFIG: Record<QuestionSeverity, { label: string; color: string; bg: string; border: string }> = {
+  critical_for_scope:     { label: 'Krytyczne', color: '#E57373', bg: 'rgba(229,115,115,0.08)', border: 'rgba(229,115,115,0.25)' },
+  important_for_accuracy: { label: 'Istotne',   color: '#D4960A', bg: 'rgba(212,150,10,0.07)',  border: 'rgba(212,150,10,0.22)' },
+  optional_detail:        { label: 'Opcjonalne', color: '#8A8F98', bg: 'rgba(138,143,152,0.06)', border: 'rgba(138,143,152,0.18)' },
+}
+
+const CONFIRMED_GREEN = '#52A56E'
+const CONFIRMED_BG    = 'rgba(82,165,110,0.08)'
+const CONFIRMED_BDR   = 'rgba(82,165,110,0.25)'
+const REJECTED_RED    = '#E57373'
+
+function makeBtn(color: string, bg: string): React.CSSProperties {
+  return { padding: '3px 10px', fontSize: 11, fontWeight: 600, borderRadius: 5, cursor: 'pointer', color, background: bg, border: `1px solid ${color}`, lineHeight: 1.5, fontFamily: 'inherit' }
+}
+
+const inputCss: React.CSSProperties = {
+  fontSize: 12, padding: '3px 8px', borderRadius: 5,
+  border: '1px solid var(--color-border)',
+  background: 'var(--color-surface)',
+  color: 'var(--color-text-primary)',
+  fontFamily: 'inherit',
+}
+
+// ── Single interactive answer row ─────────────────────────────────────────────
+
+function QuestionAnswerRow({
+  question, answer, onAnswer, cfg,
+}: {
+  question: ClarificationQuestion
+  answer:   ClarificationAnswer | undefined
+  onAnswer: (a: ClarificationAnswer) => void
+  cfg:      { color: string; bg: string; border: string }
+}) {
+  const [draft,   setDraft]   = useState('')
+  const [editing, setEditing] = useState(false)
+
+  const isAnswered = !!answer && !editing
+
+  function submit(val: string | boolean | number) {
+    onAnswer({ questionId: question.id, answerValue: val, answeredAt: new Date().toISOString(), source: 'user', affects: question.affects })
+    setEditing(false)
+    setDraft('')
+  }
+
+  function startEdit() {
+    setEditing(true)
+    setDraft(answer ? String(answer.answerValue) : '')
+  }
+
+  const answerLabel = answer
+    ? question.answerType === 'yes_no'
+      ? (answer.answerValue ? 'Tak' : 'Nie')
+      : String(answer.answerValue)
+    : null
+
+  const labelColor = isAnswered && question.answerType === 'yes_no' && answer?.answerValue === false
+    ? REJECTED_RED
+    : CONFIRMED_GREEN
+
+  return (
+    <li style={{
+      padding: '8px 10px', borderRadius: 6, fontSize: 12, lineHeight: 1.5,
+      background: isAnswered ? CONFIRMED_BG  : cfg.bg,
+      border:    `1px solid ${isAnswered ? CONFIRMED_BDR : cfg.border}`,
+      transition: 'background 0.15s',
+    }}>
+      {/* Question text + answered badge */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ color: isAnswered ? 'var(--color-text-muted)' : 'var(--color-text-primary)', flex: 1 }}>
+          {question.text}
+        </span>
+        {isAnswered && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: labelColor }}>✓ {answerLabel}</span>
+            <button type="button" onClick={startEdit}
+              style={{ fontSize: 10, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontFamily: 'inherit' }}>
+              zmień
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Answer controls — only shown when unanswered or editing */}
+      {!isAnswered && (
+        <div style={{ marginTop: 6 }}>
+          {question.answerType === 'yes_no' && (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" onClick={() => submit(true)}  style={makeBtn(CONFIRMED_GREEN, 'rgba(82,165,110,0.10)')}>Tak</button>
+              <button type="button" onClick={() => submit(false)} style={makeBtn(REJECTED_RED,   'rgba(229,115,115,0.10)')}>Nie</button>
+            </div>
+          )}
+          {question.answerType === 'single_choice' && (question.options?.length ?? 0) > 0 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {question.options!.map(opt => (
+                <button key={opt} type="button" onClick={() => submit(opt)}
+                  style={makeBtn('var(--color-primary, #2D7DD2)', 'rgba(45,125,210,0.08)')}>
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
+          {question.answerType === 'number' && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input type="number" value={draft} onChange={e => setDraft(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && draft.trim() && submit(Number(draft))}
+                style={{ ...inputCss, width: 80 }} placeholder="np. 12" />
+              <button type="button" onClick={() => draft.trim() && submit(Number(draft))}
+                style={makeBtn('var(--color-primary, #2D7DD2)', 'rgba(45,125,210,0.08)')}>OK</button>
+            </div>
+          )}
+          {question.answerType === 'text' && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+              <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={2}
+                style={{ ...inputCss, flex: 1, resize: 'vertical', minHeight: 44 }} placeholder="Opisz…" />
+              <button type="button" onClick={() => draft.trim() && submit(draft.trim())}
+                style={makeBtn('var(--color-primary, #2D7DD2)', 'rgba(45,125,210,0.08)')}>OK</button>
+            </div>
+          )}
+        </div>
+      )}
+    </li>
+  )
+}
+
+// ── Grouped by severity ───────────────────────────────────────────────────────
+
+function InteractiveQuestionGroup({
+  severity, questions, answerMap, onAnswer,
+}: {
+  severity:  QuestionSeverity
+  questions: ClarificationQuestion[]
+  answerMap: Map<string, ClarificationAnswer>
+  onAnswer:  (a: ClarificationAnswer) => void
+}) {
+  if (questions.length === 0) return null
+
+  const cfg          = SEVERITY_CONFIG[severity]
+  const answeredCount = questions.filter(q => answerMap.has(q.id)).length
+  const allDone      = answeredCount === questions.length
+
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, marginBottom: 5, textTransform: 'uppercase',
+        letterSpacing: '0.04em', display: 'flex', gap: 8, alignItems: 'center',
+        color: allDone ? CONFIRMED_GREEN : cfg.color,
+      }}>
+        <span>{cfg.label}</span>
+        <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: 10 }}>
+          {answeredCount}/{questions.length}
+        </span>
+      </div>
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {questions.map(q => (
+          <QuestionAnswerRow key={q.id} question={q} answer={answerMap.get(q.id)} onAnswer={onAnswer} cfg={cfg} />
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+// ── Public export ─────────────────────────────────────────────────────────────
+
+export function ClarificationQuestionsSection({
+  questions,
+  answers  = [],
+  onAnswer,
+}: {
+  questions: ClarificationQuestion[]
+  answers?:  ClarificationAnswer[]
+  onAnswer?: (answer: ClarificationAnswer) => void
+}) {
+  const [showOptional, setShowOptional] = useState(false)
+
+  if (!questions || questions.length === 0) return null
+
+  const answerMap = new Map(answers.map(a => [a.questionId, a]))
+  const noop      = (_: ClarificationAnswer) => {}
+  const handler   = onAnswer ?? noop
+
+  const critical  = questions.filter(q => q.severity === 'critical_for_scope')
+  const important = questions.filter(q => q.severity === 'important_for_accuracy')
+  const optional  = questions.filter(q => q.severity === 'optional_detail')
+
+  const totalAnswered = answers.length
+  const remaining     = questions.length - totalAnswered
+
+  return (
+    <AnalysisSectionCard title="Pytania wymagające doprecyzowania" count={remaining > 0 ? remaining : undefined} icon="❓">
+      {remaining > 0 && (
+        <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8, fontStyle: 'italic' }}>
+          Odpowiedzi ulepszają zakres prac i wycenę. Krytyczne pytania mają największy wpływ.
+        </div>
+      )}
+      {remaining === 0 && (
+        <div style={{ fontSize: 12, color: CONFIRMED_GREEN, marginBottom: 10, fontWeight: 600 }}>
+          ✓ Wszystkie pytania zostały odpowiedziane.
+        </div>
+      )}
+
+      <InteractiveQuestionGroup severity="critical_for_scope"     questions={critical}  answerMap={answerMap} onAnswer={handler} />
+      <InteractiveQuestionGroup severity="important_for_accuracy" questions={important} answerMap={answerMap} onAnswer={handler} />
+
+      {optional.length > 0 && !showOptional && (
+        <button type="button" onClick={() => setShowOptional(true)}
+          style={{ fontSize: 11, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', textDecoration: 'underline', fontFamily: 'inherit' }}>
+          + Pokaż pytania opcjonalne ({optional.length})
+        </button>
+      )}
+      {optional.length > 0 && showOptional && (
+        <>
+          <InteractiveQuestionGroup severity="optional_detail" questions={optional} answerMap={answerMap} onAnswer={handler} />
+          <button type="button" onClick={() => setShowOptional(false)}
+            style={{ fontSize: 11, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', textDecoration: 'underline', fontFamily: 'inherit' }}>
+            − Ukryj pytania opcjonalne
+          </button>
+        </>
+      )}
+    </AnalysisSectionCard>
+  )
+}
