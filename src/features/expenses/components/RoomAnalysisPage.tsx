@@ -95,6 +95,16 @@ export function RoomAnalysisPage() {
       <div>
         <PageHeader title="AI Analiza pomieszczenia" />
         <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 16px' }}>
+          {/* Engine switcher — subtle, top-right */}
+          <div style={{ textAlign: 'right', marginBottom: 6 }}>
+            <button
+              type="button"
+              onClick={() => navigate({ to: '/ai' as any })}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--color-text-muted)', padding: 0 }}
+            >
+              ← Inny typ analizy
+            </button>
+          </div>
           <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', lineHeight: 1.6 }}>
             Zrób zdjęcia pomieszczenia z różnych kątów → AI wygeneruje zakres prac, materiały i draft wyceny.
           </p>

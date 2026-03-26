@@ -40,6 +40,7 @@ const settingsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path:
 const expensesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'expenses', component: lazyRouteComponent(() => import('@/app/routes/expenses'), 'ExpensesRoutePage') })
 const roomAnalysisRoute    = createRoute({ getParentRoute: () => authLayoutRoute, path: 'room-analysis',    component: lazyRouteComponent(() => import('@/app/routes/room-analysis'),    'RoomAnalysisRoutePage')    })
 const projectAnalysisRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'project-analysis', component: lazyRouteComponent(() => import('@/app/routes/project-analysis'), 'ProjectAnalysisRoutePage') })
+const aiRoute              = createRoute({ getParentRoute: () => authLayoutRoute, path: 'ai',              component: lazyRouteComponent(() => import('@/app/routes/ai'),              'AiRoutePage')              })
 const chatRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: 'chat',
@@ -80,6 +81,7 @@ const routeTree = rootRoute.addChildren([
     expensesRoute,
     roomAnalysisRoute,
     projectAnalysisRoute,
+    aiRoute,
     clientDashboardRoute,
     clientProjectRoute,
     clientProfileRoute,

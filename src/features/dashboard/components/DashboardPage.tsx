@@ -17,7 +17,7 @@ const MOBILE_TILES = [
   { label: 'Faktury',        sub: 'Rozliczenia i KSeF',        icon: Receipt,             href: '/invoices'  },
   { label: 'Projekty',       sub: 'Realizacje i dokumenty',   icon: FolderKanban,        href: '/projects'  },
   { label: 'Portal klienta', sub: 'Widok i komunikacja klienta', icon: MessageSquareText,   href: '/chat'      },
-  { label: 'AI Analiza',     sub: 'Zdjęcia → zakres prac',    icon: Camera,              href: '/room-analysis'  },
+  { label: 'AI Analiza',     sub: 'Wybierz typ analizy',      icon: Camera,              href: '/ai'              },
   { label: 'AI Projekt',      sub: 'PDF → zakres i wycena',    icon: FileText,            href: '/project-analysis' },
 ] as const
 
@@ -26,7 +26,7 @@ const quickActions = [
   { icon: FileText,     title: 'Nowa wycena',        text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates' },
   { icon: Receipt,      title: 'Nowa faktura',       text: 'Wystaw fakturę i wyślij ją do KSeF jednym kliknięciem.', href: '/invoices'  },
   { icon: FolderKanban, title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',     href: '/projects'  },
-  { icon: Camera,       title: 'AI analiza zdjęć',   text: 'Zrób zdjęcia pomieszczenia → AI wygeneruje zakres prac i wycenę.',  href: '/room-analysis'  },
+  { icon: Camera,       title: 'AI analiza',         text: 'Skanuj fakturę, analizuj pomieszczenie lub projekt. Wybierz typ, AI dobierze silnik.',     href: '/ai'              },
   { icon: FileText,     title: 'AI analiza projektu', text: 'Wgraj PDF projektu lub wizualizację → AI wyciągnie zakres i wycenę.', href: '/project-analysis' },
 ]
 

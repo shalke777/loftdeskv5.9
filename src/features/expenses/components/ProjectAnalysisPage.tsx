@@ -7,11 +7,12 @@
 // Results can be transferred to estimate via ProjectEstimateSection.
 
 import { useRef, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { useAnalyzeProject } from '@/features/expenses/hooks/useAnalyzeProject'
 import { useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import { compareProjectToReality } from '@/services/ai/engines/comparison'
 import type { ProjectAnalysisResult, ProjectComparisonResult } from '@/services/ai/engines/project.types'
-import { AiErrorState, AiQualityBadge, AiUploadRules, aiPreflightValidate } from '@/shared/ui/AiGuidance'
+import { AiErrorState, AiQualityBadge, AiUploadRules, aiPreflightValidate, sniffFileIntent } from '@/shared/ui/AiGuidance'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import {
   ProjectSummaryBar,
@@ -70,12 +71,15 @@ function inferRoomType(r: ProjectAnalysisResult): string {
 export function ProjectAnalysisPage() {
   const analyze     = useAnalyzeProject()
   const analyzeRoom = useAnalyzeRoomPhotos()
+  const navigate    = useNavigate()
 
   const [step, setStep]       = useState<Step>('upload')
   const [file, setFile]       = useState<File | null>(null)
   const [context, setContext] = useState('')
   const [result, setResult]   = useState<ProjectAnalysisResult | null>(null)
   const [error, setError]     = useState<string | null>(null)
+  const [fileHint, setFileHint]           = useState<'document' | null>(null)
+  const [fileHintDismissed, setFileHintDismissed] = useState(false)
 
   // ── Comparison state ──
   const [showCompare, setShowCompare]             = useState(false)
@@ -93,6 +97,8 @@ export function ProjectAnalysisPage() {
     setContext('')
     setResult(null)
     setError(null)
+    setFileHint(null)
+    setFileHintDismissed(false)
     setShowCompare(false)
     setCompareFiles([])
     setComparingRoom(false)
@@ -134,7 +140,11 @@ export function ProjectAnalysisPage() {
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
-    if (f) setFile(f)
+    if (f) {
+      setFile(f)
+      setFileHint(sniffFileIntent(f))
+      setFileHintDismissed(false)
+    }
   }
 
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
@@ -142,6 +152,8 @@ export function ProjectAnalysisPage() {
     const f = e.dataTransfer.files?.[0]
     if (f) {
       setFile(f)
+      setFileHint(sniffFileIntent(f))
+      setFileHintDismissed(false)
       if (inputRef.current) inputRef.current.value = ''
     }
   }
@@ -177,6 +189,7 @@ export function ProjectAnalysisPage() {
 
   const isPdf = file?.type === 'application/pdf' || file?.name.toLowerCase().endsWith('.pdf')
 
+
   // ── Upload step ──────────────────────────────────────────────────────────
   if (step === 'upload') {
     return (
@@ -184,10 +197,52 @@ export function ProjectAnalysisPage() {
         <PageHeader title="AI Analiza projektu" />
         <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 16px 40px' }}>
 
-          <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', lineHeight: 1.6 }}>
+          {/* Engine switcher — subtle, top-right */}
+          <div style={{ textAlign: 'right', marginBottom: 4 }}>
+            <button
+              type="button"
+              onClick={() => navigate({ to: '/ai' as any })}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--color-text-muted)', padding: 0 }}
+            >
+              ← Zmień typ analizy
+            </button>
+          </div>
+
+          <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', lineHeight: 1.6 }}>
             Wgraj PDF projektu, rzut architektoniczny lub wizualizację wnętrza.<br />
             AI wyciągnie zakres prac, materiały i draft wyceny.
           </p>
+
+          {/* Smart routing hint — only shown when filename looks like an invoice */}
+          {fileHint === 'document' && !fileHintDismissed && (
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: 8,
+              padding: '8px 12px', borderRadius: 7, marginBottom: 12,
+              background: 'rgba(212,150,10,0.08)', border: '1px solid rgba(212,150,10,0.25)',
+              fontSize: 12, color: '#B5830A',
+            }}>
+              <span style={{ flex: 1, lineHeight: 1.5 }}>
+                💡 Nazwa pliku sugeruje fakturę lub paragon — to może być dokument kosztowy.
+                Jeśli tak, użyj{' '}
+                <button
+                  type="button"
+                  onClick={() => navigate({ to: '/expenses' as any })}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#B5830A', fontWeight: 700, fontSize: 12, padding: 0, textDecoration: 'underline' }}
+                >
+                  modułu Koszty
+                </button>
+                .
+              </span>
+              <button
+                type="button"
+                onClick={() => setFileHintDismissed(true)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, opacity: 0.6, color: 'currentColor', padding: '0 2px', lineHeight: 1, flexShrink: 0 }}
+                aria-label="Zamknij sugestię"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
           {/* Drop zone */}
           <div

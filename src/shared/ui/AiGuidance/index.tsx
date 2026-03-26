@@ -13,6 +13,25 @@
 
 import { useState } from 'react'
 
+// ── Smart file-intent sniff (filename heuristic, conservative) ────────────────
+// Returns a suggested engine type when the filename strongly implies a mismatch.
+// Only fires on high-confidence patterns — no guessing.
+
+/**
+ * Sniffs the file name for strong signals that the file belongs to a different
+ * AI engine than the one the user is currently in.
+ * Returns 'document' if the filename looks like an invoice/receipt, null otherwise.
+ */
+export function sniffFileIntent(file: File): 'document' | null {
+  const name = file.name.toLowerCase()
+  const INVOICE_KEYWORDS = [
+    'faktura', 'fvat', 'fv_', '_fv', '-fv', 'fv-',
+    'paragon', 'rachunek', 'invoice', 'receipt', 'nota_', '_nota',
+  ]
+  if (INVOICE_KEYWORDS.some(kw => name.includes(kw))) return 'document'
+  return null
+}
+
 // ── Preflight validation ───────────────────────────────────────────────────────
 
 export interface PreflightRules {
