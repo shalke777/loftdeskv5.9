@@ -1,12 +1,9 @@
 // =============================================================================
-// AnalysisSections — Section renderers for AnalysisResult review UI
+// AnalysisSections v2 — Section renderers for AnalysisResult review UI
 // =============================================================================
-// Each renderer:
-//   - renders only when it has real data (no fake placeholders)
-//   - uses AnalysisSectionCard for consistent collapsible UI
-//   - is ready for future pipeline output
+// v2: quantity hints, coverage engine (missing tasks), professional estimator layout.
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import type {
   DocumentLineItem,
@@ -131,8 +128,8 @@ export function WorkScopeSection({ items }: { items: WorkScopeItem[] }) {
 
 // ── Suggested Estimate Items (future — renders only with real data) ──────────
 
-import { getTaskById, BATHROOM_CATEGORIES } from '@/services/ai/bathroom-task-library'
-import type { TaskPriority } from '@/services/ai/bathroom-task-library'
+import { getTaskById, BATHROOM_CATEGORIES, checkCoverage } from '@/services/ai/bathroom-task-library'
+import type { TaskPriority, CoverageResult } from '@/services/ai/bathroom-task-library'
 
 const ESTIMATE_DRAFT_KEY = 'estimate_form_draft'
 
@@ -212,11 +209,25 @@ export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateIt
     { label: '🔍 Pozycje warunkowe / dodatkowe', items: rest, show: rest.length > 0 },
   ]
 
+  // Coverage engine — check what's missing
+  const presentIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const item of enriched) {
+      if (item.libId) ids.add(item.libId)
+    }
+    return ids
+  }, [enriched])
+
+  const coverage = useMemo(() => checkCoverage(presentIds), [presentIds])
+
   return (
     <AnalysisSectionCard title="Proponowane pozycje wyceny" count={items.length} icon="📊">
       <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8, fontStyle: 'italic' }}>
         Draft — propozycja AI dopasowana do biblioteki pozycji łazienkowych. Ilości i pozycje wymagają potwierdzenia.
       </div>
+
+      {/* Coverage bar */}
+      <CoverageBar coverage={coverage} />
 
       {groups.filter(g => g.show).map(group => (
         <div key={group.label} style={{ marginBottom: 12 }}>
@@ -238,8 +249,9 @@ export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateIt
                 {group.items.map((item, i) => {
                   const prio = item.task ? getPriorityLabel(item.task.priority) : null
                   const catName = item.task ? getCategoryName(item.task.category) : ''
+                  const lowConf = item.confidence < 40
                   return (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <tr key={i} style={{ borderBottom: '1px solid var(--color-border)', opacity: lowConf ? 0.6 : 1 }}>
                       <td style={colStyle}>
                         {item.name}
                         {catName && (
@@ -250,8 +262,15 @@ export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateIt
                         )}
                       </td>
                       <td style={colStyle}>{item.unit ?? '—'}</td>
-                      <td style={rightCol}>{item.quantity != null ? item.quantity : '—'}</td>
-                      <td style={rightCol}>{item.confidence != null ? `${item.confidence}%` : '—'}</td>
+                      <td style={rightCol}>
+                        {item.quantity != null && item.quantity > 0 ? item.quantity : '—'}
+                        {item.quantity === 0 && <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}> brak danych</span>}
+                      </td>
+                      <td style={rightCol}>
+                        <span style={{ color: item.confidence >= 70 ? '#77BA8A' : item.confidence >= 40 ? '#D4960A' : '#E57373' }}>
+                          {item.confidence != null ? `${item.confidence}%` : '—'}
+                        </span>
+                      </td>
                       <td style={colStyle}>
                         {prio ? (
                           <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: prio.bg, color: prio.color }}>
@@ -269,6 +288,9 @@ export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateIt
           </div>
         </div>
       ))}
+
+      {/* Missing tasks section */}
+      <MissingTasksSection coverage={coverage} />
 
       <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
         <button
@@ -292,5 +314,92 @@ export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateIt
         </button>
       </div>
     </AnalysisSectionCard>
+  )
+}
+
+// ── Coverage Bar ─────────────────────────────────────────────────────────────
+
+function CoverageBar({ coverage }: { coverage: CoverageResult }) {
+  const pct = coverage.coveragePercent
+  const color = pct >= 80 ? '#77BA8A' : pct >= 50 ? '#D4960A' : '#E57373'
+  const label = pct >= 80 ? 'Dobra' : pct >= 50 ? 'Częściowa' : 'Niska'
+
+  return (
+    <div style={{ marginBottom: 10, padding: '6px 10px', borderRadius: 6, background: 'var(--color-surface-soft, #1E2024)', border: '1px solid var(--color-border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, marginBottom: 4 }}>
+        <span style={{ color: 'var(--color-text-secondary)' }}>
+          Pokrycie obowiązkowych pozycji
+        </span>
+        <span style={{ fontWeight: 600, color }}>{label} ({pct}%)</span>
+      </div>
+      <div style={{ height: 4, borderRadius: 2, background: 'var(--color-border)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2, transition: 'width 0.3s' }} />
+      </div>
+      {coverage.brokenDependencies.length > 0 && (
+        <div style={{ marginTop: 4, fontSize: 10, color: '#D4960A' }}>
+          ⚠️ {coverage.brokenDependencies.length} pozycja(e) bez wymaganej zależności
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Missing Tasks Section ────────────────────────────────────────────────────
+
+function MissingTasksSection({ coverage }: { coverage: CoverageResult }) {
+  const hasMissing = coverage.missingRequired.length > 0 || coverage.missingLikely.length > 0
+  if (!hasMissing && coverage.unconfirmed.length === 0) return null
+
+  return (
+    <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, background: 'rgba(212,150,10,0.06)', border: '1px solid rgba(212,150,10,0.2)' }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: '#D4960A', marginBottom: 6 }}>
+        ⚠️ Brakujące pozycje
+      </div>
+
+      {coverage.missingRequired.length > 0 && (
+        <div style={{ marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#E57373', marginBottom: 2 }}>Brak obowiązkowych:</div>
+          <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, lineHeight: 1.6 }}>
+            {coverage.missingRequired.map(t => (
+              <li key={t.id} style={{ color: 'var(--color-text-secondary)' }}>
+                {t.name} <span style={{ color: 'var(--color-text-muted)' }}>({t.unit})</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {coverage.missingLikely.length > 0 && (
+        <div style={{ marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#60A5FA', marginBottom: 2 }}>Brak prawdopodobnych:</div>
+          <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, lineHeight: 1.6 }}>
+            {coverage.missingLikely.slice(0, 8).map(t => (
+              <li key={t.id} style={{ color: 'var(--color-text-secondary)' }}>
+                {t.name} <span style={{ color: 'var(--color-text-muted)' }}>— {t.when}</span>
+              </li>
+            ))}
+            {coverage.missingLikely.length > 8 && (
+              <li style={{ color: 'var(--color-text-muted)' }}>…i {coverage.missingLikely.length - 8} więcej</li>
+            )}
+          </ul>
+        </div>
+      )}
+
+      {coverage.unconfirmed.length > 0 && (
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#D4960A', marginBottom: 2 }}>Do potwierdzenia ({coverage.unconfirmed.length}):</div>
+          <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, lineHeight: 1.6 }}>
+            {coverage.unconfirmed.slice(0, 6).map(t => (
+              <li key={t.id} style={{ color: 'var(--color-text-secondary)' }}>
+                {t.name} <span style={{ color: 'var(--color-text-muted)' }}>— {t.when}</span>
+              </li>
+            ))}
+            {coverage.unconfirmed.length > 6 && (
+              <li style={{ color: 'var(--color-text-muted)' }}>…i {coverage.unconfirmed.length - 6} więcej</li>
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
   )
 }

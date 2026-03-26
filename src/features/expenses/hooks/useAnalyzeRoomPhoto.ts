@@ -113,6 +113,12 @@ export interface BathroomClarification {
   has_bathtub?: boolean
   has_shower?: boolean
   has_underfloor_heating?: boolean
+  wc_type?: 'standing' | 'concealed'
+  sink_count?: 1 | 2
+  has_linear_drain?: boolean
+  plumbing_scope?: 'none' | 'limited' | 'full'
+  electrical_scope?: 'none' | 'limited' | 'full'
+  has_boiler_casing?: boolean
   fixtures_standard?: 'budget' | 'standard' | 'premium'
   notes?: string
 }
@@ -227,6 +233,12 @@ function buildClarificationContext(c?: BathroomClarification): string {
   if (c.has_bathtub) parts.push('Wanna: tak')
   if (c.has_shower) parts.push('Prysznic: tak')
   if (c.has_underfloor_heating) parts.push('Ogrzewanie podłogowe: tak')
+  if (c.wc_type) parts.push(`WC: ${c.wc_type === 'concealed' ? 'podtynkowe' : 'stojące (kompakt)'}`)
+  if (c.sink_count) parts.push(`Umywalki: ${c.sink_count}`)
+  if (c.has_linear_drain) parts.push('Odpływ liniowy: tak')
+  if (c.plumbing_scope) parts.push(`Przeróbki hydrauliczne: ${c.plumbing_scope === 'full' ? 'całość' : c.plumbing_scope === 'limited' ? 'częściowe' : 'brak'}`)
+  if (c.electrical_scope) parts.push(`Przeróbki elektryczne: ${c.electrical_scope === 'full' ? 'całość' : c.electrical_scope === 'limited' ? 'częściowe' : 'brak'}`)
+  if (c.has_boiler_casing) parts.push('Zabudowa kotła/bojlera: tak')
   if (c.fixtures_standard) parts.push(`Standard: ${c.fixtures_standard}`)
   if (c.notes) parts.push(`Uwagi: ${c.notes}`)
   return parts.join('. ')
@@ -235,6 +247,7 @@ function buildClarificationContext(c?: BathroomClarification): string {
 export async function callAnalyzeRoomPhotos(
   files: File[],
   clarification?: BathroomClarification,
+  roomType?: string,
 ): Promise<AnalysisResult> {
   if (files.length === 0) {
     return {
@@ -279,6 +292,7 @@ export async function callAnalyzeRoomPhotos(
         image_type: 'image/jpeg',
         context: context || undefined,
         clarification,
+        room_type: roomType || undefined,
       }),
     })
   } catch {
@@ -327,7 +341,7 @@ export async function callAnalyzeRoomPhotos(
 
 export function useAnalyzeRoomPhotos() {
   return useMutation({
-    mutationFn: ({ files, clarification }: { files: File[]; clarification?: BathroomClarification }) =>
-      callAnalyzeRoomPhotos(files, clarification),
+    mutationFn: ({ files, clarification, roomType }: { files: File[]; clarification?: BathroomClarification; roomType?: string }) =>
+      callAnalyzeRoomPhotos(files, clarification, roomType),
   })
 }

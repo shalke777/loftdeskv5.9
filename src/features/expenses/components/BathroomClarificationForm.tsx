@@ -1,26 +1,36 @@
 // =============================================================================
-// BathroomClarificationForm — guided inputs before AI analysis
+// BathroomClarificationForm v2 — guided inputs before AI analysis
 // =============================================================================
-// Short form that collects key parameters to improve AI bathroom analysis.
-// Minimalist: all fields optional, quick to fill, skippable.
+// Extended form: area, height, tile, bathtub/shower, WC type, sinks, linear drain,
+// floor heating, plumbing/electrical changes, boiler casing, standard, notes.
+// All fields optional, quick to fill, skippable.
 
 import { useState } from 'react'
 import type { BathroomClarification } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
+import type { RoomTypeId } from '@/services/ai/room-types'
+import { getRoomTypeName } from '@/services/ai/room-types'
 
 interface Props {
   photoCount: number
+  roomType?: RoomTypeId
   onSubmit: (data: BathroomClarification) => void
   onSkip: () => void
   disabled?: boolean
 }
 
-export function BathroomClarificationForm({ photoCount, onSubmit, onSkip, disabled }: Props) {
+export function BathroomClarificationForm({ photoCount, roomType, onSubmit, onSkip, disabled }: Props) {
   const [area, setArea]                 = useState('')
   const [height, setHeight]             = useState('')
   const [tileCoverage, setTileCoverage] = useState<'full' | 'partial' | 'none' | ''>('')
   const [hasBathtub, setHasBathtub]     = useState(false)
   const [hasShower, setHasShower]       = useState(false)
   const [hasFloorHeating, setHasFloorHeating] = useState(false)
+  const [wcType, setWcType]             = useState<'standing' | 'concealed' | ''>('')
+  const [sinkCount, setSinkCount]       = useState<1 | 2 | ''>('')
+  const [hasLinearDrain, setHasLinearDrain] = useState(false)
+  const [plumbingScope, setPlumbingScope] = useState<'none' | 'limited' | 'full' | ''>('')
+  const [electricalScope, setElectricalScope] = useState<'none' | 'limited' | 'full' | ''>('')
+  const [hasBoilerCasing, setHasBoilerCasing] = useState(false)
   const [standard, setStandard]         = useState<'budget' | 'standard' | 'premium' | ''>('')
   const [notes, setNotes]               = useState('')
 
@@ -35,8 +45,14 @@ export function BathroomClarificationForm({ photoCount, onSubmit, onSkip, disabl
     if (hasBathtub) data.has_bathtub = true
     if (hasShower) data.has_shower = true
     if (hasFloorHeating) data.has_underfloor_heating = true
+    if (wcType) data.wc_type = wcType
+    if (sinkCount) data.sink_count = sinkCount
+    if (hasLinearDrain) data.has_linear_drain = true
+    if (plumbingScope) data.plumbing_scope = plumbingScope
+    if (electricalScope) data.electrical_scope = electricalScope
+    if (hasBoilerCasing) data.has_boiler_casing = true
     if (standard) data.fixtures_standard = standard
-    if (notes.trim()) data.notes = notes.trim().slice(0, 300)
+    if (notes.trim()) data.notes = notes.trim().slice(0, 500)
     onSubmit(data)
   }
 
@@ -60,10 +76,12 @@ export function BathroomClarificationForm({ photoCount, onSubmit, onSkip, disabl
     border: `1px solid ${active ? 'var(--color-primary, #60A5FA)' : 'var(--color-border, #3A3D42)'}`,
   })
 
+  const roomLabel = roomType ? getRoomTypeName(roomType) : 'łazienki'
+
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 24, maxWidth: 440, margin: '0 auto' }}>
       <div style={{ textAlign: 'center', marginBottom: 4 }}>
-        <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>🔍 Szczegóły łazienki</p>
+        <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>🔍 Szczegóły {roomLabel}</p>
         <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted, #8A8F98)' }}>
           Opcjonalne — pomaga AI lepiej dopasować zakres prac. {photoCount} {photoCount === 1 ? 'zdjęcie' : 'zdjęć'} gotowe.
         </p>
@@ -107,6 +125,73 @@ export function BathroomClarificationForm({ photoCount, onSubmit, onSkip, disabl
             onClick={() => setHasShower(!hasShower)}>🚿 Prysznic</button>
           <button type="button" style={chipStyle(hasFloorHeating)} disabled={disabled}
             onClick={() => setHasFloorHeating(!hasFloorHeating)}>♨️ Podłogówka</button>
+          <button type="button" style={chipStyle(hasLinearDrain)} disabled={disabled}
+            onClick={() => setHasLinearDrain(!hasLinearDrain)}>〰️ Odpływ liniowy</button>
+        </div>
+      </div>
+
+      {/* WC type */}
+      <div>
+        <label style={labelStyle}>Typ WC</label>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {([['standing', 'Stojące (kompakt)'], ['concealed', 'Podtynkowe']] as const).map(([val, lbl]) => (
+            <button key={val} type="button" disabled={disabled}
+              style={chipStyle(wcType === val)}
+              onClick={() => setWcType(wcType === val ? '' : val)}>
+              {lbl}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Row: sinks + boiler */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div>
+          <label style={labelStyle}>Umywalki</label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {([1, 2] as const).map(n => (
+              <button key={n} type="button" disabled={disabled}
+                style={chipStyle(sinkCount === n)}
+                onClick={() => setSinkCount(sinkCount === n ? '' : n)}>
+                {n === 1 ? '1 umywalka' : '2 umywalki'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label style={labelStyle}>Kocioł / bojler</label>
+          <button type="button" style={chipStyle(hasBoilerCasing)} disabled={disabled}
+            onClick={() => setHasBoilerCasing(!hasBoilerCasing)}>
+            🔥 Zabudowa
+          </button>
+        </div>
+      </div>
+
+      {/* Plumbing + electrical scope */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div>
+          <label style={labelStyle}>Przeróbki hydraul.</label>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {([['none', 'Brak'], ['limited', 'Częściowe'], ['full', 'Całość']] as const).map(([val, lbl]) => (
+              <button key={val} type="button" disabled={disabled}
+                style={chipStyle(plumbingScope === val)}
+                onClick={() => setPlumbingScope(plumbingScope === val ? '' : val)}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label style={labelStyle}>Przeróbki elektr.</label>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {([['none', 'Brak'], ['limited', 'Częściowe'], ['full', 'Całość']] as const).map(([val, lbl]) => (
+              <button key={val} type="button" disabled={disabled}
+                style={chipStyle(electricalScope === val)}
+                onClick={() => setElectricalScope(electricalScope === val ? '' : val)}>
+                {lbl}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -128,7 +213,7 @@ export function BathroomClarificationForm({ photoCount, onSubmit, onSkip, disabl
       <div>
         <label style={labelStyle}>Dodatkowe uwagi (opcjonalne)</label>
         <textarea
-          rows={2} maxLength={300} placeholder="np. Pion kanalizacyjny do zabudowy, lustro na całą ścianę…"
+          rows={2} maxLength={500} placeholder="np. Pion kanalizacyjny do zabudowy, lustro na całą ścianę…"
           value={notes} onChange={e => setNotes(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} disabled={disabled}
         />
       </div>

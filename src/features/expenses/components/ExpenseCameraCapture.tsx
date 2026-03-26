@@ -1,17 +1,21 @@
 import { useRef, useState } from 'react'
 import type { ExpenseSourceType } from '@/features/expenses/api/expenses.api'
+import { ROOM_TYPES } from '@/services/ai/room-types'
+import type { RoomTypeId } from '@/services/ai/room-types'
 
 const MAX_ROOM_PHOTOS = 10
 const MIN_ROOM_PHOTOS = 1
 
 interface Props {
   onCapture: (file: File, sourceType: ExpenseSourceType) => void
-  onRoomPhotos?: (files: File[]) => void
+  onRoomPhotos?: (files: File[], roomType: RoomTypeId) => void
   onManual:  () => void
   disabled?: boolean
+  /** When true, skip invoice/manual buttons — show only room analysis flow */
+  roomAnalysisOnly?: boolean
 }
 
-export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabled }: Props) {
+export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabled, roomAnalysisOnly }: Props) {
   const cameraRef    = useRef<HTMLInputElement>(null)
   const galleryRef   = useRef<HTMLInputElement>(null)
   const pdfRef       = useRef<HTMLInputElement>(null)
@@ -20,6 +24,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
 
   const [roomPhotos, setRoomPhotos] = useState<File[]>([])
   const [roomMode, setRoomMode]     = useState(false)
+  const [selectedRoomType, setSelectedRoomType] = useState<RoomTypeId | null>(null)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>, sourceType: ExpenseSourceType) {
     const file = e.target.files?.[0]
@@ -42,7 +47,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
   function confirmRoomPhotos() {
     if (roomPhotos.length < MIN_ROOM_PHOTOS) return
     if (onRoomPhotos) {
-      onRoomPhotos(roomPhotos)
+      onRoomPhotos(roomPhotos, selectedRoomType ?? 'bathroom')
     } else {
       // Fallback: send first photo through legacy single-file path
       onCapture(roomPhotos[0], 'room_photo')
@@ -52,14 +57,78 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
   function cancelRoomMode() {
     setRoomPhotos([])
     setRoomMode(false)
+    setSelectedRoomType(null)
   }
 
-  // ── Room photo collector view ──
-  if (roomMode) {
+  // ── Room type selector view ──
+  if (roomMode && !selectedRoomType) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 24, maxWidth: 440, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 15, fontWeight: 600, textAlign: 'center' }}>
-          🏠 Zdjęcia łazienki / pomieszczenia
+          📐 Typ pomieszczenia
+        </p>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted, #8A8F98)', textAlign: 'center' }}>
+          Wybierz typ — dostosujemy analizę i bibliotekę pozycji.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 4 }}>
+          {ROOM_TYPES.map(rt => (
+            <button
+              key={rt.id}
+              type="button"
+              onClick={() => {
+                setSelectedRoomType(rt.id)
+                // Auto-open file picker for first photo
+                setTimeout(() => roomAddRef.current?.click(), 50)
+              }}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                padding: '16px 12px', borderRadius: 10,
+                background: 'var(--color-bg-input, #2A2D32)',
+                border: '1px solid var(--color-border, #3A3D42)',
+                cursor: 'pointer', transition: 'all .15s',
+                fontSize: 13, fontWeight: 500,
+                color: 'var(--color-text-primary, #E5E7EB)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary, #60A5FA)'; e.currentTarget.style.background = 'var(--color-primary-soft, rgba(59,130,246,.08))' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border, #3A3D42)'; e.currentTarget.style.background = 'var(--color-bg-input, #2A2D32)' }}
+            >
+              <span style={{ fontSize: 24 }}>{rt.icon}</span>
+              <span>{rt.name}</span>
+              <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textAlign: 'center' }}>{rt.description}</span>
+              {rt.hasLibrary && (
+                <span style={{ fontSize: 9, color: '#77BA8A', fontWeight: 600 }}>+ Biblioteka pozycji</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={cancelRoomMode}
+          style={{ fontSize: 14, padding: '12px 16px', marginTop: 4 }}
+        >
+          ← Wróć
+        </button>
+        {/* Hidden multi-file input (needed for auto-open after selection) */}
+        <input
+          ref={roomAddRef}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: 'none' }}
+          onChange={handleRoomFiles}
+        />
+      </div>
+    )
+  }
+
+  // ── Room photo collector view ──
+  if (roomMode && selectedRoomType) {
+    const roomInfo = ROOM_TYPES.find(r => r.id === selectedRoomType)
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 24, maxWidth: 440, margin: '0 auto' }}>
+        <p style={{ margin: 0, fontSize: 15, fontWeight: 600, textAlign: 'center' }}>
+          {roomInfo?.icon ?? '🏠'} Zdjęcia — {roomInfo?.name ?? 'Pomieszczenie'}
         </p>
         <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted, #8A8F98)', textAlign: 'center' }}>
           Dodaj 1–{MAX_ROOM_PHOTOS} zdjęć z różnych kątów. Im więcej, tym lepsza analiza.
@@ -143,6 +212,54 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
     )
   }
 
+  // ── roomAnalysisOnly: skip invoice buttons, go straight to room type selector ──
+  if (roomAnalysisOnly && !roomMode) {
+    // Auto-enter room mode on first render
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 24, maxWidth: 440, margin: '0 auto' }}>
+        <p style={{ margin: 0, fontSize: 15, fontWeight: 600, textAlign: 'center' }}>
+          📐 Typ pomieszczenia
+        </p>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted, #8A8F98)', textAlign: 'center' }}>
+          Wybierz typ — dostosujemy analizę i bibliotekę pozycji.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 4 }}>
+          {ROOM_TYPES.map(rt => (
+            <button
+              key={rt.id}
+              type="button"
+              onClick={() => {
+                setSelectedRoomType(rt.id)
+                setRoomMode(true)
+                setTimeout(() => roomAddRef.current?.click(), 50)
+              }}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                padding: '16px 12px', borderRadius: 10,
+                background: 'var(--color-bg-input, #2A2D32)',
+                border: '1px solid var(--color-border, #3A3D42)',
+                cursor: 'pointer', transition: 'all .15s',
+                fontSize: 13, fontWeight: 500,
+                color: 'var(--color-text-primary, #E5E7EB)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary, #60A5FA)'; e.currentTarget.style.background = 'var(--color-primary-soft, rgba(59,130,246,.08))' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border, #3A3D42)'; e.currentTarget.style.background = 'var(--color-bg-input, #2A2D32)' }}
+            >
+              <span style={{ fontSize: 24 }}>{rt.icon}</span>
+              <span>{rt.name}</span>
+              <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textAlign: 'center' }}>{rt.description}</span>
+              {rt.hasLibrary && (
+                <span style={{ fontSize: 9, color: '#77BA8A', fontWeight: 600 }}>+ Biblioteka pozycji</span>
+              )}
+            </button>
+          ))}
+        </div>
+        {/* Hidden multi-file input */}
+        <input ref={roomAddRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleRoomFiles} />
+      </div>
+    )
+  }
+
   // ── Default capture view ──
   return (
     <div
@@ -200,8 +317,8 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
         onClick={() => {
           setRoomPhotos([])
           setRoomMode(true)
-          // Auto-open file picker for first photo
-          setTimeout(() => roomAddRef.current?.click(), 50)
+          setSelectedRoomType(null)
+          // Room type selector will appear — no auto-open file picker here
         }}
         style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', fontSize: 15, padding: '14px 20px' }}
       >

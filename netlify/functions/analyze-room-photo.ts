@@ -1,8 +1,8 @@
 // =============================================================================
-// Netlify Function: analyze-room-photo  (v1 — Room/Site Vision Analysis)
+// Netlify Function: analyze-room-photo  (v2 — Room/Site Vision Analysis)
 // =============================================================================
 // AI analysis of room/bathroom/site photos via OpenAI vision.
-// Returns detected materials, work scope, and confidence metadata.
+// v2: room type aware, expanded clarification, quantity hints, coverage guidance.
 //
 // Request (POST /.netlify/functions/analyze-room-photo):
 //   Content-Type: application/json
@@ -10,7 +10,9 @@
 //   {
 //     image_base64: string   // base64-encoded image JPEG/PNG/WEBP
 //     image_type:   string   // MIME, e.g. "image/jpeg"
-//     context?:     string   // optional user hint, e.g. "łazienka do remontu"
+//     context?:     string   // optional user hint
+//     room_type?:   string   // bathroom, kitchen, room, hallway, facade, other
+//     clarification?: object // guided form data
 //   }
 //
 // Response 200: { ok: true, result: RoomAnalysisResult }
@@ -183,76 +185,104 @@ const BATHROOM_LIBRARY_BLOCK = `
 BIBLIOTEKA TYPOWYCH POZYCJI ŁAZIENKOWYCH (referencja do dopasowania):
 
 ## Demontaż i przygotowanie
+- measure_inventory: Pomiar / inwentaryzacja / trasowanie (kpl.) [OBOWIĄZKOWA]
 - demo_tiles_wall: Demontaż starych płytek ściennych (m²) [PRAWDOPODOBNA]
 - demo_tiles_floor: Demontaż starych płytek podłogowych (m²) [PRAWDOPODOBNA]
 - demo_fixtures: Demontaż starej ceramiki i armatury (kpl.) [PRAWDOPODOBNA]
 - demo_bathtub: Demontaż wanny / brodzika (szt.) [WARUNKOWA]
+- demo_drywall: Demontaż starych zabudów GK (m²) [WARUNKOWA]
 - debris_removal: Wywóz gruzu i odpadów (kpl.) [OBOWIĄZKOWA]
 
 ## Przygotowanie podłoża
-- substrate_leveling: Wyrównanie podłoża (m²) [PRAWDOPODOBNA]
+- substrate_leveling: Wyrównanie podłoża / wylewka / szlichta (m²) [PRAWDOPODOBNA]
 - substrate_priming: Gruntowanie podłoża pod płytki (m²) [OBOWIĄZKOWA]
+- substrate_wall_priming: Gruntowanie ścian pod płytki / malowanie (m²) [OBOWIĄZKOWA]
 - substrate_plastering: Tynkowanie / wyrównanie ścian (m²) [WARUNKOWA]
 
 ## Hydroizolacja
-- waterproof_wet: Hydroizolacja stref mokrych (m²) [OBOWIĄZKOWA]
-- waterproof_floor: Hydroizolacja podłogi łazienki (m²) [OBOWIĄZKOWA]
-- waterproof_tape: Taśmy uszczelniające (mb) [OBOWIĄZKOWA]
-- waterproof_collar: Kołnierze uszczelniające (szt.) [OBOWIĄZKOWA]
+- waterproof_wet: Hydroizolacja stref mokrych (prysznic, wanna) (m²) [OBOWIĄZKOWA] (wymaga: tile_floor)
+- waterproof_floor: Hydroizolacja podłogi łazienki (m²) [OBOWIĄZKOWA] (wymaga: tile_floor)
+- waterproof_tape: Taśmy uszczelniające narożniki, przejścia (mb) [OBOWIĄZKOWA] (wymaga: waterproof_wet)
+- waterproof_collar: Kołnierze uszczelniające odpływ, rury (szt.) [OBOWIĄZKOWA] (wymaga: waterproof_floor)
 
-## Zabudowy GK
+## Zabudowy GK / obudowy / rewizje
 - gk_pipe_casing: Zabudowa pionów instalacyjnych GK (mb) [PRAWDOPODOBNA]
-- gk_inspection: Rewizja serwisowa (szt.) [PRAWDOPODOBNA]
-- gk_wc_frame: Zabudowa stelaża WC podtynkowego (kpl.) [WARUNKOWA]
+- gk_inspection: Rewizja serwisowa / drzwiczki (szt.) [PRAWDOPODOBNA] (wymaga: gk_pipe_casing)
+- gk_wc_frame: Zabudowa stelaża WC podtynkowego (kpl.) [WARUNKOWA] (wymaga: fix_wc_concealed)
 - gk_niche: Wnęka / półka z GK (szt.) [OPCJONALNA]
 - gk_ceiling: Sufit podwieszany GK (m²) [OPCJONALNA]
+- gk_boiler_casing: Obudowa kotła / bojlera (kpl.) [WARUNKOWA]
 
 ## Instalacja wod-kan
 - plumb_points: Przeróbka punktów wod-kan (szt.) [WARUNKOWA]
-- plumb_shower_drain: Montaż odpływu liniowego (szt.) [WARUNKOWA]
+- plumb_shower_drain: Montaż odpływu liniowego / brodzika (szt.) [WARUNKOWA]
+- plumb_bathtub: Podłączenie wanny (szt.) [WARUNKOWA] (wymaga: fix_bathtub)
+- plumb_mixing_valve: Montaż baterii podtynkowej (szt.) [OPCJONALNA]
+- plumb_radiator: Montaż grzejnika łazienkowego / drabinki (szt.) [PRAWDOPODOBNA]
+
+## Instalacja elektryczna
+- elec_points: Przeróbka punktów elektrycznych (szt.) [WARUNKOWA]
+- elec_lighting: Montaż oświetlenia LED, halogeny (szt.) [PRAWDOPODOBNA]
+- elec_mirror_light: Podłączenie oświetlenia lustra (szt.) [OPCJONALNA] (wymaga: acc_mirror)
+- elec_underfloor: Mata grzewcza podłogowa elektryczna (m²) [OPCJONALNA]
+- elec_fan: Montaż wentylatora łazienkowego (szt.) [PRAWDOPODOBNA]
 
 ## Okładziny ścienne
-- tile_wall_full: Płytki ścienne pełna wysokość (m²) [PRAWDOPODOBNA]
-- tile_wall_partial: Płytki ścienne częściowa wys. (m²) [WARUNKOWA]
-- tile_wall_trim: Obróbki, docinki, listwy narożnikowe (mb) [OBOWIĄZKOWA]
-- tile_wall_grouting: Fugowanie płytek ściennych (m²) [OBOWIĄZKOWA]
+- tile_wall_full: Układanie płytek ściennych pełna wysokość (m²) [PRAWDOPODOBNA]
+- tile_wall_partial: Układanie płytek ściennych częściowa wys. (m²) [WARUNKOWA]
+- tile_wall_trim: Obróbki, docinki, listwy narożnikowe (mb) [OBOWIĄZKOWA] (wymaga: tile_wall_full LUB tile_wall_partial)
+- tile_wall_grouting: Fugowanie płytek ściennych (m²) [OBOWIĄZKOWA] (wymaga: tile_wall_full LUB tile_wall_partial)
+- tile_mosaic: Układanie mozaiki / dekorów (m²) [OPCJONALNA]
+- tile_window_sill: Obróbka okna glif, parapet z płytek (mb) [WARUNKOWA]
 
 ## Okładziny podłogowe
-- tile_floor: Płytki podłogowe (m²) [OBOWIĄZKOWA]
-- tile_floor_grouting: Fugowanie płytek podłogowych (m²) [OBOWIĄZKOWA]
+- tile_floor: Układanie płytek podłogowych (m²) [OBOWIĄZKOWA]
+- tile_floor_grouting: Fugowanie płytek podłogowych (m²) [OBOWIĄZKOWA] (wymaga: tile_floor)
+- tile_floor_trim: Cokoły / listwy przypodłogowe z płytek (mb) [OPCJONALNA]
 - tile_threshold: Próg / listwa progowa (szt.) [PRAWDOPODOBNA]
 
-## Malowanie
-- paint_ceiling: Malowanie sufitu (m²) [PRAWDOPODOBNA]
-- paint_walls: Malowanie ścian bez płytek (m²) [WARUNKOWA]
+## Malowanie / tynki dekoracyjne
+- paint_ceiling: Malowanie sufitu farba łazienkowa (m²) [PRAWDOPODOBNA]
+- paint_walls: Malowanie ścian strefy bez płytek (m²) [WARUNKOWA]
 
 ## Biały montaż
 - fix_wc: Montaż miski WC (szt.) [OBOWIĄZKOWA]
+- fix_wc_concealed: Montaż WC podtynkowego z przyciskiem (kpl.) [WARUNKOWA] (wymaga: gk_wc_frame)
 - fix_basin: Montaż umywalki (szt.) [OBOWIĄZKOWA]
+- fix_double_basin: Montaż umywalki podwójnej (szt.) [WARUNKOWA]
 - fix_shower_cabin: Montaż kabiny prysznicowej (kpl.) [WARUNKOWA]
 - fix_bathtub: Montaż wanny + obudowa (kpl.) [WARUNKOWA]
+- fix_bidet: Montaż bidetu (szt.) [OPCJONALNA]
 
 ## Armatura
-- fit_basin_tap: Bateria umywalkowa (szt.) [OBOWIĄZKOWA]
-- fit_shower_set: Zestaw prysznicowy (kpl.) [PRAWDOPODOBNA]
-- fit_angle_valves: Zawory kątowe (szt.) [OBOWIĄZKOWA]
+- fit_basin_tap: Montaż baterii umywalkowej (szt.) [OBOWIĄZKOWA] (wymaga: fix_basin)
+- fit_shower_set: Montaż zestawu prysznicowego (kpl.) [PRAWDOPODOBNA]
+- fit_bathtub_tap: Montaż baterii wannowej (szt.) [WARUNKOWA] (wymaga: fix_bathtub)
+- fit_angle_valves: Montaż zaworów kątowych (szt.) [OBOWIĄZKOWA]
 
-## Akcesoria
-- acc_mirror: Lustro (szt.) [PRAWDOPODOBNA]
-- acc_towel_rail: Wieszak / grzejnik łazienkowy (szt.) [PRAWDOPODOBNA]
+## Akcesoria i wykończenie
+- acc_mirror: Montaż lustra (szt.) [PRAWDOPODOBNA]
+- acc_towel_rail: Montaż wieszaka / grzejnika łazienkowego (szt.) [PRAWDOPODOBNA]
+- acc_shelf: Montaż półek / organizerów (szt.) [OPCJONALNA]
+- acc_toilet_paper: Montaż uchwytu na papier (szt.) [PRAWDOPODOBNA]
+- acc_soap_dish: Montaż dozownika / mydelniczki (szt.) [OPCJONALNA]
+- acc_glass_partition: Montaż szyby / ścianki prysznicowej walk-in (szt.) [WARUNKOWA]
 
 ## Uszczelnienia i odbiór
-- seal_silicone: Silikonowanie (mb) [OBOWIĄZKOWA]
+- seal_silicone: Silikonowanie wanna, brodzik, umywalka, WC (mb) [OBOWIĄZKOWA]
+- seal_acrylic: Uszczelnienie akrylowe narożniki, przejścia (mb) [PRAWDOPODOBNA]
 - seal_cleanup: Sprzątanie powykonawcze (kpl.) [OBOWIĄZKOWA]
+- seal_inspection: Odbiór techniczny / próba szczelności (kpl.) [OPCJONALNA]
 `
 
 const INSTRUCTIONS = `Jesteś ekspertem od remontów i wykończeń wnętrz w Polsce, specjalizujesz się w łazienkach.
 Analizujesz zdjęcia pomieszczeń i na podstawie:
 - widocznych materiałów, stanu wykończenia, urządzeń sanitarnych
-- przekazanych parametrów (powierzchnia, wysokość, standard)
+- przekazanych parametrów (powierzchnia, wysokość, standard, typ WC, liczba umywalek, przeróbki)
 - profesjonalnej biblioteki pozycji łazienkowych
+- zasad remontowych (zależności między pozycjami)
 
-generujesz KOMPLETNY zakres prac remontowych.
+generujesz KOMPLETNY zakres prac remontowych — jak kosztorysant branżowy.
 
 Zwróć TYLKO poprawny JSON zgodny z podanym schematem.
 
@@ -266,6 +296,20 @@ WAŻNE — ZASADY DOPASOWANIA DO BIBLIOTEKI:
 5. Pozycje [WARUNKOWA] dodaj TYLKO gdy widoczne na zdjęciu LUB potwierdzone w clarification
 6. Nie wymyślaj pozycji które nie mają pokrycia w bibliotece ani na zdjęciu
 7. Gdy analizujesz wiele zdjęć — łącz informacje z WSZYSTKICH (różne kąty = pełniejszy obraz)
+
+ZASADY ZALEŻNOŚCI:
+- Jeśli dodajesz pozycję która wymaga innej (np. gk_inspection wymaga gk_pipe_casing), upewnij się że zależność też jest na liście
+- WC podtynkowe → zawsze dodaj zabudowę stelaża (gk_wc_frame)
+- Odpływ liniowy → dodaj plumb_shower_drain
+- Wanna → dodaj plumb_bathtub + fit_bathtub_tap
+
+ZASADY ILOŚCI (QUANTITY HINTS):
+- Gdy znasz powierzchnię podłogi (area_m2): użyj do tile_floor, waterproof_floor, paint_ceiling
+- Gdy znasz wysokość (ceiling_height_m) i powierzchnię: oblicz wall_area ≈ perimeter × height, gdzie perimeter ≈ 4 × √area
+- Płytki ścienne pełna wys: wall_area. Częściowa: wall_area × 0.6. Brak: 0
+- Malowanie ścian: wall_area minus surface pokryta płytkami
+- Podaj ilość z confidence proporcjonalną do pewności danych (80+ gdy masz wymiary, 40-60 gdy szacujesz)
+- Quantity=0 i confidence<30 gdy brak danych do oszacowania
 
 Zasady analizy materiałów (detected_materials):
 - Identyfikuj widoczne materiały: typ, kategoria, przybliżona ilość jeśli możliwa
@@ -341,6 +385,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   // Clarification data from guided form
   const clarification = (body.clarification ?? null) as Record<string, unknown> | null
+  const roomType = typeof body.room_type === 'string' ? body.room_type.slice(0, 50) : null
 
   // Need at least one image (from multi-photo or legacy single-photo)
   if (multiImages.length === 0 && !imageBase64) return err(400, 'missing_image', 'image_base64 is required')
@@ -348,10 +393,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const isValidMime = /^image\/(jpeg|jpg|png|webp|gif|heic|heif)$/i.test(imageType)
   if (!isValidMime && multiImages.length === 0) return err(400, 'invalid_image_type', `Unsupported image type: ${imageType}`)
 
-  const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o'
+  const model = process.env.OPENAI_MODEL_VISION?.trim() || process.env.OPENAI_MODEL?.trim() || 'gpt-4o'
   const imageCount = multiImages.length || 1
 
-  console.info('ROOM_ANALYSIS_START', JSON.stringify({ model, imageType, imageCount, hasContext: !!context, hasClarification: !!clarification }))
+  console.info('ROOM_ANALYSIS_START', JSON.stringify({ model, imageType, imageCount, hasContext: !!context, hasClarification: !!clarification, roomType }))
 
   // ── Build input ─────────────────────────────────────────────────────────
 
@@ -371,6 +416,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // Build context text with clarification
   let contextText = `Przeanalizuj ${imageCount > 1 ? `te ${imageCount} zdjęć pomieszczenia (różne kąty)` : 'to zdjęcie pomieszczenia'}. Zidentyfikuj materiały wykończeniowe, zaproponuj zakres prac remontowych i wygeneruj propozycje pozycji do wyceny na podstawie biblioteki.`
 
+  if (roomType) {
+    contextText += `\n\nTyp pomieszczenia: ${roomType}`
+  }
+
   if (clarification) {
     const parts: string[] = []
     if (typeof clarification.area_m2 === 'number') parts.push(`Powierzchnia: ${clarification.area_m2} m²`)
@@ -379,8 +428,37 @@ export const handler: Handler = async (event: HandlerEvent) => {
     if (clarification.has_bathtub) parts.push('Wanna: tak')
     if (clarification.has_shower) parts.push('Prysznic: tak')
     if (clarification.has_underfloor_heating) parts.push('Ogrzewanie podłogowe: tak')
+    if (typeof clarification.wc_type === 'string') parts.push(`WC: ${clarification.wc_type === 'concealed' ? 'podtynkowe' : 'stojące (kompakt)'}`)
+    if (typeof clarification.sink_count === 'number') parts.push(`Umywalki: ${clarification.sink_count}`)
+    if (clarification.has_linear_drain) parts.push('Odpływ liniowy: tak')
+    if (typeof clarification.plumbing_scope === 'string') parts.push(`Przeróbki hydrauliczne: ${clarification.plumbing_scope === 'full' ? 'całość' : clarification.plumbing_scope === 'limited' ? 'częściowe' : 'brak'}`)
+    if (typeof clarification.electrical_scope === 'string') parts.push(`Przeróbki elektryczne: ${clarification.electrical_scope === 'full' ? 'całość' : clarification.electrical_scope === 'limited' ? 'częściowe' : 'brak'}`)
+    if (clarification.has_boiler_casing) parts.push('Zabudowa kotła/bojlera: tak')
     if (typeof clarification.fixtures_standard === 'string') parts.push(`Standard: ${clarification.fixtures_standard}`)
-    if (typeof clarification.notes === 'string' && clarification.notes) parts.push(`Uwagi: ${String(clarification.notes).slice(0, 300)}`)
+    if (typeof clarification.notes === 'string' && clarification.notes) parts.push(`Uwagi: ${String(clarification.notes).slice(0, 500)}`)
+
+    // Quantity hints from dimensions
+    if (typeof clarification.area_m2 === 'number') {
+      const area = clarification.area_m2 as number
+      const height = typeof clarification.ceiling_height_m === 'number' ? clarification.ceiling_height_m as number : 2.6
+      const side = Math.sqrt(area)
+      const perimeter = side * 4
+      const wallArea = Math.round(perimeter * height * 10) / 10
+      parts.push(`\n[ILOŚCI REFERENCYJNE — użyj do quantity w suggested_estimate_items:]`)
+      parts.push(`  Podłoga: ${area} m²`)
+      parts.push(`  Obwód (szacunkowy): ${Math.round(perimeter * 10) / 10} mb`)
+      parts.push(`  Ściany łącznie: ~${wallArea} m²`)
+      const tileCov = clarification.tile_coverage
+      if (tileCov === 'full') {
+        parts.push(`  Płytki ścienne: ~${wallArea} m²`)
+      } else if (tileCov === 'partial') {
+        parts.push(`  Płytki ścienne: ~${Math.round(wallArea * 0.6 * 10) / 10} m²`)
+        parts.push(`  Malowanie ścian: ~${Math.round(wallArea * 0.4 * 10) / 10} m²`)
+      } else if (tileCov === 'none') {
+        parts.push(`  Malowanie ścian: ~${wallArea} m²`)
+      }
+    }
+
     if (parts.length > 0) {
       contextText += `\n\nDane od użytkownika:\n${parts.join('\n')}`
     }

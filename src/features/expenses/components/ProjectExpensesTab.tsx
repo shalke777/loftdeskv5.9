@@ -7,6 +7,7 @@ import { useCreateExpense }   from '@/features/expenses/hooks/useCreateExpense'
 import { useParseInvoice, callParseInvoiceAI, normalizeParseResult } from '@/features/expenses/hooks/useParseInvoice'
 import { useAnalyzeRoomPhoto, useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import type { BathroomClarification } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
+import type { RoomTypeId } from '@/services/ai/room-types'
 import { ExpenseCameraCapture } from './ExpenseCameraCapture'
 import { BathroomClarificationForm } from './BathroomClarificationForm'
 import { ExpensePreviewPane }   from './ExpensePreviewPane'
@@ -60,7 +61,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
 
   // Multi-photo / clarification state
   const [roomFiles, setRoomFiles] = useState<File[]>([])
-
+  const [roomType, setRoomType] = useState<RoomTypeId>('bathroom')
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   function startCapture() { setMode('capture') }
@@ -78,6 +79,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
     setParseResult(null)
     setParseError(null)
     setRoomFiles([])
+    setRoomType('bathroom')
     parseInvoice.reset()
     analyzeRoom.reset()
     analyzeRooms.reset()
@@ -85,8 +87,9 @@ export function ProjectExpensesTab({ projectId }: Props) {
   }
 
   /** Multi-photo flow: photos collected → show clarification form */
-  function handleRoomPhotos(files: File[]) {
+  function handleRoomPhotos(files: File[], rt: RoomTypeId) {
     setRoomFiles(files)
+    setRoomType(rt)
     setSourceType('room_photo')
     setFileState(files[0] ?? null)
     setMode('clarification')
@@ -95,7 +98,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
   /** After clarification (or skip) → start analysis */
   function startRoomAnalysis(clarification?: BathroomClarification) {
     setMode('processing')
-    analyzeRooms.mutate({ files: roomFiles, clarification }, {
+    analyzeRooms.mutate({ files: roomFiles, clarification, roomType }, {
       onSuccess: (result) => {
         setParseResult(result)
         setParseError(null)
@@ -400,6 +403,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
         </div>
         <BathroomClarificationForm
           photoCount={roomFiles.length}
+          roomType={roomType}
           onSubmit={(data) => startRoomAnalysis(data)}
           onSkip={() => startRoomAnalysis()}
           disabled={analyzeRooms.isPending}
