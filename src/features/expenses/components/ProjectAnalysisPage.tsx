@@ -11,6 +11,7 @@ import { useAnalyzeProject } from '@/features/expenses/hooks/useAnalyzeProject'
 import { useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import { compareProjectToReality } from '@/services/ai/engines/comparison'
 import type { ProjectAnalysisResult, ProjectComparisonResult } from '@/services/ai/engines/project.types'
+import { AiErrorState, AiQualityBadge, AiUploadRules, aiPreflightValidate } from '@/shared/ui/AiGuidance'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import {
   ProjectSummaryBar,
@@ -25,6 +26,18 @@ import { ComparisonResultView } from './ComparisonResultView'
 type Step = 'upload' | 'processing' | 'results'
 
 const ACCEPTED_EXTENSIONS = '.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif'
+
+const PROJECT_UPLOAD_RULES = {
+  formats: ['PDF', 'JPG', 'PNG', 'WEBP', 'HEIC'],
+  maxSizeMb: 15,
+  tips: [
+    'Rzuty architektoniczne z wymiarami dają najlepszy wynik',
+    'Możesz wgrać PDF projektu lub wizualizację jako obraz',
+    'Użyj pola „Kontekst”, aby AI lepiej zrozumiał specyfikę obiektu',
+    'Nie wrzucaj zdjęć pomieszczeń — użyj trybu „AI Analiza pomieszczenia”',
+    'Nie wrzucaj faktur ani dokumentów kosztowych — użyj modułu „Koszty”',
+  ],
+}
 
 const TYPE_LABELS: Record<string, string> = {
   'application/pdf': 'PDF',
@@ -139,6 +152,15 @@ export function ProjectAnalysisPage() {
 
   function startAnalysis() {
     if (!file) return
+    const preflight = aiPreflightValidate(file, {
+      maxSizeBytes: 15 * 1024 * 1024,
+      allowedTypes: ['application/pdf', 'image/*'],
+    })
+    if (!preflight.ok) {
+      setError(`${preflight.message}${preflight.hint ? ' ' + preflight.hint : ''}`)
+      setStep('results')
+      return
+    }
     setStep('processing')
     analyze.mutate({ file, context: context.trim() || undefined }, {
       onSuccess: (res) => {
@@ -244,16 +266,7 @@ export function ProjectAnalysisPage() {
           </div>
 
           {/* Supported formats help */}
-          <div style={{
-            fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 20,
-            padding: '8px 12px', borderRadius: 6,
-            background: 'var(--color-surface-soft)',
-            border: '1px solid var(--color-border)',
-            lineHeight: 1.6,
-          }}>
-            <strong>Obsługiwane formaty:</strong>{' '}
-            PDF (projekty, rzuty) · JPEG / PNG / WEBP (wizualizacje, renders, zdjęcia koncepcyjne)
-          </div>
+          <AiUploadRules config={PROJECT_UPLOAD_RULES} />
 
           <button
             type="button"
@@ -303,25 +316,20 @@ export function ProjectAnalysisPage() {
     <div>
       <PageHeader title="AI Analiza projektu" />
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 16px 40px' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-          <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 13 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          {result && <AiQualityBadge confidence={result.confidence} />}
+          <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 13, marginLeft: 'auto' }}>
             ← Nowa analiza
           </button>
         </div>
 
         {error && !result && (
-          <div style={{
-            padding: '14px 16px', borderRadius: 7, marginBottom: 16,
-            background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.3)',
-            fontSize: 13, color: 'var(--color-danger, #E57373)',
-          }}>
-            <strong>Błąd analizy:</strong> {error}
-            <div style={{ marginTop: 10 }}>
-              <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 12 }}>
-                Spróbuj ponownie
-              </button>
-            </div>
-          </div>
+          <AiErrorState
+            error={error}
+            engineType="project"
+            onRetry={reset}
+            onChangeFile={reset}
+          />
         )}
 
         {result && (

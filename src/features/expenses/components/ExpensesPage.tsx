@@ -4,6 +4,7 @@ import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } fro
 import { expensesApi, ExpenseInvoice, ParsedExpenseData, parseInvoiceFromText } from '../api/expenses.api'
 import type { ParseInvoiceResult, ExpenseSourceType } from '../api/expenses.api'
 import { callParseInvoice, callParseInvoiceAI } from '../hooks/useParseInvoice'
+import { aiPreflightValidate } from '@/shared/ui/AiGuidance'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Button } from '@/shared/ui/Button/Button'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
@@ -17,6 +18,12 @@ import {
 } from 'lucide-react'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
+// Client-side preflight: ~5 MB raw ≈ 7 MB base64 which is the server parse-invoice limit
+const PREFLIGHT_DOC_RULES = {
+  maxSizeBytes: 5 * 1024 * 1024,
+  allowedTypes: ['image/*', 'application/pdf'],
+}
 
 function formatAmount(val: number | null) {
   if (val == null) return '—'
@@ -120,6 +127,11 @@ export function ExpensesPage() {
 
   async function handleFileSelected(file: File) {
     if (!file) return
+    const preflight = aiPreflightValidate(file, PREFLIGHT_DOC_RULES)
+    if (!preflight.ok) {
+      setUploadError(`${preflight.message}${preflight.hint ? ' ' + preflight.hint : ''}`)
+      return
+    }
     setUploading(true)
     setUploadStep('Przesyłanie pliku...')
     setUploadError(null)
@@ -455,7 +467,7 @@ export function ExpensesPage() {
           <div className="exp-upload-zone__inner">
             <Upload size={28} />
             <span className="exp-upload-zone__title">Przeciągnij plik lub kliknij, aby wybrać</span>
-            <span className="exp-upload-zone__hint">Obsługiwane formaty: JPG, PNG, PDF</span>
+            <span className="exp-upload-zone__hint">Formaty: JPG, PNG, HEIC, PDF · Maks. 5 MB · Faktury, paragony, dokumenty kosztowe</span>
             <div className="exp-upload-zone__actions" onClick={(e) => e.stopPropagation()}>
               <Button variant="secondary" size="sm" icon={<Upload size={14} />} onClick={() => fileInputRef.current?.click()}>
                 Wybierz plik

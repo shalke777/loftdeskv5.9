@@ -5,6 +5,7 @@ import type { RoomTypeId } from '@/services/ai/room-types'
 
 const MAX_ROOM_PHOTOS = 10
 const MIN_ROOM_PHOTOS = 1
+const MAX_PHOTO_SIZE  = 8 * 1024 * 1024  // 8 MB per photo (matches analyze-room-photo server limit)
 
 interface Props {
   onCapture: (file: File, sourceType: ExpenseSourceType) => void
@@ -25,6 +26,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
   const [roomPhotos, setRoomPhotos] = useState<File[]>([])
   const [roomMode, setRoomMode]     = useState(false)
   const [selectedRoomType, setSelectedRoomType] = useState<RoomTypeId | null>(null)
+  const [oversizeWarning, setOversizeWarning]   = useState<string | null>(null)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>, sourceType: ExpenseSourceType) {
     const file = e.target.files?.[0]
@@ -33,10 +35,21 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
   }
 
   function handleRoomFiles(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []).slice(0, MAX_ROOM_PHOTOS)
+    const all = Array.from(e.target.files ?? [])
     e.target.value = ''
-    if (files.length === 0) return
-    setRoomPhotos(prev => [...prev, ...files].slice(0, MAX_ROOM_PHOTOS))
+    if (all.length === 0) return
+    const oversize = all.filter(f => f.size > MAX_PHOTO_SIZE)
+    const valid    = all.filter(f => f.size <= MAX_PHOTO_SIZE)
+    if (oversize.length > 0) {
+      const n = oversize.length
+      setOversizeWarning(
+        `${n} ${n === 1 ? 'zdjęcie jest za duże' : 'zdjęcia są za duże'} (maks. 8 MB) i ${n === 1 ? 'zostało pominięte' : 'zostały pominięte'}.`,
+      )
+    } else {
+      setOversizeWarning(null)
+    }
+    if (valid.length === 0) return
+    setRoomPhotos(prev => [...prev, ...valid].slice(0, MAX_ROOM_PHOTOS))
     setRoomMode(true)
   }
 
@@ -58,6 +71,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
     setRoomPhotos([])
     setRoomMode(false)
     setSelectedRoomType(null)
+    setOversizeWarning(null)
   }
 
   // ── Room type selector view ──
@@ -131,8 +145,18 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
           {roomInfo?.icon ?? '🏠'} Zdjęcia — {roomInfo?.name ?? 'Pomieszczenie'}
         </p>
         <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted, #8A8F98)', textAlign: 'center' }}>
-          Dodaj 1–{MAX_ROOM_PHOTOS} zdjęć z różnych kątów. Im więcej, tym lepsza analiza.
+          Dodaj 1–{MAX_ROOM_PHOTOS} zdjęć z różnych kątów. Im więcej, tym lepsza analiza. Maks. 8 MB / zdjęcie.
         </p>
+
+        {oversizeWarning && (
+          <div style={{
+            fontSize: 11, color: '#B5830A', padding: '5px 10px', borderRadius: 5,
+            background: 'rgba(212,150,10,0.1)', border: '1px solid rgba(212,150,10,0.2)',
+            textAlign: 'center',
+          }}>
+            ⚠ {oversizeWarning}
+          </div>
+        )}
 
         {/* Photo thumbnails */}
         {roomPhotos.length > 0 && (

@@ -12,6 +12,7 @@ import type { BathroomClarification } from '@/features/expenses/hooks/useAnalyze
 import type { RoomTypeId } from '@/services/ai/room-types'
 import { getRoomTypeName } from '@/services/ai/room-types'
 import type { AnalysisResult } from '@/services/ai/analysis.types'
+import { AiErrorState, AiQualityBadge, AiUploadRules } from '@/shared/ui/AiGuidance'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { ExpenseCameraCapture } from './ExpenseCameraCapture'
 import { BathroomClarificationForm } from './BathroomClarificationForm'
@@ -22,6 +23,20 @@ import {
 } from './AnalysisSections'
 
 type Step = 'capture' | 'clarification' | 'processing' | 'results'
+
+const ROOM_UPLOAD_RULES = {
+  formats: ['JPG', 'PNG', 'WEBP', 'HEIC'],
+  maxSizeMb: 8,
+  maxFiles: 10,
+  minFiles: 1,
+  tips: [
+    'Fotografuj z różnych kątów: frontalnie, narożnik, detal',
+    'Dobre oświetlenie poprawia dokładność — unikaj zdjęć pod słońce',
+    'Pokaż materiały, instalacje i ewentualne uszkodzenia',
+    '2–4 zdjęcia dają dobry wynik, 5–10 zakres pełny',
+    'Nie wrzucaj projektów ani rysunków — użyj trybu „AI Projekt”',
+  ],
+}
 
 export function RoomAnalysisPage() {
   const navigate = useNavigate()
@@ -38,6 +53,21 @@ export function RoomAnalysisPage() {
     setRoomFiles([])
     setRoomType('bathroom')
     setResult(null)
+    setError(null)
+    analyzeRooms.reset()
+  }
+
+  /** Retry with same files — go back to clarification step */
+  function handleRetry() {
+    setStep('clarification')
+    setError(null)
+    analyzeRooms.reset()
+  }
+
+  /** Add more photos — go back to capture step, keep room type */
+  function handleAddMore() {
+    setStep('capture')
+    setRoomFiles([])
     setError(null)
     analyzeRooms.reset()
   }
@@ -65,9 +95,10 @@ export function RoomAnalysisPage() {
       <div>
         <PageHeader title="AI Analiza pomieszczenia" />
         <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 16px' }}>
-          <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', lineHeight: 1.6 }}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', lineHeight: 1.6 }}>
             Zrób zdjęcia pomieszczenia z różnych kątów → AI wygeneruje zakres prac, materiały i draft wyceny.
           </p>
+          <AiUploadRules config={ROOM_UPLOAD_RULES} />
           <ExpenseCameraCapture
             onCapture={() => {}}
             onRoomPhotos={handleRoomPhotos}
@@ -151,14 +182,12 @@ export function RoomAnalysisPage() {
         </div>
 
         {error && (
-          <div style={{
-            marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: 13,
-            background: 'var(--color-danger-soft, rgba(239,68,68,0.12))',
-            border: '1px solid var(--color-danger, #EF6B6B)',
-            color: 'var(--color-danger, #EF6B6B)',
-          }}>
-            ⚠️ {error}
-          </div>
+          <AiErrorState
+            error={error}
+            engineType="room"
+            onRetry={handleRetry}
+            onAddMore={handleAddMore}
+          />
         )}
 
         {result && (
@@ -175,13 +204,7 @@ export function RoomAnalysisPage() {
                 <span style={{ color: 'var(--color-text-muted)' }}>
                   Pewność analizy
                 </span>
-                <span style={{
-                  fontWeight: 600,
-                  color: result.extraction_confidence >= 70 ? '#77BA8A'
-                    : result.extraction_confidence >= 40 ? '#D4960A' : '#E57373',
-                }}>
-                  {result.extraction_confidence}%
-                </span>
+                <AiQualityBadge confidence={result.extraction_confidence} />
               </div>
             )}
 
