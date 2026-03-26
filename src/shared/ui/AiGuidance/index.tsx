@@ -314,3 +314,133 @@ export function AiUploadRules({ config }: AiUploadRulesProps) {
     </div>
   )
 }
+
+// ── AiReliabilityBanner ───────────────────────────────────────────────────────
+// Renders the quality-control report produced by computeXxxReliability().
+// Shows state tier (strong/partial/weak/blocked), confidence, issues, and
+// a confirmation warning when requires_confirmation is true.
+
+import type { ReliabilityReport, ReliabilityState } from '@/services/ai/engines/reliability'
+
+interface StateConfig {
+  label: string
+  color: string
+  bg: string
+  icon: string
+}
+
+const RELIABILITY_STATE_CONFIG: Record<ReliabilityState, StateConfig> = {
+  strong:  { label: 'Wysoka pewność',    color: '#77BA8A', bg: 'rgba(119,186,138,0.08)', icon: '✓' },
+  partial: { label: 'Częściowa pewność', color: '#D4960A', bg: 'rgba(212,150,10,0.07)',  icon: '≈' },
+  weak:    { label: 'Niska pewność',     color: '#E57373', bg: 'rgba(229,115,115,0.07)', icon: '⚠' },
+  blocked: { label: 'Zablokowany',       color: '#D32F2F', bg: 'rgba(211,47,47,0.08)',   icon: '✕' },
+}
+
+interface AiReliabilityBannerProps {
+  report: ReliabilityReport
+  /** When true, render a minimal inline pill only (no issues list) */
+  compact?: boolean
+}
+
+export function AiReliabilityBanner({ report, compact = false }: AiReliabilityBannerProps) {
+  const [showInfo, setShowInfo] = useState(false)
+
+  const cfg          = RELIABILITY_STATE_CONFIG[report.state]
+  const visibleIssues = report.issues.filter(i => i.severity !== 'info')
+  const infoIssues    = report.issues.filter(i => i.severity === 'info')
+
+  if (compact) {
+    return (
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+        color: cfg.color, background: cfg.bg,
+        border: `1px solid ${cfg.color}44`,
+      }}>
+        <span>{cfg.icon}</span>
+        {cfg.label} — {report.confidence}%
+      </span>
+    )
+  }
+
+  return (
+    <div style={{
+      borderRadius: 8, border: `1px solid ${cfg.color}44`,
+      background: cfg.bg, padding: '10px 14px', marginBottom: 12,
+    }}>
+      {/* Header row: state pill + summary */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        marginBottom: (visibleIssues.length > 0 || report.requires_confirmation) ? 8 : 0,
+      }}>
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          padding: '2px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+          color: cfg.color, background: `${cfg.color}22`,
+          border: `1px solid ${cfg.color}55`, flexShrink: 0,
+        }}>
+          {cfg.icon} {cfg.label}
+        </span>
+        <span style={{ flex: 1, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>
+          {report.summary}
+        </span>
+      </div>
+
+      {/* Confirmation warning bar */}
+      {report.requires_confirmation && (
+        <div style={{
+          padding: '6px 10px', borderRadius: 5,
+          marginBottom: visibleIssues.length > 0 ? 8 : 0,
+          background: 'rgba(229,115,115,0.1)', border: '1px solid rgba(229,115,115,0.25)',
+          fontSize: 12, color: '#C62828', fontWeight: 500,
+        }}>
+          ⚠ Wymagane potwierdzenie przed przekazaniem do kosztorysu
+        </div>
+      )}
+
+      {/* Issues: critical + warnings */}
+      {visibleIssues.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {visibleIssues.map((issue, i) => (
+            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 11, lineHeight: 1.5 }}>
+              <span style={{
+                flexShrink: 0, marginTop: 1, fontSize: 12,
+                color: issue.severity === 'critical' ? '#D32F2F' : '#B5830A',
+              }}>
+                {issue.severity === 'critical' ? '✕' : '△'}
+              </span>
+              <span style={{ color: 'var(--color-text-secondary)' }}>
+                {issue.message}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Info toggle */}
+      {infoIssues.length > 0 && (
+        <div style={{ marginTop: visibleIssues.length > 0 ? 6 : 0 }}>
+          <button
+            type="button"
+            onClick={() => setShowInfo(s => !s)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 11, color: 'var(--color-text-muted)', padding: 0,
+            }}
+          >
+            {showInfo ? '▲ Ukryj szczegóły' : `▼ ${infoIssues.length} informacji diagnostycznych`}
+          </button>
+          {showInfo && (
+            <div style={{ marginTop: 5, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {infoIssues.map((issue, i) => (
+                <div key={i} style={{ fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+                  ℹ {issue.message}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

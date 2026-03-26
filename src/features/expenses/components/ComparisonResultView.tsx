@@ -13,6 +13,9 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import type { ProjectComparisonResult, ComparisonDiff, ProjectScopeItem } from '@/services/ai/engines/project.types'
+import { computeComparisonReliability } from '@/services/ai/engines/reliability'
+import type { ReliabilityReport } from '@/services/ai/engines/reliability'
+import { AiReliabilityBanner } from '@/shared/ui/AiGuidance'
 import { AnalysisSectionCard } from './AnalysisSectionCard'
 
 // ── Draft key (shared with other analysis sections) ──────────────────────────
@@ -128,19 +131,25 @@ function DiffSection({ title, icon, diffs, accent }: SectionProps) {
 // ── Scope additions (extra work from photos) ──────────────────────────────────
 
 interface ScopeAdditionsProps {
-  items:       ProjectScopeItem[]
-  projectName: string | null | undefined
+  items:            ProjectScopeItem[]
+  projectName:      string | null | undefined
+  reliabilityReport?: ReliabilityReport
 }
 
-function ScopeAdditionsSection({ items, projectName }: ScopeAdditionsProps) {
+function ScopeAdditionsSection({ items, projectName, reliabilityReport }: ScopeAdditionsProps) {
   if (items.length === 0) return null
 
   const navigate = useNavigate()
-  const [transferring, setTransferring] = useState(false)
+  const [transferring, setTransferring]     = useState(false)
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false)
 
-  function handleTransfer() {
+  const isBlocked    = reliabilityReport?.state === 'blocked'
+  const needsConfirm = reliabilityReport?.requires_confirmation ?? false
+
+  function doTransfer() {
     if (transferring) return
     setTransferring(true)
+    setAwaitingConfirm(false)
     const estimateItems = items.map((item, i) => ({
       id: crypto.randomUUID(),
       name: item.description,
@@ -161,6 +170,15 @@ function ScopeAdditionsSection({ items, projectName }: ScopeAdditionsProps) {
     }
     try { sessionStorage.setItem(ESTIMATE_DRAFT_KEY, JSON.stringify(draft)) } catch { /* ignore */ }
     navigate({ to: '/estimates', search: { create: true } })
+  }
+
+  function handleTransferClick() {
+    if (isBlocked || transferring) return
+    if (needsConfirm && !awaitingConfirm) {
+      setAwaitingConfirm(true)
+      return
+    }
+    doTransfer()
   }
 
   return (
@@ -198,22 +216,65 @@ function ScopeAdditionsSection({ items, projectName }: ScopeAdditionsProps) {
         ))}
       </div>
 
+      {/* Confirmation gate — shown when requires_confirmation and user clicked transfer */}
+      {awaitingConfirm && (
+        <div style={{
+          padding: '10px 12px', marginBottom: 10, borderRadius: 6,
+          background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.3)',
+          fontSize: 12,
+        }}>
+          <p style={{ margin: '0 0 8px', fontWeight: 600, color: '#C62828' }}>
+            ⚠ Pewność analizy jest niska — przekazanie może wymagać poprawek.
+          </p>
+          <p style={{ margin: '0 0 10px', color: 'var(--color-text-secondary)' }}>
+            Uzupełnij ceny i sprawdź pozycje po przeniesieniu. Czy kontynuować?
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              onClick={doTransfer}
+              style={{
+                padding: '5px 12px', fontSize: 11, fontWeight: 600,
+                borderRadius: 6, cursor: 'pointer',
+                color: '#C62828', background: 'rgba(229,115,115,0.12)',
+                border: '1px solid rgba(229,115,115,0.4)',
+              }}
+            >
+              Tak, przenieś mimo to
+            </button>
+            <button
+              type="button"
+              onClick={() => setAwaitingConfirm(false)}
+              style={{
+                padding: '5px 12px', fontSize: 11, fontWeight: 600,
+                borderRadius: 6, cursor: 'pointer',
+                color: 'var(--color-text-muted)', background: 'transparent',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              Anuluj
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button
           type="button"
-          onClick={handleTransfer}
-          disabled={transferring}
+          onClick={handleTransferClick}
+          disabled={transferring || isBlocked}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '7px 14px', fontSize: 12, fontWeight: 600,
-            color: transferring ? 'var(--color-text-muted)' : 'var(--color-primary)',
-            background: 'var(--color-primary-soft)',
-            border: `1px solid ${transferring ? 'var(--color-border)' : 'var(--color-primary)'}`,
-            borderRadius: 8, cursor: transferring ? 'default' : 'pointer',
-            opacity: transferring ? 0.6 : 1,
+            color: isBlocked ? 'var(--color-text-muted)' : transferring ? 'var(--color-text-muted)' : 'var(--color-primary)',
+            background: isBlocked ? 'var(--color-surface-soft)' : 'var(--color-primary-soft)',
+            border: `1px solid ${isBlocked || transferring ? 'var(--color-border)' : 'var(--color-primary)'}`,
+            borderRadius: 8, cursor: (transferring || isBlocked) ? 'not-allowed' : 'pointer',
+            opacity: (transferring || isBlocked) ? 0.55 : 1,
           }}
+          title={isBlocked ? 'Analiza zablokowana — popraw błędy przed przeniesieniem' : undefined}
         >
-          {transferring ? '⏳ Przenoszenie…' : '📋 Dodaj do wyceny'}
+          {isBlocked ? '⛔ Analiza zablokowana' : transferring ? '⏳ Przenoszenie…' : '📋 Dodaj do wyceny'}
         </button>
       </div>
     </AnalysisSectionCard>
@@ -228,7 +289,7 @@ export function ComparisonResultView({ result, projectName }: Props) {
   const changed   = result.diffs.filter(d => d.category === 'changed')
   const uncertain = result.diffs.filter(d => d.category === 'uncertain')
 
-  const summaryConfColor = confColor(result.confidence)
+  const reliabilityReport = computeComparisonReliability(result)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -243,9 +304,7 @@ export function ComparisonResultView({ result, projectName }: Props) {
         <span style={{ fontWeight: 700, color: 'var(--color-text-secondary)', flex: 1 }}>
           🔍 Porównanie projekt vs rzeczywistość
         </span>
-        <span style={{ fontWeight: 600, color: summaryConfColor }}>
-          Pewność: {result.confidence}%
-        </span>
+        <AiReliabilityBanner report={reliabilityReport} compact />
       </div>
 
       {/* Summary sentence */}
@@ -261,7 +320,12 @@ export function ComparisonResultView({ result, projectName }: Props) {
         </div>
       )}
 
-      {/* Warnings */}
+      {/* Reliability banner — full (shows issues when state is not strong) */}
+      {reliabilityReport.state !== 'strong' && (
+        <AiReliabilityBanner report={reliabilityReport} />
+      )}
+
+      {/* Engine warnings (separate from reliability — comparison engine-level notes) */}
       {result.warnings.length > 0 && (
         <div style={{
           padding: '10px 14px', borderRadius: 6, fontSize: 11,
@@ -322,6 +386,7 @@ export function ComparisonResultView({ result, projectName }: Props) {
       <ScopeAdditionsSection
         items={result.scope_additions}
         projectName={projectName}
+        reliabilityReport={reliabilityReport}
       />
     </div>
   )
