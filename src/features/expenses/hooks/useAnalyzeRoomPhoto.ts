@@ -105,6 +105,18 @@ interface RoomAnalysisRaw {
   notes:                string | null
 }
 
+/** Clarification data from the guided form */
+export interface BathroomClarification {
+  area_m2?: number
+  ceiling_height_m?: number
+  tile_coverage?: 'full' | 'partial' | 'none'
+  has_bathtub?: boolean
+  has_shower?: boolean
+  has_underfloor_heating?: boolean
+  fixtures_standard?: 'budget' | 'standard' | 'premium'
+  notes?: string
+}
+
 export async function callAnalyzeRoomPhoto(file: File, context?: string): Promise<AnalysisResult> {
   if (file.size > MAX_FILE_SIZE) {
     return {
@@ -200,5 +212,122 @@ export function useAnalyzeRoomPhoto() {
   return useMutation({
     mutationFn: ({ file, context }: { file: File; context?: string }) =>
       callAnalyzeRoomPhoto(file, context),
+  })
+}
+
+// ── Multi-photo analysis ─────────────────────────────────────────────────────
+// Sends multiple images in a single API call for richer context.
+
+function buildClarificationContext(c?: BathroomClarification): string {
+  if (!c) return ''
+  const parts: string[] = []
+  if (c.area_m2) parts.push(`Powierzchnia: ${c.area_m2} m²`)
+  if (c.ceiling_height_m) parts.push(`Wysokość: ${c.ceiling_height_m} m`)
+  if (c.tile_coverage) parts.push(`Płytki: ${c.tile_coverage === 'full' ? 'pełna wysokość' : c.tile_coverage === 'partial' ? 'częściowa' : 'brak'}`)
+  if (c.has_bathtub) parts.push('Wanna: tak')
+  if (c.has_shower) parts.push('Prysznic: tak')
+  if (c.has_underfloor_heating) parts.push('Ogrzewanie podłogowe: tak')
+  if (c.fixtures_standard) parts.push(`Standard: ${c.fixtures_standard}`)
+  if (c.notes) parts.push(`Uwagi: ${c.notes}`)
+  return parts.join('. ')
+}
+
+export async function callAnalyzeRoomPhotos(
+  files: File[],
+  clarification?: BathroomClarification,
+): Promise<AnalysisResult> {
+  if (files.length === 0) {
+    return {
+      input_type: 'room_photo', document_type: 'room_scan',
+      detected_materials: [], work_scope: [],
+      extraction_confidence: 0, extraction_warnings: ['Nie dodano zdjęć.'],
+      requires_user_confirmation: true, parser_source: 'vision',
+    }
+  }
+
+  // Validate all files
+  for (const f of files) {
+    if (f.size > MAX_FILE_SIZE) {
+      return {
+        input_type: 'room_photo', document_type: 'room_scan',
+        detected_materials: [], work_scope: [],
+        extraction_confidence: 0,
+        extraction_warnings: [`Plik "${f.name}" jest za duży (max 8 MB).`],
+        requires_user_confirmation: true, parser_source: 'vision',
+      }
+    }
+  }
+
+  // Preprocess and encode all images
+  const images: Array<{ base64: string; type: string }> = []
+  for (const f of files) {
+    const processed = await preprocessForVision(f)
+    const base64 = await fileToBase64(processed)
+    images.push({ base64, type: 'image/jpeg' })
+  }
+
+  const context = buildClarificationContext(clarification)
+
+  let resp: Response
+  try {
+    resp = await fetch(netlifyFn('analyze-room-photo'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
+      body: JSON.stringify({
+        images,
+        image_base64: images[0].base64,  // backward compat
+        image_type: 'image/jpeg',
+        context: context || undefined,
+        clarification,
+      }),
+    })
+  } catch {
+    throw new Error('Serwer analizy niedostępny.')
+  }
+
+  const data = await resp.json().catch(() => ({})) as Record<string, unknown>
+
+  if (!resp.ok) {
+    const errCode = String(data.error ?? '')
+    if (resp.status === 401 || errCode === 'unauthorized')
+      throw new Error('Sesja wygasła — zaloguj się ponownie.')
+    if (resp.status === 429 || errCode === 'too_many_requests')
+      throw new Error('Za dużo żądań. Spróbuj za chwilę.')
+    if (errCode === 'ai_not_configured')
+      throw new Error('AI nie jest skonfigurowane (brak OPENAI_API_KEY)')
+    throw new Error(String(data.message ?? `HTTP ${resp.status}`))
+  }
+
+  const raw = (data.result ?? data) as RoomAnalysisRaw
+
+  const result: AnalysisResult = {
+    input_type: 'room_photo',
+    document_type: 'room_scan',
+    detected_materials: raw.detected_materials ?? [],
+    work_scope: raw.work_scope ?? [],
+    suggested_estimate_items: (raw.suggested_estimate_items ?? []).map(item => ({
+      ...item,
+      source: (item.source || 'ai_suggestion') as 'ai_suggestion' | 'market_data' | 'historical',
+    })),
+    extraction_confidence: raw.extraction_confidence ?? 0,
+    extraction_warnings: raw.extraction_warnings ?? [],
+    requires_user_confirmation: true,
+    parser_source: 'vision',
+  }
+
+  if (raw.notes) {
+    result.extraction_warnings = [
+      ...result.extraction_warnings,
+      ...(raw.notes ? [`Notatka AI: ${raw.notes}`] : []),
+    ]
+  }
+
+  return result
+}
+
+export function useAnalyzeRoomPhotos() {
+  return useMutation({
+    mutationFn: ({ files, clarification }: { files: File[]; clarification?: BathroomClarification }) =>
+      callAnalyzeRoomPhotos(files, clarification),
   })
 }

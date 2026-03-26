@@ -131,6 +131,9 @@ export function WorkScopeSection({ items }: { items: WorkScopeItem[] }) {
 
 // ── Suggested Estimate Items (future — renders only with real data) ──────────
 
+import { getTaskById, BATHROOM_CATEGORIES } from '@/services/ai/bathroom-task-library'
+import type { TaskPriority } from '@/services/ai/bathroom-task-library'
+
 const ESTIMATE_DRAFT_KEY = 'estimate_form_draft'
 
 function suggestedToEstimateItems(items: SuggestedEstimateItem[]): EstimateItem[] {
@@ -144,6 +147,31 @@ function suggestedToEstimateItems(items: SuggestedEstimateItem[]): EstimateItem[
     vat_rate: 8,
     sort_order: i + 1,
   }))
+}
+
+/** Extract library_id from notes field (AI puts it there) */
+function extractLibraryId(notes?: string | null): string | null {
+  if (!notes) return null
+  // Match known task id patterns like "waterproof_wet", "tile_floor" etc.
+  const match = notes.match(/\b([a-z]+_[a-z_]+)\b/)
+  if (match) {
+    const task = getTaskById(match[1])
+    if (task) return match[1]
+  }
+  return null
+}
+
+function getPriorityLabel(priority: TaskPriority): { label: string; color: string; bg: string } {
+  switch (priority) {
+    case 'required':    return { label: 'Obowiązkowa', color: '#77BA8A', bg: 'rgba(119,186,138,0.12)' }
+    case 'likely':      return { label: 'Prawdopodobna', color: '#60A5FA', bg: 'rgba(96,165,250,0.12)' }
+    case 'conditional': return { label: 'Warunkowa', color: '#D4960A', bg: 'rgba(212,150,10,0.12)' }
+    case 'optional':    return { label: 'Opcjonalna', color: '#8A8F98', bg: 'rgba(138,143,152,0.12)' }
+  }
+}
+
+function getCategoryName(categoryId: string): string {
+  return BATHROOM_CATEGORIES.find(c => c.id === categoryId)?.name ?? ''
 }
 
 export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateItem[] }) {
@@ -166,40 +194,82 @@ export function SuggestedEstimateSection({ items }: { items: SuggestedEstimateIt
     navigate({ to: '/estimates', search: { create: true } })
   }
 
+  // Enrich items with library data for categorization
+  const enriched = items.map(item => {
+    const libId = extractLibraryId(item.notes)
+    const task = libId ? getTaskById(libId) : null
+    return { ...item, libId, task }
+  })
+
+  // Group by priority
+  const required = enriched.filter(e => e.task?.priority === 'required')
+  const likely   = enriched.filter(e => e.task?.priority === 'likely')
+  const rest     = enriched.filter(e => !e.task || (e.task.priority !== 'required' && e.task.priority !== 'likely'))
+
+  const groups = [
+    { label: '✅ Pozycje obowiązkowe', items: required, show: required.length > 0 },
+    { label: '📋 Pozycje prawdopodobne', items: likely, show: likely.length > 0 },
+    { label: '🔍 Pozycje warunkowe / dodatkowe', items: rest, show: rest.length > 0 },
+  ]
+
   return (
     <AnalysisSectionCard title="Proponowane pozycje wyceny" count={items.length} icon="📊">
-      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 6, fontStyle: 'italic' }}>
-        Draft — propozycja AI do weryfikacji. Ilości i pozycje wymagają potwierdzenia.
+      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8, fontStyle: 'italic' }}>
+        Draft — propozycja AI dopasowana do biblioteki pozycji łazienkowych. Ilości i pozycje wymagają potwierdzenia.
       </div>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
-              <th style={headCol}>Pozycja</th>
-              <th style={headCol}>J.m.</th>
-              <th style={headRight}>Ilość</th>
-              <th style={headRight}>Cena j.</th>
-              <th style={headRight}>Pewność</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <td style={colStyle}>
-                  {item.name}
-                  {item.notes && (
-                    <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{item.notes}</div>
-                  )}
-                </td>
-                <td style={colStyle}>{item.unit ?? '—'}</td>
-                <td style={rightCol}>{item.quantity != null ? item.quantity : '—'}</td>
-                <td style={rightCol}>{item.unit_price != null ? item.unit_price.toFixed(2) : '—'}</td>
-                <td style={rightCol}>{item.confidence != null ? `${item.confidence}%` : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+
+      {groups.filter(g => g.show).map(group => (
+        <div key={group.label} style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--color-text-secondary)' }}>
+            {group.label}
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                  <th style={headCol}>Pozycja</th>
+                  <th style={headCol}>J.m.</th>
+                  <th style={headRight}>Ilość</th>
+                  <th style={headRight}>Pewność</th>
+                  <th style={headCol}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {group.items.map((item, i) => {
+                  const prio = item.task ? getPriorityLabel(item.task.priority) : null
+                  const catName = item.task ? getCategoryName(item.task.category) : ''
+                  return (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                      <td style={colStyle}>
+                        {item.name}
+                        {catName && (
+                          <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 1 }}>{catName}</div>
+                        )}
+                        {item.notes && !item.libId && (
+                          <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{item.notes}</div>
+                        )}
+                      </td>
+                      <td style={colStyle}>{item.unit ?? '—'}</td>
+                      <td style={rightCol}>{item.quantity != null ? item.quantity : '—'}</td>
+                      <td style={rightCol}>{item.confidence != null ? `${item.confidence}%` : '—'}</td>
+                      <td style={colStyle}>
+                        {prio ? (
+                          <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: prio.bg, color: prio.color }}>
+                            {prio.label}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>AI</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+
       <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
         <button
           type="button"

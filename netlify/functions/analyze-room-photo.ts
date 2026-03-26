@@ -179,48 +179,123 @@ const ROOM_ANALYSIS_SCHEMA_FORMAT = {
 
 // ── System instructions ──────────────────────────────────────────────────────
 
-const INSTRUCTIONS = `Jesteś ekspertem od remontów i wykończeń wnętrz w Polsce.
-Analizujesz zdjęcia pomieszczeń (łazienka, kuchnia, pokój, korytarz, itp.) i identyfikujesz:
-1. Widoczne materiały wykończeniowe (płytki, farba, panele, gres, itp.)
-2. Proponowany zakres prac remontowych / wykończeniowych
-3. Propozycje pozycji do wyceny (draft estimate items) na podstawie materiałów i zakresu prac
+const BATHROOM_LIBRARY_BLOCK = `
+BIBLIOTEKA TYPOWYCH POZYCJI ŁAZIENKOWYCH (referencja do dopasowania):
+
+## Demontaż i przygotowanie
+- demo_tiles_wall: Demontaż starych płytek ściennych (m²) [PRAWDOPODOBNA]
+- demo_tiles_floor: Demontaż starych płytek podłogowych (m²) [PRAWDOPODOBNA]
+- demo_fixtures: Demontaż starej ceramiki i armatury (kpl.) [PRAWDOPODOBNA]
+- demo_bathtub: Demontaż wanny / brodzika (szt.) [WARUNKOWA]
+- debris_removal: Wywóz gruzu i odpadów (kpl.) [OBOWIĄZKOWA]
+
+## Przygotowanie podłoża
+- substrate_leveling: Wyrównanie podłoża (m²) [PRAWDOPODOBNA]
+- substrate_priming: Gruntowanie podłoża pod płytki (m²) [OBOWIĄZKOWA]
+- substrate_plastering: Tynkowanie / wyrównanie ścian (m²) [WARUNKOWA]
+
+## Hydroizolacja
+- waterproof_wet: Hydroizolacja stref mokrych (m²) [OBOWIĄZKOWA]
+- waterproof_floor: Hydroizolacja podłogi łazienki (m²) [OBOWIĄZKOWA]
+- waterproof_tape: Taśmy uszczelniające (mb) [OBOWIĄZKOWA]
+- waterproof_collar: Kołnierze uszczelniające (szt.) [OBOWIĄZKOWA]
+
+## Zabudowy GK
+- gk_pipe_casing: Zabudowa pionów instalacyjnych GK (mb) [PRAWDOPODOBNA]
+- gk_inspection: Rewizja serwisowa (szt.) [PRAWDOPODOBNA]
+- gk_wc_frame: Zabudowa stelaża WC podtynkowego (kpl.) [WARUNKOWA]
+- gk_niche: Wnęka / półka z GK (szt.) [OPCJONALNA]
+- gk_ceiling: Sufit podwieszany GK (m²) [OPCJONALNA]
+
+## Instalacja wod-kan
+- plumb_points: Przeróbka punktów wod-kan (szt.) [WARUNKOWA]
+- plumb_shower_drain: Montaż odpływu liniowego (szt.) [WARUNKOWA]
+
+## Okładziny ścienne
+- tile_wall_full: Płytki ścienne pełna wysokość (m²) [PRAWDOPODOBNA]
+- tile_wall_partial: Płytki ścienne częściowa wys. (m²) [WARUNKOWA]
+- tile_wall_trim: Obróbki, docinki, listwy narożnikowe (mb) [OBOWIĄZKOWA]
+- tile_wall_grouting: Fugowanie płytek ściennych (m²) [OBOWIĄZKOWA]
+
+## Okładziny podłogowe
+- tile_floor: Płytki podłogowe (m²) [OBOWIĄZKOWA]
+- tile_floor_grouting: Fugowanie płytek podłogowych (m²) [OBOWIĄZKOWA]
+- tile_threshold: Próg / listwa progowa (szt.) [PRAWDOPODOBNA]
+
+## Malowanie
+- paint_ceiling: Malowanie sufitu (m²) [PRAWDOPODOBNA]
+- paint_walls: Malowanie ścian bez płytek (m²) [WARUNKOWA]
+
+## Biały montaż
+- fix_wc: Montaż miski WC (szt.) [OBOWIĄZKOWA]
+- fix_basin: Montaż umywalki (szt.) [OBOWIĄZKOWA]
+- fix_shower_cabin: Montaż kabiny prysznicowej (kpl.) [WARUNKOWA]
+- fix_bathtub: Montaż wanny + obudowa (kpl.) [WARUNKOWA]
+
+## Armatura
+- fit_basin_tap: Bateria umywalkowa (szt.) [OBOWIĄZKOWA]
+- fit_shower_set: Zestaw prysznicowy (kpl.) [PRAWDOPODOBNA]
+- fit_angle_valves: Zawory kątowe (szt.) [OBOWIĄZKOWA]
+
+## Akcesoria
+- acc_mirror: Lustro (szt.) [PRAWDOPODOBNA]
+- acc_towel_rail: Wieszak / grzejnik łazienkowy (szt.) [PRAWDOPODOBNA]
+
+## Uszczelnienia i odbiór
+- seal_silicone: Silikonowanie (mb) [OBOWIĄZKOWA]
+- seal_cleanup: Sprzątanie powykonawcze (kpl.) [OBOWIĄZKOWA]
+`
+
+const INSTRUCTIONS = `Jesteś ekspertem od remontów i wykończeń wnętrz w Polsce, specjalizujesz się w łazienkach.
+Analizujesz zdjęcia pomieszczeń i na podstawie:
+- widocznych materiałów, stanu wykończenia, urządzeń sanitarnych
+- przekazanych parametrów (powierzchnia, wysokość, standard)
+- profesjonalnej biblioteki pozycji łazienkowych
+
+generujesz KOMPLETNY zakres prac remontowych.
 
 Zwróć TYLKO poprawny JSON zgodny z podanym schematem.
+
+${BATHROOM_LIBRARY_BLOCK}
+
+WAŻNE — ZASADY DOPASOWANIA DO BIBLIOTEKI:
+1. Dla każdej pozycji z suggested_estimate_items MUSISZ użyć nazwy z biblioteki (np. "Hydroizolacja stref mokrych" zamiast ogólnego "hydroizolacja")
+2. W polu "notes" podaj library_id (np. "waterproof_wet") dla pozycji dopasowanych z biblioteki
+3. Pozycje [OBOWIĄZKOWA] w łazience ZAWSZE dodaj — nawet jeśli nie widać ich na zdjęciu
+4. Pozycje [PRAWDOPODOBNA] dodaj gdy widoczne przesłanki lub użytkownik potwierdził
+5. Pozycje [WARUNKOWA] dodaj TYLKO gdy widoczne na zdjęciu LUB potwierdzone w clarification
+6. Nie wymyślaj pozycji które nie mają pokrycia w bibliotece ani na zdjęciu
+7. Gdy analizujesz wiele zdjęć — łącz informacje z WSZYSTKICH (różne kąty = pełniejszy obraz)
 
 Zasady analizy materiałów (detected_materials):
 - Identyfikuj widoczne materiały: typ, kategoria, przybliżona ilość jeśli możliwa
 - Kategorie: okładziny_ścian, okładziny_podłóg, instalacja_sanitarna, instalacja_elektryczna, stolarka, farby_tynki, oświetlenie, meble_zabudowa, inne
 - Podaj confidence 0-100 dla każdego materiału
-- Jeśli nie jesteś pewien materiału, daj niski confidence i dodaj notes
 - Szacuj ilość (quantity + unit) TYLKO gdy wystarczające wskazówki wizualne
 
 Zasady zakresu prac (work_scope):
-- Proponuj realne prace remontowe / wykończeniowe pasujące do widocznego stanu
-- Kategorie: demolition, tiling, plumbing, electrical, painting, flooring, carpentry, installation, finishing, cleanup
+- Proponuj realne prace wynikające z widocznego stanu i biblioteki
+- Kategorie: demolition, substrate, waterproofing, drywall, plumbing, electrical, tiling, painting, fixtures, fittings, accessories, sealing
 - Opisz po polsku
 - estimated_unit: m², mb, szt., kpl., ryczałt
-- estimated_qty: TYLKO gdy da się oszacować z obrazu
-- Podaj confidence 0-100
+- estimated_qty: TYLKO gdy da się oszacować
 
 Zasady pozycji wyceny (suggested_estimate_items):
-- Wygeneruj propozycje pozycji do kosztorysu / wyceny na podstawie materiałów i zakresu prac
-- Każda pozycja: name (po polsku, np. "Ułożenie płytek podłogowych"), unit (m², mb, szt., kpl., ryczałt), quantity (DRAFT — przybliżona ilość)
-- unit_price: null (NIE wymyślaj cen — to zrobi użytkownik lub system cenowy)
-- confidence: 0-100 — jak pewny jesteś tej pozycji
+- Wygeneruj pozycje na podstawie biblioteki + widocznego stanu + clarification
+- Każda pozycja: name (z biblioteki!), unit, quantity (DRAFT), confidence 0-100
+- W notes wpisz library_id (np. "waterproof_wet") + opcjonalny komentarz
+- unit_price: null (NIE wymyślaj cen)
 - source: zawsze "ai_suggestion"
-- notes: opcjonalny komentarz o niepewności, założeniach lub warunkach
-- Pozycje powinny łączyć materiały z pracą — np. jeśli widzisz płytki + praca "układanie płytek", utwórz pozycję "Ułożenie płytek ściennych" z jednostką i ilością
-- Nie duplikuj — jedna pozycja wyceny na logiczną jednostkę pracy
-- Preferuj mniej pozycji o wyższej pewności niż wiele niepewnych
-- Jeśli nie da się oszacować ilości, podaj quantity=0 i niski confidence z notes wyjaśniającym dlaczego
-- To jest DRAFT — nie udawaj precyzji, której nie masz
+- Gdy masz dane o powierzchni: oblicz ilości (np. area × 4 ściany × wys = wall_area)
+- Gdy brak danych: quantity=0 z niskim confidence
+- Pozycje grupuj w logicznej kolejności (demontaż → przygotowanie → hydroizolacja → …)
+- To jest DRAFT — nie udawaj precyzji, ale bądź kompletny
 
 Zasady ogólne:
 - room_type: łazienka, kuchnia, pokój, korytarz, salon, sypialnia, biuro, inne
 - confidence: 0-100 ogólna pewność analizy
 - Preferuj null nad zgadywanie
 - Dodaj warnings gdy obraz jest niewyraźny, ciemny, lub nie przedstawia pomieszczenia
-- Jeśli zdjęcie nie przedstawia pomieszczenia, zwróć puste listy i confidence 0
 - Bądź praktyczny — proponuj prace które faktycznie wynikają z widocznego stanu`
 
 // ── OpenAI types ─────────────────────────────────────────────────────────────
@@ -258,22 +333,64 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const imageType   = String(body.image_type ?? 'image/jpeg')
   const context     = (body.context as string | undefined)?.slice(0, 500)
 
-  if (!imageBase64) return err(400, 'missing_image', 'image_base64 is required')
+  // Multi-photo support: body.images = [{base64, type}, ...]
+  const rawImages = Array.isArray(body.images) ? body.images as Array<{base64?: string; type?: string}> : []
+  const multiImages = rawImages
+    .filter(img => typeof img.base64 === 'string' && img.base64.length > 0)
+    .slice(0, 10) // max 10 images
+
+  // Clarification data from guided form
+  const clarification = (body.clarification ?? null) as Record<string, unknown> | null
+
+  // Need at least one image (from multi-photo or legacy single-photo)
+  if (multiImages.length === 0 && !imageBase64) return err(400, 'missing_image', 'image_base64 is required')
 
   const isValidMime = /^image\/(jpeg|jpg|png|webp|gif|heic|heif)$/i.test(imageType)
-  if (!isValidMime) return err(400, 'invalid_image_type', `Unsupported image type: ${imageType}`)
+  if (!isValidMime && multiImages.length === 0) return err(400, 'invalid_image_type', `Unsupported image type: ${imageType}`)
 
   const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o'
+  const imageCount = multiImages.length || 1
 
-  console.info('ROOM_ANALYSIS_START', JSON.stringify({ model, imageType, hasContext: !!context }))
+  console.info('ROOM_ANALYSIS_START', JSON.stringify({ model, imageType, imageCount, hasContext: !!context, hasClarification: !!clarification }))
 
   // ── Build input ─────────────────────────────────────────────────────────
 
   type InputItem = { type: string; text?: string; image_url?: string }
-  const content: InputItem[] = [
-    { type: 'input_image', image_url: `data:${imageType};base64,${imageBase64}` },
-    { type: 'input_text',  text: `Przeanalizuj to zdjęcie pomieszczenia. Zidentyfikuj materiały wykończeniowe, zaproponuj zakres prac remontowych, i wygeneruj propozycje pozycji do wyceny.${context ? `\n\nKontekst od użytkownika: ${context}` : ''}` },
-  ]
+  const content: InputItem[] = []
+
+  // Add images (multi-photo or single)
+  if (multiImages.length > 0) {
+    for (const img of multiImages) {
+      const mime = img.type || 'image/jpeg'
+      content.push({ type: 'input_image', image_url: `data:${mime};base64,${img.base64}` })
+    }
+  } else if (imageBase64) {
+    content.push({ type: 'input_image', image_url: `data:${imageType};base64,${imageBase64}` })
+  }
+
+  // Build context text with clarification
+  let contextText = `Przeanalizuj ${imageCount > 1 ? `te ${imageCount} zdjęć pomieszczenia (różne kąty)` : 'to zdjęcie pomieszczenia'}. Zidentyfikuj materiały wykończeniowe, zaproponuj zakres prac remontowych i wygeneruj propozycje pozycji do wyceny na podstawie biblioteki.`
+
+  if (clarification) {
+    const parts: string[] = []
+    if (typeof clarification.area_m2 === 'number') parts.push(`Powierzchnia: ${clarification.area_m2} m²`)
+    if (typeof clarification.ceiling_height_m === 'number') parts.push(`Wysokość: ${clarification.ceiling_height_m} m`)
+    if (typeof clarification.tile_coverage === 'string') parts.push(`Płytki ścienne: ${clarification.tile_coverage === 'full' ? 'pełna wysokość' : clarification.tile_coverage === 'partial' ? 'częściowa' : 'brak'}`)
+    if (clarification.has_bathtub) parts.push('Wanna: tak')
+    if (clarification.has_shower) parts.push('Prysznic: tak')
+    if (clarification.has_underfloor_heating) parts.push('Ogrzewanie podłogowe: tak')
+    if (typeof clarification.fixtures_standard === 'string') parts.push(`Standard: ${clarification.fixtures_standard}`)
+    if (typeof clarification.notes === 'string' && clarification.notes) parts.push(`Uwagi: ${String(clarification.notes).slice(0, 300)}`)
+    if (parts.length > 0) {
+      contextText += `\n\nDane od użytkownika:\n${parts.join('\n')}`
+    }
+  }
+
+  if (context) {
+    contextText += `\n\nKontekst: ${context}`
+  }
+
+  content.push({ type: 'input_text', text: contextText })
 
   // ── Call OpenAI ─────────────────────────────────────────────────────────
 
@@ -290,7 +407,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         instructions: INSTRUCTIONS,
         input: [{ role: 'user', content }],
         text:  { format: ROOM_ANALYSIS_SCHEMA_FORMAT },
-        max_output_tokens: 4_500,
+        max_output_tokens: 6_000,
       }),
     })
 
@@ -377,6 +494,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   console.info('ROOM_ANALYSIS_DONE', JSON.stringify({
     model,
+    imageCount,
     roomType:       result.room_type,
     materials:      materials.length,
     workScope:      workScope.length,

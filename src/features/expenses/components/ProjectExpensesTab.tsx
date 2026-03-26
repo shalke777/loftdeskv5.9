@@ -5,8 +5,10 @@ import { rehydrateAnalysisResult } from '@/features/expenses/api/expenses.api'
 import { useProjectExpenses } from '@/features/expenses/hooks/useProjectExpenses'
 import { useCreateExpense }   from '@/features/expenses/hooks/useCreateExpense'
 import { useParseInvoice, callParseInvoiceAI, normalizeParseResult } from '@/features/expenses/hooks/useParseInvoice'
-import { useAnalyzeRoomPhoto } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
+import { useAnalyzeRoomPhoto, useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
+import type { BathroomClarification } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import { ExpenseCameraCapture } from './ExpenseCameraCapture'
+import { BathroomClarificationForm } from './BathroomClarificationForm'
 import { ExpensePreviewPane }   from './ExpensePreviewPane'
 import { ExpenseConfirmForm }   from './ExpenseConfirmForm'
 import { ApprovalStatusBadge } from './ApprovalStatusBadge'
@@ -20,7 +22,7 @@ import {
 import type { AnalysisResult } from '@/services/ai/analysis.types'
 import type { ApprovalStatus } from '@/features/expenses/api/cost-approvals.api'
 
-type TabMode = 'list' | 'capture' | 'processing' | 'confirm'
+type TabMode = 'list' | 'capture' | 'clarification' | 'processing' | 'confirm'
 
 interface Props { projectId: string }
 
@@ -54,6 +56,10 @@ export function ProjectExpensesTab({ projectId }: Props) {
   const createExpense = useCreateExpense(projectId)
   const parseInvoice  = useParseInvoice()
   const analyzeRoom   = useAnalyzeRoomPhoto()
+  const analyzeRooms  = useAnalyzeRoomPhotos()
+
+  // Multi-photo / clarification state
+  const [roomFiles, setRoomFiles] = useState<File[]>([])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -71,9 +77,36 @@ export function ProjectExpensesTab({ projectId }: Props) {
     setFileState(null)
     setParseResult(null)
     setParseError(null)
+    setRoomFiles([])
     parseInvoice.reset()
     analyzeRoom.reset()
+    analyzeRooms.reset()
     createExpense.reset()
+  }
+
+  /** Multi-photo flow: photos collected → show clarification form */
+  function handleRoomPhotos(files: File[]) {
+    setRoomFiles(files)
+    setSourceType('room_photo')
+    setFileState(files[0] ?? null)
+    setMode('clarification')
+  }
+
+  /** After clarification (or skip) → start analysis */
+  function startRoomAnalysis(clarification?: BathroomClarification) {
+    setMode('processing')
+    analyzeRooms.mutate({ files: roomFiles, clarification }, {
+      onSuccess: (result) => {
+        setParseResult(result)
+        setParseError(null)
+        setMode('confirm')
+      },
+      onError: (err) => {
+        const msg = err instanceof Error ? err.message : 'Analiza zdjęć pomieszczenia nie powiodła się.'
+        setParseError(msg)
+        setMode('confirm')
+      },
+    })
   }
 
   function handleFileCapture(file: File, type: ExpenseSourceType) {
@@ -349,20 +382,43 @@ export function ProjectExpensesTab({ projectId }: Props) {
           </button>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Dodaj koszt</h3>
         </div>
-        <ExpenseCameraCapture onCapture={handleFileCapture} onManual={startManual} />
+        <ExpenseCameraCapture onCapture={handleFileCapture} onRoomPhotos={handleRoomPhotos} onManual={startManual} />
       </div>
     )
   }
+
+  // ── Rendering: clarification (guided form before analysis) ─────────────────
+
+  if (mode === 'clarification') {
+    return (
+      <div style={{ padding: '16px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 13 }}>
+            ← Wróć
+          </button>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Uzupełnij szczegóły</h3>
+        </div>
+        <BathroomClarificationForm
+          photoCount={roomFiles.length}
+          onSubmit={(data) => startRoomAnalysis(data)}
+          onSkip={() => startRoomAnalysis()}
+          disabled={analyzeRooms.isPending}
+        />
+      </div>
+    )
+  }
+
   // ── Rendering: processing (OCR w toku) ─────────────────────────────────────
 
   if (mode === 'processing') {
     const isRoomPhoto = sourceType === 'room_photo'
+    const photoCount = roomFiles.length
     return (
       <div style={{ padding: '16px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
           <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 13 }}>← Anuluj</button>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
-            {isRoomPhoto ? 'Analizuję zdjęcie pomieszczenia…' : 'Odczytuję fakturę…'}
+            {isRoomPhoto ? `Analizuję ${photoCount > 1 ? `${photoCount} zdjęć` : 'zdjęcie'} pomieszczenia…` : 'Odczytuję fakturę…'}
           </h3>
         </div>
         <div className="form-grid" style={{ gridTemplateColumns: fileState ? 'minmax(0,1fr) minmax(0,1.4fr)' : '1fr', gap: 20, alignItems: 'start' }}>

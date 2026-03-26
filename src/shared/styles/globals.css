@@ -459,17 +459,19 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .app-shell { grid-template-columns: 1fr; }
   .sidebar { display: none; }
   .shell-topbar { padding: 8px 16px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
-  .shell-content { padding: 16px; padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+  .shell-content { padding: 16px; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
   .stats-grid, .grid-2, .grid-3, .grid-4, .quick-actions-grid, .hero-metrics { grid-template-columns: 1fr; }
   .mobile-nav {
-    position: fixed; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 20;
-    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px;
-    padding: 10px; border-radius: 22px; backdrop-filter: blur(16px); background: rgba(26,28,32,.96); box-shadow: var(--shadow-lg);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px;
+    padding: 8px 6px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    border-radius: 0; backdrop-filter: blur(16px); background: rgba(26,28,32,.97);
+    box-shadow: 0 -1px 0 rgba(255,255,255,.06);
   }
-  .mobile-nav__link { color: rgba(255,255,255,.72); display: grid; place-items: center; gap: 4px; font-size: 11px; padding: 8px; border-radius: 14px; }
+  .mobile-nav__link { color: rgba(255,255,255,.72); display: grid; place-items: center; gap: 3px; font-size: 10px; padding: 6px 2px; border-radius: 10px; }
   .mobile-nav__link--active { background: rgba(255,255,255,.10); color: #fff; }
-  /* Toast: push up above mobile nav + safe area (mobile nav ~70px + inset + 10px gap) */
-  .toast-viewport { bottom: calc(90px + env(safe-area-inset-bottom, 0px) + 8px); }
+  /* Toast: push up above mobile nav + safe area (mobile nav ~56px + inset + gap) */
+  .toast-viewport { bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 8px); }
   .landing-nav { flex-direction: column; align-items: flex-start; }
   .hero h1 { font-size: 40px; }
   .legal-gate__card { max-height: 92vh; overflow-y: auto; margin: 16px; }
