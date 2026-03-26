@@ -22,6 +22,20 @@ import type { Handler, HandlerEvent } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
 
 // ── Types ────────────────────────────────────────────────────────────────────
+// Local interfaces match src/services/ai/engines/room.types.ts (RoomAnalysisResult v2)
+// Keep in sync with canonical types — Netlify functions cannot import from src/.
+
+type StageOfWork =
+  | 'before_renovation' | 'demolition' | 'shell'
+  | 'in_progress' | 'finishing' | 'after_renovation' | 'unknown'
+
+interface DetectedElement {
+  type:       'fixture' | 'surface' | 'installation' | 'damage' | 'appliance' | 'furniture' | 'other'
+  label:      string
+  confidence: number
+  location?:  string | null
+  notes?:     string | null
+}
 
 interface DetectedMaterial {
   name:        string
@@ -32,16 +46,28 @@ interface DetectedMaterial {
   notes?:      string | null
 }
 
-interface WorkScopeItem {
-  description:    string
-  category:       string
-  estimated_unit?: string | null
-  estimated_qty?:  number | null
-  confidence:     number
-  notes?:         string | null
+interface ScopeItem {
+  library_id?:   string | null
+  description:   string
+  category:      string
+  unit?:         string | null
+  quantity?:     number | null
+  priority:      'required' | 'likely' | 'optional'
+  confidence:    number
+  notes?:        string | null
+  dependencies?: string[]
+}
+
+interface QuantityHint {
+  dimension:  'floor_area' | 'wall_area' | 'ceiling_area' | 'perimeter' | 'wet_zone_area' | 'other'
+  value:      number | null
+  unit:       string
+  source:     'measured' | 'estimated' | 'user_input' | 'ai_inferred' | 'unknown'
+  confidence: number
 }
 
 interface SuggestedEstimateItem {
+  library_id?: string | null
   name:        string
   unit:        string
   quantity:    number
@@ -51,13 +77,23 @@ interface SuggestedEstimateItem {
   notes?:      string | null
 }
 
+/** v2 — matches src/services/ai/engines/room.types.ts RoomAnalysisResult */
 export interface RoomAnalysisResult {
-  room_type:               string | null
+  space_type:              string | null
+  stage_of_work:           StageOfWork
+  observed_elements:       DetectedElement[]
+  detected_installations:  DetectedElement[]
   detected_materials:      DetectedMaterial[]
-  work_scope:              WorkScopeItem[]
+  required_work_scope:     ScopeItem[]
+  likely_work_scope:       ScopeItem[]
+  optional_work_scope:     ScopeItem[]
+  missing_information:     string[]
+  assumptions:             string[]
+  quantity_hints:          QuantityHint[]
   suggested_estimate_items: SuggestedEstimateItem[]
-  extraction_confidence:   number
-  extraction_warnings:     string[]
+  coverage:                { total: number; matched: number; unmatched: number } | null
+  warnings:                string[]
+  confidence:              number
   notes:                   string | null
 }
 
@@ -111,12 +147,25 @@ function err(statusCode: number, error: string, message: string) {
   return { statusCode, headers: CORS_HEADERS, body: JSON.stringify({ ok: false, error, message }) }
 }
 
-// ── JSON Schema for Structured Output ────────────────────────────────────────
+// ── JSON Schema for Structured Output (v2) ───────────────────────────────────
 
 const ns = { anyOf: [{ type: 'string' }, { type: 'null' }] }
 const nn = { anyOf: [{ type: 'number' }, { type: 'null' }] }
 
-const MATERIAL_SCHEMA = {
+const DETECTED_ELEMENT_SCHEMA = {
+  type: 'object',
+  properties: {
+    type:       { type: 'string', enum: ['fixture', 'surface', 'installation', 'damage', 'appliance', 'furniture', 'other'] },
+    label:      { type: 'string' },
+    confidence: { type: 'number' },
+    location:   ns,
+    notes:      ns,
+  },
+  required: ['type', 'label', 'confidence', 'location', 'notes'],
+  additionalProperties: false,
+}
+
+const DETECTED_MATERIAL_SCHEMA = {
   type: 'object',
   properties: {
     name:       { type: 'string' },
@@ -130,23 +179,40 @@ const MATERIAL_SCHEMA = {
   additionalProperties: false,
 }
 
-const WORK_SCOPE_SCHEMA = {
+const SCOPE_ITEM_SCHEMA = {
   type: 'object',
   properties: {
-    description:    { type: 'string' },
-    category:       { type: 'string' },
-    estimated_unit: ns,
-    estimated_qty:  nn,
-    confidence:     { type: 'number' },
-    notes:          ns,
+    library_id:   ns,
+    description:  { type: 'string' },
+    category:     { type: 'string' },
+    unit:         ns,
+    quantity:     nn,
+    priority:     { type: 'string', enum: ['required', 'likely', 'optional'] },
+    confidence:   { type: 'number' },
+    notes:        ns,
+    dependencies: { type: 'array', items: { type: 'string' } },
   },
-  required: ['description', 'category', 'estimated_unit', 'estimated_qty', 'confidence', 'notes'],
+  required: ['library_id', 'description', 'category', 'unit', 'quantity', 'priority', 'confidence', 'notes', 'dependencies'],
+  additionalProperties: false,
+}
+
+const QUANTITY_HINT_SCHEMA = {
+  type: 'object',
+  properties: {
+    dimension:  { type: 'string', enum: ['floor_area', 'wall_area', 'ceiling_area', 'perimeter', 'wet_zone_area', 'other'] },
+    value:      nn,
+    unit:       { type: 'string' },
+    source:     { type: 'string', enum: ['measured', 'estimated', 'user_input', 'ai_inferred', 'unknown'] },
+    confidence: { type: 'number' },
+  },
+  required: ['dimension', 'value', 'unit', 'source', 'confidence'],
   additionalProperties: false,
 }
 
 const ESTIMATE_ITEM_SCHEMA = {
   type: 'object',
   properties: {
+    library_id: ns,
     name:       { type: 'string' },
     unit:       { type: 'string' },
     quantity:   { type: 'number' },
@@ -155,192 +221,279 @@ const ESTIMATE_ITEM_SCHEMA = {
     source:     { type: 'string', enum: ['ai_suggestion', 'market_data', 'historical'] },
     notes:      ns,
   },
-  required: ['name', 'unit', 'quantity', 'unit_price', 'confidence', 'source', 'notes'],
+  required: ['library_id', 'name', 'unit', 'quantity', 'unit_price', 'confidence', 'source', 'notes'],
   additionalProperties: false,
 }
 
 const ROOM_ANALYSIS_SCHEMA_FORMAT = {
   type:   'json_schema',
-  name:   'room_analysis',
+  name:   'room_analysis_v2',
   strict: true,
   schema: {
     type: 'object',
     properties: {
-      room_type:                ns,
-      detected_materials:       { type: 'array', items: MATERIAL_SCHEMA },
-      work_scope:               { type: 'array', items: WORK_SCOPE_SCHEMA },
+      space_type:              ns,
+      stage_of_work:           { type: 'string', enum: ['before_renovation', 'demolition', 'shell', 'in_progress', 'finishing', 'after_renovation', 'unknown'] },
+      observed_elements:       { type: 'array', items: DETECTED_ELEMENT_SCHEMA },
+      detected_installations:  { type: 'array', items: DETECTED_ELEMENT_SCHEMA },
+      detected_materials:      { type: 'array', items: DETECTED_MATERIAL_SCHEMA },
+      required_work_scope:     { type: 'array', items: SCOPE_ITEM_SCHEMA },
+      likely_work_scope:       { type: 'array', items: SCOPE_ITEM_SCHEMA },
+      optional_work_scope:     { type: 'array', items: SCOPE_ITEM_SCHEMA },
+      missing_information:     { type: 'array', items: { type: 'string' } },
+      assumptions:             { type: 'array', items: { type: 'string' } },
+      quantity_hints:          { type: 'array', items: QUANTITY_HINT_SCHEMA },
       suggested_estimate_items: { type: 'array', items: ESTIMATE_ITEM_SCHEMA },
-      confidence:               { type: 'number' },
-      warnings:                 { type: 'array', items: { type: 'string' } },
-      notes:                    ns,
+      coverage: {
+        anyOf: [
+          {
+            type: 'object',
+            properties: {
+              total:     { type: 'number' },
+              matched:   { type: 'number' },
+              unmatched: { type: 'number' },
+            },
+            required: ['total', 'matched', 'unmatched'],
+            additionalProperties: false,
+          },
+          { type: 'null' },
+        ],
+      },
+      warnings:   { type: 'array', items: { type: 'string' } },
+      confidence: { type: 'number' },
+      notes:      ns,
     },
-    required: ['room_type', 'detected_materials', 'work_scope', 'suggested_estimate_items', 'confidence', 'warnings', 'notes'],
+    required: [
+      'space_type', 'stage_of_work', 'observed_elements', 'detected_installations',
+      'detected_materials', 'required_work_scope', 'likely_work_scope', 'optional_work_scope',
+      'missing_information', 'assumptions', 'quantity_hints', 'suggested_estimate_items',
+      'coverage', 'warnings', 'confidence', 'notes',
+    ],
     additionalProperties: false,
   },
 }
 
 // ── System instructions ──────────────────────────────────────────────────────
+// NOTE: BATHROOM_LIBRARY_BLOCK is a v3 inline copy of buildLibraryPromptBlock()
+// from src/services/ai/bathroom-task-library.ts. Update both in sync.
 
 const BATHROOM_LIBRARY_BLOCK = `
-BIBLIOTEKA TYPOWYCH POZYCJI ŁAZIENKOWYCH (referencja do dopasowania):
+BIBLIOTEKA TYPOWYCH POZYCJI LAZIENKOWYCH (v3 — 151 pozycji, 23 kategorie):
 
-## Demontaż i przygotowanie
-- measure_inventory: Pomiar / inwentaryzacja / trasowanie (kpl.) [OBOWIĄZKOWA]
-- demo_tiles_wall: Demontaż starych płytek ściennych (m²) [PRAWDOPODOBNA]
-- demo_tiles_floor: Demontaż starych płytek podłogowych (m²) [PRAWDOPODOBNA]
-- demo_fixtures: Demontaż starej ceramiki i armatury (kpl.) [PRAWDOPODOBNA]
-- demo_bathtub: Demontaż wanny / brodzika (szt.) [WARUNKOWA]
-- demo_drywall: Demontaż starych zabudów GK (m²) [WARUNKOWA]
-- debris_removal: Wywóz gruzu i odpadów (kpl.) [OBOWIĄZKOWA]
+## Pomiar i przygotowanie
+- measure_inventory: Pomiar / inwentaryzacja / trasowanie (kpl.) [OBOWIAZKOWA]
+- site_protection: Zabezpieczenie placu budowy / sasiednich pomieszczen (kpl.) [PRAWDOPODOBNA]
+- utility_shutoff: Odciecie mediow / wody / pradu (kpl.) [OBOWIAZKOWA]
 
-## Przygotowanie podłoża
-- substrate_leveling: Wyrównanie podłoża / wylewka / szlichta (m²) [PRAWDOPODOBNA]
-- substrate_priming: Gruntowanie podłoża pod płytki (m²) [OBOWIĄZKOWA]
-- substrate_wall_priming: Gruntowanie ścian pod płytki / malowanie (m²) [OBOWIĄZKOWA]
-- substrate_plastering: Tynkowanie / wyrównanie ścian (m²) [WARUNKOWA]
+## Demontaz
+- demo_tiles_wall: Demontaz starych plytek sciennych (m2) [PRAWDOPODOBNA]
+- demo_tiles_floor: Demontaz starych plytek podlogowych (m2) [PRAWDOPODOBNA]
+- demo_fixtures: Demontaz ceramiki i armatury (kpl.) [PRAWDOPODOBNA]
+- demo_bathtub: Demontaz wanny / brodzika (szt.) [WARUNKOWA]
+- demo_drywall: Demontaz zabudow GK (m2) [WARUNKOWA]
+- demo_door: Demontaz drzwi / oscieznicy (kpl.) [WARUNKOWA]
+- demo_ceiling: Demontaz sufitu podwieszanego (m2) [WARUNKOWA]
+
+## Wywoz gruzu
+- debris_removal: Wywoz gruzu i odpadow (kpl.) [OBOWIAZKOWA]
+- debris_sorting: Segregacja odpadow budowlanych (kpl.) [OPCJONALNA]
+
+## Przygotowanie podloza - podloga
+- substrate_floor_leveling: Wyrownanie podloza podlogowego (m2) [PRAWDOPODOBNA]
+- substrate_floor_priming: Gruntowanie podloza pod plytki (m2) [OBOWIAZKOWA]
+
+## Przygotowanie podloza - sciany
+- substrate_wall_priming: Gruntowanie scian pod plytki / malowanie (m2) [OBOWIAZKOWA]
+- substrate_plastering: Tynkowanie / wyrownanie scian (m2) [WARUNKOWA]
+- substrate_patching: Szpachlowanie ubytow, naprawa scian (m2) [PRAWDOPODOBNA]
+
+## Wylewka / szlichta
+- screed_standard: Wylewka samopoziomujaca standard (m2) [PRAWDOPODOBNA]
+- screed_heated: Wylewka pod ogrzewanie podlogowe (m2) [WARUNKOWA] (jezeli: has_underfloor_heating)
 
 ## Hydroizolacja
-- waterproof_wet: Hydroizolacja stref mokrych (prysznic, wanna) (m²) [OBOWIĄZKOWA] (wymaga: tile_floor)
-- waterproof_floor: Hydroizolacja podłogi łazienki (m²) [OBOWIĄZKOWA] (wymaga: tile_floor)
-- waterproof_tape: Taśmy uszczelniające narożniki, przejścia (mb) [OBOWIĄZKOWA] (wymaga: waterproof_wet)
-- waterproof_collar: Kołnierze uszczelniające odpływ, rury (szt.) [OBOWIĄZKOWA] (wymaga: waterproof_floor)
+- waterproof_wet: Hydroizolacja stref mokrych (prysznic, wanna) (m2) [OBOWIAZKOWA]
+- waterproof_floor: Hydroizolacja podlogi lazienki (m2) [OBOWIAZKOWA]
+- waterproof_tape: Tasmy uszczelniajace narozniki, przejscia (mb) [OBOWIAZKOWA] (wymaga: waterproof_wet)
+- waterproof_collar: Kolnierze uszczelniajace odplyw, rury (szt.) [OBOWIAZKOWA] (wymaga: waterproof_floor)
+- waterproof_membrane: Membrana uszczelniajaca pod plyciami sciennymi (m2) [WARUNKOWA]
 
 ## Zabudowy GK / obudowy / rewizje
-- gk_pipe_casing: Zabudowa pionów instalacyjnych GK (mb) [PRAWDOPODOBNA]
+- gk_pipe_casing: Zabudowa pionow instalacyjnych GK (mb) [PRAWDOPODOBNA]
 - gk_inspection: Rewizja serwisowa / drzwiczki (szt.) [PRAWDOPODOBNA] (wymaga: gk_pipe_casing)
-- gk_wc_frame: Zabudowa stelaża WC podtynkowego (kpl.) [WARUNKOWA] (wymaga: fix_wc_concealed)
-- gk_niche: Wnęka / półka z GK (szt.) [OPCJONALNA]
-- gk_ceiling: Sufit podwieszany GK (m²) [OPCJONALNA]
-- gk_boiler_casing: Obudowa kotła / bojlera (kpl.) [WARUNKOWA]
+- gk_wc_frame: Zabudowa stelaza WC podtynkowego (kpl.) [WARUNKOWA] (wymaga: fix_wc_concealed)
+- gk_niche: Wneka / polka z GK (szt.) [OPCJONALNA]
+- gk_ceiling: Sufit podwieszany GK (m2) [OPCJONALNA]
+- gk_boiler_casing: Obudowa kotla / bojlera (kpl.) [WARUNKOWA]
+- gk_bath_panel: Obudowa boczna wanny GK (kpl.) [WARUNKOWA] (wymaga: fix_bathtub)
 
 ## Instalacja wod-kan
-- plumb_points: Przeróbka punktów wod-kan (szt.) [WARUNKOWA]
-- plumb_shower_drain: Montaż odpływu liniowego / brodzika (szt.) [WARUNKOWA]
-- plumb_bathtub: Podłączenie wanny (szt.) [WARUNKOWA] (wymaga: fix_bathtub)
-- plumb_mixing_valve: Montaż baterii podtynkowej (szt.) [OPCJONALNA]
-- plumb_radiator: Montaż grzejnika łazienkowego / drabinki (szt.) [PRAWDOPODOBNA]
+- plumb_points: Przerobka punktow wod-kan (szt.) [WARUNKOWA]
+- plumb_shower_drain: Montaz odplywu liniowego / brodzika (szt.) [WARUNKOWA]
+- plumb_bathtub: Podlaczenie wanny (szt.) [WARUNKOWA] (wymaga: fix_bathtub)
+- plumb_mixing_valve: Montaz baterii podtynkowej (szt.) [OPCJONALNA]
+- plumb_radiator: Montaz grzejnika lazienkowego / drabinki (szt.) [PRAWDOPODOBNA]
+- plumb_washing_machine: Przylacze pralki / suszarki (kpl.) [WARUNKOWA]
+- plumb_flush_tank: Montaz zbiornika splukujacego (szt.) [WARUNKOWA]
 
 ## Instalacja elektryczna
-- elec_points: Przeróbka punktów elektrycznych (szt.) [WARUNKOWA]
-- elec_lighting: Montaż oświetlenia LED, halogeny (szt.) [PRAWDOPODOBNA]
-- elec_mirror_light: Podłączenie oświetlenia lustra (szt.) [OPCJONALNA] (wymaga: acc_mirror)
-- elec_underfloor: Mata grzewcza podłogowa elektryczna (m²) [OPCJONALNA]
-- elec_fan: Montaż wentylatora łazienkowego (szt.) [PRAWDOPODOBNA]
+- elec_points: Przerobka punktow elektrycznych (szt.) [WARUNKOWA]
+- elec_lighting: Montaz oswietlenia LED, halogeny (szt.) [PRAWDOPODOBNA]
+- elec_mirror_light: Podlaczenie oswietlenia lustra (szt.) [OPCJONALNA] (wymaga: acc_mirror)
+- elec_fan: Montaz wentylatora lazienkowego (szt.) [PRAWDOPODOBNA]
+- elec_gfci: Gniazdko z ochrona przeciwpora (szt.) [PRAWDOPODOBNA]
+- elec_led_strip: Montaz tasmy LED (mb) [OPCJONALNA]
+- elec_switch: Montaz wlacznikow swiatla (szt.) [PRAWDOPODOBNA]
 
-## Okładziny ścienne
-- tile_wall_full: Układanie płytek ściennych pełna wysokość (m²) [PRAWDOPODOBNA]
-- tile_wall_partial: Układanie płytek ściennych częściowa wys. (m²) [WARUNKOWA]
-- tile_wall_trim: Obróbki, docinki, listwy narożnikowe (mb) [OBOWIĄZKOWA] (wymaga: tile_wall_full LUB tile_wall_partial)
-- tile_wall_grouting: Fugowanie płytek ściennych (m²) [OBOWIĄZKOWA] (wymaga: tile_wall_full LUB tile_wall_partial)
-- tile_mosaic: Układanie mozaiki / dekorów (m²) [OPCJONALNA]
-- tile_window_sill: Obróbka okna glif, parapet z płytek (mb) [WARUNKOWA]
+## Ogrzewanie podlogowe
+- elec_underfloor: Mata grzewcza podlogowa elektryczna (m2) [OPCJONALNA]
+- underfloor_hydro: Ogrzewanie podlogowe wodne (m2) [OPCJONALNA]
+- underfloor_thermostat: Termostat podlogowy (szt.) [PRAWDOPODOBNA] (wymaga: elec_underfloor LUB underfloor_hydro)
 
-## Okładziny podłogowe
-- tile_floor: Układanie płytek podłogowych (m²) [OBOWIĄZKOWA]
-- tile_floor_grouting: Fugowanie płytek podłogowych (m²) [OBOWIĄZKOWA] (wymaga: tile_floor)
-- tile_floor_trim: Cokoły / listwy przypodłogowe z płytek (mb) [OPCJONALNA]
-- tile_threshold: Próg / listwa progowa (szt.) [PRAWDOPODOBNA]
+## Okladziny scienne
+- tile_wall_full: Ukladanie plytek sciennych pelna wysokosc (m2) [PRAWDOPODOBNA]
+- tile_wall_partial: Ukladanie plytek sciennych czesciowa wys. (m2) [WARUNKOWA]
+- tile_wall_trim: Obrobki, docinki, listwy naroznikowe (mb) [OBOWIAZKOWA] (wymaga: tile_wall_full LUB tile_wall_partial)
+- tile_wall_grouting: Fugowanie plytek sciennych (m2) [OBOWIAZKOWA] (wymaga: tile_wall_full LUB tile_wall_partial)
+- tile_window_sill: Obrobka okna glif, parapet z plytek (mb) [WARUNKOWA]
+
+## Okladziny podlogowe
+- tile_floor: Ukladanie plytek podlogowych (m2) [OBOWIAZKOWA]
+- tile_floor_grouting: Fugowanie plytek podlogowych (m2) [OBOWIAZKOWA] (wymaga: tile_floor)
+- tile_floor_trim: Cokoly / listwy przypodlogowe (mb) [OPCJONALNA]
+- tile_threshold: Prog / listwa progowa (szt.) [PRAWDOPODOBNA]
+
+## Format wielki / wielkoformatowy
+- large_format_floor: Ukladanie plytek wielkoformatowych podloga (m2) [WARUNKOWA]
+- large_format_wall: Ukladanie plytek wielkoformatowych sciany (m2) [WARUNKOWA]
+- large_format_cutting: Ciecie i specjalistyczna obrobka plytek WF (mb) [WARUNKOWA]
+
+## Dekoracje / mozaika
+- tile_mosaic: Ukladanie mozaiki / dekorow (m2) [OPCJONALNA]
+- tile_decorative_strip: Listwa / fryz dekoracyjny (mb) [OPCJONALNA]
+- tile_feature_wall: Plytki dekoracyjne akcentowa sciana (m2) [OPCJONALNA]
+
+## Profile, listwy, wykończenie krawedzi
+- profile_corner: Profile naroznikowe (mb) [PRAWDOPODOBNA]
+- profile_expansion: Profile dylatacyjne (mb) [WARUNKOWA]
+- profile_floor_wall: Profile przejsciowe sciana-podloga (mb) [OPCJONALNA]
+
+## Fugowanie
+- grout_walls: Fugowanie plytek sciennych (m2) [OBOWIAZKOWA] (wymaga: tile_wall_full LUB tile_wall_partial)
+- grout_floor: Fugowanie plytek podlogowych (m2) [OBOWIAZKOWA] (wymaga: tile_floor)
+- grout_epoxy: Fuga epoksydowa (wybrane strefy) (m2) [OPCJONALNA]
+
+## Silikonowanie
+- seal_silicone: Silikonowanie wanna, brodzik, umywalka, WC (mb) [OBOWIAZKOWA]
+- seal_silicone_shower: Silikonowanie kabiny/strefy prysznicowej (mb) [PRAWDOPODOBNA]
+- seal_acrylic: Uszczelnienie akrylowe narozniki, przejscia (mb) [PRAWDOPODOBNA]
 
 ## Malowanie / tynki dekoracyjne
-- paint_ceiling: Malowanie sufitu farba łazienkowa (m²) [PRAWDOPODOBNA]
-- paint_walls: Malowanie ścian strefy bez płytek (m²) [WARUNKOWA]
+- paint_ceiling: Malowanie sufitu farba lazienkowa (m2) [PRAWDOPODOBNA]
+- paint_walls: Malowanie scian strefy bez plytek (m2) [WARUNKOWA]
+- paint_door_frame: Malowanie oscieznicy / framugi (szt.) [WARUNKOWA]
+- decorative_plaster: Tynk dekoracyjny / strukturalny (m2) [OPCJONALNA]
 
-## Biały montaż
-- fix_wc: Montaż miski WC (szt.) [OBOWIĄZKOWA]
-- fix_wc_concealed: Montaż WC podtynkowego z przyciskiem (kpl.) [WARUNKOWA] (wymaga: gk_wc_frame)
-- fix_basin: Montaż umywalki (szt.) [OBOWIĄZKOWA]
-- fix_double_basin: Montaż umywalki podwójnej (szt.) [WARUNKOWA]
-- fix_shower_cabin: Montaż kabiny prysznicowej (kpl.) [WARUNKOWA]
-- fix_bathtub: Montaż wanny + obudowa (kpl.) [WARUNKOWA]
-- fix_bidet: Montaż bidetu (szt.) [OPCJONALNA]
+## Bialy montaz
+- fix_wc: Montaz miski WC (szt.) [OBOWIAZKOWA]
+- fix_wc_concealed: Montaz WC podtynkowego z przyciskiem (kpl.) [WARUNKOWA] (wymaga: gk_wc_frame)
+- fix_basin: Montaz umywalki (szt.) [OBOWIAZKOWA]
+- fix_double_basin: Montaz umywalki podwojnej (szt.) [WARUNKOWA]
+- fix_countertop_basin: Montaz umywalki nablatowej (szt.) [WARUNKOWA]
+- fix_shower_cabin: Montaz kabiny prysznicowej (kpl.) [WARUNKOWA]
+- fix_shower_tray: Montaz brodzika (szt.) [WARUNKOWA]
+- fix_bathtub: Montaz wanny + obudowa (kpl.) [WARUNKOWA]
+- fix_freestanding_bath: Montaz wanny wolnostojacey (kpl.) [WARUNKOWA]
+- fix_bidet: Montaz bidetu (szt.) [OPCJONALNA]
+- fix_urinal: Montaz pisuaru (szt.) [OPCJONALNA]
+- fix_vanity_unit: Montaz szafki podumywalkowej (kpl.) [PRAWDOPODOBNA]
 
 ## Armatura
-- fit_basin_tap: Montaż baterii umywalkowej (szt.) [OBOWIĄZKOWA] (wymaga: fix_basin)
-- fit_shower_set: Montaż zestawu prysznicowego (kpl.) [PRAWDOPODOBNA]
-- fit_bathtub_tap: Montaż baterii wannowej (szt.) [WARUNKOWA] (wymaga: fix_bathtub)
-- fit_angle_valves: Montaż zaworów kątowych (szt.) [OBOWIĄZKOWA]
+- fit_basin_tap: Montaz baterii umywalkowej (szt.) [OBOWIAZKOWA] (wymaga: fix_basin)
+- fit_shower_set: Montaz zestawu prysznicowego (kpl.) [PRAWDOPODOBNA]
+- fit_bathtub_tap: Montaz baterii wannowej (szt.) [WARUNKOWA] (wymaga: fix_bathtub)
+- fit_thermostatic: Montaz baterii termostatycznej (szt.) [OPCJONALNA]
+- fit_angle_valves: Montaz zaworow katowych (szt.) [OBOWIAZKOWA]
+- fit_concealed_tap: Montaz baterii podtynkowej (szt.) [OPCJONALNA]
+
+## Szyby / kabiny / walk-in
+- glass_partition: Montaz szyby / scianki walk-in (szt.) [WARUNKOWA]
+- glass_shower_door: Montaz drzwi prysznicowych (szt.) [WARUNKOWA]
+- glass_mirror_wall: Montaz lustra wielkopowierzchniowego (m2) [OPCJONALNA]
 
 ## Akcesoria i wykończenie
-- acc_mirror: Montaż lustra (szt.) [PRAWDOPODOBNA]
-- acc_towel_rail: Montaż wieszaka / grzejnika łazienkowego (szt.) [PRAWDOPODOBNA]
-- acc_shelf: Montaż półek / organizerów (szt.) [OPCJONALNA]
-- acc_toilet_paper: Montaż uchwytu na papier (szt.) [PRAWDOPODOBNA]
-- acc_soap_dish: Montaż dozownika / mydelniczki (szt.) [OPCJONALNA]
-- acc_glass_partition: Montaż szyby / ścianki prysznicowej walk-in (szt.) [WARUNKOWA]
+- acc_mirror: Montaz lustra (szt.) [PRAWDOPODOBNA]
+- acc_towel_rail: Montaz wieszaka / drabinki (szt.) [PRAWDOPODOBNA]
+- acc_heated_towel: Montaz grzejnika drabinkowego elektrycznego (szt.) [OPCJONALNA]
+- acc_shelf: Montaz polek / organizerow (szt.) [OPCJONALNA]
+- acc_toilet_paper: Montaz uchwytu na papier (szt.) [PRAWDOPODOBNA]
+- acc_soap_dish: Montaz dozownika / mydelniczki (szt.) [OPCJONALNA]
+- acc_robe_hook: Montaz haczyow / wiesjakow szlafroka (szt.) [OPCJONALNA]
+- acc_ventilation_grille: Montaz kratki wentylacyjnej (szt.) [PRAWDOPODOBNA]
+- acc_door_installation: Montaz drzwi lazienki (kpl.) [WARUNKOWA]
 
-## Uszczelnienia i odbiór
-- seal_silicone: Silikonowanie wanna, brodzik, umywalka, WC (mb) [OBOWIĄZKOWA]
-- seal_acrylic: Uszczelnienie akrylowe narożniki, przejścia (mb) [PRAWDOPODOBNA]
-- seal_cleanup: Sprzątanie powykonawcze (kpl.) [OBOWIĄZKOWA]
-- seal_inspection: Odbiór techniczny / próba szczelności (kpl.) [OPCJONALNA]
+## Uszczelnienia i odbior
+- seal_cleanup: Sprzatanie powykonawcze (kpl.) [OBOWIAZKOWA]
+- seal_inspection: Odbior techniczny / proba szczelnosci (kpl.) [OPCJONALNA]
+- seal_snag_list: Usuniecie usterek po odbiorze (kpl.) [OPCJONALNA]
 `
 
-const INSTRUCTIONS = `Jesteś ekspertem od remontów i wykończeń wnętrz w Polsce, specjalizujesz się w łazienkach.
-Analizujesz zdjęcia pomieszczeń i na podstawie:
-- widocznych materiałów, stanu wykończenia, urządzeń sanitarnych
-- przekazanych parametrów (powierzchnia, wysokość, standard, typ WC, liczba umywalek, przeróbki)
-- profesjonalnej biblioteki pozycji łazienkowych
-- zasad remontowych (zależności między pozycjami)
+const INSTRUCTIONS = `Jestes ekspertem od remontow i wykonczenia wnetrz w Polsce, specjalizacja: lazienki, kuchnie, pokoje.
+Analizujesz zdjecia pomieszczen i generujesz KOMPLETNY zakres prac remontowych — jak kosztorysant branzowy.
 
-generujesz KOMPLETNY zakres prac remontowych — jak kosztorysant branżowy.
-
-Zwróć TYLKO poprawny JSON zgodny z podanym schematem.
+Zwroc TYLKO poprawny JSON zgodny z podanym schematem.
 
 ${BATHROOM_LIBRARY_BLOCK}
 
-WAŻNE — ZASADY DOPASOWANIA DO BIBLIOTEKI:
-1. Dla każdej pozycji z suggested_estimate_items MUSISZ użyć nazwy z biblioteki (np. "Hydroizolacja stref mokrych" zamiast ogólnego "hydroizolacja")
-2. W polu "notes" podaj library_id (np. "waterproof_wet") dla pozycji dopasowanych z biblioteki
-3. Pozycje [OBOWIĄZKOWA] w łazience ZAWSZE dodaj — nawet jeśli nie widać ich na zdjęciu
-4. Pozycje [PRAWDOPODOBNA] dodaj gdy widoczne przesłanki lub użytkownik potwierdził
-5. Pozycje [WARUNKOWA] dodaj TYLKO gdy widoczne na zdjęciu LUB potwierdzone w clarification
-6. Nie wymyślaj pozycji które nie mają pokrycia w bibliotece ani na zdjęciu
-7. Gdy analizujesz wiele zdjęć — łącz informacje z WSZYSTKICH (różne kąty = pełniejszy obraz)
+STAGE_OF_WORK — jak rozpoznac:
+- before_renovation: stara lazienka w uzyciu, stare okładziny/armatura
+- demolition: kuce, gole mury/podlogi, gruz
+- shell: stan surowy — brak okladzin, gole sciany po tynku
+- in_progress: mix — czesc prac wykonana, czesc nie
+- finishing: montaz armatury/akcesoriow, malowanie
+- after_renovation: nowe okladziny, nowa armatura, czyste wykonczenie
+- unknown: nie da sie okreslic
 
-ZASADY ZALEŻNOŚCI:
-- Jeśli dodajesz pozycję która wymaga innej (np. gk_inspection wymaga gk_pipe_casing), upewnij się że zależność też jest na liście
-- WC podtynkowe → zawsze dodaj zabudowę stelaża (gk_wc_frame)
-- Odpływ liniowy → dodaj plumb_shower_drain
-- Wanna → dodaj plumb_bathtub + fit_bathtub_tap
+PODZIAŁ ZAKRESU PRAC (trzy listy!):
+required_work_scope — pozycje [OBOWIAZKOWA]: ZAWSZE dodaj dla kazdej lazienki
+  Przyklad: pomiar, gruntowanie, hydroizolacja, fugowanie, silikonowanie, sprzatanie
 
-ZASADY ILOŚCI (QUANTITY HINTS):
-- Gdy znasz powierzchnię podłogi (area_m2): użyj do tile_floor, waterproof_floor, paint_ceiling
-- Gdy znasz wysokość (ceiling_height_m) i powierzchnię: oblicz wall_area ≈ perimeter × height, gdzie perimeter ≈ 4 × √area
-- Płytki ścienne pełna wys: wall_area. Częściowa: wall_area × 0.6. Brak: 0
-- Malowanie ścian: wall_area minus surface pokryta płytkami
-- Podaj ilość z confidence proporcjonalną do pewności danych (80+ gdy masz wymiary, 40-60 gdy szacujesz)
-- Quantity=0 i confidence<30 gdy brak danych do oszacowania
+likely_work_scope — pozycje [PRAWDOPODOBNA]: dodaj gdy probaki lub logicznie wynika
+  Przyklad: demontaz starych plytek, oswietlenie, grzejnik, kabina prysznicowa
 
-Zasady analizy materiałów (detected_materials):
-- Identyfikuj widoczne materiały: typ, kategoria, przybliżona ilość jeśli możliwa
-- Kategorie: okładziny_ścian, okładziny_podłóg, instalacja_sanitarna, instalacja_elektryczna, stolarka, farby_tynki, oświetlenie, meble_zabudowa, inne
-- Podaj confidence 0-100 dla każdego materiału
-- Szacuj ilość (quantity + unit) TYLKO gdy wystarczające wskazówki wizualne
+optional_work_scope — pozycje [WARUNKOWA]/[OPCJONALNA]: TYLKO gdy widoczne lub potwierdzone
+  Przyklad: wneka GK, WC podtynkowe, wanna wolnostojaca, ogrzewanie podlogowe
 
-Zasady zakresu prac (work_scope):
-- Proponuj realne prace wynikające z widocznego stanu i biblioteki
-- Kategorie: demolition, substrate, waterproofing, drywall, plumbing, electrical, tiling, painting, fixtures, fittings, accessories, sealing
-- Opisz po polsku
-- estimated_unit: m², mb, szt., kpl., ryczałt
-- estimated_qty: TYLKO gdy da się oszacować
+ZASADY ZALEZNOSCI — automatycznie dodaj:
+- fix_wc_concealed → gk_wc_frame
+- odpływ liniowy → plumb_shower_drain
+- fix_bathtub → plumb_bathtub + fit_bathtub_tap
+- gk_inspection → gk_pipe_casing
+- waterproof_wet → waterproof_tape + waterproof_collar
+- tile_wall_grouting → tile_wall_full LUB tile_wall_partial
 
-Zasady pozycji wyceny (suggested_estimate_items):
-- Wygeneruj pozycje na podstawie biblioteki + widocznego stanu + clarification
-- Każda pozycja: name (z biblioteki!), unit, quantity (DRAFT), confidence 0-100
-- W notes wpisz library_id (np. "waterproof_wet") + opcjonalny komentarz
-- unit_price: null (NIE wymyślaj cen)
-- source: zawsze "ai_suggestion"
-- Gdy masz dane o powierzchni: oblicz ilości (np. area × 4 ściany × wys = wall_area)
-- Gdy brak danych: quantity=0 z niskim confidence
-- Pozycje grupuj w logicznej kolejności (demontaż → przygotowanie → hydroizolacja → …)
-- To jest DRAFT — nie udawaj precyzji, ale bądź kompletny
+ILOSCI (quantity_hints + suggested_estimate_items):
+Gdy podano wymiary — oblicz i zapisz w quantity_hints:
+  floor_area = area_m2
+  perimeter = 4 × sqrt(area_m2)
+  wall_area = perimeter × ceiling_height_m
+  wet_zone_area = 1.2 (prysznic) lub 1.6 (wanna) lub 2.8 (oba)
 
-Zasady ogólne:
-- room_type: łazienka, kuchnia, pokój, korytarz, salon, sypialnia, biuro, inne
-- confidence: 0-100 ogólna pewność analizy
+W suggested_estimate_items uzyj obliczonych ilosci:
+  Podloga: floor_area. Plytki scienne pelna wys: wall_area. Czescciowa: wall_area × 0.6
+  Confidence: 85+ gdy masz wymiary, 40-60 gdy szacujesz, <30 gdy brak danych
+  unit_price: zawsze null. source: zawsze "ai_suggestion"
+
+MISSING_INFORMATION: wymien czego nie mozna bylo ocenic (np. "Nieznana powierzchnia podlogi")
+ASSUMPTIONS: wymien co model zalozyl (np. "Zakladam WC stojace", "Zakladam wysokosc 2.6m")
+
+ZASADY OGOLNE:
+- space_type: lazienka, kuchnia, pokoj, korytarz, salon, sypialnia, wc, inne
+- confidence: 0-100 ogolna pewnosc analizy
 - Preferuj null nad zgadywanie
-- Dodaj warnings gdy obraz jest niewyraźny, ciemny, lub nie przedstawia pomieszczenia
-- Bądź praktyczny — proponuj prace które faktycznie wynikają z widocznego stanu`
+- warnings: obraz niewyrazny, ciemny, poza zakresem, brak pomieszczenia
+- Gdy wiele zdjec — lacze informacje z WSZYSTKICH
+- To jest DRAFT — badz kompletny ale zaznaczaj zalozenia`
 
 // ── OpenAI types ─────────────────────────────────────────────────────────────
 
@@ -516,69 +669,152 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   // ── Normalize ──────────────────────────────────────────────────────────
 
-  const rawMaterials = Array.isArray(ai.detected_materials) ? ai.detected_materials : []
-  const rawScope     = Array.isArray(ai.work_scope) ? ai.work_scope : []
+  function toElement(raw: Record<string, unknown>): DetectedElement | null {
+    const label = String(raw.label ?? '')
+    if (!label) return null
+    const validTypes = new Set(['fixture', 'surface', 'installation', 'damage', 'appliance', 'furniture', 'other'])
+    return {
+      type:       (validTypes.has(String(raw.type)) ? String(raw.type) : 'other') as DetectedElement['type'],
+      label,
+      confidence: typeof raw.confidence === 'number' ? Math.min(100, Math.max(0, raw.confidence)) : 50,
+      location:   typeof raw.location === 'string' ? raw.location : null,
+      notes:      typeof raw.notes === 'string' ? raw.notes : null,
+    }
+  }
 
-  const materials: DetectedMaterial[] = rawMaterials.map((m: Record<string, unknown>) => ({
-    name:       String(m.name ?? ''),
-    category:   String(m.category ?? 'inne'),
-    quantity:   typeof m.quantity === 'number' ? m.quantity : null,
-    unit:       typeof m.unit === 'string' ? m.unit : null,
-    confidence: typeof m.confidence === 'number' ? Math.min(100, Math.max(0, m.confidence)) : 50,
-    notes:      typeof m.notes === 'string' ? m.notes : null,
-  })).filter((m: DetectedMaterial) => m.name.length > 0)
+  function toScopeItem(raw: Record<string, unknown>, fallbackPriority: ScopeItem['priority']): ScopeItem | null {
+    const description = String(raw.description ?? '')
+    if (!description) return null
+    const validPriorities = new Set(['required', 'likely', 'optional'])
+    return {
+      library_id:   typeof raw.library_id === 'string' ? raw.library_id : null,
+      description,
+      category:     String(raw.category ?? 'finishing'),
+      unit:         typeof raw.unit === 'string' ? raw.unit : null,
+      quantity:     typeof raw.quantity === 'number' ? raw.quantity : null,
+      priority:     (validPriorities.has(String(raw.priority)) ? String(raw.priority) : fallbackPriority) as ScopeItem['priority'],
+      confidence:   typeof raw.confidence === 'number' ? Math.min(100, Math.max(0, raw.confidence)) : 50,
+      notes:        typeof raw.notes === 'string' ? raw.notes : null,
+      dependencies: Array.isArray(raw.dependencies) ? (raw.dependencies as unknown[]).map(String) : [],
+    }
+  }
 
-  const workScope: WorkScopeItem[] = rawScope.map((w: Record<string, unknown>) => ({
-    description:    String(w.description ?? ''),
-    category:       String(w.category ?? 'finishing'),
-    estimated_unit: typeof w.estimated_unit === 'string' ? w.estimated_unit : null,
-    estimated_qty:  typeof w.estimated_qty === 'number' ? w.estimated_qty : null,
-    confidence:     typeof w.confidence === 'number' ? Math.min(100, Math.max(0, w.confidence)) : 50,
-    notes:          typeof w.notes === 'string' ? w.notes : null,
-  })).filter((w: WorkScopeItem) => w.description.length > 0)
+  const rawObserved    = Array.isArray(ai.observed_elements)      ? ai.observed_elements      : []
+  const rawInstalls    = Array.isArray(ai.detected_installations)  ? ai.detected_installations  : []
+  const rawMaterials   = Array.isArray(ai.detected_materials)      ? ai.detected_materials      : []
+  const rawRequired    = Array.isArray(ai.required_work_scope)     ? ai.required_work_scope     : []
+  const rawLikely      = Array.isArray(ai.likely_work_scope)       ? ai.likely_work_scope       : []
+  const rawOptional    = Array.isArray(ai.optional_work_scope)     ? ai.optional_work_scope     : []
+  const rawEstimate    = Array.isArray(ai.suggested_estimate_items) ? ai.suggested_estimate_items : []
+  const rawQtyHints    = Array.isArray(ai.quantity_hints)          ? ai.quantity_hints          : []
+
+  const observedElements: DetectedElement[] = rawObserved
+    .map((e: Record<string, unknown>) => toElement(e)).filter((x): x is DetectedElement => x !== null)
+  const detectedInstallations: DetectedElement[] = rawInstalls
+    .map((e: Record<string, unknown>) => toElement(e)).filter((x): x is DetectedElement => x !== null)
+
+  const detectedMaterials: DetectedMaterial[] = rawMaterials
+    .map((m: Record<string, unknown>) => {
+      const name = String(m.name ?? '')
+      if (!name) return null
+      return {
+        name,
+        category:   String(m.category ?? 'inne'),
+        quantity:   typeof m.quantity === 'number' ? m.quantity : null,
+        unit:       typeof m.unit === 'string' ? m.unit : null,
+        confidence: typeof m.confidence === 'number' ? Math.min(100, Math.max(0, m.confidence)) : 50,
+        notes:      typeof m.notes === 'string' ? m.notes : null,
+      } satisfies DetectedMaterial
+    })
+    .filter((x): x is DetectedMaterial => x !== null)
+
+  const requiredScope: ScopeItem[]  = rawRequired.map((s: Record<string, unknown>) => toScopeItem(s, 'required')).filter((x): x is ScopeItem => x !== null)
+  const likelyScope: ScopeItem[]    = rawLikely.map((s: Record<string, unknown>) => toScopeItem(s, 'likely')).filter((x): x is ScopeItem => x !== null)
+  const optionalScope: ScopeItem[]  = rawOptional.map((s: Record<string, unknown>) => toScopeItem(s, 'optional')).filter((x): x is ScopeItem => x !== null)
+
+  const VALID_SOURCES = new Set(['ai_suggestion', 'market_data', 'historical'])
+  const VALID_DIMS    = new Set(['floor_area', 'wall_area', 'ceiling_area', 'perimeter', 'wet_zone_area', 'other'])
+  const VALID_HINT_SOURCES = new Set(['measured', 'estimated', 'user_input', 'ai_inferred', 'unknown'])
+
+  const estimateItems: SuggestedEstimateItem[] = rawEstimate
+    .map((e: Record<string, unknown>) => {
+      const name = String(e.name ?? '')
+      if (!name) return null
+      return {
+        library_id: typeof e.library_id === 'string' ? e.library_id : null,
+        name,
+        unit:       String(e.unit ?? 'szt.'),
+        quantity:   typeof e.quantity === 'number' ? Math.max(0, e.quantity) : 0,
+        unit_price: typeof e.unit_price === 'number' ? e.unit_price : null,
+        confidence: typeof e.confidence === 'number' ? Math.min(100, Math.max(0, e.confidence)) : 30,
+        source:     (VALID_SOURCES.has(String(e.source)) ? String(e.source) : 'ai_suggestion') as SuggestedEstimateItem['source'],
+        notes:      typeof e.notes === 'string' ? e.notes : null,
+      } satisfies SuggestedEstimateItem
+    })
+    .filter((x): x is SuggestedEstimateItem => x !== null)
+
+  const quantityHints: QuantityHint[] = rawQtyHints
+    .map((h: Record<string, unknown>) => ({
+      dimension:  (VALID_DIMS.has(String(h.dimension)) ? String(h.dimension) : 'other') as QuantityHint['dimension'],
+      value:      typeof h.value === 'number' ? h.value : null,
+      unit:       String(h.unit ?? 'm²'),
+      source:     (VALID_HINT_SOURCES.has(String(h.source)) ? String(h.source) : 'unknown') as QuantityHint['source'],
+      confidence: typeof h.confidence === 'number' ? Math.min(100, Math.max(0, h.confidence)) : 40,
+    }))
 
   const confidence = typeof ai.confidence === 'number'
-    ? Math.min(100, Math.max(0, ai.confidence))
-    : 30
+    ? Math.min(100, Math.max(0, ai.confidence)) : 30
 
   const warnings = Array.isArray(ai.warnings) ? (ai.warnings as unknown[]).map(String) : []
 
-  const rawEstimate = Array.isArray(ai.suggested_estimate_items) ? ai.suggested_estimate_items : []
+  const validStages = new Set(['before_renovation', 'demolition', 'shell', 'in_progress', 'finishing', 'after_renovation', 'unknown'])
+  const stageOfWork: StageOfWork = (validStages.has(String(ai.stage_of_work)) ? String(ai.stage_of_work) : 'unknown') as StageOfWork
 
-  const VALID_SOURCES = new Set(['ai_suggestion', 'market_data', 'historical'])
-  const estimateItems: SuggestedEstimateItem[] = rawEstimate.map((e: Record<string, unknown>) => ({
-    name:       String(e.name ?? ''),
-    unit:       String(e.unit ?? 'szt.'),
-    quantity:   typeof e.quantity === 'number' ? Math.max(0, e.quantity) : 0,
-    unit_price: typeof e.unit_price === 'number' ? e.unit_price : null,
-    confidence: typeof e.confidence === 'number' ? Math.min(100, Math.max(0, e.confidence)) : 30,
-    source:     (VALID_SOURCES.has(String(e.source)) ? String(e.source) : 'ai_suggestion') as SuggestedEstimateItem['source'],
-    notes:      typeof e.notes === 'string' ? e.notes : null,
-  })).filter((e: SuggestedEstimateItem) => e.name.length > 0)
+  const aiCoverage = ai.coverage
+  const coverage = (aiCoverage && typeof aiCoverage === 'object' && !Array.isArray(aiCoverage))
+    ? {
+        total:     typeof (aiCoverage as Record<string, unknown>).total === 'number' ? (aiCoverage as Record<string, unknown>).total as number : 0,
+        matched:   typeof (aiCoverage as Record<string, unknown>).matched === 'number' ? (aiCoverage as Record<string, unknown>).matched as number : 0,
+        unmatched: typeof (aiCoverage as Record<string, unknown>).unmatched === 'number' ? (aiCoverage as Record<string, unknown>).unmatched as number : 0,
+      }
+    : null
 
-  if (materials.length === 0 && workScope.length === 0) {
-    warnings.push('Nie wykryto materiałów ani zakresu prac — zdjęcie może nie przedstawiać pomieszczenia.')
+  if (observedElements.length === 0 && detectedMaterials.length === 0 && requiredScope.length === 0) {
+    warnings.push('Nie wykryto elementow ani zakresu prac — zdjecie moze nie przedstawiac pomieszczenia.')
   }
 
   const result: RoomAnalysisResult = {
-    room_type:               typeof ai.room_type === 'string' ? ai.room_type : null,
-    detected_materials:      materials,
-    work_scope:              workScope,
+    space_type:              typeof ai.space_type === 'string' ? ai.space_type : null,
+    stage_of_work:           stageOfWork,
+    observed_elements:       observedElements,
+    detected_installations:  detectedInstallations,
+    detected_materials:      detectedMaterials,
+    required_work_scope:     requiredScope,
+    likely_work_scope:       likelyScope,
+    optional_work_scope:     optionalScope,
+    missing_information:     Array.isArray(ai.missing_information) ? (ai.missing_information as unknown[]).map(String) : [],
+    assumptions:             Array.isArray(ai.assumptions) ? (ai.assumptions as unknown[]).map(String) : [],
+    quantity_hints:          quantityHints,
     suggested_estimate_items: estimateItems,
-    extraction_confidence:   confidence,
-    extraction_warnings:     warnings,
-    notes:                   typeof ai.notes === 'string' ? ai.notes : null,
+    coverage,
+    warnings,
+    confidence,
+    notes: typeof ai.notes === 'string' ? ai.notes : null,
   }
 
   console.info('ROOM_ANALYSIS_DONE', JSON.stringify({
     model,
     imageCount,
-    roomType:       result.room_type,
-    materials:      materials.length,
-    workScope:      workScope.length,
-    estimateItems:  estimateItems.length,
-    confidence:     result.extraction_confidence,
-    warnings:       warnings.length,
+    spaceType:      result.space_type,
+    stageOfWork:    result.stage_of_work,
+    observedElements: result.observed_elements.length,
+    materials:      result.detected_materials.length,
+    required:       result.required_work_scope.length,
+    likely:         result.likely_work_scope.length,
+    optional:       result.optional_work_scope.length,
+    estimateItems:  result.suggested_estimate_items.length,
+    confidence:     result.confidence,
+    warnings:       result.warnings.length,
   }))
 
   return ok(result)

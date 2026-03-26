@@ -38,7 +38,8 @@ const reportsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 
 const ksefRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'ksef', component: lazyRouteComponent(() => import('@/app/routes/ksef'), 'KsefRoutePage') })
 const settingsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'settings', component: lazyRouteComponent(() => import('@/app/routes/settings'), 'SettingsRoutePage') })
 const expensesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'expenses', component: lazyRouteComponent(() => import('@/app/routes/expenses'), 'ExpensesRoutePage') })
-const roomAnalysisRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'room-analysis', component: lazyRouteComponent(() => import('@/app/routes/room-analysis'), 'RoomAnalysisRoutePage') })
+const roomAnalysisRoute    = createRoute({ getParentRoute: () => authLayoutRoute, path: 'room-analysis',    component: lazyRouteComponent(() => import('@/app/routes/room-analysis'),    'RoomAnalysisRoutePage')    })
+const projectAnalysisRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'project-analysis', component: lazyRouteComponent(() => import('@/app/routes/project-analysis'), 'ProjectAnalysisRoutePage') })
 const chatRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: 'chat',
@@ -78,6 +79,7 @@ const routeTree = rootRoute.addChildren([
     chatRoute,
     expensesRoute,
     roomAnalysisRoute,
+    projectAnalysisRoute,
     clientDashboardRoute,
     clientProjectRoute,
     clientProfileRoute,

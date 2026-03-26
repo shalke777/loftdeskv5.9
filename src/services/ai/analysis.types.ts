@@ -16,15 +16,23 @@
 
 // ── Analysis input classification ────────────────────────────────────────────
 
-/** What kind of input was analyzed */
+/**
+ * What kind of input was analyzed.
+ *
+ * @deprecated For new code use InputType from input-classifier.ts which maps to
+ * the correct engine. AnalysisInputType is kept for backward-compat with stored
+ * JSONB and existing expense consumers.
+ */
 export type AnalysisInputType =
-  | 'document_image'    // photo of an invoice, receipt, bill
-  | 'document_pdf'      // digitally-generated PDF
-  | 'scanned_pdf'       // scanned/image-based PDF
-  | 'camera_capture'    // direct camera photo (could be document OR scene)
-  | 'room_photo'        // photo of a room / interior / construction site
-  | 'site_photo'        // broader site / exterior photo
-  | 'text_input'        // manual or pasted text
+  | 'document_image'        // photo of an invoice, receipt, bill
+  | 'document_pdf'          // digitally-generated PDF
+  | 'scanned_pdf'           // scanned/image-based PDF
+  | 'camera_capture'        // direct camera photo (could be document OR scene)
+  | 'room_photo'            // photo of a room / interior / construction site
+  | 'site_photo'            // broader site / exterior photo
+  | 'work_progress_photo'   // photo of ongoing construction / renovation work
+  | 'plan_visualization'    // architectural plan, 3D visualization, sketch
+  | 'text_input'            // manual or pasted text
   | 'unknown'
 
 /** What the analysis determined the content to be */
@@ -310,21 +318,28 @@ export function flattenAnalysisResult(ar: AnalysisResult): {
 
 // ── Input type classifier ────────────────────────────────────────────────────
 
-/** Map file MIME / source type hint to AnalysisInputType */
+/**
+ * Map file MIME / source type hint to AnalysisInputType.
+ *
+ * @deprecated Prefer classifyInput() from input-classifier.ts for new code.
+ * This function is kept to avoid breaking existing expense consumers.
+ */
 export function classifyInputType(
   file: { type: string; name: string } | null,
-  sourceHint?: 'camera' | 'gallery' | 'pdf' | 'manual' | string,
+  sourceHint?: 'camera' | 'gallery' | 'pdf' | 'manual' | 'room_capture' | 'scanner' | string,
 ): AnalysisInputType {
-  if (sourceHint === 'camera')  return 'camera_capture'
-  if (sourceHint === 'room_photo') return 'room_photo'
-  if (sourceHint === 'manual')  return 'text_input'
+  if (sourceHint === 'room_capture') return 'room_photo'
+  if (sourceHint === 'camera')       return 'camera_capture'
+  if (sourceHint === 'room_photo')   return 'room_photo'
+  if (sourceHint === 'manual')       return 'text_input'
   if (!file) return 'unknown'
 
   const t = file.type.toLowerCase()
   const n = file.name.toLowerCase()
 
-  if (t === 'application/pdf' || n.endsWith('.pdf')) return 'document_pdf'
-  if (t.startsWith('image/')) return sourceHint === 'gallery' ? 'document_image' : 'document_image'
+  if (t === 'application/pdf' || n.endsWith('.pdf'))
+    return sourceHint === 'pdf' || sourceHint === 'scanner' ? 'document_pdf' : 'document_pdf'
+  if (t.startsWith('image/')) return 'document_image'
 
   return 'unknown'
 }
