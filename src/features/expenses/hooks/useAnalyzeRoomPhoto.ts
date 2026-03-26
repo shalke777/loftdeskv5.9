@@ -86,23 +86,36 @@ function fileToBase64(file: File): Promise<string> {
 
 // ── Netlify function call ────────────────────────────────────────────────────
 
+// v2 response shape — matches RoomAnalysisResult in netlify/functions/analyze-room-photo.ts
+interface RoomScopeItemRaw {
+  library_id?:   string | null
+  description:   string
+  category:      string
+  unit?:         string | null
+  quantity?:     number | null
+  priority:      'required' | 'likely' | 'optional'
+  confidence:    number
+  notes?:        string | null
+  dependencies?: string[]
+}
+
 interface RoomAnalysisRaw {
-  room_type:            string | null
-  detected_materials:   Array<{
+  space_type:              string | null
+  detected_materials:      Array<{
     name: string; category: string; quantity?: number | null
     unit?: string | null; confidence: number; notes?: string | null
   }>
-  work_scope: Array<{
-    description: string; category: string; estimated_unit?: string | null
-    estimated_qty?: number | null; confidence: number; notes?: string | null
-  }>
+  required_work_scope:     RoomScopeItemRaw[]
+  likely_work_scope:       RoomScopeItemRaw[]
+  optional_work_scope:     RoomScopeItemRaw[]
   suggested_estimate_items?: Array<{
+    library_id?: string | null
     name: string; unit: string; quantity: number; unit_price?: number | null
     confidence: number; source: string; notes?: string | null
   }>
-  extraction_confidence: number
-  extraction_warnings:   string[]
-  notes:                string | null
+  confidence:   number
+  warnings:     string[]
+  notes:        string | null
 }
 
 /** Clarification data from the guided form */
@@ -184,20 +197,34 @@ export async function callAnalyzeRoomPhoto(file: File, context?: string): Promis
 
   const raw = (data.result ?? data) as RoomAnalysisRaw
 
+  // Flatten v2 scoped work scope into single AnalysisResult.work_scope array
+  const work_scope = [
+    ...(raw.required_work_scope ?? []),
+    ...(raw.likely_work_scope ?? []),
+    ...(raw.optional_work_scope ?? []),
+  ].map(item => ({
+    description:    item.description,
+    category:       item.category,
+    estimated_unit: item.unit ?? undefined,
+    estimated_qty:  item.quantity ?? undefined,
+    confidence:     item.confidence,
+    notes:          item.notes ?? undefined,
+  }))
+
   // Map to canonical AnalysisResult envelope
   const result: AnalysisResult = {
     input_type:     'room_photo',
     document_type:  'room_scan',
 
     detected_materials: raw.detected_materials ?? [],
-    work_scope:         raw.work_scope ?? [],
+    work_scope,
     suggested_estimate_items: (raw.suggested_estimate_items ?? []).map(item => ({
       ...item,
       source: (item.source || 'ai_suggestion') as 'ai_suggestion' | 'market_data' | 'historical',
     })),
 
-    extraction_confidence:      raw.extraction_confidence ?? 0,
-    extraction_warnings:        raw.extraction_warnings ?? [],
+    extraction_confidence:      raw.confidence ?? 0,
+    extraction_warnings:        raw.warnings ?? [],
     requires_user_confirmation: true,  // always require confirmation for vision
     parser_source:              'vision',
   }
@@ -205,7 +232,7 @@ export async function callAnalyzeRoomPhoto(file: File, context?: string): Promis
   if (raw.notes) {
     result.extraction_warnings = [
       ...result.extraction_warnings,
-      ...(raw.notes ? [`Notatka AI: ${raw.notes}`] : []),
+      `Notatka AI: ${raw.notes}`,
     ]
   }
 
@@ -314,17 +341,31 @@ export async function callAnalyzeRoomPhotos(
 
   const raw = (data.result ?? data) as RoomAnalysisRaw
 
+  // Flatten v2 scoped work scope into single AnalysisResult.work_scope array
+  const work_scope_multi = [
+    ...(raw.required_work_scope ?? []),
+    ...(raw.likely_work_scope ?? []),
+    ...(raw.optional_work_scope ?? []),
+  ].map(item => ({
+    description:    item.description,
+    category:       item.category,
+    estimated_unit: item.unit ?? undefined,
+    estimated_qty:  item.quantity ?? undefined,
+    confidence:     item.confidence,
+    notes:          item.notes ?? undefined,
+  }))
+
   const result: AnalysisResult = {
     input_type: 'room_photo',
     document_type: 'room_scan',
     detected_materials: raw.detected_materials ?? [],
-    work_scope: raw.work_scope ?? [],
+    work_scope: work_scope_multi,
     suggested_estimate_items: (raw.suggested_estimate_items ?? []).map(item => ({
       ...item,
       source: (item.source || 'ai_suggestion') as 'ai_suggestion' | 'market_data' | 'historical',
     })),
-    extraction_confidence: raw.extraction_confidence ?? 0,
-    extraction_warnings: raw.extraction_warnings ?? [],
+    extraction_confidence: raw.confidence ?? 0,
+    extraction_warnings: raw.warnings ?? [],
     requires_user_confirmation: true,
     parser_source: 'vision',
   }
@@ -332,7 +373,7 @@ export async function callAnalyzeRoomPhotos(
   if (raw.notes) {
     result.extraction_warnings = [
       ...result.extraction_warnings,
-      ...(raw.notes ? [`Notatka AI: ${raw.notes}`] : []),
+      `Notatka AI: ${raw.notes}`,
     ]
   }
 
