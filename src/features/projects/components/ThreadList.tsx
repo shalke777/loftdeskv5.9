@@ -150,9 +150,9 @@ export function ThreadList({
   if (threads.length === 0) {
     return (
       <div className="chat-sidebar__empty">
-        <div style={{ fontSize: 32, marginBottom: 10 }}>💬</div>
-        <p style={{ margin: 0, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{emptyLabel}</p>
-        <p style={{ margin: '4px 0 0', fontSize: 12 }}>Wątki tworzone są w widoku projektu</p>
+        <div className="chat-sidebar__empty-icon">💬</div>
+        <p className="chat-sidebar__empty-title">{emptyLabel}</p>
+        <p className="chat-sidebar__empty-hint">Wątki tworzone są w projekcie → zakładka Wątki</p>
       </div>
     )
   }

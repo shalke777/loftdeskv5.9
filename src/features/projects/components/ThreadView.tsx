@@ -7,6 +7,7 @@
 // - Dedup: bez optimistic inserts, realtime channel w useThreadMessages
 
 import { useEffect, useRef, useState } from 'react'
+import { MessageSquare } from 'lucide-react'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { useThreadMessages, useDeleteThreadMessage } from '@/features/projects/hooks/useThreadMessages'
 import { useMarkThreadRead } from '@/features/projects/hooks/useMarkThreadRead'
@@ -179,13 +180,28 @@ export function ThreadView({ threadId, projectId, visibility }: ThreadViewProps)
   if (!threadId) {
     return (
       <div className="chat-thread__empty">
-        <div style={{ fontSize: 48, lineHeight: 1 }}>💬</div>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Chat projektowy</p>
-          <p style={{ margin: '6px 0 0', fontSize: 13, color: '#8A8F98', maxWidth: 280, lineHeight: 1.5 }}>
-            Chat zbiera wiadomości z projektów.
-            Aby pisać z klientem, uruchom portal klienta w projekcie.
+        <div className="chat-empty-state">
+          <div className="chat-empty-state__icon-wrap">
+            <MessageSquare size={32} />
+          </div>
+          <h3 className="chat-empty-state__title">Wybierz wątek</h3>
+          <p className="chat-empty-state__desc">
+            Kliknij rozmowę z listy po lewej, aby odczytać wiadomości i odpowiedzieć klientowi lub teamowi.
           </p>
+          <div className="chat-empty-state__tips">
+            <div className="chat-empty-state__tip">
+              <span className="chat-empty-state__tip-icon">📁</span>
+              <span>Wątki tworzone są w widoku projektu w zakładce <strong>Wątki</strong></span>
+            </div>
+            <div className="chat-empty-state__tip">
+              <span className="chat-empty-state__tip-icon">🔗</span>
+              <span>Aby pisać z klientem, uruchom <strong>portal klienta</strong> w projekcie</span>
+            </div>
+            <div className="chat-empty-state__tip">
+              <span className="chat-empty-state__tip-icon">📬</span>
+              <span>Wiadomości od klientów trafiają tu automatycznie po aktywacji portalu</span>
+            </div>
+          </div>
         </div>
       </div>
     )

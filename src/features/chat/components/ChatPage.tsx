@@ -22,7 +22,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useSearch } from '@tanstack/react-router'
 import { Search } from 'lucide-react'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
-import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { ThreadList } from '@/features/projects/components/ThreadList'
 import { ThreadView } from '@/features/projects/components/ThreadView'
@@ -91,24 +90,19 @@ export function ChatPage() {
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="shell-content" style={{ paddingBottom: 0, flex: 'none' }}>
-        <PageHeader
-          title="Chat"
-          subtitle="Wiadomości projektowe — pisz do klientów przez portal lub dodawaj notatki wewnętrzne"
-        />
-      </div>
+    <div className="chat-root">
+      <div className="chat-layout">
 
-      <div className="chat-layout" style={{ flex: 1, margin: '0 28px 28px' }}>
-
+        {/* ── Lewa kolumna: lista wątków ────────────────────────── */}
         <div className="chat-sidebar">
           <div className="chat-sidebar__header">
-            <span className="chat-sidebar__title">
-              Skrzynka
+            <div className="chat-sidebar__title">
+              Chat
               {totalUnread > 0 && (
                 <span className="chat-sidebar__badge">{totalUnread}</span>
               )}
-            </span>
+            </div>
+            <div className="chat-sidebar__subtitle">Wiadomości projektowe z klientami i teamem</div>
           </div>
 
           <div className="chat-sidebar__search">
@@ -117,7 +111,7 @@ export function ChatPage() {
               className="chat-sidebar__search-input"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Szukaj…"
+              placeholder="Szukaj rozmów…"
             />
           </div>
 
@@ -133,12 +127,14 @@ export function ChatPage() {
               onClick={() => setFilter('unread')}
             >
               Nieprzeczytane
-              {totalUnread > 0 && ` (${totalUnread})`}
+              {totalUnread > 0 && (
+                <span style={{ marginLeft: 4, fontWeight: 700 }}>({totalUnread})</span>
+              )}
             </button>
           </div>
 
           {projects.length > 1 && (
-            <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--color-border)' }}>
+            <div style={{ padding: '0 12px 10px', flexShrink: 0 }}>
               <select
                 className="chat-project-select"
                 value={projectFilter}
@@ -153,7 +149,7 @@ export function ChatPage() {
           )}
 
           {isLoading ? (
-            <div style={{ padding: 24, textAlign: 'center' }}><Spinner /></div>
+            <div style={{ padding: 32, textAlign: 'center', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spinner /></div>
           ) : (
             <ThreadList
               threads={threads}
@@ -162,7 +158,7 @@ export function ChatPage() {
               emptyLabel={
                 filter === 'unread'
                   ? 'Brak nieprzeczytanych wiadomości'
-                  : 'Brak wątków — tworzone są w widoku projektu → zakładka Wątki'
+                  : 'Brak wątków'
               }
               onSelect={(t) => setActiveId(t.id)}
             />
@@ -170,17 +166,19 @@ export function ChatPage() {
 
           <div
             style={{
-              padding: '10px 14px',
+              padding: '10px 16px',
               borderTop: '1px solid var(--color-border-light)',
               fontSize: 11,
-              color: '#8A8F98',
-              marginTop: 'auto',
+              color: 'var(--color-text-tertiary)',
+              flexShrink: 0,
+              lineHeight: 1.5,
             }}
           >
-            💡 Wątki tworzone są w projekcie → zakładka Wątki. Do klientów — uruchom portal klienta.
+            Wątki tworzone są w projekcie → zakładka Wątki
           </div>
         </div>
 
+        {/* ── Prawa kolumna: panel rozmowy ─────────────────────── */}
         <div className="chat-thread">
           {activeThread ? (
             <div className="chat-thread__header">
