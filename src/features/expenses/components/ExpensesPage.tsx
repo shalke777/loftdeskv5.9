@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks/useExpenses'
 import { expensesApi, ExpenseInvoice, ParsedExpenseData, parseInvoiceFromText } from '../api/expenses.api'
-import type { ParseInvoiceResult, ExpenseSourceType } from '../api/expenses.api'
+import type { ParseInvoiceResult, ExpenseSourceType, DocumentLineItem, FlowBParseRaw } from '../api/expenses.api'
 import { callParseInvoice, callParseInvoiceAI } from '../hooks/useParseInvoice'
 import { aiPreflightValidate, AiReliabilityBanner } from '@/shared/ui/AiGuidance'
 import { computeDocumentReliabilityFromParseResult } from '@/services/ai/engines/reliability'
@@ -61,6 +61,9 @@ interface FormState {
   vendor: string
   vendor_nip: string
   issue_date: string
+  sale_date: string
+  payment_due_date: string
+  currency: string
   amount_net: string
   amount_vat: string
   amount_gross: string
@@ -74,6 +77,9 @@ const emptyForm = (): FormState => ({
   vendor: '',
   vendor_nip: '',
   issue_date: '',
+  sale_date: '',
+  payment_due_date: '',
+  currency: 'PLN',
   amount_net: '',
   amount_vat: '',
   amount_gross: '',
@@ -88,6 +94,9 @@ function formFromExpense(e: ExpenseInvoice): FormState {
     vendor: e.vendor ?? '',
     vendor_nip: e.vendor_nip ?? '',
     issue_date: e.issue_date ?? '',
+    sale_date: e.sale_date ?? '',
+    payment_due_date: e.payment_due_date ?? '',
+    currency: e.currency ?? 'PLN',
     amount_net: e.amount_net != null ? String(e.amount_net) : '',
     amount_vat: e.amount_vat != null ? String(e.amount_vat) : '',
     amount_gross: e.amount_gross != null ? String(e.amount_gross) : '',
@@ -118,6 +127,8 @@ export function ExpensesPage() {
   // Raw OCR confidence (0–100) captured during extraction — used for status derivation on save
   const [ocrConfidence, setOcrConfidence] = useState<number | null>(null)
   const [docReliability, setDocReliability] = useState<ReliabilityReport | null>(null)
+  const [ocrParserSource, setOcrParserSource] = useState<'ai' | 'regex' | 'manual' | 'vision' | null>(null)
+  const [ocrExtractionWarnings, setOcrExtractionWarnings] = useState<string[]>([])
 
   // modal: 'add' or 'edit'
   const [modal, setModal] = useState<{ type: 'add'; fileUrl: string; fileName: string; parsed: ParsedExpenseData; previewBlobUrl?: string } | { type: 'edit'; expense: ExpenseInvoice } | null>(null)
@@ -230,6 +241,8 @@ export function ExpensesPage() {
             ocrResult.extraction_confidence,
             ocrResult.extraction_warnings ?? [],
           ))
+          setOcrParserSource(ocrResult.parser_source ?? null)
+          setOcrExtractionWarnings(ocrResult.extraction_warnings ?? [])
 
           parsed = {
             invoice_number: ocrResult.invoice_number ?? undefined,
@@ -238,6 +251,9 @@ export function ExpensesPage() {
             buyer_name:     ocrResult.buyer_name     ?? undefined,
             buyer_nip:      ocrResult.buyer_nip      ?? undefined,
             issue_date:     ocrResult.issue_date     ?? undefined,
+            sale_date:      ocrResult.sale_date      ?? undefined,
+            payment_due_date: ocrResult.payment_due_date ?? undefined,
+            currency:       ocrResult.currency       ?? undefined,
             amount_net:     ocrResult.net_amount     ?? undefined,
             amount_vat:     ocrResult.vat_amount     ?? undefined,
             amount_gross:   ocrResult.gross_amount   ?? undefined,
@@ -287,6 +303,8 @@ export function ExpensesPage() {
             ? { level: 'success', message: `Dane odczytane (${fields.length} pola) — sprawdź i zapisz` }
             : { level: 'empty', message: 'Nie udało się odczytać danych z pliku — uzupełnij pola ręcznie' }
         )
+        setOcrParserSource('regex')
+        setOcrExtractionWarnings([])
       }
 
       // ── Step 3: open modal with pre-filled form ───────────────
@@ -343,12 +361,28 @@ export function ExpensesPage() {
           setSaving(false)
           return
         }
+        // Build compact parse_raw payload — preserves buyer/line_items (no dedicated DB columns)
+        const parseRaw: Record<string, unknown> | undefined =
+          modal.parsed.buyer_name || modal.parsed.buyer_nip || (modal.parsed.line_items?.length ?? 0) > 0
+            ? {
+                flow: 'b' as const,
+                buyer_name: modal.parsed.buyer_name ?? null,
+                buyer_nip: modal.parsed.buyer_nip ?? null,
+                line_items: modal.parsed.line_items ?? [],
+                parser_source: ocrParserSource ?? null,
+                extraction_confidence: ocrConfidence ?? null,
+                extraction_warnings: ocrExtractionWarnings,
+              }
+            : undefined
         await createExpense.mutateAsync({
           fileUrl: modal.fileUrl,
           fileName: modal.fileName,
           projectId: form.project_id || null,
           parsed: formToParsed(form),
           extractionConfidence: ocrConfidence,
+          parserSource: ocrParserSource ?? undefined,
+          extractionWarnings: ocrExtractionWarnings.length > 0 ? ocrExtractionWarnings : undefined,
+          parseRaw,
         })
       } else {
         const patch: Partial<ExpenseInvoice> = {
@@ -356,6 +390,9 @@ export function ExpensesPage() {
           vendor: form.vendor || null,
           vendor_nip: form.vendor_nip || null,
           issue_date: form.issue_date || null,
+          sale_date: form.sale_date || null,
+          payment_due_date: form.payment_due_date || null,
+          currency: form.currency || 'PLN',
           amount_net: parseFloat(form.amount_net) || null,
           amount_vat: parseFloat(form.amount_vat) || null,
           amount_gross: parseFloat(form.amount_gross) || null,
@@ -370,6 +407,8 @@ export function ExpensesPage() {
       setParseStatus(null)
       setOcrConfidence(null)
       setDocReliability(null)
+      setOcrParserSource(null)
+      setOcrExtractionWarnings([])
     } catch (err: any) {
       setUploadError(err?.message ?? 'Błąd zapisu')
     } finally {
@@ -390,6 +429,9 @@ export function ExpensesPage() {
       vendor: p.vendor ?? '',
       vendor_nip: p.vendor_nip ?? '',
       issue_date: p.issue_date ?? '',
+      sale_date: p.sale_date ?? '',
+      payment_due_date: p.payment_due_date ?? '',
+      currency: p.currency ?? 'PLN',
       amount_net: p.amount_net != null ? String(p.amount_net) : '',
       amount_vat: p.amount_vat != null ? String(p.amount_vat) : '',
       amount_gross: p.amount_gross != null ? String(p.amount_gross) : '',
@@ -403,6 +445,9 @@ export function ExpensesPage() {
       vendor: f.vendor || undefined,
       vendor_nip: f.vendor_nip || undefined,
       issue_date: f.issue_date || undefined,
+      sale_date: f.sale_date || undefined,
+      payment_due_date: f.payment_due_date || undefined,
+      currency: f.currency || 'PLN',
       amount_net: parseFloat(f.amount_net) || undefined,
       amount_vat: parseFloat(f.amount_vat) || undefined,
       amount_gross: parseFloat(f.amount_gross) || undefined,
@@ -430,7 +475,19 @@ export function ExpensesPage() {
     { value: 'assigned', label: 'Przypisana' },
     { value: 'error', label: 'Błąd' },
   ]
-
+  // ── derive buyer/line_items for display — works for add (modal.parsed) and edit (parse_raw) ──
+  const _editParseRaw = modal?.type === 'edit' ? (modal.expense.parse_raw as FlowBParseRaw | null) : null
+  const displayBuyerName: string | null = modal
+    ? modal.type === 'add' ? (modal.parsed.buyer_name ?? null) : (_editParseRaw?.buyer_name ?? null)
+    : null
+  const displayBuyerNip: string | null = modal
+    ? modal.type === 'add' ? (modal.parsed.buyer_nip ?? null) : (_editParseRaw?.buyer_nip ?? null)
+    : null
+  const displayLineItems: DocumentLineItem[] | null = modal
+    ? modal.type === 'add'
+      ? (modal.parsed.line_items ?? null)
+      : (Array.isArray(_editParseRaw?.line_items) ? (_editParseRaw!.line_items ?? null) : null)
+    : null
   // ── render ───────────────────────────────────────────────────────────────
 
   return (
@@ -588,7 +645,7 @@ export function ExpensesPage() {
           title={modal.type === 'add' ? 'Dodaj fakturę kosztową' : 'Edytuj fakturę'}
           onClose={() => {
             if (modal?.type === 'add' && modal.previewBlobUrl) URL.revokeObjectURL(modal.previewBlobUrl)
-            setModal(null); setDuplicateWarning(null); setParseStatus(null); setOcrConfidence(null)
+            setModal(null); setDuplicateWarning(null); setParseStatus(null); setOcrConfidence(null); setOcrParserSource(null); setOcrExtractionWarnings([])
           }}
         >
           {/* Two-column layout when a file preview is available */}
@@ -641,14 +698,14 @@ export function ExpensesPage() {
               </div>
             )}
 
-            {/* Line items from OCR/AI extraction — read-only display, not persisted via this form */}
-            {modal.type === 'add' && modal.parsed.line_items && modal.parsed.line_items.length > 0 && (
+            {/* Line items — shown for add (from modal.parsed) and edit (rehydrated from parse_raw) */}
+            {displayLineItems && displayLineItems.length > 0 && (
               <div style={{ marginBottom: 4 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 6 }}>
-                  Pozycje z faktury ({modal.parsed.line_items.length})
+                  Pozycje z faktury ({displayLineItems.length})
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {modal.parsed.line_items.slice(0, 10).map((item, i) => (
+                  {displayLineItems.slice(0, 10).map((item, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '5px 8px', background: 'var(--color-surface-2, var(--color-surface))', borderRadius: 5, border: '1px solid var(--color-border)' }}>
                       <span style={{ color: 'var(--color-text)', flex: 1, marginRight: 8 }}>{item.name ?? '—'}</span>
                       <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>
@@ -656,9 +713,9 @@ export function ExpensesPage() {
                       </span>
                     </div>
                   ))}
-                  {modal.parsed.line_items.length > 10 && (
+                  {displayLineItems.length > 10 && (
                     <div style={{ fontSize: 11, color: 'var(--color-text-muted)', textAlign: 'center', paddingTop: 2 }}>
-                      +&nbsp;{modal.parsed.line_items.length - 10} więcej pozycji
+                      +&nbsp;{displayLineItems.length - 10} więcej pozycji
                     </div>
                   )}
                 </div>
@@ -702,6 +759,22 @@ export function ExpensesPage() {
                   type="date"
                   value={form.issue_date}
                   onChange={(e) => setForm((f) => ({ ...f, issue_date: e.target.value }))}
+                />
+              </div>
+              <div className="exp-form__field">
+                <label>Data sprzedaży</label>
+                <Input
+                  type="date"
+                  value={form.sale_date}
+                  onChange={(e) => setForm((f) => ({ ...f, sale_date: e.target.value }))}
+                />
+              </div>
+              <div className="exp-form__field">
+                <label>Termin płatności</label>
+                <Input
+                  type="date"
+                  value={form.payment_due_date}
+                  onChange={(e) => setForm((f) => ({ ...f, payment_due_date: e.target.value }))}
                 />
               </div>
               <div className="exp-form__field">
@@ -766,20 +839,28 @@ export function ExpensesPage() {
               </div>
             </div>
 
-            {/* Buyer info — read-only display when parser extracted nabywca data */}
-            {modal.type === 'add' && (modal.parsed.buyer_name || modal.parsed.buyer_nip) && (
+            {/* Currency notice — shown only when a non-PLN currency was extracted from document */}
+            {modal.type === 'add' && form.currency && form.currency !== 'PLN' && (
+              <div style={{ fontSize: 12, color: 'var(--color-warning, #b45309)', background: 'var(--color-warning-bg, #fef9c3)', border: '1px solid var(--color-warning-border, #fde68a)', borderRadius: 6, padding: '6px 10px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <AlertTriangle size={12} style={{ flexShrink: 0 }} />
+                Waluta faktury: <strong>{form.currency}</strong> — kwoty mogą nie być w PLN
+              </div>
+            )}
+
+            {/* Buyer info — shown for add (from modal.parsed) and edit (rehydrated from parse_raw) */}
+            {(displayBuyerName || displayBuyerNip) && (
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 6 }}>
                   Nabywca (z dokumentu)
                 </div>
-                {modal.parsed.buyer_name && (
+                {displayBuyerName && (
                   <div style={{ fontSize: 13, color: 'var(--color-text)', padding: '6px 10px', background: 'var(--color-surface-2, var(--color-surface))', borderRadius: 6, border: '1px solid var(--color-border)', marginBottom: 4 }}>
-                    {modal.parsed.buyer_name}
+                    {displayBuyerName}
                   </div>
                 )}
-                {modal.parsed.buyer_nip && (
+                {displayBuyerNip && (
                   <div style={{ fontSize: 12, color: 'var(--color-text-muted)', padding: '4px 10px', background: 'var(--color-surface-2, var(--color-surface))', borderRadius: 6, border: '1px solid var(--color-border)' }}>
-                    NIP: {modal.parsed.buyer_nip}
+                    NIP: {displayBuyerNip}
                   </div>
                 )}
               </div>
@@ -788,7 +869,7 @@ export function ExpensesPage() {
             <div className="exp-form__actions">
               <Button variant="secondary" onClick={() => {
                 if (modal?.type === 'add' && modal.previewBlobUrl) URL.revokeObjectURL(modal.previewBlobUrl)
-                setModal(null); setDuplicateWarning(null); setParseStatus(null); setOcrConfidence(null); setDocReliability(null)
+                setModal(null); setDuplicateWarning(null); setParseStatus(null); setOcrConfidence(null); setDocReliability(null); setOcrParserSource(null); setOcrExtractionWarnings([])
               }}>
                 Anuluj
               </Button>

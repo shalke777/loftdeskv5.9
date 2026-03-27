@@ -61,6 +61,14 @@ export interface ExpenseInvoice {
   duplicate_of: string | null
   created_at: string
   updated_at: string
+  /** Sale date from document (migration 038 column). */
+  sale_date?: string | null
+  /** Payment due date from document (migration 038 column). */
+  payment_due_date?: string | null
+  /** Invoice currency (migration 038 column, default 'PLN'). */
+  currency?: string | null
+  /** Full OCR/AI parse envelope — populated by Flow A (AnalysisResult) or Flow B (FlowBParseRaw). */
+  parse_raw?: AnalysisResult | Record<string, unknown> | null
 }
 
 export interface ParsedExpenseData {
@@ -78,8 +86,28 @@ export interface ParsedExpenseData {
   description?: string
   /** Line items from AI path — display only. Not persisted via legacy expensesApi.create(). */
   line_items?: DocumentLineItem[]
+  /** Sale date — persisted to DB (sale_date column, migration 038). */
+  sale_date?: string | null
+  /** Payment due date — persisted to DB (payment_due_date column, migration 038). */
+  payment_due_date?: string | null
+  /** Currency code — persisted to DB (currency column, migration 038). Defaults to 'PLN'. */
+  currency?: string | null
 }
-
+/**
+ * Compact payload stored in parse_raw JSONB by Flow B (legacy expensesApi.create()).
+ * Preserves buyer_name, buyer_nip, and line_items that have no dedicated DB columns,
+ * along with extraction metadata for debugging. Allows rehydration on edit/view.
+ */
+export interface FlowBParseRaw {
+  /** Identifies this as a Flow B parse_raw payload. */
+  flow: 'b'
+  buyer_name?: string | null
+  buyer_nip?: string | null
+  line_items?: DocumentLineItem[]
+  parser_source?: string | null
+  extraction_confidence?: number | null
+  extraction_warnings?: string[] | null
+}
 // ── demo store ────────────────────────────────────────────────────────────────
 
 const demoExpenses: ExpenseInvoice[] = [
@@ -252,6 +280,22 @@ export async function parseInvoiceFromText(text: string): Promise<ParsedExpenseD
     if (plDate) result.issue_date = normalizeDatePl(plDate[1])
   }
 
+  // ── Sale date ─────────────────────────────────────────────────────────────
+  const saleDateMatch = t.match(
+    /(?:data\s+sprzeda[żz]y(?:\s*[/\\]?\s*dostawy)?|data\s+dostawy|data\s+us[łl]ugi|data\s+wykonania)[:\s]+(\d{4}-\d{2}-\d{2}|\d{1,2}[.\/\-]\d{1,2}[.\/\-]\d{4}|\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2})/i
+  )
+  if (saleDateMatch) result.sale_date = normalizeDatePl(saleDateMatch[1])
+
+  // ── Payment due date ──────────────────────────────────────────────────────
+  const dueDateMatch = t.match(
+    /(?:termin\s+zap[łl]aty|termin\s+p[łl]atno[śs]ci|p[łl]atno[śs][ćc]\s+do|zap[łl]ata\s+do|data\s+zap[łl]aty|p[łl]atne\s+do|zap[łl]a[ćc]\s+do)[:\s]+(\d{4}-\d{2}-\d{2}|\d{1,2}[.\/\-]\d{1,2}[.\/\-]\d{4}|\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2})/i
+  )
+  if (dueDateMatch) result.payment_due_date = normalizeDatePl(dueDateMatch[1])
+
+  // ── Currency ──────────────────────────────────────────────────────────────
+  const currencyMatch = t.match(/\b(PLN|EUR|USD|GBP|CHF|CZK|NOK|SEK|DKK)\b/i)
+  result.currency = currencyMatch ? currencyMatch[1].toUpperCase() : 'PLN'
+
   // ── Amounts (gross / net) — currency suffix is optional ──────────────────
   const grossMatch = t.match(
     /(?:do\s+zap[łl]aty|razem\s+brutto|kwota\s+brutto|warto[śs][ćc]\s+brutto|sum[ma]?\s+brutto|brutto\s+p[łl]atno[śs][ćc]?|brutto)[:\s]+([0-9]+[,. ][0-9]{0,3}[,. ]?[0-9]{0,2})\s*(?:PLN|z[łl]|EUR)?/i
@@ -360,6 +404,12 @@ export const expensesApi = {
     status?: ExpenseInvoice['status']
     /** Raw OCR confidence (0–100) used to auto-derive status when `status` is omitted. */
     extractionConfidence?: number | null
+    /** Parser that produced this result ('ai' | 'regex' | 'manual' | 'vision'). */
+    parserSource?: 'ai' | 'regex' | 'manual' | 'vision' | null
+    /** Raw extraction warnings from OCR/AI — persisted to extraction_warnings column. */
+    extractionWarnings?: string[] | null
+    /** Compact parse_raw payload to persist buyer/line_items (no dedicated DB columns). */
+    parseRaw?: Record<string, unknown> | null
   }): Promise<ExpenseInvoice> {
     if (isDemoMode || !supabase) {
       const item: ExpenseInvoice = {
@@ -378,6 +428,10 @@ export const expensesApi = {
         description: input.parsed?.description ?? null,
         status: input.status ?? deriveExpenseStatus(input.extractionConfidence, input.projectId),
         duplicate_of: null,
+        sale_date: input.parsed?.sale_date ?? null,
+        payment_due_date: input.parsed?.payment_due_date ?? null,
+        currency: input.parsed?.currency ?? 'PLN',
+        parse_raw: input.parseRaw ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
@@ -403,6 +457,12 @@ export const expensesApi = {
         description: input.parsed?.description ?? null,
         status: input.status ?? deriveExpenseStatus(input.extractionConfidence, input.projectId),
         extraction_confidence: normalizeConfidenceForDb(input.extractionConfidence),
+        sale_date: input.parsed?.sale_date ?? null,
+        payment_due_date: input.parsed?.payment_due_date ?? null,
+        currency: input.parsed?.currency ?? 'PLN',
+        parser_source: input.parserSource ?? null,
+        extraction_warnings: input.extractionWarnings ?? [],
+        parse_raw: input.parseRaw ?? null,
       })
       .select('*')
       .single()
@@ -422,6 +482,7 @@ export const expensesApi = {
     delete payload.company_id
     delete payload.created_at
     delete payload.project_name
+    delete payload.parse_raw   // never overwrite parse_raw via edit-form path
     const { error } = await supabase.from('expense_invoices').update(payload).eq('id', id)
     if (error) throw error
   },

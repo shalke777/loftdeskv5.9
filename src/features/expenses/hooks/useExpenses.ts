@@ -20,6 +20,9 @@ export const useCreateExpense = (companyId: string) => {
       parsed?: ParsedExpenseData
       projectId?: string | null
       extractionConfidence?: number | null
+      parserSource?: 'ai' | 'regex' | 'manual' | 'vision' | null
+      extractionWarnings?: string[] | null
+      parseRaw?: Record<string, unknown> | null
     }) => expensesApi.create({ companyId, ...input }),
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['expenses', companyId] })
