@@ -110,7 +110,7 @@ export function ThreadListItem({ thread, active, showProject, onClick }: ThreadL
         {/* Projekt — tylko w global inbox */}
         {showProject && inboxThread.project_name && (
           <div className="chat-conv-item__project" style={{ marginBottom: 2 }}>
-            📁 {inboxThread.project_number ? `${inboxThread.project_number} · ` : ''}{inboxThread.project_name}
+            {inboxThread.project_number ? `${inboxThread.project_number} · ` : ''}{inboxThread.project_name}
           </div>
         )}
 

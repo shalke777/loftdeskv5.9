@@ -18,7 +18,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearch } from '@tanstack/react-router'
-import { Search, Plus, X, MessageSquarePlus } from 'lucide-react'
+import { Search, Plus, X, MessageSquarePlus, ChevronLeft } from 'lucide-react'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { ThreadList } from '@/features/projects/components/ThreadList'
@@ -182,11 +182,15 @@ export function ChatPage() {
   const [projectFilter, setProjectFilter] = useState<string>('all')
   const [search, setSearch]               = useState('')
   const [showNewThread, setShowNewThread] = useState(false)
+  const [mobileView, setMobileView]       = useState<'list' | 'thread'>('list')
 
   // Obsługa ?threadId= — otwiera konkretny wątek po nawigacji z wyceny/projektu
   const { threadId: searchThreadId } = useSearch({ from: '/_auth/chat' as any }) as { threadId?: string }
   useEffect(() => {
-    if (searchThreadId && !activeId) setActiveId(searchThreadId)
+    if (searchThreadId && !activeId) {
+      setActiveId(searchThreadId)
+      setMobileView('thread')
+    }
   }, [searchThreadId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: allThreads, isLoading } = useQuery({
@@ -234,7 +238,7 @@ export function ChatPage() {
   return (
     <>
       <div className="chat-root">
-        <div className="chat-layout">
+        <div className={`chat-layout chat-layout--mobile-${mobileView}`}>
 
           {/* ── Lewa kolumna: lista wątków ────────────────────────── */}
           <div className="chat-sidebar">
@@ -336,7 +340,7 @@ export function ChatPage() {
                     ? 'Brak wątków wewnętrznych'
                     : 'Brak wątków'
                 }
-                onSelect={(t) => setActiveId(t.id)}
+                onSelect={(t) => { setActiveId(t.id); setMobileView('thread') }}
                 onNewThread={() => setShowNewThread(true)}
               />
             )}
@@ -344,6 +348,14 @@ export function ChatPage() {
 
           {/* ── Prawa kolumna: panel rozmowy ─────────────────────── */}
           <div className="chat-thread">
+            {/* Mobile: ← back to inbox */}
+            <button
+              className="chat-thread__mobile-back"
+              onClick={() => setMobileView('list')}
+            >
+              <ChevronLeft size={15} />
+              Rozmowy
+            </button>
             {activeThread ? (
               <div className="chat-thread__header">
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -383,6 +395,7 @@ export function ChatPage() {
           onCreated={(threadId) => {
             setActiveId(threadId)
             setShowNewThread(false)
+            setMobileView('thread')
           }}
         />
       )}

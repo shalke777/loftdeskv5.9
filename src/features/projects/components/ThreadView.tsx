@@ -186,28 +186,21 @@ export function ThreadView({ threadId, projectId, visibility, onNewThread }: Thr
           <div className="chat-empty-state__icon-wrap">
             <MessageSquare size={32} />
           </div>
-          <h3 className="chat-empty-state__title">Zacznij rozmowę</h3>
+          <h3 className="chat-empty-state__title">Centrum rozmów</h3>
           <p className="chat-empty-state__desc">
-            Wybierz wątek z listy lub utwórz nową rozmowę z klientem albo notatkę dla swojego zespołu.
+            Wybierz wątek z listy po lewej lub utwórz nową rozmowę z klientem albo notatkę dla swojego zespołu.
           </p>
           {onNewThread && (
             <button className="chat-empty-state__cta" onClick={onNewThread}>
               Nowa rozmowa
             </button>
           )}
-          <div className="chat-empty-state__tips">
-            <div className="chat-empty-state__tip">
-              <span className="chat-empty-state__tip-icon">💬</span>
-              <span>Wątki <strong>Klient</strong> są widoczne w portalu klienta projektu</span>
-            </div>
-            <div className="chat-empty-state__tip">
-              <span className="chat-empty-state__tip-icon">🔒</span>
-              <span>Wątki <strong>Wewnętrzne</strong> widzi tylko Twój zespół</span>
-            </div>
-            <div className="chat-empty-state__tip">
-              <span className="chat-empty-state__tip-icon">📬</span>
-              <span>Wiadomości od klientów trafiają tu automatycznie po aktywacji portalu</span>
-            </div>
+          <div className="chat-empty-state__hints">
+            <span>💬 Z klientem</span>
+            <span className="chat-empty-state__hints-dot">·</span>
+            <span>🔒 Wewnętrznie</span>
+            <span className="chat-empty-state__hints-dot">·</span>
+            <span>📬 Z portalu</span>
           </div>
         </div>
       </div>
