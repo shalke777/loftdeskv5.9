@@ -43,11 +43,12 @@ export interface SendThreadMessageInput {
   attachment_mime?: string
 }
 
-/** Thread wzbogacony o nazwę projektu — potrzebny w globalnym inboxie */
+/** Thread wzbogacony o nazwę projektu + klienta — potrzebny w globalnym inboxie */
 export interface InboxThread extends ProjectThread {
   project_name: string | null
   project_number: string | null
   project_status: string | null
+  client_name: string | null
 }
 
 // ─── Demo dane (fallback gdy isDemoMode) ─────────────────────────────────────
@@ -167,6 +168,7 @@ export const threadsApi = {
         project_name: 'Remont łazienki',
         project_number: 'PRJ/2024/001',
         project_status: 'active',
+        client_name: 'Jan Kowalski',
       }))
     }
     const scope = await getDataScope(companyId)
@@ -175,7 +177,8 @@ export const threadsApi = {
         .from('project_threads')
         .select(`
           *,
-          projects!inner(name, number, status)
+          projects!inner(name, number, status),
+          clients(name)
         `)
         .eq('archived', false)
         .order('last_message_at', { ascending: false, nullsFirst: false }),
@@ -187,7 +190,9 @@ export const threadsApi = {
       project_name:   row.projects?.name   ?? null,
       project_number: row.projects?.number ?? null,
       project_status: row.projects?.status ?? null,
+      client_name:    row.clients?.name    ?? null,
       projects: undefined, // usuń zagnieżdżony obiekt
+      clients:  undefined, // usuń zagnieżdżony obiekt
     })) as InboxThread[]
   },
 

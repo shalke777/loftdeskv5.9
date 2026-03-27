@@ -74,10 +74,17 @@ export function ThreadListItem({ thread, active, showProject, onClick }: ThreadL
   const unread = thread.unread_count_operator
   const inboxThread = thread as InboxThread
 
-  // Avatar: pierwsza litera nazwy projektu (inbox) lub tytułu wątku
-  const avatarLetter = showProject && inboxThread.project_name
-    ? inboxThread.project_name[0].toUpperCase()
-    : (thread.title ?? THREAD_TYPE_LABELS[thread.type] ?? thread.type)[0].toUpperCase()
+  // Etykieta główna: klient > nazwa projektu > tytuł wątku
+  const primaryName = showProject
+    ? (inboxThread.client_name ?? inboxThread.project_name ?? thread.title ?? THREAD_TYPE_LABELS[thread.type] ?? thread.type)
+    : (thread.title ?? THREAD_TYPE_LABELS[thread.type] ?? thread.type)
+
+  // Podtytuł: tytuł wątku gdy primaryName pochodzi z klienta lub projektu
+  const subtitleText = showProject && (inboxThread.client_name || inboxThread.project_name)
+    ? (thread.title ?? THREAD_TYPE_LABELS[thread.type] ?? null)
+    : null
+
+  const avatarLetter = primaryName[0].toUpperCase()
 
   return (
     <button
@@ -97,7 +104,7 @@ export function ThreadListItem({ thread, active, showProject, onClick }: ThreadL
       <div className="chat-conv-item__body">
         <div className="chat-conv-item__header">
           <span className="chat-conv-item__name">
-            {thread.title ?? THREAD_TYPE_LABELS[thread.type] ?? thread.type}
+            {primaryName}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
             <VisibilityChip visibility={thread.visibility} />
@@ -107,10 +114,10 @@ export function ThreadListItem({ thread, active, showProject, onClick }: ThreadL
           </div>
         </div>
 
-        {/* Projekt — tylko w global inbox */}
-        {showProject && inboxThread.project_name && (
+        {/* Tytuł wątku jako podtytuł — tylko gdy primary to klient/projekt */}
+        {subtitleText && (
           <div className="chat-conv-item__project" style={{ marginBottom: 2 }}>
-            {inboxThread.project_number ? `${inboxThread.project_number} · ` : ''}{inboxThread.project_name}
+            {subtitleText}
           </div>
         )}
 

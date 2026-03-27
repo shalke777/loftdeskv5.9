@@ -20,7 +20,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearch } from '@tanstack/react-router'
 import { Search, Plus, X, MessageSquarePlus, ChevronLeft } from 'lucide-react'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
-import { Badge } from '@/shared/ui/Badge/Badge'
 import { ThreadList } from '@/features/projects/components/ThreadList'
 import { ThreadView } from '@/features/projects/components/ThreadView'
 import { MessageComposer } from '@/features/projects/components/MessageComposer'
@@ -360,18 +359,24 @@ export function ChatPage() {
               <div className="chat-thread__header">
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="chat-thread__name">
-                    {activeThread.title ?? activeThread.type}
+                    {activeThread.client_name ?? activeThread.project_name ?? activeThread.title ?? activeThread.type}
                   </div>
-                  <div className="chat-thread__meta">
-                    {activeThread.project_number ? `${activeThread.project_number} · ` : ''}{activeThread.project_name}
-                  </div>
+                  {(activeThread.client_name || activeThread.project_name) && activeThread.title && (
+                    <div className="chat-thread__meta">
+                      {activeThread.title}
+                    </div>
+                  )}
                 </div>
-                <Badge
-                  variant={activeThread.visibility === 'client_shared' ? 'success' : 'default'}
-                  style={{ fontSize: 11, flexShrink: 0 }}
-                >
-                  {activeThread.visibility === 'client_shared' ? 'Klient' : activeThread.visibility === 'internal' ? 'Wewnętrzny' : 'Akceptacje'}
-                </Badge>
+                <span className={[
+                  'chat-thread__type-chip',
+                  activeThread.visibility === 'client_shared' ? 'chat-thread__type-chip--client'
+                    : activeThread.visibility === 'internal'     ? 'chat-thread__type-chip--internal'
+                    : 'chat-thread__type-chip--approval',
+                ].join(' ')}>
+                  {activeThread.visibility === 'client_shared' ? 'Klient'
+                    : activeThread.visibility === 'internal' ? 'Wewnętrzny'
+                    : 'Akceptacje'}
+                </span>
               </div>
             ) : null}
 

@@ -19,15 +19,134 @@ const IMAGE_MIME_SET = new Set([
   'image/gif', 'image/heic', 'image/heif',
 ])
 
-// ── Image preprocessing (resize + grayscale + contrast) ──────────────────────
-// Dramatically improves Tesseract OCR quality on mobile camera photos.
+// ── Image preprocessing (resize + grayscale + deskew + adaptive binarization)
+// Improves Tesseract OCR quality on mobile camera invoice photos.
 // HEIC/HEIF from iOS are decoded by the browser before reaching canvas.
+//
+// Pipeline:
+//   1. Resize to MAX_OCR_WIDTH (payload reduction, stays sharp)
+//   2. Grayscale conversion
+//   3. Deskew — detect rotation angle via horizontal-projection variance on a
+//      small thumbnail; correct if |angle| is 0.5–12° (fail-safe: skip if unsure)
+//   4. Adaptive block thresholding — binarize using local block means so that
+//      uneven illumination / shadows are handled per-region (much better than
+//      a single linear contrast boost for documents under imperfect lighting)
+
+const DESKEW_THUMB_W = 300  // px — small thumbnail used for angle detection only
+
+/**
+ * Otsu's method — finds the global optimal binarization threshold from a
+ * compact grayscale array.  O(256 + n) time, O(1) extra space.
+ */
+function otsuThreshold(gray: Uint8Array, count: number): number {
+  const hist = new Int32Array(256)
+  for (let i = 0; i < count; i++) hist[gray[i]]++
+  let sum = 0
+  for (let i = 0; i < 256; i++) sum += i * hist[i]
+  let sumB = 0, wB = 0, max = 0, threshold = 128
+  for (let t = 0; t < 256; t++) {
+    wB += hist[t]
+    if (!wB) continue
+    const wF = count - wB
+    if (!wF) break
+    sumB += t * hist[t]
+    const mB = sumB / wB
+    const mF = (sum - sumB) / wF
+    const between = wB * wF * (mB - mF) ** 2
+    if (between > max) { max = between; threshold = t }
+  }
+  return threshold
+}
+
+/**
+ * Estimates document skew angle (degrees) using horizontal projection profiles.
+ * For each candidate angle the pixel rows of the binarized image are summed;
+ * the angle with maximum variance (sharpest row-sum distribution = text lines
+ * most aligned with horizontal) is the true skew angle.
+ * Returns 0 when signal is too weak to make a reliable estimate.
+ */
+function estimateSkewDeg(gray: Uint8Array, w: number, h: number, thresh: number): number {
+  let bestAngle = 0
+  let bestVar   = -1
+  const cx = w >> 1
+  const cy = h >> 1
+  const pLen = h + w   // rotation can shift projection index by up to ±w/2
+
+  for (let deg = -12; deg <= 12; deg++) {
+    const cos = Math.cos(deg * Math.PI / 180)
+    const sin = Math.sin(deg * Math.PI / 180)
+    const profile = new Float32Array(pLen)
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (gray[y * w + x] < thresh) {           // dark (text) pixel
+          const py = Math.round((y - cy) * cos - (x - cx) * sin + cy)
+          if (py >= 0 && py < pLen) profile[py]++
+        }
+      }
+    }
+
+    // Variance of occupied row-buckets: peaks sharply when lines are horizontal
+    let s = 0, sq = 0, n = 0
+    for (let i = 0; i < pLen; i++) {
+      if (profile[i] > 0) { s += profile[i]; sq += profile[i] * profile[i]; n++ }
+    }
+    if (n < 3) continue
+    const variance = sq / n - (s / n) ** 2
+    if (variance > bestVar) { bestVar = variance; bestAngle = deg }
+  }
+
+  return bestAngle
+}
+
+/**
+ * Adaptive block binarization — divides the image into blockSize×blockSize
+ * tiles, computes the local mean for each tile, and applies the threshold
+ * (mean − offset) per tile.  Handles uneven illumination far better than a
+ * global linear contrast boost.  Modifies the RGBA buffer d in place.
+ */
+function adaptiveThreshold(
+  d: Uint8ClampedArray,
+  w: number,
+  h: number,
+  blockSize: number,
+  offset: number,
+): void {
+  // Snapshot grayscale channel before writing — prevents reading modified values
+  const src = new Uint8Array(w * h)
+  for (let i = 0; i < w * h; i++) src[i] = d[i * 4]  // R == G == B (already gray)
+
+  for (let by = 0; by < h; by += blockSize) {
+    const yEnd = Math.min(by + blockSize, h)
+    for (let bx = 0; bx < w; bx += blockSize) {
+      const xEnd = Math.min(bx + blockSize, w)
+
+      // Local block mean
+      let sum = 0, count = 0
+      for (let y = by; y < yEnd; y++) {
+        for (let x = bx; x < xEnd; x++) { sum += src[y * w + x]; count++ }
+      }
+      const localThresh = (sum / count) - offset
+
+      // Apply — pixel darker than local threshold → black (text), else white
+      for (let y = by; y < yEnd; y++) {
+        for (let x = bx; x < xEnd; x++) {
+          const val = src[y * w + x] < localThresh ? 0 : 255
+          const p = (y * w + x) * 4
+          d[p] = d[p + 1] = d[p + 2] = val
+          // d[p+3] (alpha) unchanged
+        }
+      }
+    }
+  }
+}
 
 async function preprocessForOCR(file: File): Promise<File> {
   const isImg = IMAGE_MIME_SET.has(file.type) || /\.(jpe?g|png|webp|gif)$/i.test(file.name)
   if (!isImg || typeof document === 'undefined') return file
 
   try {
+    // ── 1. Load + resize ────────────────────────────────────────────────────
     const url = URL.createObjectURL(file)
     const img = await new Promise<HTMLImageElement>((res, rej) => {
       const el = new Image()
@@ -41,25 +160,90 @@ async function preprocessForOCR(file: File): Promise<File> {
     const w = Math.round(img.naturalWidth  * scale)
     const h = Math.round(img.naturalHeight * scale)
 
-    const canvas = document.createElement('canvas')
+    let canvas = document.createElement('canvas')
     canvas.width  = w
     canvas.height = h
-    const ctx = canvas.getContext('2d')
+    let ctx = canvas.getContext('2d')
     if (!ctx) return file
-
     ctx.drawImage(img, 0, 0, w, h)
 
-    // Convert to grayscale + mild contrast boost (improves OCR edge detection)
-    const id = ctx.getImageData(0, 0, w, h)
-    const d  = id.data
-    for (let i = 0; i < d.length; i += 4) {
-      const gray    = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
-      const boosted = Math.min(255, Math.max(0, (gray - 128) * 1.3 + 128))
-      d[i] = d[i + 1] = d[i + 2] = boosted
-      // d[i+3] (alpha) unchanged
+    // ── 2. Grayscale ─────────────────────────────────────────────────────────
+    let id = ctx.getImageData(0, 0, w, h)
+    let d  = id.data
+    const gray = new Uint8Array(w * h)
+    for (let i = 0; i < w * h; i++) {
+      const p = i * 4
+      const g = Math.round(0.299 * d[p] + 0.587 * d[p + 1] + 0.114 * d[p + 2])
+      gray[i] = g
+      d[p] = d[p + 1] = d[p + 2] = g
     }
     ctx.putImageData(id, 0, 0)
 
+    // ── 3. Deskew detection + correction ─────────────────────────────────────
+    // Runs on a 300 px thumbnail to stay fast on mobile; corrects the main canvas.
+    try {
+      const thumbW  = Math.min(DESKEW_THUMB_W, w)
+      const thumbH  = Math.round(h * thumbW / w)
+      const tCanvas = document.createElement('canvas')
+      tCanvas.width  = thumbW
+      tCanvas.height = thumbH
+      const tCtx = tCanvas.getContext('2d')
+      if (tCtx) {
+        tCtx.drawImage(canvas, 0, 0, thumbW, thumbH)
+        const tId = tCtx.getImageData(0, 0, thumbW, thumbH)
+        // Build compact grayscale array for helpers
+        const tGray = new Uint8Array(thumbW * thumbH)
+        for (let i = 0; i < thumbW * thumbH; i++) tGray[i] = tId.data[i * 4]
+
+        const thresh   = otsuThreshold(tGray, thumbW * thumbH)
+        const skewDeg  = estimateSkewDeg(tGray, thumbW, thumbH, thresh)
+
+        if (Math.abs(skewDeg) >= 0.5 && Math.abs(skewDeg) <= 12) {
+          // Expand canvas so rotated content doesn't get clipped
+          const rad  = skewDeg * Math.PI / 180
+          const absC = Math.abs(Math.cos(rad))
+          const absS = Math.abs(Math.sin(rad))
+          const newW = Math.round(w * absC + h * absS)
+          const newH = Math.round(w * absS + h * absC)
+
+          const rotCanvas = document.createElement('canvas')
+          rotCanvas.width  = newW
+          rotCanvas.height = newH
+          const rotCtx = rotCanvas.getContext('2d')
+          if (rotCtx) {
+            rotCtx.fillStyle = '#ffffff'   // white fill for rotation padding
+            rotCtx.fillRect(0, 0, newW, newH)
+            rotCtx.translate(newW / 2, newH / 2)
+            rotCtx.rotate(-skewDeg * Math.PI / 180)
+            rotCtx.drawImage(canvas, -w / 2, -h / 2)
+
+            // Swap main canvas reference
+            canvas        = rotCanvas
+            canvas.width  = newW
+            canvas.height = newH
+            ctx = canvas.getContext('2d')!
+          }
+        }
+      }
+    } catch (deskewErr) {
+      console.warn('[OCR] deskew skipped:', deskewErr)
+      // canvas still holds valid grayscale — continue
+    }
+
+    // ── 4. Adaptive block binarization ───────────────────────────────────────
+    // 64 px blocks, offset = 12 — handles uneven illumination and thin fonts.
+    try {
+      const { width: fw, height: fh } = canvas
+      id = ctx.getImageData(0, 0, fw, fh)
+      d  = id.data
+      adaptiveThreshold(d, fw, fh, 64, 12)
+      ctx.putImageData(id, 0, 0)
+    } catch (threshErr) {
+      console.warn('[OCR] adaptive threshold skipped:', threshErr)
+      // canvas still has grayscale — perfectly acceptable fallback
+    }
+
+    // ── 5. Encode ─────────────────────────────────────────────────────────────
     return await new Promise<File>((resolve) => {
       canvas.toBlob(
         (blob) => {
@@ -68,12 +252,12 @@ async function preprocessForOCR(file: File): Promise<File> {
           resolve(new File([blob], name, { type: 'image/jpeg' }))
         },
         'image/jpeg',
-        0.90,
+        0.92,   // slightly higher quality — preserves thin strokes after binarization
       )
     })
   } catch (err) {
     console.warn('[OCR] image preprocessing failed, using original:', err)
-    return file // graceful fallback — use original
+    return file  // graceful fallback — never fail the upload
   }
 }
 
