@@ -727,13 +727,13 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
-  border-right: 1px solid var(--color-border-light);
+  border-right: 1px solid rgba(255,255,255,0.04);
   overflow: hidden;
 }
 
 .chat-sidebar__header {
   padding: 18px 18px 14px;
-  border-bottom: 1px solid var(--color-border-light);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
   flex-shrink: 0;
 }
 
@@ -795,7 +795,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   width: 100%;
   padding: 9px 12px 9px 34px;
   border: 1.5px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 14px;
   font-size: 13px;
   background: var(--color-bg);
   color: var(--color-text-primary);
@@ -909,14 +909,15 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 11px 12px;
   cursor: pointer;
   border: none;
   background: none;
-  width: 100%;
+  width: calc(100% - 16px);
+  margin: 1px 8px;
+  border-radius: 12px;
   text-align: left;
-  border-left: 2px solid transparent;
-  transition: background 0.1s, border-color 0.1s;
+  transition: background 0.15s;
 }
 
 .chat-conv-item:hover {
@@ -925,7 +926,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .chat-conv-item--active {
   background: var(--color-brand-light, rgba(119,186,138,0.10));
-  border-left-color: var(--color-brand);
 }
 
 .chat-conv-item--active .chat-conv-item__name {
@@ -934,7 +934,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .chat-conv-item--unread:not(.chat-conv-item--active) {
   background: rgba(119,186,138,0.06);
-  border-left-color: rgba(119,186,138,0.55);
 }
 
 .chat-conv-item--unread .chat-conv-item__name {
@@ -945,7 +944,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .chat-conv-item__avatar {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: 50%;
   background: var(--color-brand-light);
   color: var(--color-brand);
   font-size: 13px;
@@ -1091,9 +1090,9 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .chat-empty-state__icon-wrap {
   width: 72px;
   height: 72px;
-  border-radius: 22px;
+  border-radius: 24px;
   background: var(--color-brand-light, rgba(119,186,138,0.12));
-  border: 1.5px solid var(--color-brand-border, rgba(119,186,138,0.25));
+  box-shadow: 0 0 0 1px rgba(119,186,138,0.18) inset;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1168,13 +1167,12 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .chat-thread__header {
   padding: 18px 28px;
-  border-bottom: 1px solid var(--color-border);
   background: var(--color-surface-soft);
   display: flex;
   align-items: center;
   gap: 14px;
   flex-shrink: 0;
-  box-shadow: 0 1px 0 var(--color-border-light);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 2px 16px rgba(0,0,0,0.10);
 }
 
 .chat-thread__name {
@@ -1205,7 +1203,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   padding: 22px 32px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 9px;
   min-height: 0;
 }
 
@@ -1247,10 +1245,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 /* ── Composer ───────────────────────────────────────────────────── */
 
 .chat-thread__composer {
-  border-top: 1px solid var(--color-border-light);
   background: var(--color-surface-soft);
   padding: 14px 24px 16px;
   flex-shrink: 0;
+  box-shadow: 0 -1px 0 rgba(255,255,255,0.05), 0 -8px 24px rgba(0,0,0,0.08);
 }
 
 .chat-thread__composer-banner {
@@ -1260,7 +1258,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   font-size: 11.5px;
   font-weight: 500;
   padding: 6px 12px;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 10px;
 }
 
@@ -1274,7 +1272,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   flex: 1;
   resize: none;
   border: 1.5px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 10px 14px;
   font-size: 13.5px;
   font-family: inherit;
@@ -1348,7 +1346,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   align-items: center;
   gap: 5px;
   padding: 7px 13px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: none;
   background: var(--color-brand);
   color: #fff;
@@ -1572,7 +1570,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   align-items: flex-start;
   gap: 10px;
   padding: 12px 14px;
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1.5px solid var(--color-border);
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s;
@@ -1620,7 +1618,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .chat-modal__cancel {
   padding: 8px 18px;
-  border-radius: 9px;
+  border-radius: 12px;
   border: 1.5px solid var(--color-border);
   background: transparent;
   color: var(--color-text-secondary);
@@ -1636,7 +1634,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .chat-modal__submit {
   padding: 8px 22px;
-  border-radius: 9px;
+  border-radius: 12px;
   border: none;
   background: var(--color-brand);
   color: #fff;
@@ -1679,13 +1677,13 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 }
 
 .chat-bubble {
-  padding: 10px 14px;
-  border-radius: 18px 18px 18px 4px;
+  padding: 10px 15px;
+  border-radius: 20px 20px 20px 5px;
   font-size: 13.5px;
   line-height: 1.55;
   word-break: break-word;
   background: var(--color-surface);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.10);
   display: inline-block;
   max-width: 100%;
   box-sizing: border-box;
@@ -1695,15 +1693,15 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   background: var(--color-brand);
   color: var(--color-text-inverse);
   border: none;
-  border-radius: 18px 18px 4px 18px;
-  box-shadow: 0 2px 8px rgba(119, 186, 138, 0.2);
+  border-radius: 20px 20px 5px 20px;
+  box-shadow: 0 2px 6px rgba(119, 186, 138, 0.15);
 }
 
 .chat-bubble--note {
   background: rgba(212,150,10,0.08);
-  border: 1.5px dashed #b8860b;
+  border: 1px solid rgba(184,134,11,0.28);
   color: #D4960A;
-  border-radius: 12px;
+  border-radius: 18px;
   display: block;
   width: 100%;
   box-sizing: border-box;

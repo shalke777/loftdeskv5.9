@@ -44,7 +44,7 @@ async function insertTimeline(
     .insert({ company_id: companyId, project_id: projectId, action, details })
 }
 
-async function recomputeCompleteness(projectId: string, companyId: string) {
+export async function recomputeCompleteness(projectId: string, companyId: string) {
   if (isDemoMode || !supabase) return
   const { data } = await supabase
     .from('project_documents')

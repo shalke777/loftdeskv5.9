@@ -8,6 +8,7 @@ import { translateError } from '@/shared/lib/errorMessages'
 import type { ProjectDocument, ProjectTimelineEntry } from '@/entities/project/model'
 import { demoDb } from '@/shared/lib/demoDb'
 import { buildEstimatePreview, buildInvoicePreview, buildContractPreview } from '@/services/pdf/documentPreview'
+import { recomputeCompleteness } from '@/services/project/autoLinkService'
 
 // ── Project Documents ────────────────────────────────────────────────────────
 
@@ -35,6 +36,9 @@ export function useLinkDocument() {
       docId: string
     }) => projectDocumentsApi.link(companyId, projectId, docType, docId, { manual: true }),
     onSuccess: (_, { projectId }) => {
+      recomputeCompleteness(projectId, companyId).catch((err) =>
+        console.warn('[link] completeness recompute failed:', err)
+      )
       qc.invalidateQueries({ queryKey: ['project_documents', projectId] })
       qc.invalidateQueries({ queryKey: ['projects'] })
       toast.success('Dokument przypisany do projektu')
@@ -58,6 +62,9 @@ export function useUnlinkDocument() {
       docId: string
     }) => projectDocumentsApi.unlink(companyId, projectId, docType, docId),
     onSuccess: (_, { projectId }) => {
+      recomputeCompleteness(projectId, companyId).catch((err) =>
+        console.warn('[unlink] completeness recompute failed:', err)
+      )
       qc.invalidateQueries({ queryKey: ['project_documents', projectId] })
       qc.invalidateQueries({ queryKey: ['projects'] })
       toast.info('Dokument odpięty od projektu')

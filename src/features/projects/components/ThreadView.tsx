@@ -49,8 +49,7 @@ function MessageBubble({ msg, onDelete, deleting }: BubbleProps) {
             borderRadius: 999,
             fontSize:     11,
             color:        '#A7ABB3',
-            background:   'rgba(160,170,180,0.10)',
-            border:       '1px solid var(--color-border)',
+            background:   'rgba(160,170,180,0.08)',
           }}
         >
           {msg.body}
@@ -76,8 +75,8 @@ function MessageBubble({ msg, onDelete, deleting }: BubbleProps) {
           ...(isClient ? {
             background:   'rgba(160,170,180,0.10)',
             color:        '#F0F2F3',
-            borderRadius: '16px 16px 16px 4px',
-            padding:      '10px 14px',
+            borderRadius: '20px 20px 20px 5px',
+            padding:      '10px 15px',
             fontSize:     14,
           } : {}),
         }}

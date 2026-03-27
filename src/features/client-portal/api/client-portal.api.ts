@@ -150,17 +150,34 @@ export const clientPortalApi = {
 
   async listContracts(projectId: string): Promise<ClientContract[]> {
     if (!supabase) return []
-    // Kontrakty nie mają project_id — łączymy przez estimate_id
-    const estimates = await clientPortalApi.listEstimates(projectId)
-    if (!estimates.length) return []
-    const estimateIds = estimates.map((e) => e.id)
-    const { data, error } = await supabase
+    // Primary path: contracts with direct project_id (most reliable, matches operator view)
+    const { data: byProject, error: err1 } = await supabase
       .from('contracts')
       .select('id, number, name, status, start_date, end_date, value_net, created_at')
-      .in('estimate_id', estimateIds)
+      .eq('project_id', projectId)
       .order('created_at', { ascending: false })
-    if (error) throw error
-    return (data ?? []) as ClientContract[]
+    if (err1) throw err1
+    const direct = (byProject ?? []) as ClientContract[]
+    const directIds = new Set(direct.map((c) => c.id))
+    // Fallback: contracts linked via estimate_id (legacy data where project_id wasn't set)
+    try {
+      const estimates = await clientPortalApi.listEstimates(projectId)
+      if (!estimates.length) return direct
+      const estimateIds = estimates.map((e) => e.id)
+      const { data: viaEst } = await supabase
+        .from('contracts')
+        .select('id, number, name, status, start_date, end_date, value_net, created_at')
+        .in('estimate_id', estimateIds)
+        .order('created_at', { ascending: false })
+      const merged = [
+        ...direct,
+        ...(viaEst ?? []).filter((c: any) => !directIds.has(c.id)),
+      ]
+      return merged as ClientContract[]
+    } catch {
+      // Fallback query failed — return what we have from direct project_id query
+      return direct
+    }
   },
 
   async listMessages(projectId: string): Promise<ClientMessage[]> {

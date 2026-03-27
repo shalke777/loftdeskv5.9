@@ -100,7 +100,12 @@ const STAGE_HINT: Record<string, string> = {
 
 function fmtDate(d: string | null | undefined): string | null {
   if (!d) return null
-  return new Date(d + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
+  // Date-only strings (YYYY-MM-DD) need T12:00:00 to avoid UTC midnight shift.
+  // Full ISO timestamps already contain 'T' — appending again creates Invalid Date.
+  const iso = d.includes('T') ? d : d + 'T12:00:00'
+  const dt = new Date(iso)
+  if (isNaN(dt.getTime())) return 'Brak daty'
+  return dt.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function ProjectStageRail({ status }: { status: string }) {
@@ -246,7 +251,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
               <li key={inv.id} className="client-docs__row">
                 <div>
                   <span className="client-docs__row-number">{inv.number}</span>
-                  <span className="client-docs__row-date">{inv.issue_date}</span>
+                  <span className="client-docs__row-date">{fmtDate(inv.issue_date) ?? inv.issue_date}</span>
                 </div>
                 <div className="client-docs__row-right">
                   <span className="client-docs__row-amount">
