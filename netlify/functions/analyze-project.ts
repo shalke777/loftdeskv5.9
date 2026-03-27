@@ -159,10 +159,11 @@ function err(statusCode: number, error: string, message: string) {
 const ns = { anyOf: [{ type: 'string' }, { type: 'null' }] }
 const nn = { anyOf: [{ type: 'number' }, { type: 'null' }] }
 
-const PROJECT_ANALYSIS_TOOLS = [{
-  name:        'analyze_project',
-  description: 'Analyze project documents (architectural drawings, visualizations, technical specs) and extract structured project data.',
-  input_schema: {
+const PROJECT_ANALYSIS_SCHEMA = {
+  type:   'json_schema',
+  name:   'project_analysis_v1',
+  strict: true,
+  schema: {
     type: 'object',
     properties: {
       project_type: {
@@ -258,8 +259,9 @@ const PROJECT_ANALYSIS_TOOLS = [{
       'suggested_estimate_items', 'assumptions', 'missing_information', 'project_notes',
       'confidence', 'warnings', 'comparison_ready',
     ],
+    additionalProperties: false,
   },
-}]
+}
 
 // ── System instructions ──────────────────────────────────────────────────────
 
@@ -331,21 +333,15 @@ comparison_ready: true tylko jeśli rooms_detected zawiera co najmniej 1 pomiesz
 
 Zwróć TYLKO poprawny JSON zgodny z podanym schematem. Żadnego tekstu poza JSON.`
 
-// ── Anthropic Messages API types ──────────────────────────────────────────
+// ── OpenAI Responses API types ───────────────────────────────────────────────
 
-interface AnthropicContent {
-  type:   string
-  id?:    string
-  name?:  string
-  input?: Record<string, unknown>
-  text?:  string
-}
-
-interface AnthropicMessage {
-  model?:       string
-  content?:     AnthropicContent[]
-  stop_reason?: string
-  error?:       { type: string; message: string }
+interface ResponsesAPIResult {
+  output?: Array<{
+    content?: Array<{
+      type: string
+      text: string
+    }>
+  }>
 }
 
 // ── Main handler ─────────────────────────────────────────────────────────────
@@ -362,10 +358,13 @@ export const handler: Handler = async (event) => {
   if (!userId) return err(401, 'unauthorized', 'Valid session required')
   if (isRateLimited(userId)) return err(429, 'too_many_requests', 'Rate limit exceeded')
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return err(500, 'ai_not_configured', 'ANTHROPIC_API_KEY not set')
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) return err(500, 'ai_not_configured', 'OPENAI_API_KEY not set')
 
-  const model = process.env.ANTHROPIC_MODEL?.trim() || 'claude-sonnet-4-5'
+  const model =
+    process.env.OPENAI_MODEL_VISION?.trim() ||
+    process.env.OPENAI_MODEL?.trim()        ||
+    'gpt-4o'
 
   // ── Parse request ──────────────────────────────────────────────────────
 
@@ -399,9 +398,9 @@ export const handler: Handler = async (event) => {
   }
 
   type ContentItem =
-    | { type: 'text'; text: string }
-    | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
-    | { type: 'document'; source: { type: 'base64'; media_type: string; data: string } }
+    | { type: 'input_text'; text: string }
+    | { type: 'input_image'; image_url: string }
+    | { type: 'input_file'; filename: string; file_data: string }
 
   const content: ContentItem[] = []
 
@@ -415,55 +414,53 @@ export const handler: Handler = async (event) => {
   } else {
     instructionText += '\n\n[Typ wejścia: wizualizacja / rysunek — analizuj jako materiał projektowy]'
   }
-  content.push({ type: 'text', text: instructionText })
+  content.push({ type: 'input_text', text: instructionText })
 
   // File content
   if (isPdf) {
-    // Anthropic Messages API: send PDF as document with base64 source
+    // OpenAI Responses API: send PDF as input_file
     content.push({
-      type:   'document',
-      source: { type: 'base64', media_type: 'application/pdf', data: fileBase64 },
+      type:      'input_file',
+      filename:  fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`,
+      file_data: `data:application/pdf;base64,${fileBase64}`,
     })
   } else {
     // Image (visualization, render, drawing photo)
     const mimeType = fileType.startsWith('image/') ? fileType : 'image/jpeg'
     content.push({
-      type:   'image',
-      source: { type: 'base64', media_type: mimeType, data: fileBase64 },
+      type:      'input_image',
+      image_url: `data:${mimeType};base64,${fileBase64}`,
     })
   }
 
-  // ── Call Anthropic Messages API ───────────────────────────────────────────
+  // ── Call OpenAI ────────────────────────────────────────────────────────
 
   let aiRaw: string
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch('https://api.openai.com/v1/responses', {
       method:  'POST',
       headers: {
-        'Content-Type':      'application/json',
-        'x-api-key':         apiKey,
-        'anthropic-version': '2023-06-01',
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model,
-        system:     INSTRUCTIONS,
-        messages:   [{ role: 'user', content }],
-        tools:      PROJECT_ANALYSIS_TOOLS,
-        tool_choice: { type: 'tool', name: 'analyze_project' },
-        max_tokens: 8_000,
+        instructions: INSTRUCTIONS,
+        input:        [{ role: 'user', content }],
+        text:         { format: PROJECT_ANALYSIS_SCHEMA },
+        max_output_tokens: 8_000,
       }),
     })
 
     const rawBody = await resp.text()
 
     if (!resp.ok) {
-      if (resp.status === 429) return err(429, 'anthropic_quota_exceeded', 'Anthropic quota exceeded')
-      throw new Error(`Anthropic ${resp.status}: ${rawBody.slice(0, 300)}`)
+      if (resp.status === 429) return err(429, 'openai_quota_exceeded', 'OpenAI quota exceeded')
+      throw new Error(`OpenAI ${resp.status}: ${rawBody.slice(0, 300)}`)
     }
 
-    const data = JSON.parse(rawBody) as AnthropicMessage
-    const toolResult = data.content?.find(c => c.type === 'tool_use')
-    aiRaw = JSON.stringify(toolResult?.input ?? {})
+    const data = JSON.parse(rawBody) as ResponsesAPIResult
+    aiRaw = data.output?.[0]?.content?.find(c => c.type === 'output_text')?.text ?? '{}'
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error('PROJECT_ANALYSIS_ERROR', msg)

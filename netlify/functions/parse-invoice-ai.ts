@@ -1,20 +1,19 @@
 // =============================================================================
-// Netlify Function: parse-invoice-ai  (v5 — Anthropic Claude, verified extraction)
+// Netlify Function: parse-invoice-ai  (v4 — OpenAI Responses API, verified extraction)
 // =============================================================================
-// AI extraction of invoice/receipt data via Anthropic Messages API with:
-//   • Structured output via Claude tool_use (replaces OpenAI json_schema)
-//   • Vision input: Claude Sonnet for images (JPEG/PNG/WEBP)
-//   • Native PDF parsing: Claude accepts application/pdf as document type
-//   • Text input: optional supplementary OCR hint
+// AI extraction of invoice/receipt data via OpenAI Responses API with:
+//   • Structured JSON output — text.format.type = 'json_schema' (required)
+//   • Nullable fields via anyOf (strict schema — array types not supported)
+//   • Vision input: gpt-4o for images (JPEG/PNG/WEBP only — not raw PDF)
+//   • Text input: gpt-4o for PDF text layer / Tesseract output
 //   • INSTRUCTIONS include explicit arithmetic + NIP + date verification steps
 //
 // Request (POST /.netlify/functions/parse-invoice-ai):
 //   Content-Type: application/json
 //   {
-//     text_content?: string   // raw text hint (PDF text layer or Tesseract OCR)
-//     image_base64?: string   // base64-encoded image JPEG/PNG/WEBP
+//     text_content?: string   // raw text from PDF text layer or Tesseract OCR
+//     image_base64?: string   // base64-encoded image JPEG/PNG/WEBP (NOT PDF)
 //     image_type?:  string    // MIME, e.g. "image/jpeg" — must be image/*
-//     pdf_base64?:  string    // base64-encoded PDF — sent directly to Claude
 //   }
 //
 // Response 200: { ok: true, result: ParseInvoiceResult }
@@ -22,6 +21,7 @@
 
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import type { ParseInvoiceResult } from './parse-invoice'
+import { extractTextFromPDF, extractEmbeddedJpegsFromPdf, isPdfTextUsable } from './parse-invoice'
 import { createClient } from '@supabase/supabase-js'
 
 const CORS_HEADERS = {
@@ -31,7 +31,7 @@ const CORS_HEADERS = {
 }
 
 // ─── JWT check ───────────────────────────────────────────────────────────────
-// Prevents unauthenticated callers from burning Anthropic API credits.
+// Prevents unauthenticated callers from burning OpenAI API credits.
 // If Supabase env vars are absent (local dev without backend), check is skipped.
 // Returns a user identifier (user_id or 'dev') on success, null on failure.
 async function verifyRequestAuth(event: HandlerEvent): Promise<string | null> {
@@ -53,7 +53,7 @@ async function verifyRequestAuth(event: HandlerEvent): Promise<string | null> {
 }
 
 // ─── Rate limiting (in-memory, per user, 10 req / 10 min) ────────────────────
-// Stricter than OCR because each request calls the Anthropic API.
+// Stricter than OCR because each request calls the OpenAI API.
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 const RATE_MAX       = 10
 const RATE_WINDOW_MS = 10 * 60 * 1000
@@ -86,9 +86,10 @@ function err(statusCode: number, error: string, message: string, meta?: { aiMode
   }
 }
 
-// ─── Anthropic tool definition for structured output ─────────────────────────
-// Claude tool_use forces JSON schema adherence.
-// tool_choice: { type: 'tool', name: 'extract_invoice' } ensures structured output.
+// ─── JSON Schema for Structured Output ───────────────────────────────────────
+// FIX 1: Must include `type: 'json_schema'` as top-level property of `format`.
+// FIX 2: Nullable fields must use anyOf — OpenAI strict mode does NOT support
+//         type arrays like `type: ['string', 'null']`.
 
 const ns = { anyOf: [{ type: 'string' }, { type: 'null' }] }  // nullable string
 const nn = { anyOf: [{ type: 'number' }, { type: 'null' }] }  // nullable number
@@ -109,10 +110,11 @@ const LINE_ITEM_SCHEMA = {
   additionalProperties: false,
 }
 
-const INVOICE_TOOLS = [{
-  name:        'extract_invoice',
-  description: 'Extract all structured accounting data from a cost document (invoice, receipt, bill).',
-  input_schema: {
+const INVOICE_SCHEMA_FORMAT = {
+  type:   'json_schema',
+  name:   'invoice_extraction',
+  strict: true,
+  schema: {
     type: 'object',
     properties: {
       document_type:    { type: 'string', enum: ['invoice', 'receipt', 'bill', 'other'] },
@@ -143,8 +145,9 @@ const INVOICE_TOOLS = [{
       'buyer_name', 'buyer_nip', 'buyer_address', 'line_items',
       'notes', 'confidence', 'warnings',
     ],
+    additionalProperties: false,
   },
-}]
+}
 
 // ─── System instructions ──────────────────────────────────────────────────────
 
@@ -252,22 +255,15 @@ VERIFICATION — run these checks before producing final JSON output:
 - CRITICAL: If the input image shows a room, interior space, bathroom, kitchen, corridor, construction site, outdoor scene, or any non-document scene — return document_type: "other", all monetary values as null, confidence: 0, and add to warnings: "Zdjęcie nie wygląda na dokument kosztowy — prześlij skan faktury, paragonu lub PDF." Do NOT invent invoice fields from non-document images.
 - A cost document must contain visibly readable text with labels, numbers, or dates. If no such document text is visible in the image, set confidence: 0 and document_type: "other".`
 
-// ─── Anthropic Messages API types ────────────────────────────────────────────
+// ─── OpenAI Responses API types ───────────────────────────────────────────────
 
-interface AnthropicContent {
-  type:   string
-  id?:    string
-  name?:  string
-  input?: Record<string, unknown>
-  text?:  string
-}
-
-interface AnthropicMessage {
-  id?:          string
-  model?:       string
-  content?:     AnthropicContent[]
-  stop_reason?: string
-  error?:       { type: string; message: string }
+interface ResponsesAPIResult {
+  model?:  string
+  output?: Array<{
+    type: string
+    content?: Array<{ type: string; text?: string }>
+  }>
+  error?: { message: string; code?: string }
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -281,9 +277,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (!userId) return err(401, 'unauthorized', 'Valid authentication token required.')
   if (isRateLimited(userId)) return err(429, 'too_many_requests', 'Za dużo żądań. Spróbuj za chwilę.')
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    return err(503, 'ai_not_configured', 'ANTHROPIC_API_KEY is not set in Netlify environment variables', { aiAttempted: false })
+    return err(503, 'ai_not_configured', 'OPENAI_API_KEY is not set in Netlify environment variables', { aiAttempted: false })
   }
 
   let body: Record<string, unknown>
@@ -297,11 +293,46 @@ export const handler: Handler = async (event: HandlerEvent) => {
   let imageBase64 = body.image_base64 as string | undefined
   let imageType   = String(body.image_type ?? 'image/jpeg')
 
-  // ── PDF input: Claude handles PDFs natively as document type ─────────────
-  // No text/JPEG extraction needed — Claude reads PDFs directly.
+  // ── PDF input: extract text layer or embedded JPEGs server-side ──────────
+  // This enables the same AI quality for PDFs as for scanned images.
   const pdfBase64 = body.pdf_base64 as string | undefined
-  if (!pdfBase64 && !imageBase64 && !textContent) {
-    // No content provided — return graceful empty result so client can fall back to manual entry.
+  if (pdfBase64) {
+    try {
+      const pdfBuffer = Buffer.from(pdfBase64, 'base64')
+
+      // 1. Try to extract text layer (works for all digitally-generated PDFs).
+      //    isPdfTextUsable rejects both empty layers and subsetted-font garbage.
+      //    The old length-only check (>= 40 chars) let garbage text through to AI.
+      const extracted = await extractTextFromPDF(pdfBuffer)
+      if (isPdfTextUsable(extracted)) {
+        // Append to any locally-extracted text the caller may have passed
+        textContent = extracted + (textContent ? '\n\n' + textContent : '')
+        console.info('PDF_TEXT_EXTRACTED', JSON.stringify({ chars: extracted.length }))
+      } else {
+        // Text absent OR present but failed usability gate (subsetted-font garbage).
+        if (extracted.trim().length >= 60) {
+          console.warn('PDF_TEXT_UNUSABLE', JSON.stringify({ chars: extracted.length, reason: 'failed_usability_gate' }))
+        }
+        // 2. Scanned PDF — extract embedded JPEG images and use first one for vision
+        const jpegs = extractEmbeddedJpegsFromPdf(pdfBuffer)
+        if (jpegs.length > 0) {
+          imageBase64 = jpegs[0].toString('base64')
+          imageType   = 'image/jpeg'
+          console.info('PDF_JPEG_EXTRACTED', JSON.stringify({ total: jpegs.length, usedIndex: 0, sizeBytes: jpegs[0].length }))
+        } else {
+          console.warn('PDF_NO_CONTENT', 'No text layer and no embedded JPEGs found in PDF')
+        }
+      }
+    } catch (pdfErr) {
+      console.error('PDF_EXTRACT_ERROR', String(pdfErr))
+      // Non-fatal — continue with whatever text_content was provided
+    }
+  }
+
+  if (!textContent && !imageBase64) {
+    // PDF was provided but yielded no extractable content — return graceful empty result
+    // instead of 400, so the client can fall back to manual entry without an error toast.
+    // Shape matches the normal ok() success path: { ok: true, result: ParseInvoiceResult }
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
@@ -323,91 +354,114 @@ export const handler: Handler = async (event: HandlerEvent) => {
     }
   }
 
-  // ── Validate image MIME — only accept image/* for vision path ────────────
+  // ── Validate image MIME — never accept PDF in vision path ────────────────
+  // FIX 3: Raw PDF base64 sent to vision endpoint causes OpenAI 400.
+  //        If the client accidentally sends a PDF, fall back to text mode.
+
   const isValidImageMime = imageBase64 &&
     /^image\/(jpeg|jpg|png|webp|gif|heic|heif)$/i.test(imageType)
 
   const useVision = !!isValidImageMime
-  const usePdf    = !!pdfBase64
 
-  // Use claude-sonnet-4-5 as default model
-  const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-5'
-  const model = process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_CLAUDE_MODEL
+  // Use gpt-4o as default — stable, vision-capable, well-tested for structured extraction
+  const DEFAULT_OPENAI_MODEL = 'gpt-4o'
+  const model =
+    process.env.OPENAI_DEBUG_FORCE_MODEL?.trim() ||
+    process.env.OPENAI_MODEL?.trim() ||
+    DEFAULT_OPENAI_MODEL
 
-  const docKind = usePdf ? 'pdf' : (useVision ? 'image' : 'text')
+  console.info('OPENAI_MODEL_SELECTED', JSON.stringify({
+    model,
+    defaultModel:  DEFAULT_OPENAI_MODEL,
+    forcedByEnv:   !!process.env.OPENAI_DEBUG_FORCE_MODEL?.trim(),
+    envModel:      process.env.OPENAI_MODEL?.trim() || null,
+  }))
+
+  const docKind = useVision ? 'image' : 'text'
 
   // ── DIAGNOSTIC LOG ────────────────────────────────────────────────────────
-  console.info('CLAUDE_AI_START', JSON.stringify({
+  console.info('OPENAI_AI_START', JSON.stringify({
     model,
     docKind,
     mimeType:      imageType,
     hasImage:      !!imageBase64,
-    hasPdf:        !!pdfBase64,
     hasRawText:    !!textContent,
     rawTextLength: textContent?.length ?? 0,
     requestSource: 'expenses-ai-fallback',
+    forcedModel:   !!process.env.OPENAI_DEBUG_FORCE_MODEL,
   }))
 
-  // ── Build Anthropic Messages API content ──────────────────────────────────
+  // ── Build Responses API input ─────────────────────────────────────────────
 
-  type ContentItem =
-    | { type: 'text'; text: string }
-    | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
-    | { type: 'document'; source: { type: 'base64'; media_type: string; data: string } }
-
-  const content: ContentItem[] = []
+  type InputItem = { type: string; text?: string; image_url?: string }
+  const content: InputItem[] = []
 
   const rawTextLength = textContent?.length ?? 0
+  const ocrTextLength = 0  // resolved by caller; we receive final text
 
-  if (usePdf) {
+  if (useVision) {
     content.push({
-      type:   'document',
-      source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64! },
-    })
-    if (textContent?.trim()) {
-      content.push({
-        type: 'text',
-        text: `Dodatkowy tekst z lokalnego OCR (traktuj jako wskazówkę):\n${textContent.slice(0, 3_000)}`,
-      })
-    }
-    content.push({ type: 'text', text: 'Extract all data from this document.' })
-    console.info('AI_INPUT_SOURCE_SELECTED', JSON.stringify({ docKind, usedPdfInput: true, hasOcrHint: !!textContent?.trim(), rawTextLength }))
-  } else if (useVision) {
-    content.push({
-      type:   'image',
-      source: { type: 'base64', media_type: imageType, data: imageBase64! },
+      type:      'input_image',
+      image_url: `data:${imageType};base64,${imageBase64}`,
     })
     const hint = textContent?.trim()
       ? `\n\nDodatkowy tekst z lokalnego OCR (traktuj jako wskazówkę):\n${textContent.slice(0, 3_000)}`
       : ''
-    content.push({ type: 'text', text: `Extract all data from this document.${hint}` })
-    console.info('AI_INPUT_SOURCE_SELECTED', JSON.stringify({ docKind, usedImageInput: true, usedOcrHint: !!hint, rawTextLength }))
+    content.push({
+      type: 'input_text',
+      text: `Extract all data from this document.${hint}`,
+    })
+    console.info('AI_INPUT_SOURCE_SELECTED', JSON.stringify({
+      docKind,
+      isScannedPdf:       false,
+      usedImageInput:     true,
+      usedFullRawText:    !!hint,
+      usedFullOcrText:    false,
+      usedSyntheticText:  false,
+      rawTextLength,
+      ocrTextLength,
+      syntheticTextLength: 0,
+    }))
   } else {
     const txt = textContent?.trim()
       ? textContent.slice(0, 12_000)
       : 'Brak wyodrębnionego tekstu — proszę podać dane dokumentu.'
-    content.push({ type: 'text', text: `Extract all data from the following document text:\n\n${txt}` })
-    console.info('AI_INPUT_SOURCE_SELECTED', JSON.stringify({ docKind, usedTextInput: true, usedFull: !!textContent?.trim(), rawTextLength }))
+    const usedFull = !!textContent?.trim()
+    console.info('AI_INPUT_SOURCE_SELECTED', JSON.stringify({
+      docKind,
+      isScannedPdf:       false,
+      usedImageInput:     false,
+      usedFullRawText:    usedFull,
+      usedFullOcrText:    false,
+      usedSyntheticText:  !usedFull,
+      rawTextLength,
+      ocrTextLength,
+      syntheticTextLength: usedFull ? 0 : txt.length,
+    }))
+    content.push({
+      type: 'input_text',
+      text: `Extract all data from the following document text:\n\n${txt}`,
+    })
   }
 
-  // ── Call Anthropic Messages API ───────────────────────────────────────────
+  // ── Call OpenAI Responses API ─────────────────────────────────────────────
 
   let aiRaw: string
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch('https://api.openai.com/v1/responses', {
       method:  'POST',
       headers: {
-        'Content-Type':      'application/json',
-        'x-api-key':         apiKey,
-        'anthropic-version': '2023-06-01',
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model,
-        system:     INSTRUCTIONS,
-        messages:   [{ role: 'user', content }],
-        tools:      INVOICE_TOOLS,
-        tool_choice: { type: 'tool', name: 'extract_invoice' },
-        max_tokens: 4_000,
+        instructions: INSTRUCTIONS,
+        input: [{ role: 'user', content }],
+        // FIX 1: text.format must include type:'json_schema' as a top-level property
+        // FIX 4: name/strict/schema must be nested under json_schema key
+        text:  { format: INVOICE_SCHEMA_FORMAT },
+        max_output_tokens: 4_000,
       }),
     })
 
@@ -415,7 +469,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     // ── DIAGNOSTIC LOG ──────────────────────────────────────────────────────
     if (resp.ok) {
-      console.info('CLAUDE_AI_RESPONSE', JSON.stringify({
+      console.info('OPENAI_AI_RESPONSE', JSON.stringify({
         model,
         status:     resp.status,
         ok:         true,
@@ -423,33 +477,34 @@ export const handler: Handler = async (event: HandlerEvent) => {
         docKind,
       }))
     } else {
-      console.error('CLAUDE_AI_ERROR', JSON.stringify({
+      console.error('OPENAI_AI_ERROR', JSON.stringify({
         model,
-        status:      resp.status,
-        ok:          false,
+        status:       resp.status,
+        ok:           false,
         docKind,
-        bodyPreview: rawBody.slice(0, 300),
+        bodyPreview:  rawBody.slice(0, 300),
       }))
     }
 
     if (!resp.ok) {
-      let apiErr: Record<string, unknown> = {}
-      try { apiErr = JSON.parse(rawBody) as Record<string, unknown> } catch { /* noop */ }
-      const errObj    = apiErr.error as Record<string, unknown> | undefined
-      const errDetail = errObj?.message ?? rawBody.slice(0, 200)
+      let oaiErr: Record<string, unknown> = {}
+      try { oaiErr = JSON.parse(rawBody) as Record<string, unknown> } catch { /* noop */ }
+      const errObj    = oaiErr.error as Record<string, unknown> | undefined
+      const errDetail = errObj?.message ?? errObj?.code ?? rawBody.slice(0, 200)
 
+      // Propagate quota/billing errors with a meaningful status (not 502)
       if (resp.status === 429) {
-        const msg = 'Anthropic quota exceeded or API access is not active for this key.'
-        console.error('CLAUDE_AI_ERROR', JSON.stringify({ model, docKind, status: 429, errorMessage: msg, detail: String(errDetail) }))
-        return err(429, 'anthropic_quota_exceeded', msg, { aiModelUsed: model, aiAttempted: true })
+        const msg = 'OpenAI quota exceeded or billing is not active for the current API project.'
+        console.error('OPENAI_AI_ERROR', JSON.stringify({ model, docKind, status: 429, errorMessage: msg, detail: String(errDetail) }))
+        return err(429, 'openai_quota_exceeded', msg, { aiModelUsed: model, aiAttempted: true })
       }
 
-      throw new Error(`Anthropic ${resp.status}: ${String(errDetail)}`)
+      throw new Error(`OpenAI ${resp.status}: ${String(errDetail)}`)
     }
 
-    const data = JSON.parse(rawBody) as AnthropicMessage
+    const data = JSON.parse(rawBody) as ResponsesAPIResult
     const requestId = resp.headers.get('x-request-id') ?? resp.headers.get('cf-ray') ?? null
-    console.info('CLAUDE_PROVIDER_CONFIRM', JSON.stringify({
+    console.info('OPENAI_PROVIDER_CONFIRM', JSON.stringify({
       requestedModel: model,
       returnedModel:  data.model ?? null,
       requestId,
@@ -457,12 +512,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
       ok:             true,
       docKind,
     }))
-    // Messages API: content[] where type=='tool_use' contains the structured result
-    const toolResult = data.content?.find(c => c.type === 'tool_use')
-    aiRaw = JSON.stringify(toolResult?.input ?? {})
+    // Responses API: output[0].content[] where type=='output_text'
+    aiRaw = data.output?.[0]?.content?.find(c => c.type === 'output_text')?.text ?? '{}'
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
-    console.error('CLAUDE_AI_ERROR', JSON.stringify({ model, docKind, errorMessage: msg }))
+    console.error('OPENAI_AI_ERROR', JSON.stringify({ model, docKind, errorMessage: msg }))
     return err(502, 'ai_call_failed', msg, { aiModelUsed: model, aiAttempted: true })
   }
 
@@ -472,7 +526,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   try {
     ai = JSON.parse(aiRaw) as Record<string, unknown>
   } catch {
-    console.error('CLAUDE_AI_ERROR', JSON.stringify({ model, docKind, errorMessage: 'ai_invalid_json', preview: aiRaw.slice(0, 300) }))
+    console.error('OPENAI_AI_ERROR', JSON.stringify({ model, docKind, errorMessage: 'ai_invalid_json', preview: aiRaw.slice(0, 300) }))
     return err(502, 'ai_invalid_json', 'AI returned non-JSON response', { aiModelUsed: model, aiAttempted: true })
   }
 
@@ -667,7 +721,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     parser_source:              'ai',
   }
 
-  console.info('CLAUDE_AI_DONE', JSON.stringify({
+  console.info('OPENAI_AI_DONE', JSON.stringify({
     model,
     docKind,
     confidence:    aiConf,
