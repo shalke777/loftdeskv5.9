@@ -13,6 +13,12 @@
 [functions."parse-invoice"]
   timeout = 26
 
+[functions."analyze-project"]
+  timeout = 26
+
+[functions."analyze-room-photo"]
+  timeout = 26
+
 [build.processing]
   skip_processing = true
 

@@ -354,12 +354,23 @@ export const handler: Handler = async (event) => {
     return err(405, 'method_not_allowed', 'POST only')
   }
 
+  try {
+
+  const t0 = Date.now()
+  console.info('ANALYZE_PROJECT_START', JSON.stringify({
+    reqId:   event.headers['x-nf-request-id'] ?? null,
+    bodyLen: event.body?.length ?? 0,
+    elapsed_ms: 0,
+  }))
+
   const userId = await verifyRequestAuth(event)
   if (!userId) return err(401, 'unauthorized', 'Valid session required')
   if (isRateLimited(userId)) return err(429, 'too_many_requests', 'Rate limit exceeded')
 
+  console.info('AUTH_OK', JSON.stringify({ userId: userId === 'dev' ? 'dev' : userId.slice(0, 8) + '...', elapsed_ms: Date.now() - t0 }))
+
   const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return err(500, 'ai_not_configured', 'OPENAI_API_KEY not set')
+  if (!apiKey) return err(503, 'ai_not_configured', 'OPENAI_API_KEY not set')
 
   const model =
     process.env.OPENAI_MODEL_VISION?.trim() ||
@@ -380,18 +391,25 @@ export const handler: Handler = async (event) => {
   const fileName   = typeof body.file_name   === 'string' ? body.file_name.trim()   : 'project'
   const context    = typeof body.context     === 'string' ? body.context.slice(0, 2000) : ''
 
+  console.info('BODY_PARSED', JSON.stringify({ fileType, fileName, hasContext: !!context, elapsed_ms: Date.now() - t0 }))
+
   if (!fileBase64) return err(400, 'missing_file', 'file_base64 is required')
   if (!fileType)   return err(400, 'missing_type', 'file_type is required')
 
   // Size guard (~15 MB base64 ≈ 11 MB binary)
-  if (fileBase64.length > 20 * 1024 * 1024) {
-    return err(413, 'file_too_large', 'File too large (max ~15 MB decoded). Compress or split the document.')
+  const base64Len = fileBase64.length
+  console.info('PAYLOAD_SIZE', JSON.stringify({ base64Len, approxBinaryKB: Math.round(base64Len * 0.75 / 1024), elapsed_ms: Date.now() - t0 }))
+  if (base64Len > 20 * 1024 * 1024) {
+    console.error('PAYLOAD_TOO_LARGE', JSON.stringify({ base64Len, elapsed_ms: Date.now() - t0 }))
+    return err(413, 'file_too_large', `Plik za duży (${(base64Len * 0.75 / 1024 / 1024).toFixed(1)} MB, max ~15 MB). Skompresuj PDF lub zmniejsz rozdzielczość.`)
   }
 
   // ── Build content array ────────────────────────────────────────────────
 
   const isPdf   = fileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf')
   const isImage = fileType.startsWith('image/')
+
+  console.info('INPUT_DETECTED', JSON.stringify({ isPdf, isImage, fileType, elapsed_ms: Date.now() - t0 }))
 
   if (!isPdf && !isImage) {
     return err(400, 'unsupported_type', `Unsupported file type: ${fileType}. Use application/pdf or image/*.`)
@@ -437,6 +455,7 @@ export const handler: Handler = async (event) => {
 
   let aiRaw: string
   try {
+    console.info('PROVIDER_REQUEST_START', JSON.stringify({ model, isPdf, contentItems: content.length, elapsed_ms: Date.now() - t0 }))
     const resp = await fetch('https://api.openai.com/v1/responses', {
       method:  'POST',
       headers: {
@@ -448,23 +467,30 @@ export const handler: Handler = async (event) => {
         instructions: INSTRUCTIONS,
         input:        [{ role: 'user', content }],
         text:         { format: PROJECT_ANALYSIS_SCHEMA },
-        max_output_tokens: 8_000,
+        max_output_tokens: 4_000,
       }),
     })
 
     const rawBody = await resp.text()
 
     if (!resp.ok) {
-      if (resp.status === 429) return err(429, 'openai_quota_exceeded', 'OpenAI quota exceeded')
-      throw new Error(`OpenAI ${resp.status}: ${rawBody.slice(0, 300)}`)
+      console.error('PROVIDER_RESPONSE_ERROR', JSON.stringify({ status: resp.status, body: rawBody.slice(0, 400), elapsed_ms: Date.now() - t0 }))
+      if (resp.status === 429) return err(429, 'openai_quota_exceeded', 'Quota OpenAI wyczerpana — sprawdź billing lub spróbuj za chwilę.')
+      if (resp.status === 413) return err(413, 'file_too_large', 'Plik jest za duży dla modelu AI. Skompresuj PDF lub zmniejsz rozmiar.')
+      if (resp.status === 400) return err(422, 'invalid_input', `OpenAI odrzucił dane wejściowe: ${rawBody.slice(0, 200)}`)
+      return err(502, 'provider_error', `OpenAI ${resp.status}: ${rawBody.slice(0, 200)}`)
     }
 
+    console.info('PROVIDER_RESPONSE_OK', JSON.stringify({ status: resp.status, rawLen: rawBody.length, elapsed_ms: Date.now() - t0 }))
     const data = JSON.parse(rawBody) as ResponsesAPIResult
     aiRaw = data.output?.[0]?.content?.find(c => c.type === 'output_text')?.text ?? '{}'
+    if (!aiRaw || aiRaw === '{}') {
+      console.warn('PROVIDER_EMPTY_RESPONSE', JSON.stringify({ rawLen: rawBody.length, preview: rawBody.slice(0, 200), elapsed_ms: Date.now() - t0 }))
+    }
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
-    console.error('PROJECT_ANALYSIS_ERROR', msg)
-    return err(502, 'ai_call_failed', msg)
+    console.error('PROVIDER_REQUEST_FAILED', JSON.stringify({ error: msg, elapsed_ms: Date.now() - t0 }))
+    return err(502, 'ai_call_failed', `Analiza AI niedostępna: ${msg.slice(0, 200)}`)
   }
 
   // ── Parse AI response ──────────────────────────────────────────────────
@@ -472,9 +498,10 @@ export const handler: Handler = async (event) => {
   let ai: Record<string, unknown>
   try {
     ai = JSON.parse(aiRaw) as Record<string, unknown>
+    console.info('RESPONSE_PARSE_OK', JSON.stringify({ topKeys: Object.keys(ai).length, elapsed_ms: Date.now() - t0 }))
   } catch {
-    console.error('PROJECT_ANALYSIS_PARSE_ERROR', aiRaw.slice(0, 300))
-    return err(502, 'ai_invalid_json', 'AI returned non-JSON response')
+    console.error('RESPONSE_PARSE_ERROR', JSON.stringify({ preview: aiRaw.slice(0, 300), elapsed_ms: Date.now() - t0 }))
+    return err(502, 'ai_invalid_json', 'Odpowiedź AI nie jest poprawnym JSON. Spróbuj ponownie.')
   }
 
   // ── Normalize ──────────────────────────────────────────────────────────
@@ -713,7 +740,7 @@ export const handler: Handler = async (event) => {
   }
   // ── End bathroom dependency injection ─────────────────────────────────────
 
-  console.info('PROJECT_ANALYSIS_DONE', JSON.stringify({
+  console.info('ANALYZE_PROJECT_DONE', JSON.stringify({
     model,
     fileType,
     isPdf,
@@ -724,7 +751,18 @@ export const handler: Handler = async (event) => {
     estimateItems: result.suggested_estimate_items.length,
     confidence:  result.confidence,
     warnings:    result.warnings.length,
+    total_ms:    Date.now() - t0,
   }))
 
   return ok(result)
+
+  } catch (fatal: unknown) {
+    const msg = fatal instanceof Error ? fatal.message : String(fatal)
+    console.error('ANALYZE_PROJECT_FATAL', JSON.stringify({ error: msg.slice(0, 500), elapsed_ms: typeof t0 !== 'undefined' ? Date.now() - t0 : -1 }))
+    return {
+      statusCode: 500,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ ok: false, error: 'internal_error', message: 'Nieoczekiwany błąd serwera. Sprawdź logi Netlify.' }),
+    }
+  }
 }

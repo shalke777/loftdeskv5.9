@@ -272,9 +272,12 @@ export const clientPortalApi = {
 
   async listPhotoDocs(projectId: string): Promise<ClientPhotoDoc[]> {
     if (!supabase) return []
+    // NOTE: created_at is excluded — the column was not present in migration 017
+    // (the table was created without it). Ordering uses taken_at instead.
+    // Migration 067 adds the column; re-add created_at to the select after that runs.
     const { data, error } = await supabase
       .from('project_photo_docs')
-      .select('id, title, category, image_url, note, taken_at, created_at')
+      .select('id, title, category, image_url, note, taken_at')
       .eq('project_id', projectId)
       .order('taken_at', { ascending: false })
     if (error) throw error

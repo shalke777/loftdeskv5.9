@@ -19,21 +19,40 @@
 -- =============================================================================
 
 -- ── 1. project_documents — client read access ───────────────────────────────
+-- Wrapped in DO block: the table may not yet exist on databases where
+-- migration 018 has not run (42P01 guard).
 
-DROP POLICY IF EXISTS "pd_client_select" ON public.project_documents;
-CREATE POLICY "pd_client_select" ON public.project_documents
-  FOR SELECT
-  USING (
-    archived_at IS NULL
-    AND project_id IN (SELECT public.my_client_project_ids())
-  );
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'project_documents'
+  ) THEN
+    DROP POLICY IF EXISTS "pd_client_select" ON public.project_documents;
+    CREATE POLICY "pd_client_select" ON public.project_documents
+      FOR SELECT
+      USING (
+        archived_at IS NULL
+        AND project_id IN (SELECT public.my_client_project_ids())
+      );
+  END IF;
+END $$;
 
 -- ── 2. project_photo_docs — client read access ──────────────────────────────
+-- Same guard: table created in migration 017.
 
-DROP POLICY IF EXISTS "ppd_client_select" ON public.project_photo_docs;
-CREATE POLICY "ppd_client_select" ON public.project_photo_docs
-  FOR SELECT
-  USING (
-    project_id IS NOT NULL
-    AND project_id IN (SELECT public.my_client_project_ids())
-  );
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'project_photo_docs'
+  ) THEN
+    DROP POLICY IF EXISTS "ppd_client_select" ON public.project_photo_docs;
+    CREATE POLICY "ppd_client_select" ON public.project_photo_docs
+      FOR SELECT
+      USING (
+        project_id IS NOT NULL
+        AND project_id IN (SELECT public.my_client_project_ids())
+      );
+  END IF;
+END $$;
