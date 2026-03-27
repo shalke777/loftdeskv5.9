@@ -4,7 +4,7 @@ import type { ExpenseSourceType, CreateExpenseForProjectInput, ExpenseInvoiceV4 
 import { rehydrateAnalysisResult } from '@/features/expenses/api/expenses.api'
 import { useProjectExpenses } from '@/features/expenses/hooks/useProjectExpenses'
 import { useCreateExpense }   from '@/features/expenses/hooks/useCreateExpense'
-import { useParseInvoice, callParseInvoiceAI, normalizeParseResult } from '@/features/expenses/hooks/useParseInvoice'
+import { useParseInvoice, callParseInvoiceAI, normalizeParseResult, isNonDocumentImage, screenImageForInvoice } from '@/features/expenses/hooks/useParseInvoice'
 import { useAnalyzeRoomPhoto, useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import type { BathroomClarification } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import type { RoomTypeId } from '@/services/ai/room-types'
@@ -112,7 +112,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
     })
   }
 
-  function handleFileCapture(file: File, type: ExpenseSourceType) {
+  async function handleFileCapture(file: File, type: ExpenseSourceType) {
     setFileState(file)
     setSourceType(type)
     setParseResult(null)
@@ -135,6 +135,19 @@ export function ProjectExpensesTab({ projectId }: Props) {
       return
     }
 
+    // Pre-parse gate: screen image files before any OCR / AI invoice extraction.
+    // Only applies to camera/gallery image sources — PDF sourceType comes from
+    // drag-and-drop and should pass through to OCR.
+    if (type === 'camera' || type === 'gallery') {
+      const docClass = await screenImageForInvoice(file)
+      if (docClass === 'non_document_image') {
+        setParseError('To wygląda na zdjęcie pomieszczenia lub realizacji, a nie dokument kosztowy. Dodaj zdjęcie/skan faktury, paragonu albo PDF.')
+        setParseResult(null)
+        setMode('confirm')
+        return
+      }
+    }
+
     parseInvoice.mutate(
       { file, sourceType: type },
       {
@@ -146,10 +159,22 @@ export function ProjectExpensesTab({ projectId }: Props) {
               const aiResult = await callParseInvoiceAI(file)
               const aiConf = aiResult.extraction_confidence ?? 0
               if (aiConf > 0 && aiConf >= ocrConf) {
+                // ── Room photo guard (AI result) ──────────────────────────
+                if (isNonDocumentImage(aiResult)) {
+                  setParseError('To wygląda na zdjęcie pomieszczenia lub realizacji, a nie dokument kosztowy. Dodaj zdjęcie/skan faktury, paragonu albo PDF.')
+                  setParseResult(null); setMode('confirm')
+                  return
+                }
                 setParseResult(normalizeParseResult(aiResult, file, type)); setParseError(null); setMode('confirm')
                 return
               }
             } catch (aiErr) { console.warn('[expenses] AI fallback failed (low OCR confidence):', aiErr) }
+          }
+          // ── Room photo guard (OCR result) ───────────────────────────────
+          if (isNonDocumentImage(ocrResult)) {
+            setParseError('To wygląda na zdjęcie pomieszczenia lub realizacji, a nie dokument kosztowy. Dodaj zdjęcie/skan faktury, paragonu albo PDF.')
+            setParseResult(null); setMode('confirm')
+            return
           }
           setParseResult(normalizeParseResult(ocrResult, file, type)); setParseError(null); setMode('confirm')
         },

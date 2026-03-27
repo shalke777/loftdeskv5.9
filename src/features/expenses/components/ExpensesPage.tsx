@@ -3,7 +3,7 @@ import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks/useExpenses'
 import { expensesApi, ExpenseInvoice, ParsedExpenseData, parseInvoiceFromText } from '../api/expenses.api'
 import type { ParseInvoiceResult, ExpenseSourceType, DocumentLineItem, FlowBParseRaw } from '../api/expenses.api'
-import { callParseInvoice, callParseInvoiceAI } from '../hooks/useParseInvoice'
+import { callParseInvoice, callParseInvoiceAI, isNonDocumentImage, screenImageForInvoice } from '../hooks/useParseInvoice'
 import { aiPreflightValidate, AiReliabilityBanner } from '@/shared/ui/AiGuidance'
 import { computeDocumentReliabilityFromParseResult } from '@/services/ai/engines/reliability'
 import type { ReliabilityReport } from '@/services/ai/engines/reliability'
@@ -147,16 +147,33 @@ export function ExpensesPage() {
       return
     }
     setUploading(true)
-    setUploadStep('Przesyłanie pliku...')
+    setUploadStep('Sprawdzam plik...')
     setUploadError(null)
     setParseStatus(null)
     setOcrConfidence(null)
     try {
+      // ── Pre-parse gate: screen images BEFORE upload or extraction ─────────
+      // PDFs use their own keyword check and pass through. Image files are
+      // checked for document-like edge density. Non-document images (rooms,
+      // site progress photos) are blocked here — no upload, no OCR, no AI.
+      const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+      if (!isPDF) {
+        const docClass = await screenImageForInvoice(file)
+        if (docClass === 'non_document_image') {
+          setParseStatus({
+            level: 'error',
+            message: 'To wygląda na zdjęcie pomieszczenia lub realizacji, a nie dokument kosztowy. Dodaj zdjęcie/skan faktury, paragonu albo PDF.',
+          })
+          return
+        }
+      }
+
       // ── Step 1: upload to storage ─────────────────────────────
+      setUploadStep('Przesyłanie pliku...')
       const { url, name } = await expensesApi.uploadFile(file, companyId)
 
       // ── Step 2: choose extraction path ────────────────────────
-      const isPDF   = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+      // isPDF already declared in pre-parse gate above
       let parsed: ParsedExpenseData = {}
       let usedLocalParser = false
 
@@ -264,6 +281,18 @@ export function ExpensesPage() {
                               ? ocrResult.line_items : undefined,
           }
 
+          // ── Room photo / non-document gate ───────────────────────────────
+          // If the result has zero confidence, no document type, and no key
+          // financial fields, it's almost certainly a room/progress photo —
+          // block invoice extraction and show a clear user-facing message.
+          if (isNonDocumentImage(ocrResult)) {
+            setParseStatus({
+              level: 'error',
+              message: 'To wygląda na zdjęcie pomieszczenia lub realizacji, a nie dokument kosztowy. Dodaj zdjęcie/skan faktury, paragonu albo PDF.',
+            })
+            parsed = {}
+          } else {
+
           const confidence   = ocrResult.extraction_confidence
           const filledFields = Object.entries(parsed).filter(([, v]) => v != null).map(([k]) => k)
           const aiHint       = ocrResult.parser_source === 'ai' ? ' (AI)' : ''
@@ -287,6 +316,7 @@ export function ExpensesPage() {
           } else {
             setParseStatus({ level: 'empty', message: 'Nie udało się odczytać danych — wpisz pola ręcznie' })
           }
+          } // end else (not a room photo)
         } else {
           // Both OCR and AI failed
           if (ocrUnavailable) {

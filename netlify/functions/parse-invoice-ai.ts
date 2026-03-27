@@ -202,7 +202,9 @@ Field rules:
 - Amounts: decimal with dot separator (e.g. 1234.56), never a string.
 - confidence: 0–100, where 100 = all key fields read with full certainty.
 - For receipts: document_number may be null.
-- If rawText is provided as supplementary context: treat it as a hint; the image (if present) is the primary source.`
+- If rawText is provided as supplementary context: treat it as a hint; the image (if present) is the primary source.
+- CRITICAL: If the input image shows a room, interior space, bathroom, kitchen, corridor, construction site, outdoor scene, or any non-document scene — return document_type: "other", all monetary values as null, confidence: 0, and add to warnings: "Zdjęcie nie wygląda na dokument kosztowy — prześlij skan faktury, paragonu lub PDF." Do NOT invent invoice fields from non-document images.
+- A cost document must contain visibly readable text with labels, numbers, or dates. If no such document text is visible in the image, set confidence: 0 and document_type: "other".`
 
 // ─── OpenAI Responses API types ───────────────────────────────────────────────
 

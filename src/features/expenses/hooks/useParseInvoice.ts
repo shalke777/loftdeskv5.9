@@ -94,6 +94,97 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
+// ── Pre-parse image screen ───────────────────────────────────────────────────
+// Classifies an image as a likely cost document or a non-document (room / site
+// photo) using edge-density analysis on a small 400 px thumbnail.
+// Called BEFORE any OCR / AI network request so room photos never enter the
+// invoice extraction path.
+//
+// Threshold: 7 % edge-pixel ratio.
+//  • Documents (text pages):                15–40 % — well above cutoff ✓
+//  • Rooms / walls / construction sites:    1–6 %  — blocked ✓
+// Returns 'cost_document' on any canvas/image error (fail-open — never block
+// a real invoice due to an unexpected browser quirk).
+
+const IMAGE_EDGE_CUTOFF = 0.07  // below this → likely non-document image
+const SCREEN_THUMB_PX  = 400   // thumbnail width for fast analysis
+const SCREEN_DELTA_THR = 40    // greyscale per-channel delta to count as edge
+
+const INVOICE_FILE_KWDS = [
+  'faktura', 'fvat', 'fv_', '_fv', '-fv', 'fv-',
+  'paragon', 'rachunek', 'invoice', 'receipt', 'nota_', '_nota',
+]
+
+/**
+ * Screens a file before invoice extraction.
+ * Returns 'non_document_image' when the image strongly lacks document content.
+ * PDFs and non-image files always return 'cost_document'.
+ */
+export async function screenImageForInvoice(
+  file: File,
+): Promise<'cost_document' | 'non_document_image'> {
+  const isPDF = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+  const isImg = IMAGE_MIME_SET.has(file.type) || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(file.name)
+  if (isPDF || !isImg) return 'cost_document'
+
+  // Strong positive filename signal: clearly an invoice file
+  const lname = file.name.toLowerCase()
+  if (INVOICE_FILE_KWDS.some(kw => lname.includes(kw))) return 'cost_document'
+
+  if (typeof document === 'undefined') return 'cost_document' // SSR / non-browser
+
+  try {
+    const url = URL.createObjectURL(file)
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const el = new Image()
+      el.onload  = () => res(el)
+      el.onerror = () => rej(new Error('load'))
+      el.src = url
+    })
+    URL.revokeObjectURL(url)
+
+    const scale = Math.min(1, SCREEN_THUMB_PX / Math.max(img.naturalWidth, 1))
+    const w = Math.max(1, Math.round(img.naturalWidth  * scale))
+    const h = Math.max(1, Math.round(img.naturalHeight * scale))
+    if (w < 10 || h < 10) return 'cost_document'
+
+    const canvas = document.createElement('canvas')
+    canvas.width  = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return 'cost_document'
+
+    ctx.drawImage(img, 0, 0, w, h)
+    const id = ctx.getImageData(0, 0, w, h)
+    const d  = id.data
+
+    // Greyscale in-place
+    for (let i = 0; i < d.length; i += 4) {
+      const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
+      d[i] = d[i + 1] = d[i + 2] = g
+    }
+
+    // Count high-contrast adjacent pixels (horizontal + vertical neighbours)
+    let edgeCount = 0
+    const total = (w - 1) * (h - 1)
+    for (let y = 0; y < h - 1; y++) {
+      for (let x = 0; x < w - 1; x++) {
+        const i    = (y * w + x) * 4
+        const rIdx = i + 4
+        const dIdx = i + w * 4
+        if (
+          Math.abs(d[rIdx] - d[i]) > SCREEN_DELTA_THR ||
+          Math.abs(d[dIdx] - d[i]) > SCREEN_DELTA_THR
+        ) edgeCount++
+      }
+    }
+
+    return edgeCount / total < IMAGE_EDGE_CUTOFF ? 'non_document_image' : 'cost_document'
+  } catch {
+    return 'cost_document' // fail open — never block a real invoice
+  }
+}
+
 /**
  * Calls the parse-invoice Netlify function with a file and returns ParseInvoiceResult.
  * If the file is too large or the call fails, returns a manual fallback result.
@@ -274,6 +365,35 @@ export function useParseAndNormalize() {
       return normalizeParseResult(flat, file, sourceType)
     },
   })
+}
+
+// ── Room photo / non-document gate ───────────────────────────────────────────
+// Invoice keywords that should be present in any real cost document.
+const INVOICE_KEYWORDS = /faktura|paragon|sprzedawca|nabywca|nip[:\s#]|netto[:\s]|brutto[:\s]|vat[:\s%]|termin.*p.at|nr.*faktury|do zap.aty/i
+
+/**
+ * Returns true when an OCR/AI result strongly suggests the input image was NOT
+ * a cost document — e.g. a room, interior, construction-progress photo, or a
+ * completely blank frame.
+ *
+ * ALL four conditions must hold to avoid false-positives on legitimate low-quality scans:
+ *  1. document_type is NOT invoice/receipt/bill
+ *  2. extraction_confidence < 15
+ *  3. No key financial identity field was extracted
+ *  4. No invoice-like keyword found in any text field
+ */
+export function isNonDocumentImage(result: ParseInvoiceResult): boolean {
+  const docType = result.document_type
+  // If AI confidently identified it as a cost document — let it through
+  if (docType === 'invoice' || docType === 'receipt' || docType === 'bill') return false
+  if ((result.extraction_confidence ?? 0) >= 15) return false
+  // Any one key financial field present means something was extracted
+  if (result.vendor_name || result.vendor_nip || result.invoice_number) return false
+  if (result.gross_amount != null || result.net_amount != null) return false
+  // Check textual hints — a stray invoice keyword disqualifies the block
+  const textHints = [result.notes ?? '', ...(result.extraction_warnings ?? [])].join(' ')
+  if (INVOICE_KEYWORDS.test(textHints)) return false
+  return true
 }
 
 /**
