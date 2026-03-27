@@ -1,11 +1,12 @@
 // =============================================================================
-// Netlify Function: parse-invoice-ai  (v3 — OpenAI Responses API, fixed)
+// Netlify Function: parse-invoice-ai  (v4 — OpenAI Responses API, verified extraction)
 // =============================================================================
 // AI extraction of invoice/receipt data via OpenAI Responses API with:
 //   • Structured JSON output — text.format.type = 'json_schema' (required)
 //   • Nullable fields via anyOf (strict schema — array types not supported)
-//   • Vision input: gpt-4.5-preview for images (JPEG/PNG/WEBP only — not raw PDF)
-//   • Text input: gpt-4.5-preview for PDF text layer / Tesseract output
+//   • Vision input: gpt-4o for images (JPEG/PNG/WEBP only — not raw PDF)
+//   • Text input: gpt-4o for PDF text layer / Tesseract output
+//   • INSTRUCTIONS include explicit arithmetic + NIP + date verification steps
 //
 // Request (POST /.netlify/functions/parse-invoice-ai):
 //   Content-Type: application/json
@@ -203,6 +204,54 @@ Field rules:
 - confidence: 0–100, where 100 = all key fields read with full certainty.
 - For receipts: document_number may be null.
 - If rawText is provided as supplementary context: treat it as a hint; the image (if present) is the primary source.
+
+VERIFICATION — run these checks before producing final JSON output:
+
+1. ARITHMETIC
+   Compute net_amount + vat_amount. If the result differs from gross_amount by more than 0.02:
+   - Re-read the amounts carefully. Often the gross is printed as "DO ZAPŁATY" or "RAZEM BRUTTO" — make sure you are reading the correct total line.
+   - If still inconsistent after re-reading, keep your best reading and add a warning: "Niezgodność arytmetyczna: netto + VAT ≠ brutto (różnica: X zł)"
+
+2. POLISH DATE FORMAT
+   Polish invoices use DD.MM.YYYY. Always convert to ISO YYYY-MM-DD.
+   Examples: 15.03.2024 → 2024-03-15 | 01.12.2025 → 2025-12-01 | 5.1.2026 → 2026-01-05
+   When day ≤ 12 and both day/month interpretations are possible, prefer DD.MM.YYYY (Polish standard).
+   If a date is more than 60 days in the future, add a warning: "Data wystawienia w przyszłości — sprawdź"
+
+3. NIP VALIDATION
+   Polish NIP = exactly 10 digits. Checksum: weights [6,5,7,2,3,4,5,6,7].
+   sum = Σ(weight[i] × digit[i]) for i=0..8; valid when sum mod 11 = digit[9].
+   If NIP fails checksum: output the 10 digits anyway AND add warning: "NIP — niepoprawna suma kontrolna"
+   Never output NIP with dashes, spaces, or "PL" prefix.
+
+4. BUYER vs SELLER IDENTIFICATION
+   In Polish invoices the SELLER (SPRZEDAWCA / WYSTAWCA / DOSTAWCA) typically appears FIRST (top-left section).
+   The BUYER (NABYWCA / ODBIORCA / KUPUJĄCY / ZAMAWIAJĄCY) appears SECOND (below or right of seller).
+   If both blocks look identical: they may be the same company in different roles — add warning: "Sprzedawca i nabywca wyglądają identycznie — sprawdź"
+   Context keywords: sprzedawca, wystawca, dostawca → vendor | nabywca, odbiorca, kupujący → buyer
+
+5. POLISH AMOUNT FORMAT
+   Polish invoices use comma as decimal separator and space as thousands separator.
+   Conversion rules:
+   "1 234,56" or "1 234,56" → 1234.56 (space = thousands, comma = decimal)
+   "10.000,00" → 10000.00 (dot = thousands when followed by comma-decimal)
+   "1230.00" → 1230.00 (already a dot-decimal — keep as-is)
+   "1234,56" → 1234.56 (plain comma-decimal)
+   Never interpret a trailing comma-two-digits pattern as anything other than a decimal.
+
+6. LINE ITEMS SUM CHECK
+   After extracting line_items, sum their net_amount values.
+   If the sum differs from net_amount total by more than 5 %: add warning listing the discrepancy.
+   Do not fabricate line items — only extract what is explicitly visible.
+
+7. FLAT TEXT HANDLING (PDF path)
+   When input is plain extracted text (no visual layout), use keyword proximity to identify sections:
+   - Text immediately after "NIP:" or "NIP " (without other label) is the tax ID of the owning block.
+   - Block labeled "SPRZEDAWCA:" or "WYSTAWCA:" contains vendor fields.
+   - Block labeled "NABYWCA:" or "ODBIORCA:" contains buyer fields.
+   - Numbers after "RAZEM", "DO ZAPŁATY", "SUMA BRUTTO" are the totals.
+   - Line items appear in tabular sections with repeating numeric patterns (quantity, price, rate, amounts).
+
 - CRITICAL: If the input image shows a room, interior space, bathroom, kitchen, corridor, construction site, outdoor scene, or any non-document scene — return document_type: "other", all monetary values as null, confidence: 0, and add to warnings: "Zdjęcie nie wygląda na dokument kosztowy — prześlij skan faktury, paragonu lub PDF." Do NOT invent invoice fields from non-document images.
 - A cost document must contain visibly readable text with labels, numbers, or dates. If no such document text is visible in the image, set confidence: 0 and document_type: "other".`
 
@@ -412,7 +461,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         // FIX 1: text.format must include type:'json_schema' as a top-level property
         // FIX 4: name/strict/schema must be nested under json_schema key
         text:  { format: INVOICE_SCHEMA_FORMAT },
-        max_output_tokens: 2_500,
+        max_output_tokens: 4_000,
       }),
     })
 

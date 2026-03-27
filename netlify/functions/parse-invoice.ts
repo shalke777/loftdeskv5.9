@@ -245,35 +245,34 @@ function decodePdfHexStr(hex: string): string {
   return ''
 }
 
-/** Extract Tj/TJ text-show operators from a decompressed PDF content stream.
+/** Extract Tj/TJ operators from a single PDF text-object block (between BT/ET).
  *
  * Handles both parenthesized strings (legacy / WinAnsi) and hex strings
  * (CIDFont / Identity-H / UTF-16 BE used by modern invoicing apps). */
-function extractTjFromStream(stream: string): string {
+function extractTjFromBlock(block: string): string {
   const parts: string[] = []
 
   // (text) Tj — single parenthesized string
   const tjRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)\s*Tj/g
   let m: RegExpExecArray | null
-  while ((m = tjRe.exec(stream)) !== null) {
+  while ((m = tjRe.exec(block)) !== null) {
     const t = decodePdfStr(m[1])
     if (t.trim()) parts.push(t.trim())
   }
 
   // <hexhex> Tj — single hex string (CIDFont / UTF-16 BE)
   const hexTjRe = /<([0-9A-Fa-f\s]+)>\s*Tj/g
-  while ((m = hexTjRe.exec(stream)) !== null) {
+  while ((m = hexTjRe.exec(block)) !== null) {
     const t = decodePdfHexStr(m[1])
     if (t) parts.push(t)
   }
 
   // [...] TJ — text array with kerning adjustments (both string forms)
   const tjArrRe = /\[([^\]]+)\]\s*TJ/g
-  while ((m = tjArrRe.exec(stream)) !== null) {
+  while ((m = tjArrRe.exec(block)) !== null) {
     const arrayContent = m[1]
 
-    // Parenthesized strings in the array — push separately (kerning between them
-    // already spaces out words; parts.join(' ') adds a space between distinct calls)
+    // Parenthesized strings in the array — push separately
     const strRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)/g
     let sm: RegExpExecArray | null
     while ((sm = strRe.exec(arrayContent)) !== null) {
@@ -282,7 +281,7 @@ function extractTjFromStream(stream: string): string {
     }
 
     // Hex strings in the array — concatenate together because they are typically
-    // character-by-character glyph IDs for a single word  (e.g. [<0046><0061><006B>...])
+    // character-by-character glyph IDs for a single word (e.g. [<0046><0061><006B>...])
     const hexFragments: string[] = []
     const hexRe = /<([0-9A-Fa-f\s]+)>/g
     while ((sm = hexRe.exec(arrayContent)) !== null) {
@@ -296,6 +295,33 @@ function extractTjFromStream(stream: string): string {
   }
 
   return parts.join(' ')
+}
+
+/** Extract Tj/TJ text-show operators from a decompressed PDF content stream.
+ *
+ * BT/ET-aware: each Begin-Text object is treated as a logical line/phrase and
+ * joined with '\n' so that the AI engine receives structurally meaningful text
+ * instead of one long space-separated string.  Modern invoicing-app PDFs
+ * (iFirma, Fakturownia, Comarch, wFirma, LibreOffice, Chrome-print) place each
+ * field value in its own BT…ET block — this preserves that structure.
+ * Falls back to flat space-joined extraction for older single-block PDFs. */
+function extractTjFromStream(stream: string): string {
+  // Split on BT (Begin-Text) markers — each BT…ET pair is a text object.
+  const btRe = /\bBT\b([\s\S]*?)(?:\bET\b|$)/g
+  const lines: string[] = []
+  let m: RegExpExecArray | null
+  let hasBt = false
+
+  while ((m = btRe.exec(stream)) !== null) {
+    hasBt = true
+    const text = extractTjFromBlock(m[1])
+    if (text.trim()) lines.push(text.trim())
+  }
+
+  if (hasBt) return lines.join('\n')
+
+  // No BT markers — treat stream as one block (uncommon; legacy single-block PDFs)
+  return extractTjFromBlock(stream)
 }
 
 function decodePdfStr(s: string): string {
@@ -364,7 +390,9 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
     if (text) chunks.push(text)
   }
 
-  return chunks.join(' ').replace(/\s{2,}/g, ' ').trim().slice(0, 50_000)
+  // Join streams with newlines so inter-stream structure reaches the AI engine.
+  // /[ \t]{2,}/ collapses runs of spaces/tabs but preserves the \n separators.
+  return chunks.join('\n').replace(/[ \t]{2,}/g, ' ').trim().slice(0, 50_000)
 }
 
 // ─── PDF text usability gate ──────────────────────────────────────────────────
