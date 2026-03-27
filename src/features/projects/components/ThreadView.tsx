@@ -146,9 +146,11 @@ interface ThreadViewProps {
   projectId:  string | null
   /** Visibility of the current thread — drives context messages */
   visibility?: 'internal' | 'client_shared' | 'approval'
+  /** Called when user clicks “Nowa rozmowa” in the empty state */
+  onNewThread?: () => void
 }
 
-export function ThreadView({ threadId, projectId, visibility }: ThreadViewProps) {
+export function ThreadView({ threadId, projectId, visibility, onNewThread }: ThreadViewProps) {
   const { data: messages, isLoading } = useThreadMessages(threadId)
   const deleteMsg  = useDeleteThreadMessage(threadId)
   const listRef    = useRef<HTMLDivElement>(null)
@@ -184,18 +186,23 @@ export function ThreadView({ threadId, projectId, visibility }: ThreadViewProps)
           <div className="chat-empty-state__icon-wrap">
             <MessageSquare size={32} />
           </div>
-          <h3 className="chat-empty-state__title">Wybierz wątek</h3>
+          <h3 className="chat-empty-state__title">Zacznij rozmowę</h3>
           <p className="chat-empty-state__desc">
-            Kliknij rozmowę z listy po lewej, aby odczytać wiadomości i odpowiedzieć klientowi lub teamowi.
+            Wybierz wątek z listy lub utwórz nową rozmowę z klientem albo notatkę dla swojego zespołu.
           </p>
+          {onNewThread && (
+            <button className="chat-empty-state__cta" onClick={onNewThread}>
+              Nowa rozmowa
+            </button>
+          )}
           <div className="chat-empty-state__tips">
             <div className="chat-empty-state__tip">
-              <span className="chat-empty-state__tip-icon">📁</span>
-              <span>Wątki tworzone są w widoku projektu w zakładce <strong>Wątki</strong></span>
+              <span className="chat-empty-state__tip-icon">💬</span>
+              <span>Wątki <strong>Klient</strong> są widoczne w portalu klienta projektu</span>
             </div>
             <div className="chat-empty-state__tip">
-              <span className="chat-empty-state__tip-icon">🔗</span>
-              <span>Aby pisać z klientem, uruchom <strong>portal klienta</strong> w projekcie</span>
+              <span className="chat-empty-state__tip-icon">🔒</span>
+              <span>Wątki <strong>Wewnętrzne</strong> widzi tylko Twój zespół</span>
             </div>
             <div className="chat-empty-state__tip">
               <span className="chat-empty-state__tip-icon">📬</span>

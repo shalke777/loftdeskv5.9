@@ -20,7 +20,7 @@
 
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import type { ParseInvoiceResult } from './parse-invoice'
-import { extractTextFromPDF, extractEmbeddedJpegsFromPdf } from './parse-invoice'
+import { extractTextFromPDF, extractEmbeddedJpegsFromPdf, isPdfTextUsable } from './parse-invoice'
 import { createClient } from '@supabase/supabase-js'
 
 const CORS_HEADERS = {
@@ -251,13 +251,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
     try {
       const pdfBuffer = Buffer.from(pdfBase64, 'base64')
 
-      // 1. Try to extract text layer (works for all digitally-generated PDFs)
+      // 1. Try to extract text layer (works for all digitally-generated PDFs).
+      //    isPdfTextUsable rejects both empty layers and subsetted-font garbage.
+      //    The old length-only check (>= 40 chars) let garbage text through to AI.
       const extracted = await extractTextFromPDF(pdfBuffer)
-      if (extracted.trim().length >= 40) {
+      if (isPdfTextUsable(extracted)) {
         // Append to any locally-extracted text the caller may have passed
         textContent = extracted + (textContent ? '\n\n' + textContent : '')
         console.info('PDF_TEXT_EXTRACTED', JSON.stringify({ chars: extracted.length }))
       } else {
+        // Text absent OR present but failed usability gate (subsetted-font garbage).
+        if (extracted.trim().length >= 60) {
+          console.warn('PDF_TEXT_UNUSABLE', JSON.stringify({ chars: extracted.length, reason: 'failed_usability_gate' }))
+        }
         // 2. Scanned PDF — extract embedded JPEG images and use first one for vision
         const jpegs = extractEmbeddedJpegsFromPdf(pdfBuffer)
         if (jpegs.length > 0) {

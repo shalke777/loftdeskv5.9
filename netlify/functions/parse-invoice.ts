@@ -279,6 +279,75 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   return chunks.join(' ').replace(/\s{2,}/g, ' ').trim().slice(0, 50_000)
 }
 
+// ─── PDF text usability gate ──────────────────────────────────────────────────
+
+/**
+ * Returns true only when extracted PDF text looks like genuine invoice content.
+ *
+ * Designed to reject two common failure modes:
+ *  1. Empty / too-short extractions from scanned PDFs with no text layer
+ *  2. Garbage text produced by subsetted fonts — high char count but wrong glyphs,
+ *     e.g. "Ú ü ¹ Ä ¿ ÷ ù Ý ð ý À ¿" decoded from PDF octal escapes via latin-1
+ *
+ * Three checks applied in order:
+ *  a) Minimum length: at least 60 characters
+ *  b) Keyword density: at least 2 distinct invoice-vocabulary keywords present.
+ *     A single keyword ("nip", "netto") can appear as plain ASCII even in otherwise
+ *     garbage subsetted-font output — two independent keywords are reliably unlikely.
+ *  c) Readable character ratio: ≥ 60 % of characters must be ASCII printable
+ *     (U+0020–U+007E) or one of the 16 Polish diacritic letters.
+ *     Latin-extended garbage (Ä ¿ ¾ » ½ ¼ etc.) fails this threshold.
+ */
+export function isPdfTextUsable(text: string): boolean {
+  const trimmed = text.trim()
+  if (trimmed.length < 60) return false
+
+  const lower = trimmed.toLowerCase()
+  const INVOICE_KEYWORDS = [
+    'faktura', 'paragon', 'rachunek', 'proforma',
+    'nip', 'netto', 'brutto', 'vat',
+    'sprzedawca', 'nabywca', 'wystawca', 'dostawca',
+    'termin', 'zaplat', 'platno',
+    'suma', 'razem', 'kwota',
+    'data wystawienia', 'data sprzed',
+  ]
+  let keywordMatches = 0
+  for (const kw of INVOICE_KEYWORDS) {
+    if (lower.includes(kw)) {
+      keywordMatches++
+      if (keywordMatches >= 2) break
+    }
+  }
+  if (keywordMatches < 2) return false
+
+  // Readable character ratio: ASCII printable + exact Polish diacritic set.
+  // Subsetted-font garbage fills this range with wrong latin-extended glyphs.
+  const POLISH_DIACRITICS = 'ąęółśźćńĄĘÓŁŚŹĆŃ'
+  let readable = 0
+  for (const ch of trimmed) {
+    const cp = ch.codePointAt(0) ?? 0
+    if (cp >= 0x20 && cp <= 0x7E) { readable++; continue }
+    if (POLISH_DIACRITICS.includes(ch)) readable++
+  }
+  return (readable / trimmed.length) >= 0.60
+}
+
+/**
+ * Returns false when a name string is likely subsetted-font garbage
+ * (too many non-ASCII / non-Polish characters relative to its length).
+ */
+function isReadableName(name: string): boolean {
+  if (!name || name.length < 3) return false
+  const POLISH_DIACRITICS = 'ąęółśźćńĄĘÓŁŚŹĆŃ'
+  let readable = 0
+  for (const ch of name) {
+    const cp = ch.codePointAt(0) ?? 0
+    if (cp >= 0x20 && cp <= 0x7E) { readable++; continue }
+    if (POLISH_DIACRITICS.includes(ch)) readable++
+  }
+  return (readable / name.length) >= 0.70
+}
+
 // ─── Regex parser (inline from expenses.api.ts logic) ───────────────────────
 
 function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_confidence' | 'extraction_warnings' | 'requires_user_confirmation' | 'parser_source'> {
@@ -636,12 +705,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (isPDF) {
     extractedText = await extractTextFromPDF(buffer)
 
-    // Determine whether the extracted text is actually usable
-    const PDF_KEYWORDS = ['faktura', 'fvat', 'nip', 'netto', 'brutto', 'zaplat', 'termin', 'faktur', 'paragon', 'kasowy', 'suma', 'razem']
-    const hasUsableText = extractedText.trim().length >= 60 &&
-      PDF_KEYWORDS.some(kw => extractedText.toLowerCase().includes(kw))
+    // Gate: is this text actually usable invoice content?
+    // Rejects both empty PDF text layers AND garbage from subsetted/embedded fonts.
+    const hasUsableText = isPdfTextUsable(extractedText)
 
     if (!hasUsableText) {
+      // If text was present but failed the gate, it's likely subsetted-font garbage.
+      // Warn the user so they know extraction degraded — then try JPEG fallback.
+      if (extractedText.trim().length >= 60) {
+        baseWarnings.push('PDF zawiera zniekształcone znaki fontowe — próba odczytu obrazów ze strony')
+      }
       // Scanned / image-only PDF — try to extract embedded JPEG pages and OCR them
       const jpegs = extractEmbeddedJpegsFromPdf(buffer)
       if (jpegs.length > 0) {
@@ -677,15 +750,32 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   // ── Regex parse ───────────────────────────────────────────────────────────
-  const parsed     = parseTextWithRegex(extractedText)
-  const confidence = calcConfidence(parsed)
-  const warnings   = [...baseWarnings, ...buildWarnings(parsed)]
+  const parsed = parseTextWithRegex(extractedText)
+
+  // Post-parse sanitization: null out vendor/buyer names that look like
+  // subsetted-font garbage. Only applied when text came from a PDF text layer
+  // (parserSource === 'regex' after PDF path) — image OCR names are kept as-is.
+  const nameOverrides: { vendor_name?: null; buyer_name?: null } = {}
+  if (isPDF && parserSource === 'regex') {
+    if (parsed.vendor_name && !isReadableName(parsed.vendor_name)) {
+      nameOverrides.vendor_name = null
+      baseWarnings.push('Nazwa sprzedawcy zawiera nieczytelne znaki — uzupełnij ręcznie')
+    }
+    if (parsed.buyer_name && !isReadableName(parsed.buyer_name)) {
+      nameOverrides.buyer_name = null
+      baseWarnings.push('Nazwa nabywcy zawiera nieczytelne znaki — uzupełnij ręcznie')
+    }
+  }
+
+  const finalParsed = { ...parsed, ...nameOverrides }
+  const confidence  = calcConfidence(finalParsed)
+  const warnings    = [...baseWarnings, ...buildWarnings(finalParsed)]
 
   // Only require confirmation for critical issues — not minor advisory warnings
   const CRITICAL_KEYWORDS = ['Nie rozpoznano', 'Sprzeczne kwoty', 'niepoprawną sumę kontrolną']
   const hasCriticalWarning = warnings.some(w => CRITICAL_KEYWORDS.some(kw => w.includes(kw)))
   return json(200, {
-    ...parsed,
+    ...finalParsed,
     parser_source: parserSource,
     extraction_confidence:    confidence,
     extraction_warnings:      warnings,

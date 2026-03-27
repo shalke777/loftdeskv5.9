@@ -74,6 +74,11 @@ export function ThreadListItem({ thread, active, showProject, onClick }: ThreadL
   const unread = thread.unread_count_operator
   const inboxThread = thread as InboxThread
 
+  // Avatar: pierwsza litera nazwy projektu (inbox) lub tytułu wątku
+  const avatarLetter = showProject && inboxThread.project_name
+    ? inboxThread.project_name[0].toUpperCase()
+    : (thread.title ?? THREAD_TYPE_LABELS[thread.type] ?? thread.type)[0].toUpperCase()
+
   return (
     <button
       onClick={onClick}
@@ -84,9 +89,9 @@ export function ThreadListItem({ thread, active, showProject, onClick }: ThreadL
       ].filter(Boolean).join(' ')}
       style={{ width: '100%', textAlign: 'left' }}
     >
-      {/* Avatar / ikona wątku */}
+      {/* Avatar */}
       <div className="chat-conv-item__avatar">
-        {THREAD_TYPE_LABELS[thread.type]?.[0] ?? '?'}
+        {avatarLetter}
       </div>
 
       <div className="chat-conv-item__body">
@@ -138,6 +143,7 @@ interface ThreadListProps {
   showProject?:  boolean
   emptyLabel?:   string
   onSelect:      (thread: ProjectThread | InboxThread) => void
+  onNewThread?:  () => void
 }
 
 export function ThreadList({
@@ -146,13 +152,23 @@ export function ThreadList({
   showProject,
   emptyLabel = 'Brak wątków',
   onSelect,
+  onNewThread,
 }: ThreadListProps) {
   if (threads.length === 0) {
     return (
       <div className="chat-sidebar__empty">
         <div className="chat-sidebar__empty-icon">💬</div>
         <p className="chat-sidebar__empty-title">{emptyLabel}</p>
-        <p className="chat-sidebar__empty-hint">Wątki tworzone są w projekcie → zakładka Wątki</p>
+        {onNewThread ? (
+          <>
+            <p className="chat-sidebar__empty-hint">Rozpocznij rozmowę z klientem lub stwórz notatkę dla zespołu</p>
+            <button className="chat-sidebar__empty-cta" onClick={onNewThread}>
+              Nowa rozmowa
+            </button>
+          </>
+        ) : (
+          <p className="chat-sidebar__empty-hint">Wątki pojawią się tu automatycznie</p>
+        )}
       </div>
     )
   }
