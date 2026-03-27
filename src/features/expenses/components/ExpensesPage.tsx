@@ -235,6 +235,8 @@ export function ExpensesPage() {
             invoice_number: ocrResult.invoice_number ?? undefined,
             vendor:         ocrResult.vendor_name    ?? undefined,
             vendor_nip:     ocrResult.vendor_nip     ?? undefined,
+            buyer_name:     ocrResult.buyer_name     ?? undefined,
+            buyer_nip:      ocrResult.buyer_nip      ?? undefined,
             issue_date:     ocrResult.issue_date     ?? undefined,
             amount_net:     ocrResult.net_amount     ?? undefined,
             amount_vat:     ocrResult.vat_amount     ?? undefined,
@@ -242,6 +244,8 @@ export function ExpensesPage() {
             // Use the product description returned by OCR — avoid dumping
             // pipe-separated metadata (sale_date, vat_rate, etc.) into this field.
             description:    ocrResult.notes          ?? undefined,
+            line_items:     ocrResult.line_items && ocrResult.line_items.length > 0
+                              ? ocrResult.line_items : undefined,
           }
 
           const confidence   = ocrResult.extraction_confidence
@@ -637,6 +641,30 @@ export function ExpensesPage() {
               </div>
             )}
 
+            {/* Line items from OCR/AI extraction — read-only display, not persisted via this form */}
+            {modal.type === 'add' && modal.parsed.line_items && modal.parsed.line_items.length > 0 && (
+              <div style={{ marginBottom: 4 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 6 }}>
+                  Pozycje z faktury ({modal.parsed.line_items.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {modal.parsed.line_items.slice(0, 10).map((item, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '5px 8px', background: 'var(--color-surface-2, var(--color-surface))', borderRadius: 5, border: '1px solid var(--color-border)' }}>
+                      <span style={{ color: 'var(--color-text)', flex: 1, marginRight: 8 }}>{item.name ?? '—'}</span>
+                      <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                        {item.gross_amount != null ? item.gross_amount.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' zł' : '—'}
+                      </span>
+                    </div>
+                  ))}
+                  {modal.parsed.line_items.length > 10 && (
+                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)', textAlign: 'center', paddingTop: 2 }}>
+                      +&nbsp;{modal.parsed.line_items.length - 10} więcej pozycji
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {duplicateWarning && (
               <div className="exp-form__dup-warn">
                 <AlertTriangle size={14} /> {duplicateWarning}
@@ -737,6 +765,25 @@ export function ExpensesPage() {
                 />
               </div>
             </div>
+
+            {/* Buyer info — read-only display when parser extracted nabywca data */}
+            {modal.type === 'add' && (modal.parsed.buyer_name || modal.parsed.buyer_nip) && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 6 }}>
+                  Nabywca (z dokumentu)
+                </div>
+                {modal.parsed.buyer_name && (
+                  <div style={{ fontSize: 13, color: 'var(--color-text)', padding: '6px 10px', background: 'var(--color-surface-2, var(--color-surface))', borderRadius: 6, border: '1px solid var(--color-border)', marginBottom: 4 }}>
+                    {modal.parsed.buyer_name}
+                  </div>
+                )}
+                {modal.parsed.buyer_nip && (
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', padding: '4px 10px', background: 'var(--color-surface-2, var(--color-surface))', borderRadius: 6, border: '1px solid var(--color-border)' }}>
+                    NIP: {modal.parsed.buyer_nip}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="exp-form__actions">
               <Button variant="secondary" onClick={() => {

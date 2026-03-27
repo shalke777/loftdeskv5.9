@@ -67,11 +67,17 @@ export interface ParsedExpenseData {
   invoice_number?: string
   vendor?: string
   vendor_nip?: string
+  /** Parsed from document — display only. Not persisted in legacy expense_invoices columns. */
+  buyer_name?: string | null
+  /** Parsed from document — display only. Not persisted in legacy expense_invoices columns. */
+  buyer_nip?: string | null
   issue_date?: string
   amount_net?: number
   amount_vat?: number
   amount_gross?: number
   description?: string
+  /** Line items from AI path — display only. Not persisted via legacy expensesApi.create(). */
+  line_items?: DocumentLineItem[]
 }
 
 // ── demo store ────────────────────────────────────────────────────────────────
@@ -168,12 +174,30 @@ export async function parseInvoiceFromText(text: string): Promise<ParsedExpenseD
     if (receiptNum) result.invoice_number = 'PAR/' + receiptNum[1].trim().toUpperCase()
   }
 
-  // ── NIP (handles 10 digits, with or without dashes/spaces) ───────────────
+  // ── NIP — extract first as vendor, labelled/second as buyer (mirrors parse-invoice.ts) ───
+  // Buyer NIP — try labelled form first ("NIP nabywcy", "NIP kupującego", etc.)
+  const buyerNipLabelMatch = t.match(/NIP\s*(?:nabywcy|kupuj[aą]cego|odbiorcy|zamawiaj[aą]cego)[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/i)
+  if (buyerNipLabelMatch) {
+    const digits = buyerNipLabelMatch[1].replace(/[\s\-]/g, '')
+    if (digits.length === 10) result.buyer_nip = digits
+  }
   const nipMatch = t.match(/NIP[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/i)
   if (nipMatch) {
     const digits = nipMatch[1].replace(/[\s\-]/g, '')
     if (digits.length === 10) result.vendor_nip = digits
   }
+  // If no labelled buyer NIP, pick second NIP occurrence as potential buyer
+  if (!result.buyer_nip) {
+    const allNips = [...t.matchAll(/NIP[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/gi)]
+    if (allNips.length >= 2) {
+      const secondDigits = allNips[1][1].replace(/[\s\-]/g, '')
+      if (secondDigits.length === 10 && secondDigits !== result.vendor_nip) result.buyer_nip = secondDigits
+    }
+  }
+
+  // ── Buyer name ────────────────────────────────────────────────────────────
+  const buyerLabelMatch = t.match(/(?:nabywca|kupuj[aą]cy|odbiorca|zamawiaj[aą]cy)[:\s]+([^\n,;(]{4,60})/i)
+  if (buyerLabelMatch) result.buyer_name = buyerLabelMatch[1].trim().replace(/\s{2,}/g, ' ').slice(0, 80)
 
   // ── Vendor / seller name ─────────────────────────────────────────────────
   // Look for lines after "Sprzedawca", "Wystawca", "Sprzedający", "Firma", "Nazwa"
@@ -190,9 +214,11 @@ export async function parseInvoiceFromText(text: string): Promise<ParsedExpenseD
     if (companyMatch) result.vendor = companyMatch[1].trim().replace(/\s{2,}/g, ' ')
   }
 
-  // Last-resort: scan first 15 non-empty lines for any company-like content
+  // Last-resort: scan first 15 non-empty lines for any company-like content.
+  // Skips headings, dates, NIP lines, and buyer-section labels — same logic as
+  // parse-invoice.ts to avoid grabbing nabywca/odbiorca name as vendor.
   if (!result.vendor) {
-    const SKIP_LINE = /^(?:faktura|fv|fa|fs|fz|vat|nip[:\s]|pesel[:\s]|data[\s:]|nr[\s:.]|numer|suma|brutto|netto|razem|wystawiono|termin|zaliczka|orygi|kopia|\d{4}[\-.\/]\d{2}|\d{1,2}[\-.\/]\d{1,2}[\-.\/]\d{4})/i
+    const SKIP_LINE = /^(?:faktura|fv|fa|fs|fz|vat|nip[:\s]|pesel[:\s]|data[\s:]|nr[\s:.]|numer|suma|brutto|netto|razem|wystawiono|termin|zaliczka|orygi|kopia|nabywca|kupuj[aą]cy|odbiorca|zamawiaj[aą]cy|\d{4}[\-.\/]\d{2}|\d{1,2}[\-.\/]\d{1,2}[\-.\/]\d{4})/i
     const candidateLines = text.split('\n')
       .map(l => l.trim())
       .filter(l => l.length > 4 && /[a-zA-ZąęółśźćńĄĘÓŁŚŹĆŃ]{3}/.test(l) && !SKIP_LINE.test(l))

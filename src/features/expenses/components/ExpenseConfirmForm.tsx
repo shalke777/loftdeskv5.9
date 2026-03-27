@@ -252,6 +252,25 @@ export function ExpenseConfirmForm({
       </fieldset>
       )}
 
+      {/* Section: nabywca (read-only) — shown only when parser extracted buyer data */}
+      {!isRoomPhoto && (parseResult?.document_fields?.buyer_name || parseResult?.document_fields?.buyer_nip) && (
+      <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
+          Nabywca (z dokumentu)
+        </legend>
+        {parseResult.document_fields?.buyer_name && (
+          <div style={{ fontSize: 13, color: 'var(--color-text)', padding: '6px 10px', background: 'var(--color-surface-2, var(--color-surface))', borderRadius: 6, border: '1px solid var(--color-border)' }}>
+            {parseResult.document_fields.buyer_name}
+          </div>
+        )}
+        {parseResult.document_fields?.buyer_nip && (
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', padding: '4px 10px', background: 'var(--color-surface-2, var(--color-surface))', borderRadius: 6, border: '1px solid var(--color-border)' }}>
+            NIP: {parseResult.document_fields.buyer_nip}
+          </div>
+        )}
+      </fieldset>
+      )}
+
       {/* Section: faktura — hidden for room_photo */}
       {!isRoomPhoto && (
       <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>

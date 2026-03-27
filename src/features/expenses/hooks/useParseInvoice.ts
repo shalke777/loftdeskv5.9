@@ -278,11 +278,13 @@ export function useParseAndNormalize() {
 
 /**
  * Normalize AI fallback result into AnalysisResult.
+ * Pass the real sourceType so input_type is classified correctly (camera_capture, scanned_pdf, etc.)
  */
 export async function callParseInvoiceAINormalized(
   file: File,
   extractedText?: string,
+  sourceType: ExpenseSourceType = 'manual',
 ): Promise<AnalysisResult> {
   const flat = await callParseInvoiceAI(file, extractedText)
-  return normalizeParseResult(flat, file, 'manual')
+  return normalizeParseResult(flat, file, sourceType)
 }

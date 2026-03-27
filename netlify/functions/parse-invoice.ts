@@ -338,12 +338,28 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
     if (receiptNum) result.invoice_number = 'PAR/' + receiptNum[1].trim().toUpperCase()
   }
 
-  // NIP (with Polish checksum validation — rejects OCR-garbled numbers)
+  // NIP — extract first occurrence as vendor, second (if present) as buyer
+  // Buyer NIP is often labelled "NIP nabywcy", "NIP kupującego", "NIP odbiorcy" etc.
+  const buyerNipLabelMatch = t.match(/NIP\s*(?:nabywcy|kupuj[aą]cego|odbiorcy|zamawiaj[aą]cego)[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/i)
+  if (buyerNipLabelMatch) {
+    const digits = buyerNipLabelMatch[1].replace(/[\s\-]/g, '')
+    if (digits.length === 10) result.buyer_nip = digits
+  }
   const nipMatch = t.match(/NIP[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/i)
   if (nipMatch) {
     const digits = nipMatch[1].replace(/[\s\-]/g, '')
     if (digits.length === 10 && validateNip(digits)) result.vendor_nip = digits
     else if (digits.length === 10) result.vendor_nip = digits  // keep even if checksum fails — warn later
+  }
+  // If no labelled buyer NIP found, look for a second NIP occurrence in the text
+  if (!result.buyer_nip) {
+    const allNips = [...t.matchAll(/NIP[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/gi)]
+    if (allNips.length >= 2) {
+      const secondDigits = allNips[1][1].replace(/[\s\-]/g, '')
+      if (secondDigits.length === 10 && secondDigits !== result.vendor_nip) {
+        result.buyer_nip = secondDigits
+      }
+    }
   }
 
   // Vendor name
@@ -353,10 +369,18 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
     const companyMatch = t.match(/([A-ZŁÓŚĄŹĆĘŃ][A-Za-ząęółśźćń\s\.\-"]{3,50}(?:Sp\.\s*z\s*o\.o\.|S\.A\.|Sp\.\s*j\.|Ltd\.|GmbH|s\.c\.))/i)
     if (companyMatch) result.vendor_name = companyMatch[1].trim()
   }
+  // Buyer name — try labelled match first
+  if (!result.buyer_name) {
+    const buyerLabelMatch = t.match(/(?:nabywca|kupuj[aą]cy|odbiorca|zamawiaj[aą]cy)[:\s]+([^\n,;(]{4,60})/i)
+    if (buyerLabelMatch) result.buyer_name = buyerLabelMatch[1].trim().replace(/\s{2,}/g, ' ').slice(0, 80)
+  }
+
   // Vendor last-resort: scan first 15 non-empty lines for any company-like content.
-  // Skips headings (FAKTURA/VAT), dates, NIP lines, numeric junk and very short strings.
+  // Skips headings (FAKTURA/VAT), dates, NIP lines, numeric junk, very short strings,
+  // and buyer-section labels (nabywca, kupujący, odbiorca, zamawiający) to avoid
+  // accidentally picking up the buyer name when OCR text order puts buyer before seller.
   if (!result.vendor_name) {
-    const SKIP_LINE = /^(?:faktura|fv|fa|fs|fz|vat|nip[:\s]|pesel[:\s]|data[\s:]|nr[\s:.]|numer|suma|brutto|netto|razem|wystawiono|termin|zaliczka|orygi|kopia|\d{4}[\-.\/]\d{2}|\d{1,2}[\-.\/]\d{1,2}[\-.\/]\d{4})/i
+    const SKIP_LINE = /^(?:faktura|fv|fa|fs|fz|vat|nip[:\s]|pesel[:\s]|data[\s:]|nr[\s:.]|numer|suma|brutto|netto|razem|wystawiono|termin|zaliczka|orygi|kopia|nabywca|kupuj[aą]cy|odbiorca|zamawiaj[aą]cy|\d{4}[\-.\/]\d{2}|\d{1,2}[\-.\/]\d{1,2}[\-.\/]\d{4})/i
     const candidateLines = text.split('\n')
       .map(l => l.trim())
       .filter(l => l.length > 4 && /[a-zA-ZąęółśźćńĄĘÓŁŚŹĆŃ]{3}/.test(l) && !SKIP_LINE.test(l))
@@ -456,6 +480,8 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
     document_type:    (result.document_type as ParseInvoiceResult['document_type']) ?? null,
     vendor_name:      (result.vendor_name as string) ?? null,
     vendor_nip:       (result.vendor_nip as string) ?? null,
+    buyer_name:       (result.buyer_name as string) ?? null,
+    buyer_nip:        (result.buyer_nip as string) ?? null,
     invoice_number:   (result.invoice_number as string) ?? null,
     issue_date:       (result.issue_date as string) ?? null,
     sale_date:        (result.sale_date as string) ?? null,

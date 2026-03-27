@@ -275,10 +275,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (!textContent && !imageBase64) {
     // PDF was provided but yielded no extractable content — return graceful empty result
     // instead of 400, so the client can fall back to manual entry without an error toast.
+    // Shape matches the normal ok() success path: { ok: true, result: ParseInvoiceResult }
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
       body: JSON.stringify({
+        ok: true,
+        aiAttempted: false,
         result: {
           document_type: null,
           vendor_name: null, vendor_nip: null, invoice_number: null,
