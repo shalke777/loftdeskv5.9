@@ -184,11 +184,75 @@ export function extractEmbeddedJpegsFromPdf(buffer: Buffer): Buffer[] {
 
 // ─── PDF text helpers ─────────────────────────────────────────────────────────
 
-/** Extract Tj/TJ text-show operators from a decompressed PDF content stream */
+/**
+ * Decode a PDF hex string literal <hexhex...> to readable text.
+ *
+ * Handles three cases common in modern Polish accounting PDFs:
+ *   1. UTF-16 BE with BOM (FE FF ...) — headless Chrome, Puppeteer, jsPDF
+ *   2. 2-byte Identity-H glyph IDs that ARE Unicode code points:
+ *      - At least 80 % of code points fall in U+0020–U+017E (Basic Latin + Latin
+ *        Extended-A = all ASCII + all Polish diacritics). Modern PDF generators
+ *        (iFirma, Fakturownia, Comarch, wFirma, LibreOffice) embed ToUnicode CMaps
+ *        so their glyph IDs equal the Unicode code point.
+ *   3. Single-byte pure ASCII hex (simple embedded fonts).
+ *
+ * Returns '' for hex strings that look like raw glyph indices without a ToUnicode
+ * mapping (i.e. mostly outside the plausible Latin range).
+ */
+function decodePdfHexStr(hex: string): string {
+  const clean = hex.replace(/\s+/g, '')
+  if (clean.length === 0 || clean.length % 2 !== 0) return ''
+
+  const bytes: number[] = []
+  for (let i = 0; i < clean.length; i += 2) {
+    bytes.push(parseInt(clean.slice(i, i + 2), 16))
+  }
+  if (bytes.length === 0) return ''
+
+  // Case 1: UTF-16 BE BOM (FE FF)
+  if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
+    const chars: string[] = []
+    for (let i = 2; i + 1 < bytes.length; i += 2) {
+      const cp = (bytes[i] << 8) | bytes[i + 1]
+      if (cp >= 0x20) chars.push(String.fromCodePoint(cp))
+    }
+    return chars.join('').trim()
+  }
+
+  // Case 2: 2-byte sequences (Identity-H / CIDFont where glyph IDs == Unicode)
+  if (bytes.length >= 2 && bytes.length % 2 === 0) {
+    const codePoints: number[] = []
+    for (let i = 0; i + 1 < bytes.length; i += 2) {
+      codePoints.push((bytes[i] << 8) | bytes[i + 1])
+    }
+    // U+0020–U+017E covers all ASCII printable + Latin-1 Supplement + Latin Extended-A
+    // (includes ą ę ó ł ś ź ć ń ż Ą Ę Ó Ł Ś Ź Ć Ń Ż and all Polish diacritics)
+    const plausible = codePoints.filter(cp => cp >= 0x0020 && cp <= 0x017E).length
+    if (codePoints.length > 0 && plausible / codePoints.length >= 0.80) {
+      return codePoints
+        .filter(cp => cp >= 0x0020)
+        .map(cp => String.fromCodePoint(cp))
+        .join('')
+        .trim()
+    }
+  }
+
+  // Case 3: single-byte pure ASCII
+  if (bytes.every(b => b >= 0x20 && b <= 0x7E)) {
+    return bytes.map(b => String.fromCharCode(b)).join('').trim()
+  }
+
+  return ''
+}
+
+/** Extract Tj/TJ text-show operators from a decompressed PDF content stream.
+ *
+ * Handles both parenthesized strings (legacy / WinAnsi) and hex strings
+ * (CIDFont / Identity-H / UTF-16 BE used by modern invoicing apps). */
 function extractTjFromStream(stream: string): string {
   const parts: string[] = []
 
-  // (text) Tj — single string
+  // (text) Tj — single parenthesized string
   const tjRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)\s*Tj/g
   let m: RegExpExecArray | null
   while ((m = tjRe.exec(stream)) !== null) {
@@ -196,14 +260,38 @@ function extractTjFromStream(stream: string): string {
     if (t.trim()) parts.push(t.trim())
   }
 
-  // [(text) kern ...] TJ — text array (kerned)
+  // <hexhex> Tj — single hex string (CIDFont / UTF-16 BE)
+  const hexTjRe = /<([0-9A-Fa-f\s]+)>\s*Tj/g
+  while ((m = hexTjRe.exec(stream)) !== null) {
+    const t = decodePdfHexStr(m[1])
+    if (t) parts.push(t)
+  }
+
+  // [...] TJ — text array with kerning adjustments (both string forms)
   const tjArrRe = /\[([^\]]+)\]\s*TJ/g
   while ((m = tjArrRe.exec(stream)) !== null) {
+    const arrayContent = m[1]
+
+    // Parenthesized strings in the array — push separately (kerning between them
+    // already spaces out words; parts.join(' ') adds a space between distinct calls)
     const strRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)/g
     let sm: RegExpExecArray | null
-    while ((sm = strRe.exec(m[1])) !== null) {
+    while ((sm = strRe.exec(arrayContent)) !== null) {
       const t = decodePdfStr(sm[1])
       if (t.trim()) parts.push(t.trim())
+    }
+
+    // Hex strings in the array — concatenate together because they are typically
+    // character-by-character glyph IDs for a single word  (e.g. [<0046><0061><006B>...])
+    const hexFragments: string[] = []
+    const hexRe = /<([0-9A-Fa-f\s]+)>/g
+    while ((sm = hexRe.exec(arrayContent)) !== null) {
+      const t = decodePdfHexStr(sm[1])
+      if (t) hexFragments.push(t)
+    }
+    if (hexFragments.length > 0) {
+      const word = hexFragments.join('')
+      if (word.trim()) parts.push(word.trim())
     }
   }
 
