@@ -116,7 +116,7 @@ export async function callAnalyzeProject(
     if (resp.status === 413 || errCode === 'file_too_large')
       throw new Error('Plik jest za duży. Skompresuj PDF lub zmniejsz rozdzielczość.')
     if (errCode === 'ai_not_configured')
-      throw new Error('AI nie jest skonfigurowane (brak OPENAI_API_KEY)')
+      throw new Error('AI nie jest skonfigurowane (brak ANTHROPIC_API_KEY)')
     if (resp.status === 400)
       throw new Error(String(data.message ?? 'Błąd wejścia — sprawdź format pliku.'))
     throw new Error(String(data.message ?? `HTTP ${resp.status}`))

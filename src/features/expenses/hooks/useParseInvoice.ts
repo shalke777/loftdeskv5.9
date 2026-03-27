@@ -497,8 +497,8 @@ export async function callParseInvoiceAI(file: File, extractedText?: string): Pr
       throw new Error('Sesja wygasła — zaloguj się ponownie, aby korzystać z AI.')
     if (resp.status === 429 || errCode === 'too_many_requests')
       throw new Error('Za dużo żądań AI. Spróbuj za chwilę.')
-    if (errCode === 'ai_not_configured')   throw new Error('AI nie jest skonfigurowane (brak OPENAI_API_KEY)')
-    if (errCode === 'openai_quota_exceeded') throw new Error('Quota OpenAI wyczerpana — sprawdź billing')
+    if (errCode === 'ai_not_configured')   throw new Error('AI nie jest skonfigurowane (brak ANTHROPIC_API_KEY)')
+    if (errCode === 'anthropic_quota_exceeded') throw new Error('Quota Anthropic wyczerpana — sprawdź billing')
     throw new Error(String(data.message ?? `HTTP ${resp.status}`))
   }
 

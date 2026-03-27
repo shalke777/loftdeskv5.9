@@ -192,7 +192,7 @@ export async function callAnalyzeRoomPhoto(file: File, context?: string): Promis
     if (resp.status === 429 || errCode === 'too_many_requests')
       throw new Error('Za dużo żądań. Spróbuj za chwilę.')
     if (errCode === 'ai_not_configured')
-      throw new Error('AI nie jest skonfigurowane (brak OPENAI_API_KEY)')
+      throw new Error('AI nie jest skonfigurowane (brak ANTHROPIC_API_KEY)')
     throw new Error(String(data.message ?? `HTTP ${resp.status}`))
   }
 
@@ -338,7 +338,7 @@ export async function callAnalyzeRoomPhotos(
     if (resp.status === 429 || errCode === 'too_many_requests')
       throw new Error('Za dużo żądań. Spróbuj za chwilę.')
     if (errCode === 'ai_not_configured')
-      throw new Error('AI nie jest skonfigurowane (brak OPENAI_API_KEY)')
+      throw new Error('AI nie jest skonfigurowane (brak ANTHROPIC_API_KEY)')
     throw new Error(String(data.message ?? `HTTP ${resp.status}`))
   }
 

@@ -230,11 +230,10 @@ const ESTIMATE_ITEM_SCHEMA = {
   additionalProperties: false,
 }
 
-const ROOM_ANALYSIS_SCHEMA_FORMAT = {
-  type:   'json_schema',
-  name:   'room_analysis_v2',
-  strict: true,
-  schema: {
+const ROOM_ANALYSIS_TOOLS = [{
+  name:        'analyze_room',
+  description: 'Analyze a room/site photo and return structured renovation scope, materials, and estimate items.',
+  input_schema: {
     type: 'object',
     properties: {
       space_type:              ns,
@@ -274,9 +273,8 @@ const ROOM_ANALYSIS_SCHEMA_FORMAT = {
       'missing_information', 'assumptions', 'quantity_hints', 'suggested_estimate_items',
       'coverage', 'warnings', 'confidence', 'notes',
     ],
-    additionalProperties: false,
   },
-}
+}]
 
 // ── System instructions ──────────────────────────────────────────────────────
 // NOTE: BATHROOM_LIBRARY_BLOCK is a v3 inline copy of buildLibraryPromptBlock()
@@ -500,15 +498,22 @@ ZASADY OGOLNE:
 - Gdy wiele zdjec — lacze informacje z WSZYSTKICH
 - To jest DRAFT — badz kompletny ale zaznaczaj zalozenia`
 
-// ── OpenAI types ─────────────────────────────────────────────────────────────
+// ── Anthropic types ───────────────────────────────────────────────────────────────────────
 
-interface ResponsesAPIResult {
-  model?:  string
-  output?: Array<{
-    type: string
-    content?: Array<{ type: string; text?: string }>
-  }>
-  error?: { message: string; code?: string }
+interface AnthropicContent {
+  type:   string
+  id?:    string
+  name?:  string
+  input?: Record<string, unknown>
+  text?:  string
+}
+
+interface AnthropicMessage {
+  id?:          string
+  model?:       string
+  content?:     AnthropicContent[]
+  stop_reason?: string
+  error?:       { type: string; message: string }
 }
 
 // ── Handler ──────────────────────────────────────────────────────────────────
@@ -521,8 +526,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (!userId) return err(401, 'unauthorized', 'Valid authentication token required.')
   if (isRateLimited(userId)) return err(429, 'too_many_requests', 'Za dużo żądań. Spróbuj za chwilę.')
 
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return err(503, 'ai_not_configured', 'OPENAI_API_KEY is not set')
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return err(503, 'ai_not_configured', 'ANTHROPIC_API_KEY is not set')
 
   let body: Record<string, unknown>
   try {
@@ -551,24 +556,27 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const isValidMime = /^image\/(jpeg|jpg|png|webp|gif|heic|heif)$/i.test(imageType)
   if (!isValidMime && multiImages.length === 0) return err(400, 'invalid_image_type', `Unsupported image type: ${imageType}`)
 
-  const model = process.env.OPENAI_MODEL_VISION?.trim() || process.env.OPENAI_MODEL?.trim() || 'gpt-4o'
+  const model = process.env.ANTHROPIC_MODEL?.trim() || 'claude-sonnet-4-5'
   const imageCount = multiImages.length || 1
 
   console.info('ROOM_ANALYSIS_START', JSON.stringify({ model, imageType, imageCount, hasContext: !!context, hasClarification: !!clarification, roomType }))
 
-  // ── Build input ─────────────────────────────────────────────────────────
+  // ── Build Anthropic content ──────────────────────────────────────────────
 
-  type InputItem = { type: string; text?: string; image_url?: string }
-  const content: InputItem[] = []
+  type ContentItem =
+    | { type: 'text'; text: string }
+    | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
+
+  const content: ContentItem[] = []
 
   // Add images (multi-photo or single)
   if (multiImages.length > 0) {
     for (const img of multiImages) {
       const mime = img.type || 'image/jpeg'
-      content.push({ type: 'input_image', image_url: `data:${mime};base64,${img.base64}` })
+      content.push({ type: 'image', source: { type: 'base64', media_type: mime, data: String(img.base64) } })
     }
   } else if (imageBase64) {
-    content.push({ type: 'input_image', image_url: `data:${imageType};base64,${imageBase64}` })
+    content.push({ type: 'image', source: { type: 'base64', media_type: imageType, data: imageBase64 } })
   }
 
   // Build context text with clarification
@@ -626,36 +634,39 @@ export const handler: Handler = async (event: HandlerEvent) => {
     contextText += `\n\nKontekst: ${context}`
   }
 
-  content.push({ type: 'input_text', text: contextText })
+  content.push({ type: 'text', text: contextText })
 
-  // ── Call OpenAI ─────────────────────────────────────────────────────────
+  // ── Call Anthropic Messages API ───────────────────────────────────────────
 
   let aiRaw: string
   try {
-    const resp = await fetch('https://api.openai.com/v1/responses', {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method:  'POST',
       headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type':      'application/json',
+        'x-api-key':         apiKey,
+        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
         model,
-        instructions: INSTRUCTIONS,
-        input: [{ role: 'user', content }],
-        text:  { format: ROOM_ANALYSIS_SCHEMA_FORMAT },
-        max_output_tokens: 6_000,
+        system:     INSTRUCTIONS,
+        messages:   [{ role: 'user', content }],
+        tools:      ROOM_ANALYSIS_TOOLS,
+        tool_choice: { type: 'tool', name: 'analyze_room' },
+        max_tokens: 6_000,
       }),
     })
 
     const rawBody = await resp.text()
 
     if (!resp.ok) {
-      if (resp.status === 429) return err(429, 'openai_quota_exceeded', 'OpenAI quota exceeded')
-      throw new Error(`OpenAI ${resp.status}: ${rawBody.slice(0, 300)}`)
+      if (resp.status === 429) return err(429, 'anthropic_quota_exceeded', 'Anthropic quota exceeded')
+      throw new Error(`Anthropic ${resp.status}: ${rawBody.slice(0, 300)}`)
     }
 
-    const data = JSON.parse(rawBody) as ResponsesAPIResult
-    aiRaw = data.output?.[0]?.content?.find(c => c.type === 'output_text')?.text ?? '{}'
+    const data = JSON.parse(rawBody) as AnthropicMessage
+    const toolResult = data.content?.find(c => c.type === 'tool_use')
+    aiRaw = JSON.stringify(toolResult?.input ?? {})
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error('ROOM_ANALYSIS_ERROR', msg)

@@ -16,9 +16,10 @@ export interface ModelConfig {
  * Client-side: not used (models are set server-side only).
  */
 export function getModelConfig(): ModelConfig {
+  const model = process.env.ANTHROPIC_MODEL?.trim() || 'claude-sonnet-4-5'
   return {
-    vision:   process.env.OPENAI_MODEL_VISION?.trim()   || process.env.OPENAI_MODEL?.trim() || 'gpt-4o',
-    estimate: process.env.OPENAI_MODEL_ESTIMATE?.trim() || process.env.OPENAI_MODEL?.trim() || 'gpt-4o',
-    document: process.env.OPENAI_MODEL_DOCUMENT?.trim() || process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini',
+    vision:   model,
+    estimate: model,
+    document: model,
   }
 }
