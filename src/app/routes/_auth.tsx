@@ -21,7 +21,11 @@ import { AuthScreen } from '@/features/auth/components/AuthScreen'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { APP_NAME } from '@/shared/lib/constants'
 import { InstallAppButton } from '@/shared/ui/InstallAppButton/InstallAppButton'
-import { usePortalNotifications } from '@/features/portal/hooks/usePortalNotifications'
+import {
+  useOperatorNotifications,
+  useOperatorUnreadCount,
+  useMarkAllOperatorNotificationsRead,
+} from '@/features/notifications/hooks/useOperatorNotifications'
 import { useEffect, useRef, useState } from 'react'
 import { LegalAcceptanceGate } from '@/features/legal/components/LegalAcceptanceGate'
 import { ClientShell } from '@/features/client-portal/components/ClientShell'
@@ -70,7 +74,10 @@ export function AuthLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const canUsePortal = useFeatureAccess('portal')
   const canUseKsef = useFeatureAccess('ksef')
-  const { notifications, unreadCount, markAllRead, dbUnreadCount } = usePortalNotifications(user?.id ?? null)
+  const { data: notifications = [] } = useOperatorNotifications()
+  const { data: unreadCount = 0 } = useOperatorUnreadCount()
+  const markAllReadMutation = useMarkAllOperatorNotificationsRead()
+  function markAllRead() { markAllReadMutation.mutate() }
   const [showNotifications, setShowNotifications] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
@@ -133,9 +140,9 @@ export function AuthLayout() {
 			  <MessageSquare size={18} />
 			  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
 				Portal
-				{dbUnreadCount > 0 && (
+				{unreadCount > 0 && (
 				  <span style={{ background: '#EF6B6B', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 20, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
-					{dbUnreadCount > 99 ? '99+' : dbUnreadCount}
+					{unreadCount > 99 ? '99+' : unreadCount}
 				  </span>
 				)}
 			  </span>
@@ -178,7 +185,7 @@ export function AuthLayout() {
                   boxShadow: '0 8px 32px rgba(0,0,0,0.32)', width: 340, maxHeight: 400, overflow: 'auto',
                 }}>
                   <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-light)', fontWeight: 600, fontSize: 14 }}>
-                    Powiadomienia z portalu
+                    Powiadomienia
                   </div>
                   {notifications.length === 0 ? (
                     <div style={{ padding: '20px 16px', color: '#8A8F98', fontSize: 13, textAlign: 'center' }}>
@@ -188,21 +195,25 @@ export function AuthLayout() {
                     notifications.slice(0, 20).map((n) => (
                       <div key={n.id} style={{
                         padding: '10px 16px', borderBottom: '1px solid var(--color-border-light)',
-                        background: n.read ? 'var(--color-surface)' : 'rgba(96,165,250,0.08)',
+                        background: n.read_at ? 'var(--color-surface)' : 'rgba(96,165,250,0.08)',
                         fontSize: 13,
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 600, fontSize: 12, color: n.type === 'accepted' ? '#77BA8A' : n.type === 'rejected' ? '#EF6B6B' : '#60A5FA' }}>
-                            {n.type === 'accepted' ? '✅ Akceptacja' : n.type === 'rejected' ? '❌ Odrzucenie' : '💬 Wiadomość'}
+                          <span style={{ fontWeight: 600, fontSize: 12, color: n.type === 'client_approval_response' ? '#77BA8A' : '#60A5FA' }}>
+                            {n.type === 'client_approval_response' ? '✅ Odpowiedź klienta' : '💬 Wiadomość od klienta'}
                           </span>
                           <span style={{ fontSize: 11, color: '#8A8F98' }}>
                             {new Date(n.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <div style={{ marginTop: 3, fontWeight: 500, fontSize: 12, color: '#D0D4DA' }}>{n.clientName}</div>
-                        <div style={{ marginTop: 2, fontSize: 12, color: '#A7ABB3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {n.text.replace(/\[img:data:image\/[^\]]{0,20}[^\]]*\]/g, '[zdjęcie]')}
-                        </div>
+                        {n.project_name && (
+                          <div style={{ marginTop: 3, fontWeight: 500, fontSize: 12, color: '#D0D4DA' }}>{n.project_name}</div>
+                        )}
+                        {n.body && (
+                          <div style={{ marginTop: 2, fontSize: 12, color: '#A7ABB3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {n.body}
+                          </div>
+                        )}
                       </div>
                     ))
                   )}

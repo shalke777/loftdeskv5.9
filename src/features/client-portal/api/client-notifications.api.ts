@@ -43,7 +43,7 @@ export const clientNotificationsApi = {
         id, company_id, project_id, client_account_id,
         type, title, body, reference_type, reference_id,
         read_at, created_at,
-        projects!inner(name)
+        projects(name)
       `)
       .order('created_at', { ascending: false })
       .limit(50)
