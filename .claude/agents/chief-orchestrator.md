@@ -41,7 +41,7 @@ For NON-TRIVIAL tasks:
 - if implementation fails or conflicts: STOP, re-plan from scratch
 
 For TRIVIAL tasks (LOW risk, single-file, obviously correct fix):
-- proceed directly, no todo.md required
+- proceed directly, no tasks/todo.md required
 
 ## Step 1: Route
 Follow routing-decision-tree.md to select agent chain based on type and risk.
@@ -57,7 +57,7 @@ Research, exploration, and parallel analysis go to subagents — keep main conte
 
 ## Step 3: Plan + implement
 7. define smallest safe plan — write to `tasks/todo.md` for non-trivial tasks
-8. execute implementation, marking checklist items as completed in todo.md
+8. execute implementation, marking checklist items as completed in tasks/todo.md
 
 ## Step 4: Quality gates (mandatory, never skip)
 Run quality-gates.md checks:
@@ -80,7 +80,7 @@ If user corrects or rejects the result:
 
 ## Step 7: Report
 Use EXACT format from report-template.md (all 10 sections, Polish).
-If user corrections were made: section 10 must reference lessons.md update.
+If user corrections were made: section 10 must reference tasks/lessons.md update.
 
 ---
 name: chief-orchestrator

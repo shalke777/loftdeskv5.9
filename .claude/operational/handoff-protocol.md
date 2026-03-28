@@ -30,9 +30,9 @@ RISKS:
 When handing off a non-trivial task, orchestrator also includes:
 ```
 PLAN STATE:
-- todo.md written: yes / no
+- tasks/todo.md written: yes / no
 - plan confirmed: yes / no / re-planned (N times)
-- lessons.md updated: yes / no / not applicable
+- tasks/lessons.md updated: yes / no / not applicable
 ```
 
 ## Orchestrator responsibilities after handoff
