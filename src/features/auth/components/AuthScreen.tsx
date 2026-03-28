@@ -114,10 +114,16 @@ function ClientMagicLinkForm({ onBack }: { onBack: () => void }) {
     const baseUrl = getAppOrigin()
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.toLowerCase().trim(),
-      options: { emailRedirectTo: `${baseUrl}/auth/callback` },
+      options: {
+        emailRedirectTo: `${baseUrl}/auth/callback`,
+        // shouldCreateUser: false — nie tworzymy nowych kont przez tę ścieżkę.
+        // "Jestem klientem" działa tylko dla adresów znanych Supabase (zaproszonych przez operatora).
+        // Niezaproszony email nie dostaje wiadomości ani nie trafia do systemu.
+        shouldCreateUser: false,
+      },
     })
     setLoading(false)
-    if (err) { setError('Nie udało się wysłać linku. Sprawdź adres email.'); return }
+    if (err) { setError('Nie znaleziono konta powiązanego z tym adresem. Skontaktuj się ze swoim wykonawcą.'); return }
     setSent(true)
   }
 
