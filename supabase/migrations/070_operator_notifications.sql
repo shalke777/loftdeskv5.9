@@ -44,6 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_on_project
 ALTER TABLE public.operator_notifications ENABLE ROW LEVEL SECURITY;
 
 -- Operator czyta swoje powiadomienia
+DROP POLICY IF EXISTS on_operator_select ON public.operator_notifications;
 CREATE POLICY on_operator_select ON public.operator_notifications
   FOR SELECT
   USING (
@@ -52,6 +53,7 @@ CREATE POLICY on_operator_select ON public.operator_notifications
   );
 
 -- Operator może oznaczyć jako przeczytane
+DROP POLICY IF EXISTS on_operator_update ON public.operator_notifications;
 CREATE POLICY on_operator_update ON public.operator_notifications
   FOR UPDATE
   USING (
