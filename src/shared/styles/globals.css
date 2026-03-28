@@ -166,12 +166,16 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .mobile-tile__icon { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,0.2); color: #fff; display: grid; place-items: center; flex-shrink: 0; }
 .mobile-tile__label { font-size: 15px; font-weight: 700; line-height: 1.2; color: #fff; }
 .mobile-tile__sub { font-size: 12px; color: rgba(255,255,255,0.75); line-height: 1.3; }
-.mobile-tile--1 { background-color: var(--color-chart-3); }
-.mobile-tile--2 { background-color: var(--color-chart-4); }
-.mobile-tile--3 { background-color: var(--color-primary-light); }
-.mobile-tile--4 { background-color: var(--color-chart-5); }
-.mobile-tile--5 { background-color: var(--color-chart-2); }
-.mobile-tile--6 { background-color: var(--color-chart-1); }
+/* Mobile tile color groups — grouped by function */
+/* Kontrahenci */ .mobile-tile--1 { background-color: #6DC7E7; }
+/* Wyceny      */ .mobile-tile--2 { background-color: #A5B8C6; }
+/* Umowy       */ .mobile-tile--3 { background-color: #A5B8C6; }
+/* Faktury     */ .mobile-tile--4 { background-color: #A5B8C6; }
+/* Projekty    */ .mobile-tile--5 { background-color: #6DC7E7; }
+/* Chat        */ .mobile-tile--6 { background-color: #393939; }
+/* Koszty      */ .mobile-tile--7 { background-color: #B4E5B0; color: #1a1a1a; }
+/* AI Analiza  */ .mobile-tile--8 { background-color: #3DBA6C; }
+/* AI Projekt  */ .mobile-tile--9 { background-color: #3DBA6C; }
 
 /* ── Pipeline section — table/cards toggle ─────────────────────────────── */
 .pipeline-table-wrap { }
@@ -404,11 +408,13 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .quick-action:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 .quick-action strong, .quick-action .field__label { color: rgba(255,255,255,0.92); }
 .quick-action__icon { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,0.2); color: #fff; flex-shrink: 0; }
-/* per-tile colors */
-.quick-actions-grid .quick-action:nth-child(1) { background-color: var(--color-chart-3) !important; }
-.quick-actions-grid .quick-action:nth-child(2) { background-color: var(--color-chart-4) !important; }
-.quick-actions-grid .quick-action:nth-child(3) { background-color: var(--color-primary-light) !important; }
-.quick-actions-grid .quick-action:nth-child(4) { background-color: var(--color-chart-5) !important; }
+/* Quick action tile color groups — grouped by function */
+/* 1: Dodaj kontrahenta — Kontrahenci         */ .quick-actions-grid .quick-action:nth-child(1) { background-color: #6DC7E7 !important; }
+/* 2: Nowa wycena — Dokumenty                 */ .quick-actions-grid .quick-action:nth-child(2) { background-color: #A5B8C6 !important; }
+/* 3: Nowa faktura — Dokumenty                */ .quick-actions-grid .quick-action:nth-child(3) { background-color: #A5B8C6 !important; }
+/* 4: Otwórz projekty — Projekty              */ .quick-actions-grid .quick-action:nth-child(4) { background-color: #6DC7E7 !important; }
+/* 5: AI analiza — AI                         */ .quick-actions-grid .quick-action:nth-child(5) { background-color: #3DBA6C !important; }
+/* 6: AI analiza projektu — AI                */ .quick-actions-grid .quick-action:nth-child(6) { background-color: #3DBA6C !important; }
 
 .portal-page { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
 .portal-chat { display: grid; gap: 12px; }
