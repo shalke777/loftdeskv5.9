@@ -36,11 +36,11 @@ CREATE TABLE IF NOT EXISTS client_notifications (
 );
 
 -- Indeksy
-CREATE INDEX idx_cn_client_unread
+CREATE INDEX IF NOT EXISTS idx_cn_client_unread
   ON client_notifications (client_account_id, created_at DESC)
   WHERE read_at IS NULL;
 
-CREATE INDEX idx_cn_project
+CREATE INDEX IF NOT EXISTS idx_cn_project
   ON client_notifications (project_id, client_account_id);
 
 -- ─── RLS ──────────────────────────────────────────────────────────────────────
@@ -48,6 +48,7 @@ CREATE INDEX idx_cn_project
 ALTER TABLE client_notifications ENABLE ROW LEVEL SECURITY;
 
 -- Operator może wstawiać powiadomienia dla klientów swojej firmy
+DROP POLICY IF EXISTS cn_operator_insert ON client_notifications;
 CREATE POLICY cn_operator_insert ON client_notifications
   FOR INSERT
   WITH CHECK (
@@ -56,6 +57,7 @@ CREATE POLICY cn_operator_insert ON client_notifications
   );
 
 -- Operator widzi powiadomienia w swojej firmie (np. debug / admin)
+DROP POLICY IF EXISTS cn_operator_select ON client_notifications;
 CREATE POLICY cn_operator_select ON client_notifications
   FOR SELECT
   USING (
@@ -64,6 +66,7 @@ CREATE POLICY cn_operator_select ON client_notifications
   );
 
 -- Klient widzi własne powiadomienia (projekt musi być w jego dostępie)
+DROP POLICY IF EXISTS cn_client_select ON client_notifications;
 CREATE POLICY cn_client_select ON client_notifications
   FOR SELECT
   USING (
@@ -74,6 +77,7 @@ CREATE POLICY cn_client_select ON client_notifications
   );
 
 -- Klient może oznaczyć jako przeczytane (UPDATE read_at)
+DROP POLICY IF EXISTS cn_client_update ON client_notifications;
 CREATE POLICY cn_client_update ON client_notifications
   FOR UPDATE
   USING (
