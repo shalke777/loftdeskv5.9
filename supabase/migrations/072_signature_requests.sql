@@ -156,7 +156,15 @@ ALTER TABLE public.approval_events       ENABLE ROW LEVEL SECURITY;
 -- signature_requests — operator pełny dostęp, klient widzi swoje (przez participant)
 DROP POLICY IF EXISTS sig_req_operator_all    ON public.signature_requests;
 CREATE POLICY sig_req_operator_all ON public.signature_requests
-  FOR ALL USING (company_id = my_company_id() AND my_app_role() NOT IN ('client', 'anonymous'));
+  FOR ALL
+  USING (
+    company_id = my_company_id()
+    AND my_app_role() NOT IN ('client', 'anonymous')
+  )
+  WITH CHECK (
+    company_id = my_company_id()
+    AND my_app_role() NOT IN ('client', 'anonymous')
+  );
 
 DROP POLICY IF EXISTS sig_req_client_select   ON public.signature_requests;
 CREATE POLICY sig_req_client_select ON public.signature_requests
@@ -172,7 +180,14 @@ CREATE POLICY sig_req_client_select ON public.signature_requests
 -- signature_participants — operator pełny dostęp; klient widzi własne
 DROP POLICY IF EXISTS sig_part_operator_all   ON public.signature_participants;
 CREATE POLICY sig_part_operator_all ON public.signature_participants
-  FOR ALL USING (
+  FOR ALL
+  USING (
+    signature_request_id IN (
+      SELECT id FROM public.signature_requests WHERE company_id = my_company_id()
+    )
+    AND my_app_role() NOT IN ('client', 'anonymous')
+  )
+  WITH CHECK (
     signature_request_id IN (
       SELECT id FROM public.signature_requests WHERE company_id = my_company_id()
     )
@@ -190,16 +205,30 @@ CREATE POLICY sig_part_client_select ON public.signature_participants
 
 DROP POLICY IF EXISTS sig_part_client_update  ON public.signature_participants;
 CREATE POLICY sig_part_client_update ON public.signature_participants
-  FOR UPDATE USING (
+  FOR UPDATE
+  USING (
+    lower(email) IN (
+      SELECT lower(ca.email) FROM public.client_accounts ca WHERE ca.auth_user_id = auth.uid()
+    )
+  )
+  WITH CHECK (
     lower(email) IN (
       SELECT lower(ca.email) FROM public.client_accounts ca WHERE ca.auth_user_id = auth.uid()
     )
   );
 
--- signature_events — append-only; operator + authorized client select
+-- signature_events — operator full access; client read-only
 DROP POLICY IF EXISTS sig_events_operator_select ON public.signature_events;
-CREATE POLICY sig_events_operator_select ON public.signature_events
-  FOR SELECT USING (
+DROP POLICY IF EXISTS sig_events_operator_all    ON public.signature_events;
+CREATE POLICY sig_events_operator_all ON public.signature_events
+  FOR ALL
+  USING (
+    signature_request_id IN (
+      SELECT id FROM public.signature_requests WHERE company_id = my_company_id()
+    )
+    AND my_app_role() NOT IN ('client', 'anonymous')
+  )
+  WITH CHECK (
     signature_request_id IN (
       SELECT id FROM public.signature_requests WHERE company_id = my_company_id()
     )
@@ -217,10 +246,18 @@ CREATE POLICY sig_events_client_select ON public.signature_events
     )
   );
 
--- signature_artifacts — same as events
+-- signature_artifacts — operator full access
 DROP POLICY IF EXISTS sig_art_operator_select ON public.signature_artifacts;
-CREATE POLICY sig_art_operator_select ON public.signature_artifacts
-  FOR ALL USING (
+DROP POLICY IF EXISTS sig_art_operator_all    ON public.signature_artifacts;
+CREATE POLICY sig_art_operator_all ON public.signature_artifacts
+  FOR ALL
+  USING (
+    signature_request_id IN (
+      SELECT id FROM public.signature_requests WHERE company_id = my_company_id()
+    )
+    AND my_app_role() NOT IN ('client', 'anonymous')
+  )
+  WITH CHECK (
     signature_request_id IN (
       SELECT id FROM public.signature_requests WHERE company_id = my_company_id()
     )
@@ -241,7 +278,15 @@ CREATE POLICY sig_art_client_select ON public.signature_artifacts
 -- approval_events — operator full access; client reads own decisions
 DROP POLICY IF EXISTS approval_evt_operator_all ON public.approval_events;
 CREATE POLICY approval_evt_operator_all ON public.approval_events
-  FOR ALL USING (company_id = my_company_id() AND my_app_role() NOT IN ('client', 'anonymous'));
+  FOR ALL
+  USING (
+    company_id = my_company_id()
+    AND my_app_role() NOT IN ('client', 'anonymous')
+  )
+  WITH CHECK (
+    company_id = my_company_id()
+    AND my_app_role() NOT IN ('client', 'anonymous')
+  );
 
 DROP POLICY IF EXISTS approval_evt_client_select ON public.approval_events;
 CREATE POLICY approval_evt_client_select ON public.approval_events
