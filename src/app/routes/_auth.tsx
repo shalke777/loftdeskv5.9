@@ -81,6 +81,7 @@ export function AuthLayout() {
   const markAllReadMutation = useMarkAllOperatorNotificationsRead()
   function markAllRead() { markAllReadMutation.mutate() }
   const [showNotifications, setShowNotifications] = useState(false)
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null)
   const notifRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -176,7 +177,18 @@ export function AuthLayout() {
               {user.plan === 'free' ? '⭐ Przejdź na Business' : `Plan: ${user.plan}`}
             </Link>
             <div ref={notifRef} style={{ position: 'relative' }}>
-              <Button variant="ghost" size="sm" onClick={() => { setShowNotifications((v) => !v); if (!showNotifications) markAllRead() }} icon={<Bell size={18} />}>
+              <Button variant="ghost" size="sm" onClick={() => {
+                const opening = !showNotifications
+                setShowNotifications(opening)
+                if (opening && notifRef.current) {
+                  const rect = notifRef.current.getBoundingClientRect()
+                  setDropdownPos({
+                    top: rect.bottom + 4,
+                    right: Math.max(8, window.innerWidth - rect.right),
+                  })
+                  markAllRead()
+                }
+              }} icon={<Bell size={18} />}>
                 {unreadCount > 0 && (
                   <span style={{
                     position: 'absolute', top: 2, right: 2,
@@ -189,11 +201,12 @@ export function AuthLayout() {
                   </span>
                 )}
               </Button>
-              {showNotifications && (
+              {showNotifications && dropdownPos && (
                 <div style={{
-                  position: 'absolute', top: '100%', right: 0, zIndex: 999,
+                  position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999,
                   background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.32)', width: 340, maxWidth: 'calc(100vw - 16px)', maxHeight: 400, overflow: 'auto',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.32)',
+                  width: Math.min(340, window.innerWidth - 16), maxHeight: 400, overflow: 'auto',
                 }}>
                   <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-light)', fontWeight: 600, fontSize: 14 }}>
                     Powiadomienia
