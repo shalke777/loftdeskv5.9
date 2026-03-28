@@ -153,17 +153,40 @@ ALTER TABLE public.signature_events      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.signature_artifacts   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.approval_events       ENABLE ROW LEVEL SECURITY;
 
--- signature_requests — operator pełny dostęp, klient widzi swoje (przez participant)
+-- signature_requests — operator per-command explicit policies
 DROP POLICY IF EXISTS sig_req_operator_all    ON public.signature_requests;
-CREATE POLICY sig_req_operator_all ON public.signature_requests
-  FOR ALL
+DROP POLICY IF EXISTS sig_req_operator_select ON public.signature_requests;
+DROP POLICY IF EXISTS sig_req_operator_insert ON public.signature_requests;
+DROP POLICY IF EXISTS sig_req_operator_update ON public.signature_requests;
+DROP POLICY IF EXISTS sig_req_operator_delete ON public.signature_requests;
+
+CREATE POLICY sig_req_operator_select ON public.signature_requests
+  FOR SELECT USING (
+    public.my_app_role() NOT IN ('client', 'anonymous')
+    AND company_id = public.my_company_id()
+  );
+
+CREATE POLICY sig_req_operator_insert ON public.signature_requests
+  FOR INSERT WITH CHECK (
+    public.my_app_role() NOT IN ('client', 'anonymous')
+    AND company_id = public.my_company_id()
+  );
+
+CREATE POLICY sig_req_operator_update ON public.signature_requests
+  FOR UPDATE
   USING (
-    company_id = my_company_id()
-    AND my_app_role() NOT IN ('client', 'anonymous')
+    public.my_app_role() NOT IN ('client', 'anonymous')
+    AND company_id = public.my_company_id()
   )
   WITH CHECK (
-    company_id = my_company_id()
-    AND my_app_role() NOT IN ('client', 'anonymous')
+    public.my_app_role() NOT IN ('client', 'anonymous')
+    AND company_id = public.my_company_id()
+  );
+
+CREATE POLICY sig_req_operator_delete ON public.signature_requests
+  FOR DELETE USING (
+    public.my_app_role() NOT IN ('client', 'anonymous')
+    AND company_id = public.my_company_id()
   );
 
 DROP POLICY IF EXISTS sig_req_client_select   ON public.signature_requests;
