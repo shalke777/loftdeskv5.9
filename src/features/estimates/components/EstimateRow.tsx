@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Edit2, FileText, Mail, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, ClipboardCheck, Edit2, FileText, Mail, Trash2 } from 'lucide-react'
 import type { Estimate } from '@/entities/estimate/model'
 import { Button } from '@/shared/ui/Button/Button'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
@@ -9,6 +9,8 @@ import { useClients } from '@/features/clients/hooks/useClients'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
+import { SendToApprovalModal } from '@/features/signatures/components/SendToApprovalModal'
+import { SignatureStatusBadge } from '@/features/signatures/components/SignatureStatusBadge'
 import { EstimateNextActions } from './EstimateNextActions'
 import { getAppOrigin } from '@/shared/lib/native'
 
@@ -36,6 +38,7 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
+  const [approvalOpen, setApprovalOpen] = useState(false)
 
   const { data: clients = [] } = useClients()
   const { user } = useAuth()
@@ -96,7 +99,15 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
             {formatCurrency(estimate.total_gross)}
           </span>
           <span className={STATUS_CLASS[estimate.status]}>{STATUS_LABEL[estimate.status]}</span>
+          <SignatureStatusBadge documentType="estimate" documentId={estimate.id} />
           <div className="proj-row__actions">
+            <button
+              className="proj-action-btn"
+              title="Wyślij do akceptacji"
+              onClick={e => { e.stopPropagation(); setApprovalOpen(true) }}
+            >
+              <ClipboardCheck size={14} />
+            </button>
             <button
               className="proj-action-btn"
               title="Wyślij do klienta"
@@ -180,6 +191,28 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
         documentName={estimate.number}
         defaultEmail={client?.email}
         portalUrl={estimate.project_id ? `${getAppOrigin()}/client/project/${estimate.project_id}` : undefined}
+      />
+
+      <SendToApprovalModal
+        open={approvalOpen}
+        onClose={() => setApprovalOpen(false)}
+        documentType="estimate"
+        documentId={estimate.id}
+        documentLabel={`${estimate.number} \u2013 ${estimate.name}`}
+        documentContentForHash={JSON.stringify({
+          id: estimate.id,
+          number: estimate.number,
+          name: estimate.name,
+          total_gross: estimate.total_gross,
+          valid_until: estimate.valid_until ?? null,
+          items: estimate.items.map(i => ({
+            id: i.id, name: i.name, quantity: i.quantity,
+            unit: i.unit, unit_price: i.unit_price, vat_rate: i.vat_rate,
+          })),
+        })}
+        projectId={estimate.project_id ?? null}
+        defaultClientEmail={client?.email}
+        defaultClientName={client?.name}
       />
     </div>
   )

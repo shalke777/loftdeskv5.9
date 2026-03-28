@@ -23,6 +23,15 @@ export function useSignatureRequestsForDocument(documentType: string, documentId
   })
 }
 
+export function useSignatureRequestsForDocumentWithParts(documentType: string, documentId: string) {
+  return useQuery({
+    queryKey: [...signatureKeys.forDocument(documentType, documentId), 'with-parts'],
+    queryFn:  () => signatureRequestsApi.listForDocumentWithParticipants(documentType, documentId),
+    enabled:  Boolean(documentType && documentId),
+    staleTime: 30_000,
+  })
+}
+
 export function useSignatureRequest(id: string | null) {
   return useQuery({
     queryKey: signatureKeys.detail(id ?? ''),

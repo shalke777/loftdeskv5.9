@@ -38,13 +38,17 @@ export const signatureRequestsApi = {
     const { data: req, error: reqErr } = await supabase
       .from('signature_requests')
       .insert({
-        project_id:    input.projectId,
-        document_type: input.documentType,
-        document_id:   input.documentId,
-        document_hash: input.documentHash,
-        mode:          input.mode,
-        provider_name: input.providerName ?? null,
-        expires_at:    expiresAt,
+        company_id:        input.companyId,
+        project_id:        input.projectId,
+        document_type:     input.documentType,
+        document_id:       input.documentId,
+        document_hash:     input.documentHash,
+        document_label:    input.documentLabel ?? null,
+        mode:              input.mode,
+        status:            'in_progress',
+        provider_name:     input.providerName ?? null,
+        created_by_user_id: input.createdByUserId ?? null,
+        expires_at:        expiresAt,
       })
       .select('*')
       .single()
@@ -110,6 +114,24 @@ export const signatureRequestsApi = {
       .order('created_at', { ascending: false })
     if (error) throw error
     return (data ?? []) as SignatureRequest[]
+  },
+
+  async listForDocumentWithParticipants(
+    documentType: string,
+    documentId: string,
+  ): Promise<SignatureRequestWithParticipants[]> {
+    if (!supabase || isDemoMode) return []
+    const { data, error } = await supabase
+      .from('signature_requests')
+      .select('*, signature_participants(*)')
+      .eq('document_type', documentType)
+      .eq('document_id', documentId)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return ((data ?? []) as any[]).map(row => ({
+      ...row,
+      participants: row.signature_participants ?? [],
+    })) as SignatureRequestWithParticipants[]
   },
 
   /** Update status after provider callback / manual action */

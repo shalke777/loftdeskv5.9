@@ -119,6 +119,28 @@ export interface ClientApproval {
   created_at: string
 }
 
+export interface ClientDocSignatureRequest {
+  id: string
+  company_id: string
+  project_id: string | null
+  document_type: string
+  document_id: string
+  document_label: string | null
+  document_hash: string
+  status: string
+  mode: string
+  created_at: string
+  participants: Array<{
+    id: string
+    name: string
+    email: string
+    role: string
+    status: string
+    client_account_id: string | null
+    action_at: string | null
+  }>
+}
+
 export interface ClientProjectDocument {
   id: string
   doc_type: string
@@ -345,5 +367,75 @@ export const clientPortalApi = {
       .limit(50)
     if (error) throw error
     return (data ?? []) as ClientTimelineEvent[]
+  },
+
+  /** List pending/active document signature requests visible to the authenticated client */
+  async listDocSignatureRequests(projectId: string): Promise<ClientDocSignatureRequest[]> {
+    if (!supabase) return []
+    const { data, error } = await supabase
+      .from('signature_requests')
+      .select('id, company_id, project_id, document_type, document_id, document_label, document_hash, status, mode, created_at, signature_participants(id, name, email, role, status, client_account_id, action_at)')
+      .eq('project_id', projectId)
+      .not('status', 'in', '(cancelled,expired)')
+      .order('created_at', { ascending: false })
+    if (error) {
+      // Table may not exist yet — fail silently
+      console.warn('[clientPortal] listDocSignatureRequests failed:', error.message)
+      return []
+    }
+    return ((data ?? []) as any[]).map(row => ({
+      ...row,
+      participants: row.signature_participants ?? [],
+    })) as ClientDocSignatureRequest[]
+  },
+
+  /** Client approves / rejects / questions a document */
+  async respondDocApproval(input: {
+    signatureRequestId: string
+    participantId: string
+    decision: 'approved' | 'rejected' | 'questioned'
+    documentHash: string
+    documentType: string
+    documentId: string
+    companyId: string
+    projectId: string | null
+    actorId: string
+    actorName: string | null
+    actorEmail: string | null
+    consentText: string
+    comment?: string
+  }): Promise<void> {
+    if (!supabase) throw new Error('Supabase not available')
+
+    // 1. Record approval_event (RLS allows client INSERT with actor_id = auth.uid())
+    const { error: evtErr } = await supabase
+      .from('approval_events')
+      .insert({
+        company_id:           input.companyId,
+        project_id:           input.projectId,
+        signature_request_id: input.signatureRequestId,
+        document_type:        input.documentType,
+        document_id:          input.documentId,
+        document_hash:        input.documentHash,
+        actor_type:           'client' as const,
+        actor_id:             input.actorId,
+        actor_name:           input.actorName,
+        actor_email:          input.actorEmail,
+        actor_ip:             null,
+        actor_user_agent:     typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        consent_text:         input.consentText,
+        otp_verified_at:      null,
+        decision:             input.decision,
+        comment:              input.comment ?? null,
+      })
+    if (evtErr) throw evtErr
+
+    // 2. Update signature_participants.status (RLS allows client UPDATE their own row)
+    const { error: partErr } = await supabase
+      .from('signature_participants')
+      .update({ status: input.decision, action_at: new Date().toISOString() })
+      .eq('id', input.participantId)
+    if (partErr) throw partErr
+    // Trigger 073 auto-updates signature_requests.status server-side
   },
 }

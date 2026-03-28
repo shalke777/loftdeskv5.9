@@ -63,6 +63,7 @@ export interface SignatureRequest {
   updated_at: string
   expires_at: string | null
   completed_at: string | null
+  document_label: string | null
 }
 
 export interface SignatureParticipant {
@@ -137,11 +138,15 @@ export interface SignatureRequestWithParticipants extends SignatureRequest {
 // ─── Input types ──────────────────────────────────────────────────────────────
 
 export interface CreateSignatureRequestInput {
+  companyId: string
+  createdByUserId?: string
   projectId: string | null
   documentType: SignatureDocumentType
   documentId: string
   /** SHA-256 hex of the frozen PDF blob */
   documentHash: string
+  /** Human-readable label shown to client in portal (e.g. "Wycena #001 – Remont kuchni") */
+  documentLabel?: string
   mode: SignatureRequestMode
   providerName?: SignatureProviderName
   expiresInDays?: number

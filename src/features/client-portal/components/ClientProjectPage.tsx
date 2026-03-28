@@ -19,12 +19,14 @@ import {
   useClientPhotoDocs,
   useClientDocuments,
   useClientTimeline,
+  useClientDocSignatureRequests,
+  useClientRespondDocApproval,
 } from '@/features/client-portal/hooks/useClientPortal'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
 import { buildEstimatePreview, buildInvoicePreview, buildContractPreview } from '@/services/pdf/documentPreview'
-import type { ClientEstimate, ClientInvoice, ClientContract, ClientApproval, ClientMessage, ClientPhotoDoc, ClientProjectDocument } from '@/features/client-portal/api/client-portal.api'
+import type { ClientEstimate, ClientInvoice, ClientContract, ClientApproval, ClientDocSignatureRequest, ClientMessage, ClientPhotoDoc, ClientProjectDocument } from '@/features/client-portal/api/client-portal.api'
 
 // ── Status labels ─────────────────────────────────────────────────────────────
 
@@ -510,14 +512,64 @@ function ChatTab({ projectId }: { projectId: string }) {
 
 // ── Zakładka Akceptacje ───────────────────────────────────────────────────────
 
+const DOC_TYPE_LABEL_APPROVAL: Record<string, string> = {
+  estimate: 'Wycena',
+  contract: 'Umowa',
+  annex:    'Aneks',
+  invoice:  'Faktura',
+  other:    'Dokument',
+}
+
 function ApprovalsTab({ projectId }: { projectId: string }) {
+  const { user } = useAuth()
   const { data: approvals, isLoading } = useClientApprovals(projectId)
+  const { data: docRequests, isLoading: docLoading } = useClientDocSignatureRequests(projectId)
   const respondMutation = useClientRespondApproval(projectId)
+  const respondDocMutation = useClientRespondDocApproval(projectId)
   const [comments, setComments] = useState<Record<string, string>>({})
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [confirmDecision, setConfirmDecision] = useState<'approved' | 'rejected' | 'questioned' | null>(null)
+  const [consentChecked, setConsentChecked] = useState(false)
 
-  if (isLoading) return <div className="client-tab-loading">Ładowanie akceptacji...</div>
+  const pendingDocs = (docRequests ?? []).filter(
+    (r: ClientDocSignatureRequest) => r.status === 'pending' || r.status === 'in_progress',
+  )
 
-  if (!approvals?.length) {
+  function openConfirm(id: string, decision: 'approved' | 'rejected' | 'questioned') {
+    setConfirmingId(id)
+    setConfirmDecision(decision)
+    setConsentChecked(false)
+  }
+
+  async function handleDocDecision(req: ClientDocSignatureRequest) {
+    if (!confirmDecision || !user) return
+    const myParticipant = req.participants.find(p => p.client_account_id !== null)
+    if (!myParticipant) return
+    const consentText = `Klient potwierdzil zapoznanie sie z dokumentem "${req.document_label ?? req.document_type}" (SHA-256: ${req.document_hash.slice(0, 16)}) i podjal decyzje: ${confirmDecision}.`
+    await respondDocMutation.mutateAsync({
+      signatureRequestId: req.id,
+      participantId:      myParticipant.id,
+      decision:           confirmDecision,
+      documentHash:       req.document_hash,
+      documentType:       req.document_type,
+      documentId:         req.document_id,
+      companyId:          req.company_id,
+      projectId:          req.project_id,
+      actorId:            user.id,
+      actorName:          user.fullName ?? null,
+      actorEmail:         user.email ?? null,
+      consentText,
+      comment:            comments[req.id] ?? undefined,
+    })
+    setConfirmingId(null)
+    setConfirmDecision(null)
+  }
+
+  if (isLoading || docLoading) return <div className="client-tab-loading">Ładowanie akceptacji...</div>
+
+  const hasAnything = (approvals?.length ?? 0) + pendingDocs.length > 0
+
+  if (!hasAnything) {
     return (
       <div className="client-tab-empty">
         <p>Nic nie czeka teraz na zatwierdzenie.</p>
@@ -526,78 +578,190 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
     )
   }
 
-  const hasPending = approvals.some(
-    (a: ClientApproval) => a.status === 'pending_client' || a.status === 'pending'
-  )
-
   return (
     <div className="client-approvals">
-      {hasPending && (
-        <p className="client-approvals__intro">
-          Wykonawca prosi o akceptację poniższych pozycji. Zapoznaj się z każdą i odpowiedz — Twoja decyzja zostanie od razu przekazana.
-        </p>
-      )}
-      {approvals.map((approval: ClientApproval) => (
-        <div key={approval.id} className="client-approval-card">
-          <div className="client-approval-card__header">
-            <h4 className="client-approval-card__title">{approval.snapshot_vendor || 'Pozycja do akceptacji'}</h4>
-            <Badge variant={APPROVAL_STATUS_VARIANT[approval.status] ?? 'default'}>
-              {APPROVAL_STATUS_LABEL[approval.status] ?? approval.status}
-            </Badge>
-          </div>
-
-          {approval.snapshot_description && (
-            <p className="client-approval-card__desc">{approval.snapshot_description}</p>
-          )}
-
-          {approval.message_to_client && (
-            <p className="client-approval-card__desc" style={{ fontStyle: 'italic' }}>{approval.message_to_client}</p>
-          )}
-
-          {approval.snapshot_amount_gross != null && (
-            <p className="client-approval-card__amount">
-              Kwota: <strong>{approval.snapshot_amount_gross.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })}</strong>
-            </p>
-          )}
-
-              {(approval.status === 'pending_client' || approval.status === 'pending') && (
-            <div className="client-approval-card__actions">
-              <input
-                className="client-approval-card__comment"
-                placeholder="Komentarz (opcjonalnie)..."
-                value={comments[approval.id] ?? ''}
-                onChange={(e) => setComments((prev) => ({ ...prev, [approval.id]: e.target.value }))}
-              />
-              <div className="client-approval-card__btns">
-                <button
-                  className="client-approval-card__btn client-approval-card__btn--accept"
-                  onClick={() => respondMutation.mutate({ id: approval.id, status: 'accepted', comment: comments[approval.id] })}
-                  disabled={respondMutation.isPending}
-                >
-                  Akceptuję
-                </button>
-                <button
-                  className="client-approval-card__btn client-approval-card__btn--question"
-                  onClick={() => respondMutation.mutate({ id: approval.id, status: 'questioned', comment: comments[approval.id] })}
-                  disabled={respondMutation.isPending}
-                >
-                  Mam pytanie
-                </button>
-                <button
-                  className="client-approval-card__btn client-approval-card__btn--reject"
-                  onClick={() => respondMutation.mutate({ id: approval.id, status: 'rejected', comment: comments[approval.id] })}
-                  disabled={respondMutation.isPending}
-                >
-                  Odrzucam
-                </button>
+      {/* ── Akceptacje dokumentów (nowy system) ── */}
+      {pendingDocs.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <p className="client-approvals__intro">
+            Wykonawca prosi o akceptację poniższych dokumentów. Zapoznaj się z każdym i potwierdź swoją decyzję.
+          </p>
+          {pendingDocs.map((req: ClientDocSignatureRequest) => (
+            <div key={req.id} className="client-approval-card">
+              <div className="client-approval-card__header">
+                <h4 className="client-approval-card__title">
+                  {DOC_TYPE_LABEL_APPROVAL[req.document_type] ?? req.document_type}
+                  {req.document_label ? ` \u2014 ${req.document_label}` : ''}
+                </h4>
+                <Badge variant="warning">Oczekuje na Twoją akceptację</Badge>
               </div>
-              {respondMutation.isError && (
-                <p className="client-approval-card__error">Nie udało się zapisać odpowiedzi. Spróbuj ponownie.</p>
+
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0' }}>
+                Skrót dokumentu (SHA-256):&nbsp;
+                <span style={{ fontFamily: 'monospace' }}>{req.document_hash.slice(0, 16)}…</span>
+              </p>
+
+              {confirmingId === req.id ? (
+                <div className="client-approval-card__actions" style={{ marginTop: 12 }}>
+                  <label style={{ display: 'flex', gap: 10, fontSize: 13, alignItems: 'flex-start', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={consentChecked}
+                      onChange={e => setConsentChecked(e.target.checked)}
+                      style={{ marginTop: 2 }}
+                    />
+                    <span>
+                      Potwierdzam, że zapoznałem/am się z dokumentem
+                      {req.document_label ? ` „${req.document_label}"` : ''} i wyrażam zgodę
+                      na jego treść. Moja decyzja zostanie zapisana z datą i skrótem dokumentu.
+                    </span>
+                  </label>
+
+                  <textarea
+                    className="client-approval-card__comment"
+                    placeholder="Komentarz (opcjonalnie)..."
+                    value={comments[req.id] ?? ''}
+                    onChange={e => setComments(prev => ({ ...prev, [req.id]: e.target.value }))}
+                    rows={2}
+                    style={{ marginTop: 10, width: '100%', resize: 'vertical' }}
+                  />
+
+                  {respondDocMutation.isError && (
+                    <p className="client-approval-card__error">Nie udało się zapisać. Spróbuj ponownie.</p>
+                  )}
+
+                  <div className="client-approval-card__btns" style={{ marginTop: 10 }}>
+                    {confirmDecision === 'approved' && (
+                      <button
+                        type="button"
+                        className="client-approval-card__btn client-approval-card__btn--accept"
+                        disabled={!consentChecked || respondDocMutation.isPending}
+                        onClick={() => handleDocDecision(req)}
+                      >
+                        {respondDocMutation.isPending ? '…' : 'Zatwierdź akceptację'}
+                      </button>
+                    )}
+                    {confirmDecision === 'rejected' && (
+                      <button
+                        type="button"
+                        className="client-approval-card__btn client-approval-card__btn--reject"
+                        disabled={!consentChecked || respondDocMutation.isPending}
+                        onClick={() => handleDocDecision(req)}
+                      >
+                        {respondDocMutation.isPending ? '…' : 'Zatwierdź odrzucenie'}
+                      </button>
+                    )}
+                    {confirmDecision === 'questioned' && (
+                      <button
+                        type="button"
+                        className="client-approval-card__btn client-approval-card__btn--question"
+                        disabled={!consentChecked || respondDocMutation.isPending}
+                        onClick={() => handleDocDecision(req)}
+                      >
+                        {respondDocMutation.isPending ? '…' : 'Wyślij pytanie'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="client-approval-card__btn client-approval-card__btn--question"
+                      onClick={() => { setConfirmingId(null); setConfirmDecision(null) }}
+                    >
+                      Anuluj
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="client-approval-card__btns" style={{ marginTop: 10 }}>
+                  <button type="button" className="client-approval-card__btn client-approval-card__btn--accept" onClick={() => openConfirm(req.id, 'approved')}>
+                    Akceptuję
+                  </button>
+                  <button type="button" className="client-approval-card__btn client-approval-card__btn--question" onClick={() => openConfirm(req.id, 'questioned')}>
+                    Mam pytanie
+                  </button>
+                  <button type="button" className="client-approval-card__btn client-approval-card__btn--reject" onClick={() => openConfirm(req.id, 'rejected')}>
+                    Odrzucam
+                  </button>
+                </div>
               )}
             </div>
-          )}
+          ))}
         </div>
-      ))}
+      )}
+
+      {/* ── Akceptacje kosztów (stary system) ── */}
+      {(approvals?.length ?? 0) > 0 && (
+        <>
+          {pendingDocs.length > 0 && (
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+              Akceptacje kosztów
+            </p>
+          )}
+          {approvals!.map((approval: ClientApproval) => (
+            <div key={approval.id} className="client-approval-card">
+              <div className="client-approval-card__header">
+                <h4 className="client-approval-card__title">{approval.snapshot_vendor || 'Pozycja do akceptacji'}</h4>
+                <Badge variant={APPROVAL_STATUS_VARIANT[approval.status] ?? 'default'}>
+                  {APPROVAL_STATUS_LABEL[approval.status] ?? approval.status}
+                </Badge>
+              </div>
+
+              {approval.snapshot_description && (
+                <p className="client-approval-card__desc">{approval.snapshot_description}</p>
+              )}
+
+              {approval.message_to_client && (
+                <p className="client-approval-card__desc" style={{ fontStyle: 'italic' }}>{approval.message_to_client}</p>
+              )}
+
+              {approval.snapshot_amount_gross != null && (
+                <p className="client-approval-card__amount">
+                  Kwota: <strong>{approval.snapshot_amount_gross.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })}</strong>
+                </p>
+              )}
+
+              {(approval.status === 'pending_client' || approval.status === 'pending') && (
+                <div className="client-approval-card__actions">
+                  <input
+                    className="client-approval-card__comment"
+                    placeholder="Komentarz (opcjonalnie)..."
+                    value={comments[approval.id] ?? ''}
+                    onChange={(e) => setComments((prev) => ({ ...prev, [approval.id]: e.target.value }))}
+                  />
+                  <div className="client-approval-card__btns">
+                    <button
+                      type="button"
+                      className="client-approval-card__btn client-approval-card__btn--accept"
+                      onClick={() => respondMutation.mutate({ id: approval.id, status: 'accepted', comment: comments[approval.id] })}
+                      disabled={respondMutation.isPending}
+                    >
+                      Akceptuję
+                    </button>
+                    <button
+                      type="button"
+                      className="client-approval-card__btn client-approval-card__btn--question"
+                      onClick={() => respondMutation.mutate({ id: approval.id, status: 'questioned', comment: comments[approval.id] })}
+                      disabled={respondMutation.isPending}
+                    >
+                      Mam pytanie
+                    </button>
+                    <button
+                      type="button"
+                      className="client-approval-card__btn client-approval-card__btn--reject"
+                      onClick={() => respondMutation.mutate({ id: approval.id, status: 'rejected', comment: comments[approval.id] })}
+                      disabled={respondMutation.isPending}
+                    >
+                      Odrzucam
+                    </button>
+                  </div>
+                  {respondMutation.isError && (
+                    <p className="client-approval-card__error">Nie udało się zapisać odpowiedzi. Spróbuj ponownie.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </>
+      )}
     </div>
   )
 }

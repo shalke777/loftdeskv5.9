@@ -130,6 +130,27 @@ export function useClientTimeline(projectId: string) {
   })
 }
 
+export function useClientDocSignatureRequests(projectId: string) {
+  return useQuery({
+    queryKey: [...clientKeys.approvals(projectId), 'doc-signatures'],
+    queryFn:  () => clientPortalApi.listDocSignatureRequests(projectId),
+    enabled:  Boolean(projectId),
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  })
+}
+
+export function useClientRespondDocApproval(projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: Parameters<typeof clientPortalApi.respondDocApproval>[0]) =>
+      clientPortalApi.respondDocApproval(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [...clientKeys.approvals(projectId), 'doc-signatures'] })
+    },
+  })
+}
+
 export function useClientAccount() {
   return useQuery({
     queryKey: clientKeys.account,

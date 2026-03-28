@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, Mail, ReceiptText, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, CheckCircle, ClipboardCheck, Edit2, FileText, Mail, ReceiptText, Trash2 } from 'lucide-react'
 import type { Contract } from '@/entities/contract/model'
 import { Button } from '@/shared/ui/Button/Button'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
@@ -8,6 +8,8 @@ import { formatCurrency } from '@/shared/lib/formatters'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
+import { SendToApprovalModal } from '@/features/signatures/components/SendToApprovalModal'
+import { SignatureStatusBadge } from '@/features/signatures/components/SignatureStatusBadge'
 import { getAppOrigin } from '@/shared/lib/native'
 
 const STATUS_LABEL: Record<Contract['status'], string> = {
@@ -45,6 +47,7 @@ export function ContractRow({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
+  const [approvalOpen, setApprovalOpen] = useState(false)
 
   const { user } = useAuth()
   const companyMeta = useCompanyMeta()
@@ -96,7 +99,15 @@ export function ContractRow({
             <span className="proj-row__number">{contract.sign_date}</span>
           )}
           <span className={STATUS_CLASS[contract.status]}>{STATUS_LABEL[contract.status]}</span>
+          <SignatureStatusBadge documentType="contract" documentId={contract.id} />
           <div className="proj-row__actions">
+            <button
+              className="proj-action-btn"
+              title="Wyślij do akceptacji"
+              onClick={e => { e.stopPropagation(); setApprovalOpen(true) }}
+            >
+              <ClipboardCheck size={14} />
+            </button>
             <button
               className="proj-action-btn"
               title="Podgląd PDF"
@@ -234,6 +245,24 @@ export function ContractRow({
         documentType="contract"
         documentName={contract.number}
         portalUrl={contract.project_id ? `${getAppOrigin()}/client/project/${contract.project_id}` : undefined}
+      />
+
+      <SendToApprovalModal
+        open={approvalOpen}
+        onClose={() => setApprovalOpen(false)}
+        documentType="contract"
+        documentId={contract.id}
+        documentLabel={contract.number}
+        documentContentForHash={JSON.stringify({
+          id: contract.id,
+          number: contract.number,
+          value: contract.value,
+          start_date: contract.start_date ?? null,
+          end_date: contract.end_date ?? null,
+          location: contract.location ?? null,
+          tranches: contract.tranches ?? [],
+        })}
+        projectId={contract.project_id ?? null}
       />
     </div>
   )
