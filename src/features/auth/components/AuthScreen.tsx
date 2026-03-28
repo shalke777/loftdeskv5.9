@@ -111,19 +111,33 @@ function ClientMagicLinkForm({ onBack }: { onBack: () => void }) {
     if (!email.trim() || !supabase) return
     setLoading(true)
     setError('')
+
+    // Step 1 — pre-check: verify this email has a client_accounts record.
+    // This gives an explicit rejection for uninvited emails and unblocks
+    // returning clients (shouldCreateUser: false was causing false negatives
+    // in some Supabase configurations for existing users).
+    const { data: hasAccess, error: rpcErr } = await supabase.rpc(
+      'check_client_portal_access',
+      { p_email: email.toLowerCase().trim() },
+    )
+    if (rpcErr || !hasAccess) {
+      setLoading(false)
+      setError('Ten adres nie ma jeszcze dostępu do portalu. Poproś wykonawcę o zaproszenie.')
+      return
+    }
+
+    // Step 2 — send OTP. User is known to exist in client_accounts.
+    // shouldCreateUser not forced to false — the RPC above is the real gate.
+    // RLS further protects all data server-side.
     const baseUrl = getAppOrigin()
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.toLowerCase().trim(),
       options: {
         emailRedirectTo: `${baseUrl}/auth/callback`,
-        // shouldCreateUser: false — nie tworzymy nowych kont przez tę ścieżkę.
-        // "Jestem klientem" działa tylko dla adresów znanych Supabase (zaproszonych przez operatora).
-        // Niezaproszony email nie dostaje wiadomości ani nie trafia do systemu.
-        shouldCreateUser: false,
       },
     })
     setLoading(false)
-    if (err) { setError('Nie znaleziono konta powiązanego z tym adresem. Skontaktuj się ze swoim wykonawcą.'); return }
+    if (err) { setError('Nie udało się wysłać linku. Sprawdź adres email lub spróbuj ponownie.'); return }
     setSent(true)
   }
 
@@ -145,9 +159,9 @@ function ClientMagicLinkForm({ onBack }: { onBack: () => void }) {
 
   return (
     <div>
-      <h2 style={{ marginBottom: 6, fontSize: 20 }}>Dostęp do projektów</h2>
+      <h2 style={{ marginBottom: 6, fontSize: 20 }}>Dostęp do portalu klienta</h2>
       <p style={{ color: 'var(--color-text-secondary)', fontSize: 14, marginBottom: 20, lineHeight: 1.5 }}>
-        Wykonawca przydzielił Ci dostęp do projektu? Wpisz swój adres email — wyślemy link logowania bez hasła.
+        Wpisz swój adres email — wyślemy jednorazowy link logowania.
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 14 }}>
         <Input
@@ -200,7 +214,7 @@ export function AuthScreen() {
                 <span className="auth-screen__divider">·</span>
                 <button className="auth-screen__text-btn" onClick={() => setTab('register')}>Nowa firma</button>
                 <span className="auth-screen__divider">·</span>
-                <button className="auth-screen__text-btn" onClick={() => setTab('client')}>Jestem klientem</button>
+                <button className="auth-screen__text-btn" onClick={() => setTab('client')}>Portal klienta</button>
               </div>
             </>
           )}
