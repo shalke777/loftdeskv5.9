@@ -543,7 +543,12 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
 
   async function handleDocDecision(req: ClientDocSignatureRequest) {
     if (!confirmDecision || !user) return
-    const myParticipant = req.participants.find(p => p.client_account_id !== null)
+    // RLS returns only the current client's participant rows (matched by email).
+    // client_account_id may be null at creation time, so use email as fallback.
+    const myParticipant =
+      req.participants.find(p => p.client_account_id !== null) ??
+      req.participants.find(p => p.email.toLowerCase() === (user.email ?? '').toLowerCase()) ??
+      req.participants[0]
     if (!myParticipant) return
     const consentText = `Klient potwierdzil zapoznanie sie z dokumentem "${req.document_label ?? req.document_type}" (SHA-256: ${req.document_hash.slice(0, 16)}) i podjal decyzje: ${confirmDecision}.`
     await respondDocMutation.mutateAsync({

@@ -2,6 +2,23 @@ import { demoDb } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { getDataScope } from '@/shared/lib/dataScope'
 
+// ── New: authenticated portal access (client_accounts + project_client_access) ──
+
+export interface PortalAccessClient {
+  id: string              // project_client_access.id
+  clientAccountId: string
+  email: string
+  fullName: string | null
+  phone: string | null
+  projectId: string
+  projectName: string
+  projectNumber: string
+  projectStatus: string
+  grantedAt: string
+}
+
+// ── Legacy: estimate-level URL tokens (client_tokens table) ──────────────────
+
 export interface CompanyPortalToken {
   id: string
   token: string
@@ -19,6 +36,50 @@ function buildPortalUrl(token: string) {
 }
 
 export const portalApi = {
+  // ── Authenticated portal access ──────────────────────────────────────────
+
+  async listPortalAccess(): Promise<PortalAccessClient[]> {
+    if (isDemoMode || !supabase) return []
+    const { data, error } = await supabase
+      .from('project_client_access')
+      .select(`
+        id,
+        granted_at,
+        client_accounts!inner(id, email, full_name, phone),
+        projects!inner(id, name, number, status)
+      `)
+      .order('granted_at', { ascending: false })
+    if (error) {
+      if (error.code === '42P01') return []
+      throw error
+    }
+    return (data ?? [])
+      .filter((row: any) => row.projects && row.client_accounts)
+      .map((row: any) => ({
+        id: row.id,
+        clientAccountId: row.client_accounts.id,
+        email: row.client_accounts.email,
+        fullName: row.client_accounts.full_name ?? null,
+        phone: row.client_accounts.phone ?? null,
+        projectId: row.projects.id,
+        projectName: row.projects.name,
+        projectNumber: row.projects.number,
+        projectStatus: row.projects.status,
+        grantedAt: row.granted_at,
+      }))
+  },
+
+  async revokePortalAccess(accessId: string): Promise<void> {
+    if (isDemoMode || !supabase) return
+    const { error } = await supabase
+      .from('project_client_access')
+      .delete()
+      .eq('id', accessId)
+    if (error) throw error
+  },
+
+  // ── Legacy: estimate-level URL tokens ────────────────────────────────────
+
   async listCompanyTokens(companyId: string): Promise<CompanyPortalToken[]> {
     if (isDemoMode || !supabase) {
       return demoDb.portal.listForCompany(companyId).map((item) => ({

@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS public.signature_participants (
   client_account_id     uuid        REFERENCES public.client_accounts(id) ON DELETE SET NULL,
   user_id               uuid        REFERENCES auth.users(id)             ON DELETE SET NULL,
   status                text        NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'notified', 'viewed', 'approved', 'signed', 'rejected')),
+    CHECK (status IN ('pending', 'notified', 'viewed', 'approved', 'signed', 'rejected', 'questioned')),
   action_at             timestamptz,
   otp_code_hash         text,        -- bcrypt/SHA-256 of 6-digit OTP, NOT stored plaintext
   otp_expires_at        timestamptz,
@@ -182,16 +182,17 @@ CREATE POLICY sig_part_operator_all ON public.signature_participants
 DROP POLICY IF EXISTS sig_part_client_select  ON public.signature_participants;
 CREATE POLICY sig_part_client_select ON public.signature_participants
   FOR SELECT USING (
-    client_account_id IN (
-      SELECT id FROM public.client_accounts WHERE auth_user_id = auth.uid()
+    -- Match by email (works even when client_account_id is not yet linked)
+    lower(email) IN (
+      SELECT lower(ca.email) FROM public.client_accounts ca WHERE ca.auth_user_id = auth.uid()
     )
   );
 
 DROP POLICY IF EXISTS sig_part_client_update  ON public.signature_participants;
 CREATE POLICY sig_part_client_update ON public.signature_participants
   FOR UPDATE USING (
-    client_account_id IN (
-      SELECT id FROM public.client_accounts WHERE auth_user_id = auth.uid()
+    lower(email) IN (
+      SELECT lower(ca.email) FROM public.client_accounts ca WHERE ca.auth_user_id = auth.uid()
     )
   );
 

@@ -1,16 +1,13 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, Copy, ExternalLink, MessageSquare } from 'lucide-react'
+import { ChevronDown, Users } from 'lucide-react'
 import { Button } from '@/shared/ui/Button/Button'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
-import { useToast } from '@/shared/hooks/useToast'
-import { usePortalTokens, useDeactivatePortalToken } from '@/features/portal/hooks/usePortalData'
-import { usePortalInbox } from '@/features/portal/hooks/usePortalInbox'
+import { usePortalAccessClients, useRevokePortalAccess } from '@/features/portal/hooks/usePortalData'
 import { useAuth } from '@/features/auth/hooks/useAuth'
-import { getAppOrigin } from '@/shared/lib/native'
 
 type FilterKey = 'active' | 'all' | 'inactive'
-type SortKey = 'activity' | 'unread' | 'client' | 'estimate'
+type SortKey = 'recent' | 'client' | 'project'
 
 const FILTER_LABELS: Record<FilterKey, string> = {
   active: 'Aktywne',
@@ -18,53 +15,48 @@ const FILTER_LABELS: Record<FilterKey, string> = {
   inactive: 'Nieaktywne',
 }
 
+const ACTIVE_STATUSES = new Set(['offer', 'active'])
+
+const PROJECT_STATUS_LABEL: Record<string, string> = {
+  offer: 'oferta',
+  active: 'w trakcie',
+  done: 'zakończony',
+  cancelled: 'anulowany',
+}
+
 export function PortalInboxPage() {
   const { user } = useAuth()
   const companyId = user?.companyId ?? ''
-  const toast = useToast()
-  const { data: tokens = [], isLoading } = usePortalTokens(companyId)
-  const { unreadByToken, lastByToken } = usePortalInbox(companyId)
-  const deactivate = useDeactivatePortalToken(companyId)
+  const { data: clients = [], isLoading } = usePortalAccessClients(companyId)
+  const revoke = useRevokePortalAccess(companyId)
 
   const [filter, setFilter] = useState<FilterKey>('active')
-  const [sortBy, setSortBy] = useState<SortKey>('activity')
+  const [sortBy, setSortBy] = useState<SortKey>('recent')
   const [expandedId, setExpandedId] = useState<string | null>(null)
-
-  const totalUnread = useMemo(
-    () => Object.values(unreadByToken).reduce((s, v) => s + v, 0),
-    [unreadByToken],
-  )
+  const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null)
 
   const displayed = useMemo(() => {
-    let list = [...tokens]
-    if (filter === 'active') list = list.filter((t) => t.active)
-    else if (filter === 'inactive') list = list.filter((t) => !t.active)
+    let list = [...clients]
+    if (filter === 'active') list = list.filter((c) => ACTIVE_STATUSES.has(c.projectStatus))
+    else if (filter === 'inactive') list = list.filter((c) => !ACTIVE_STATUSES.has(c.projectStatus))
 
-    if (sortBy === 'unread') {
-      list.sort((a, b) => (unreadByToken[b.id] ?? 0) - (unreadByToken[a.id] ?? 0))
-    } else if (sortBy === 'client') {
-      list.sort((a, b) => a.client_name.localeCompare(b.client_name, 'pl'))
-    } else if (sortBy === 'estimate') {
-      list.sort((a, b) => a.estimate_number.localeCompare(b.estimate_number))
+    if (sortBy === 'client') {
+      list.sort((a, b) => (a.fullName ?? a.email).localeCompare(b.fullName ?? b.email, 'pl'))
+    } else if (sortBy === 'project') {
+      list.sort((a, b) => a.projectName.localeCompare(b.projectName, 'pl'))
     } else {
-      list.sort((a, b) => {
-        const aDate = lastByToken[a.id]?.created_at ?? a.expires_at ?? ''
-        const bDate = lastByToken[b.id]?.created_at ?? b.expires_at ?? ''
-        return new Date(bDate).getTime() - new Date(aDate).getTime()
-      })
+      list.sort((a, b) => new Date(b.grantedAt).getTime() - new Date(a.grantedAt).getTime())
     }
     return list
-  }, [tokens, filter, sortBy, unreadByToken, lastByToken])
+  }, [clients, filter, sortBy])
 
   if (isLoading) return <Spinner />
-
-  const origin = getAppOrigin()
 
   return (
     <div className="portal-page">
       <PageHeader
-        title={`Portale klientów${totalUnread > 0 ? ` · ${totalUnread} nowych` : ''}`}
-        subtitle="Zarządzaj linkami portali, śledź akceptacje i wiadomości od klientów."
+        title="Portale klientów"
+        subtitle="Klienci z aktywnym dostępem do portalu projektu. Zarządzaj zaproszeniami w widoku Projekt → Portal klienta."
       />
 
       {/* Filter + sort bar */}
@@ -79,10 +71,10 @@ export function PortalInboxPage() {
               {FILTER_LABELS[f]}
               <span className="proj-filter-pill__count">
                 {f === 'active'
-                  ? tokens.filter((t) => t.active).length
+                  ? clients.filter((c) => ACTIVE_STATUSES.has(c.projectStatus)).length
                   : f === 'inactive'
-                    ? tokens.filter((t) => !t.active).length
-                    : tokens.length}
+                    ? clients.filter((c) => !ACTIVE_STATUSES.has(c.projectStatus)).length
+                    : clients.length}
               </span>
             </button>
           ))}
@@ -96,97 +88,67 @@ export function PortalInboxPage() {
             className="chat-project-select"
             style={{ width: 'auto' }}
           >
-            <option value="activity">Ostatnia aktywność</option>
-            <option value="unread">Nieprzeczytane</option>
+            <option value="recent">Ostatnio dodani</option>
             <option value="client">Klient A–Z</option>
-            <option value="estimate">Numer kosztorysu</option>
+            <option value="project">Projekt A–Z</option>
           </select>
         </div>
       </div>
 
       {displayed.length === 0 ? (
         <div className="proj-list" style={{ padding: '40px 20px', textAlign: 'center', color: '#8A8F98' }}>
-          <MessageSquare size={36} style={{ margin: '0 auto 14px', opacity: 0.35, display: 'block' }} />
+          <Users size={36} style={{ margin: '0 auto 14px', opacity: 0.35, display: 'block' }} />
           <p style={{ fontSize: 15, fontWeight: 500, color: '#A7ABB3', margin: '0 0 6px' }}>
-            {filter === 'active' ? 'Brak aktywnych linków portalu' : 'Brak linków portalu'}
+            {filter === 'active' ? 'Brak klientów z aktywnym dostępem' : 'Brak klientów w portalu'}
           </p>
-          <p style={{ fontSize: 13, margin: 0 }}>Generuj nowe linki w widoku Wyceny → Portal klienta.</p>
+          <p style={{ fontSize: 13, margin: 0 }}>Zapraszaj klientów w widoku Projekt → Portal klienta.</p>
         </div>
       ) : (
         <div className="proj-list">
           {displayed.map((item) => {
-            const fullUrl = `${origin}${item.url}`
-            const unread = unreadByToken[item.id] ?? 0
-            const last = lastByToken[item.id]
-            const expiresLabel = item.expires_at
-              ? new Date(item.expires_at).toLocaleDateString('pl-PL')
-              : '—'
-            const lastTimeLabel = last?.created_at
-              ? new Date(last.created_at).toLocaleString('pl-PL', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })
-              : null
             const isOpen = expandedId === item.id
+            const isActive = ACTIVE_STATUSES.has(item.projectStatus)
+            const grantedLabel = new Date(item.grantedAt).toLocaleDateString('pl-PL')
+            const isConfirming = confirmRevokeId === item.id
 
             return (
               <div key={item.id} className={`proj-row${isOpen ? ' proj-row--open' : ''}`}>
                 <div
                   className="proj-row__header"
-                  onClick={() => setExpandedId(isOpen ? null : item.id)}
+                  onClick={() => {
+                    setExpandedId(isOpen ? null : item.id)
+                    if (isOpen) setConfirmRevokeId(null)
+                  }}
                 >
-                  {/* Unread badge */}
+                  {/* Avatar placeholder */}
                   <div style={{ flexShrink: 0 }}>
-                    {unread > 0 ? (
-                      <span style={{
-                        background: 'var(--color-brand)',
-                        color: '#fff', fontWeight: 700, fontSize: 11,
-                        borderRadius: 20, minWidth: 22, height: 22,
-                        display: 'inline-flex', alignItems: 'center',
-                        justifyContent: 'center', padding: '0 5px',
-                      }}>
-                        {unread > 99 ? '99+' : unread}
-                      </span>
-                    ) : (
-                      <span style={{
-                        width: 22, height: 22, borderRadius: 20,
-                        background: 'var(--color-border-light, #3A3D42)',
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <MessageSquare size={12} color="#9ca3af" />
-                      </span>
-                    )}
+                    <span style={{
+                      width: 32, height: 32, borderRadius: 20,
+                      background: 'var(--color-border-light, #3A3D42)',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 600, color: '#9ca3af',
+                    }}>
+                      {(item.fullName ?? item.email).charAt(0).toUpperCase()}
+                    </span>
                   </div>
 
                   {/* Info */}
                   <div className="proj-row__info">
-                    <span className="proj-row__name">{item.client_name}</span>
+                    <span className="proj-row__name">{item.fullName ?? item.email}</span>
                     <div className="proj-row__meta">
-                      <span className="proj-row__number">{item.estimate_number}</span>
-                      {item.estimate_name ? (
-                        <span className="proj-row__client">{item.estimate_name}</span>
-                      ) : null}
-                      {last && (
-                        <span style={{ fontSize: 12, color: '#8A8F98' }}>
-                          {last.sender === 'client' ? '← ' : '→ '}
-                          <span style={{
-                            maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap', display: 'inline-block', verticalAlign: 'middle',
-                          }}>
-                            {last.content.replace(/\[img:data:image\/[^\]]{0,20}[^\]]*\]/g, '[zdjęcie]')}
-                          </span>
-                          {lastTimeLabel ? ` · ${lastTimeLabel}` : ''}
-                        </span>
+                      {item.fullName && (
+                        <span className="proj-row__client">{item.email}</span>
                       )}
+                      <span className="proj-row__number">{item.projectNumber}</span>
+                      <span className="proj-row__client">{item.projectName}</span>
+                      <span style={{ fontSize: 12, color: '#8A8F98' }}>zaproszony {grantedLabel}</span>
                     </div>
                   </div>
 
                   {/* Right: status + chevron */}
                   <div className="proj-row__right">
-                    <span className={`proj-status ${item.active ? 'proj-status--active' : 'proj-status--cancelled'}`}>
-                      {item.active ? 'aktywny' : 'wyłączony'}
+                    <span className={`proj-status ${isActive ? 'proj-status--active' : 'proj-status--cancelled'}`}>
+                      {PROJECT_STATUS_LABEL[item.projectStatus] ?? item.projectStatus}
                     </span>
                     <span
                       className="proj-row__chevron"
@@ -201,51 +163,63 @@ export function PortalInboxPage() {
                   <div className="proj-row__detail">
                     <div style={{ fontSize: 13, color: '#D0D4DA', marginBottom: 14, display: 'grid', gap: 6 }}>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <span style={{ color: '#A7ABB3', minWidth: 70 }}>Link:</span>
-                        <a
-                          href={fullUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ color: 'var(--color-brand)', wordBreak: 'break-all', flex: 1 }}
-                        >
-                          {fullUrl}
-                        </a>
+                        <span style={{ color: '#A7ABB3', minWidth: 70 }}>Email:</span>
+                        <span>{item.email}</span>
+                      </div>
+                      {item.phone && (
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <span style={{ color: '#A7ABB3', minWidth: 70 }}>Telefon:</span>
+                          <span>{item.phone}</span>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <span style={{ color: '#A7ABB3', minWidth: 70 }}>Projekt:</span>
+                        <span>{item.projectNumber} — {item.projectName}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <span style={{ color: '#A7ABB3', minWidth: 70 }}>Wygasa:</span>
-                        <span>{expiresLabel}</span>
+                        <span style={{ color: '#A7ABB3', minWidth: 70 }}>Dodano:</span>
+                        <span>{grantedLabel}</span>
                       </div>
-                      {!last && (
-                        <div style={{ color: '#8A8F98', fontSize: 12 }}>Brak wiadomości w tym portalu.</div>
-                      )}
                     </div>
+
                     <div className="proj-row__actions" style={{ gap: 8 }}>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        icon={<Copy size={13} />}
-                        onClick={async (e) => {
-                          e.stopPropagation()
-                          await navigator.clipboard?.writeText(fullUrl)
-                          toast.info('Skopiowano link portalu')
-                        }}
-                      >
-                        Kopiuj link
-                      </Button>
-                      <a href={fullUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="secondary" size="sm" icon={<ExternalLink size={13} />}>
-                          Otwórz
-                        </Button>
-                      </a>
-                      {item.active && (
+                      {!isConfirming ? (
                         <Button
                           variant="ghost"
                           size="sm"
-                          disabled={deactivate.isPending && deactivate.variables === item.id}
-                          onClick={(e) => { e.stopPropagation(); deactivate.mutate(item.id) }}
+                          onClick={(e) => { e.stopPropagation(); setConfirmRevokeId(item.id) }}
                         >
-                          Dezaktywuj
+                          Cofnij dostęp
                         </Button>
+                      ) : (
+                        <>
+                          <span style={{ fontSize: 13, color: '#A7ABB3', alignSelf: 'center' }}>
+                            Na pewno cofnąć dostęp?
+                          </span>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            disabled={revoke.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              revoke.mutate(item.id, {
+                                onSuccess: () => {
+                                  setExpandedId(null)
+                                  setConfirmRevokeId(null)
+                                },
+                              })
+                            }}
+                          >
+                            Tak, cofnij
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); setConfirmRevokeId(null) }}
+                          >
+                            Anuluj
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>

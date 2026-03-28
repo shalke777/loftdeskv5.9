@@ -6,7 +6,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useEstimates } from '@/features/estimates/hooks/useEstimates'
 import { useInvoices } from '@/features/invoices/hooks/useInvoices'
 import { useProjects } from '@/features/projects/hooks/useProjects'
-import { usePortalTokens } from '@/features/portal/hooks/usePortalData'
+import { usePortalAccessClients } from '@/features/portal/hooks/usePortalData'
 
 export function WorkspaceReadinessCard() {
   const { user } = useAuth()
@@ -16,8 +16,8 @@ export function WorkspaceReadinessCard() {
   const { data: estimates, isLoading: estimatesLoading } = useEstimates()
   const { data: invoices, isLoading: invoicesLoading } = useInvoices()
   const { data: projects, isLoading: projectsLoading } = useProjects()
-  // usePortalTokens receives companyId explicitly; '' is safe -- query is disabled when falsy
-  const { data: portalTokens, isLoading: portalLoading } = usePortalTokens(user?.companyId ?? '')
+  // usePortalAccessClients receives companyId explicitly; '' is safe -- query is disabled when falsy
+  const { data: portalClients, isLoading: portalLoading } = usePortalAccessClients(user?.companyId ?? '')
 
   if (!user) return null
 
@@ -34,8 +34,8 @@ export function WorkspaceReadinessCard() {
     // team / invitations are from Supabase via useSettings -- already scoped to companyId
     membersCount: isLoading ? 2 : team.length,
     pendingInvitations: isLoading ? 0 : invitations.filter((item: any) => item.status === 'pending').length,
-    // count only active portal tokens so expired/deactivated ones do not inflate the score
-    portalLinks: isLoading ? 1 : (portalTokens ?? []).filter((t) => t.active).length,
+    // count portal clients — all project_client_access records = active invited portals
+    portalLinks: isLoading ? 1 : (portalClients ?? []).length,
     estimatesCount: isLoading ? 1 : (estimates ?? []).length,
     invoicesCount: isLoading ? 1 : (invoices ?? []).length,
     projectsCount: isLoading ? 1 : (projects ?? []).length,
