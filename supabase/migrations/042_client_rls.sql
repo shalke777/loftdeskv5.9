@@ -20,13 +20,26 @@ STABLE
 SET search_path = public
 AS $$
   SELECT COALESCE(
-    -- najpierw sprawdź czy to client_account
-    (SELECT 'client' FROM public.client_accounts
-     WHERE auth_user_id = auth.uid() LIMIT 1),
-    -- jeśli nie — sprawdź company_members
-    (SELECT role FROM public.company_members
-     WHERE user_id = auth.uid() LIMIT 1),
-    -- fallback
+    -- Operator takes precedence if in company_members AND
+    -- there is no client_accounts entry for a DIFFERENT company.
+    -- (Operator who tested own portal → same company_id in both → stays operator)
+    (SELECT cm.role
+     FROM   public.company_members cm
+     WHERE  cm.user_id = auth.uid()
+     AND    NOT EXISTS (
+       SELECT 1
+       FROM   public.client_accounts ca
+       WHERE  ca.auth_user_id = auth.uid()
+       AND    ca.company_id != cm.company_id
+     )
+     LIMIT 1),
+    -- Falls through to client only if above is NULL:
+    -- no company_members, OR client_accounts has a different company (ghost bootstrap)
+    (SELECT 'client'
+     FROM   public.client_accounts
+     WHERE  auth_user_id = auth.uid()
+     LIMIT 1),
+    -- Final fallback
     'anonymous'
   )
 $$;
