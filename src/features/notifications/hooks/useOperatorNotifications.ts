@@ -4,6 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { operatorNotificationsApi } from '@/features/notifications/api/operator-notifications.api'
+import { supabase, isDemoMode } from '@/shared/lib/supabase'
 
 export const operatorNotificationKeys = {
   all:         ['operator-notifications']        as const,
@@ -39,5 +40,23 @@ export function useMarkAllOperatorNotificationsRead() {
       void queryClient.invalidateQueries({ queryKey: operatorNotificationKeys.all })
       void queryClient.invalidateQueries({ queryKey: operatorNotificationKeys.unreadCount })
     },
+  })
+}
+
+/** Suma nieprzeczytanych wiadomości w wątkach chatu (unread_count_operator) */
+export function useUnreadChatCount() {
+  return useQuery<number>({
+    queryKey: ['chat-unread-count'],
+    queryFn: async () => {
+      if (!supabase || isDemoMode) return 0
+      const { data, error } = await supabase
+        .from('project_threads')
+        .select('unread_count_operator')
+        .gt('unread_count_operator', 0)
+      if (error) throw error
+      return (data ?? []).reduce((s, t: any) => s + (t.unread_count_operator ?? 0), 0)
+    },
+    staleTime: 10_000,
+    refetchInterval: 30_000,
   })
 }

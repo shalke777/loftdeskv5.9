@@ -25,6 +25,7 @@ import {
   useOperatorNotifications,
   useOperatorUnreadCount,
   useMarkAllOperatorNotificationsRead,
+  useUnreadChatCount,
 } from '@/features/notifications/hooks/useOperatorNotifications'
 import { useEffect, useRef, useState } from 'react'
 import { LegalAcceptanceGate } from '@/features/legal/components/LegalAcceptanceGate'
@@ -76,6 +77,7 @@ export function AuthLayout() {
   const canUseKsef = useFeatureAccess('ksef')
   const { data: notifications = [] } = useOperatorNotifications()
   const { data: unreadCount = 0 } = useOperatorUnreadCount()
+  const { data: chatUnreadCount = 0 } = useUnreadChatCount()
   const markAllReadMutation = useMarkAllOperatorNotificationsRead()
   function markAllRead() { markAllReadMutation.mutate() }
   const [showNotifications, setShowNotifications] = useState(false)
@@ -131,7 +133,16 @@ export function AuthLayout() {
 			return (
 			  <Link key={item.to} to={item.to} className={active ? 'sidebar__link sidebar__link--active' : 'sidebar__link'}>
 				<Icon size={18} />
-				<span>{item.label}</span>
+				{item.to === '/chat' && chatUnreadCount > 0 ? (
+				  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+					{item.label}
+					<span style={{ background: '#EF6B6B', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 20, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
+					  {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+					</span>
+				  </span>
+				) : (
+				  <span>{item.label}</span>
+				)}
 			  </Link>
 			)
 		  })}
@@ -182,7 +193,7 @@ export function AuthLayout() {
                 <div style={{
                   position: 'absolute', top: '100%', right: 0, zIndex: 999,
                   background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.32)', width: 340, maxHeight: 400, overflow: 'auto',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.32)', width: 340, maxWidth: 'calc(100vw - 16px)', maxHeight: 400, overflow: 'auto',
                 }}>
                   <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-light)', fontWeight: 600, fontSize: 14 }}>
                     Powiadomienia
