@@ -10,6 +10,17 @@ A task is DONE only when ALL applicable gates pass.
 - [ ] No unrelated files changed
 - [ ] Report delivered in standard format
 
+## Non-trivial task gates (MEDIUM+ risk OR 3+ steps)
+- [ ] Plan written to `tasks/todo.md` BEFORE implementation
+- [ ] Plan confirmed sound before proceeding
+- [ ] Subagents used for research/exploration where applicable
+- [ ] Behavioral proof provided (log, smoke, or before/after)
+- [ ] "Would an engineer approve this?" answered yes
+
+## After user correction
+- [ ] `tasks/lessons.md` updated with: mistake, root cause, early signal, rule
+- [ ] Lessons re-read at start of next session
+
 ## Type-specific gates
 
 ### bugfix

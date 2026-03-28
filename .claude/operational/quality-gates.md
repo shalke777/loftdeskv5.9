@@ -45,8 +45,21 @@ Verify only expected files changed. Flag unexpected changes.
 ## Execution order
 1. tsc → 2. build → 3. git state → 4. lint (if exists) → 5. migration safety (if applicable) → 6. diff review (if high risk)
 
+## Gate 7: Behavioral proof (non-trivial tasks)
+Before marking done, show at least one of:
+- Specific log output confirming the fix worked
+- Smoke test scenario with expected + actual result
+- Before/after comparison of the relevant behavior
+- Screenshot or error-free run of the affected flow
+
+Asking yourself: **"Would an engineer approve this?"**
+If the answer is "maybe" — it is not done yet.
+
+For trivial (LOW risk, single-file) fixes: Gate 7 is optional but recommended.
+
 ## On failure
 - Gate 1-2 failure: MUST fix. Do not skip.
 - Gate 3 failure: commit or clean. Do not skip.
 - Gate 4 failure: fix errors, warnings acceptable.
 - Gate 5-6 failure: flag in report, may need human decision.
+- Gate 7 failure: not done — provide proof or explicitly note what still needs verification.

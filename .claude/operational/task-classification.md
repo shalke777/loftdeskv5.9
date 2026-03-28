@@ -50,9 +50,46 @@ Orchestrator MUST classify every incoming task before routing.
 | release / deploy | release-environment-agent |
 | tiers / access | tier-access-architect |
 
+## Trivial vs non-trivial (plan threshold)
+
+| Condition | Classification |
+|-----------|----------------|
+| LOW risk + single-file + obvious fix | **trivial** — proceed directly |
+| MEDIUM+ risk OR 3+ steps OR cross-module | **non-trivial** — plan required |
+| Any architectural decision | **non-trivial** — plan required |
+| Migration + frontend + RLS combined | **non-trivial** — plan required |
+
+For **non-trivial** tasks, orchestrator MUST:
+1. Write plan to `tasks/todo.md` before any code
+2. Use subagents for research and exploration
+3. Re-plan on failure (never push through failures)
+
+## When subagent is required
+- Research / exploration of unknown code area → subagent
+- Complex parallel analysis (e.g. RLS + frontend + migration simultaneously) → subagents
+- Final QA validation → qa-scenario-agent
+- Risk assessment for HIGH/CRITICAL → code-guardian
+
+## When Code Guardian is mandatory
+- RISK = HIGH or CRITICAL
+- Migration that changes or drops data
+- RLS policy change that widens access
+- Any change to auth flow
+
+## When Flow Architect is mandatory
+- Feature that changes how modules connect
+- New one-click or multi-step flow
+- Changes to sacred flow: estimate → contract → invoice → KSeF → project → portal
+
+## When QA Scenario Agent is mandatory
+- Before marking any non-trivial task done
+- After any change to client portal access or role visibility
+- After any RLS or migration change
+
 ## Classification output
 After classification, orchestrator states:
 ```
 TYPE: bugfix | RISK: MEDIUM | SCOPE: single-module | AREA: portal
+PLAN REQUIRED: yes (non-trivial)
 ```
 Then proceeds to routing.

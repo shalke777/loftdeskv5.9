@@ -61,3 +61,11 @@ Every modal must:
 - be mobile-safe
 - preserve downstream data flow
 - be consistent with the modal system
+
+## Operational workflow layer
+This constitution defines product truth and boundaries.
+The operational layer (orchestrator, routing, quality gates) is subordinate to this constitution.
+Operational workflow is plan-first and verification-first:
+- non-trivial tasks require a written plan before implementation
+- no task is done without proof it works
+- lessons from mistakes are captured and enforced

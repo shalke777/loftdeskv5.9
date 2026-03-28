@@ -1,4 +1,5 @@
-import { BookText, Camera, FileText, FolderKanban, MessageSquareText, Receipt, TrendingUp, Users } from 'lucide-react'
+import { useState } from 'react'
+import { BookText, Camera, FileText, FolderKanban, MessageSquareText, Receipt, TrendingUp, Users, Wallet } from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
@@ -11,14 +12,15 @@ import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 
 const MOBILE_TILES = [
-  { label: 'Kontrahenci',    sub: 'Klienci i kontrahenci',      icon: Users,               href: '/clients'   },
-  { label: 'Wyceny',         sub: 'Oferty i kosztorysy',      icon: FileText,            href: '/estimates' },
-  { label: 'Umowy',          sub: 'Podpisane zlecenia',        icon: BookText,            href: '/contracts' },
-  { label: 'Faktury',        sub: 'Rozliczenia i KSeF',        icon: Receipt,             href: '/invoices'  },
-  { label: 'Projekty',       sub: 'Realizacje i dokumenty',   icon: FolderKanban,        href: '/projects'  },
-  { label: 'Portal klienta', sub: 'Widok i komunikacja klienta', icon: MessageSquareText,   href: '/chat'      },
-  { label: 'AI Analiza',     sub: 'Wybierz typ analizy',      icon: Camera,              href: '/ai'              },
-  { label: 'AI Projekt',      sub: 'PDF → zakres i wycena',    icon: FileText,            href: '/project-analysis' },
+  { label: 'Kontrahenci', sub: 'Klienci i kontrahenci',          icon: Users,            href: '/clients'          },
+  { label: 'Wyceny',      sub: 'Oferty i kosztorysy',            icon: FileText,         href: '/estimates'        },
+  { label: 'Umowy',       sub: 'Podpisane zlecenia',             icon: BookText,         href: '/contracts'        },
+  { label: 'Faktury',     sub: 'Rozliczenia i KSeF',             icon: Receipt,          href: '/invoices'         },
+  { label: 'Projekty',    sub: 'Realizacje i dokumenty',         icon: FolderKanban,     href: '/projects'         },
+  { label: 'Chat',        sub: 'Wiadomości i portal klienta',    icon: MessageSquareText, href: '/chat'             },
+  { label: 'Koszty',      sub: 'Wydatki i faktury kosztowe',     icon: Wallet,           href: '/expenses'         },
+  { label: 'AI Analiza',  sub: 'Wybierz typ analizy',            icon: Camera,           href: '/ai'               },
+  { label: 'AI Projekt',  sub: 'PDF → zakres i wycena',          icon: FileText,         href: '/project-analysis' },
 ] as const
 
 const quickActions = [
@@ -35,6 +37,7 @@ export function DashboardPage() {
   const companyId = useCompanyId()
   const canUsePortal = useFeatureAccess('portal')
   const { data, isLoading, isError, refetch } = useDashboardStats()
+  const [statsOpen, setStatsOpen] = useState(false)
 
   if (isLoading) return <Spinner />
   if (isError || !data) return <QueryError onRetry={() => refetch()} />
@@ -52,8 +55,16 @@ export function DashboardPage() {
     <div>
       <PageHeader title={data.companyName} />
 
-      {/* ── KPI — widoczne wszędzie, priorytet dnia ────────────────────── */}
-      <div className="stats-grid" style={{ marginBottom: 18 }}>
+      {/* ── KPI — zwijalne na mobile, zawsze widoczne na desktop ──────── */}
+      <button
+        type="button"
+        className="kpi-toggle"
+        onClick={() => setStatsOpen((v) => !v)}
+        aria-expanded={statsOpen}
+      >
+        {statsOpen ? '▲ Ukryj statystyki' : '▼ Pokaż statystyki'}
+      </button>
+      <div className={`stats-grid${statsOpen ? '' : ' kpi-grid--hidden'}`} style={{ marginBottom: 18 }}>
         {stats.map((stat) => (
           <Card key={stat.label} className={`kpi-card${stat.alert ? ' kpi-card--alert' : ''}`}>
             <div className="field__label">{stat.label}</div>

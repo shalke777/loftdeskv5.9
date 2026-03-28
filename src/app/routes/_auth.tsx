@@ -48,12 +48,16 @@ const mainNavItems: MainNavItem[] = [
 ]
 
 const mobileNav: MainNavItem[] = [
-  { to: '/dashboard', label: 'Tablica', icon: LayoutDashboard },
-  { to: '/projects',  label: 'Projekty', icon: FolderKanban },
-  { to: '/chat',      label: 'Chat',     icon: MessageSquare },
-  { to: '/expenses',  label: 'Koszty',   icon: Wallet },
-  { to: '/invoices',  label: 'Faktura',  icon: Receipt },
-  { to: '/settings',  label: 'Ustawienia', icon: Settings },
+  { to: '/dashboard',  label: 'Tablica',     icon: LayoutDashboard },
+  { to: '/projects',   label: 'Projekty',    icon: FolderKanban },
+  { to: '/chat',       label: 'Chat',        icon: MessageSquare },
+  { to: '/expenses',   label: 'Koszty',      icon: Wallet },
+  { to: '/invoices',   label: 'Faktura',     icon: Receipt },
+  { to: '/clients',    label: 'Kontrahenci', icon: Users },
+  { to: '/estimates',  label: 'Wyceny',      icon: Calculator },
+  { to: '/contracts',  label: 'Umowy',       icon: FileText },
+  { to: '/settings',   label: 'Ustawienia',  icon: Settings },
+  { to: '/ksef',       label: 'KSeF',        icon: Shield, feature: 'ksef' },
 ]
 
 function isActive(pathname: string, item: MainNavItem) {

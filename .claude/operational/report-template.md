@@ -51,3 +51,5 @@ TYPE: ... | RISK: ... | SCOPE: ... | AREA: ...
 - Quality gates section shows actual command output status
 - Risks section is never "brak" — even low-risk tasks have something to watch
 - For multi-task sprints: one report per task OR one combined report with numbered tasks
+- If user corrections were made: section 10 must state whether `tasks/lessons.md` was updated
+- For non-trivial tasks: section 10 must include behavioral proof (log, smoke, or before/after)

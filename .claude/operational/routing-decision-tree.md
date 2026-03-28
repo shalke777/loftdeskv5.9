@@ -96,3 +96,33 @@ When user sends multiple tasks in one request:
 4. Execute sequentially (one task at a time)
 5. Quality-gates after each task
 6. Single combined report at end
+
+## Research and exploration rule
+Research, codebase exploration, and reading unfamiliar modules ALWAYS go to subagents.
+Orchestrator does NOT explore — it directs and merges.
+Feature agents do NOT lead tasks without orchestrator.
+
+## Per-area practical routing
+
+### 1. Document extraction / AI / OCR
+Non-trivial: write `tasks/todo.md` first.
+Chain: orchestrator → ai-extraction-agent → code-guardian (if Netlify/env/token change) → qa-scenario-agent
+If provider/env/log issue: → release-environment-agent
+
+### 2. Portal klienta / dokumenty / access / RLS
+Non-trivial: write `tasks/todo.md` first.
+Chain: orchestrator → client-portal-communication-agent → supabase-rls-agent → flow-architect → qa-scenario-agent
+If migration: → code-guardian before merge
+
+### 3. Chat / mobile UX / navigation
+Non-trivial if cross-module: write `tasks/todo.md` first.
+Chain: orchestrator → navigation-information-architecture-agent (or ui-mobile-ux-agent) → modal-system-agent (if modal) → flow-architect → qa-scenario-agent
+
+### 4. KSeF / faktury / compliance
+NON-TRIVIAL always. Write `tasks/todo.md` first.
+Chain: orchestrator → invoices-ksef-agent → code-guardian → release-environment-agent → qa-scenario-agent
+Human decision required before any KSeF logic change.
+
+### 5. Projekty / operator ↔ klient flow
+Non-trivial if cross-role: write `tasks/todo.md` first.
+Chain: orchestrator → projects-agent → flow-architect → supabase-rls-agent (if access scope) → qa-scenario-agent

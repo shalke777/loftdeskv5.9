@@ -26,6 +26,15 @@ RISKS:
 - [risk 2]
 ```
 
+## Plan state in handoff (non-trivial tasks)
+When handing off a non-trivial task, orchestrator also includes:
+```
+PLAN STATE:
+- todo.md written: yes / no
+- plan confirmed: yes / no / re-planned (N times)
+- lessons.md updated: yes / no / not applicable
+```
+
 ## Orchestrator responsibilities after handoff
 
 1. Collect all subagent returns
