@@ -22,6 +22,8 @@ import {
 } from '@/features/client-portal/hooks/useClientPortal'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Badge } from '@/shared/ui/Badge/Badge'
+import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
+import { buildEstimatePreview, buildInvoicePreview, buildContractPreview } from '@/services/pdf/documentPreview'
 import type { ClientEstimate, ClientInvoice, ClientContract, ClientApproval, ClientMessage, ClientPhotoDoc, ClientProjectDocument } from '@/features/client-portal/api/client-portal.api'
 
 // ── Status labels ─────────────────────────────────────────────────────────────
@@ -185,9 +187,70 @@ function DocumentsTab({ projectId }: { projectId: string }) {
 
   const loading = loadingEst || loadingInv || loadingCon || loadingPh || loadingPD
 
+  const [preview, setPreview] = useState<{ html: string; title: string } | null>(null)
+
+  function openEstimatePreview(est: ClientEstimate) {
+    const items = ((est as any).items ?? []).map((it: any) => ({
+      id: it.id ?? '',
+      cost_estimate_id: est.id,
+      name: it.name ?? '',
+      description: it.description ?? '',
+      unit: it.unit ?? 'szt',
+      quantity: Number(it.quantity ?? 1),
+      unit_price: Number(it.unit_price ?? 0),
+      vat_rate: Number(it.vat_rate ?? 23),
+      sort_order: it.sort_order ?? 0,
+      group: undefined,
+    }))
+    const html = buildEstimatePreview(
+      { ...est, company_id: '', client_id: '', project_id: projectId, items } as any,
+    )
+    setPreview({ html, title: `${est.number} · Wycena` })
+  }
+
+  function openInvoicePreview(inv: ClientInvoice) {
+    const items = ((inv as any).items ?? []).map((it: any) => ({
+      id: it.id ?? '',
+      invoice_id: inv.id,
+      description: it.description ?? '',
+      unit: it.unit ?? 'usł',
+      quantity: Number(it.quantity ?? 1),
+      unit_price: Number(it.unit_price ?? 0),
+      vat_rate: Number(it.vat_rate ?? 23),
+      sort_order: it.sort_order ?? 0,
+      tranche_label: it.tranche_label ?? '',
+    }))
+    const totalNet = Math.round(items.reduce((s: number, it: any) => s + it.quantity * it.unit_price, 0) * 100) / 100
+    const totalGross = Math.round(items.reduce((s: number, it: any) => s + it.quantity * it.unit_price * (1 + it.vat_rate / 100), 0) * 100) / 100
+    const html = buildInvoicePreview({
+      ...inv,
+      company_id: '',
+      client_id: '',
+      project_id: projectId,
+      invoice_type: (inv as any).invoice_type ?? 'standard',
+      sale_date: (inv as any).sale_date ?? null,
+      issue_place: (inv as any).issue_place ?? null,
+      payment_method: (inv as any).payment_method ?? 'transfer',
+      bank_account: (inv as any).bank_account ?? null,
+      advance_total: (inv as any).advance_total ?? null,
+      ksef_status: (inv as any).ksef_status ?? 'ksef_pending',
+      ksef_ref: (inv as any).ksef_ref ?? null,
+      total_net: totalNet,
+      total_gross: totalGross,
+      items,
+    } as any)
+    setPreview({ html, title: `${inv.number} · Faktura` })
+  }
+
+  function openContractPreview(c: ClientContract) {
+    const html = buildContractPreview(c as any)
+    setPreview({ html, title: `${c.number} · Umowa` })
+  }
+
   if (loading) return <div className="client-tab-loading">Ładowanie dokumentów...</div>
 
   return (
+    <>
     <div className="client-docs">
       {/* Wyceny */}
       <section className="client-docs__section client-docs__section--estimate">
@@ -209,6 +272,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
                     {e.total_gross?.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })}
                   </span>
                   <Badge variant="default">{ESTIMATE_STATUS[e.status] ?? e.status}</Badge>
+                  <button type="button" className="client-docs__preview-btn" onClick={() => openEstimatePreview(e)}>Podgląd</button>
                 </div>
               </li>
             ))}
@@ -231,7 +295,10 @@ function DocumentsTab({ projectId }: { projectId: string }) {
                   <span className="client-docs__row-number">{c.number}</span>
                   <span className="client-docs__row-name">{c.name}</span>
                 </div>
-                <Badge variant="default">{CONTRACT_STATUS[c.status] ?? c.status}</Badge>
+                <div className="client-docs__row-right">
+                  <Badge variant="default">{CONTRACT_STATUS[c.status] ?? c.status}</Badge>
+                  <button type="button" className="client-docs__preview-btn" onClick={() => openContractPreview(c)}>Podgląd</button>
+                </div>
               </li>
             ))}
           </ul>
@@ -260,6 +327,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
                   <Badge variant={inv.status === 'paid' ? 'success' : inv.status === 'overdue' ? 'danger' : 'default'}>
                     {INVOICE_STATUS[inv.status] ?? inv.status}
                   </Badge>
+                  <button type="button" className="client-docs__preview-btn" onClick={() => openInvoicePreview(inv)}>Podgląd</button>
                 </div>
               </li>
             ))}
@@ -329,6 +397,16 @@ function DocumentsTab({ projectId }: { projectId: string }) {
         )}
       </section>
     </div>
+
+      {preview && (
+        <DocumentPreviewModal
+          open
+          onClose={() => setPreview(null)}
+          title={preview.title}
+          tabs={[{ key: 'pdf', label: 'Podgłąd', type: 'html', content: preview.html }]}
+        />
+      )}
+    </>
   )
 }
 

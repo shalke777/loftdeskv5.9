@@ -21,6 +21,28 @@ export interface ClientProject {
   created_at: string
 }
 
+export interface ClientEstimateItem {
+  id: string
+  name: string
+  description?: string | null
+  unit: string
+  quantity: number
+  unit_price: number
+  vat_rate: number
+  sort_order?: number
+}
+
+export interface ClientInvoiceItem {
+  id: string
+  description: string
+  unit: string
+  quantity: number
+  unit_price: number
+  vat_rate: number
+  sort_order?: number
+  tranche_label?: string | null
+}
+
 export interface ClientEstimate {
   id: string
   number: string
@@ -31,16 +53,26 @@ export interface ClientEstimate {
   notes?: string | null
   valid_until?: string | null
   created_at: string
+  items?: ClientEstimateItem[]
 }
 
 export interface ClientInvoice {
   id: string
   number: string
+  invoice_type?: string | null
   status: string
   issue_date: string
+  sale_date?: string | null
+  issue_place?: string | null
   due_date?: string | null
+  payment_method?: string | null
+  bank_account?: string | null
+  advance_total?: number | null
+  ksef_status?: string | null
+  ksef_ref?: string | null
   total_gross?: number | null
   notes?: string | null
+  items?: ClientInvoiceItem[]
 }
 
 export interface ClientContract {
@@ -48,9 +80,18 @@ export interface ClientContract {
   number: string
   name?: string | null
   status: string
+  sign_date?: string | null
   start_date?: string | null
   end_date?: string | null
+  location?: string | null
+  value?: number | null
   value_net?: number | null
+  vat_rate?: number | null
+  template_name?: string | null
+  template_content?: string | null
+  tranches?: unknown
+  custom_paragraphs?: unknown
+  notes?: string | null
   created_at: string
 }
 
@@ -130,7 +171,7 @@ export const clientPortalApi = {
     // Brak: internal_cost, margin — RLS + selektywny select
     const { data, error } = await supabase
       .from('cost_estimates')
-      .select('id, number, name, status, total_net, total_gross, notes, valid_until, created_at')
+      .select('id, number, name, status, total_net, total_gross, notes, valid_until, created_at, items:cost_estimate_items(id, name, description, unit, quantity, unit_price, vat_rate, sort_order)')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
     if (error) throw error
@@ -141,11 +182,20 @@ export const clientPortalApi = {
     if (!supabase) return []
     const { data, error } = await supabase
       .from('invoices')
-      .select('id, number, status, issue_date, due_date, notes')
+      .select('id, number, invoice_type, status, issue_date, sale_date, issue_place, due_date, payment_method, bank_account, advance_total, ksef_status, ksef_ref, notes, items:invoice_items(id, description, unit, quantity, unit_price, vat_rate, sort_order, tranche_label)')
       .eq('project_id', projectId)
       .order('issue_date', { ascending: false })
     if (error) throw error
-    return (data ?? []) as ClientInvoice[]
+    // total_gross is not stored on invoices — compute from items
+    return (data ?? []).map((row: any) => {
+      const items = (row.items ?? []) as ClientInvoiceItem[]
+      const gross = Math.round(
+        items.reduce((s, it) =>
+          s + Number(it.quantity) * Number(it.unit_price) * (1 + Number(it.vat_rate ?? 23) / 100), 0
+        ) * 100,
+      ) / 100
+      return { ...row, total_gross: gross > 0 ? gross : null } as ClientInvoice
+    })
   },
 
   async listContracts(projectId: string): Promise<ClientContract[]> {
@@ -153,7 +203,7 @@ export const clientPortalApi = {
     // Primary path: contracts with direct project_id (most reliable, matches operator view)
     const { data: byProject, error: err1 } = await supabase
       .from('contracts')
-      .select('id, number, status, start_date, end_date, value_net, created_at')
+      .select('id, number, status, sign_date, start_date, end_date, location, value, value_net, vat_rate, template_name, template_content, tranches, custom_paragraphs, notes, created_at')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
     if (err1) throw err1
@@ -166,7 +216,7 @@ export const clientPortalApi = {
       const estimateIds = estimates.map((e) => e.id)
       const { data: viaEst } = await supabase
         .from('contracts')
-        .select('id, number, status, start_date, end_date, value_net, created_at')
+        .select('id, number, status, sign_date, start_date, end_date, location, value, value_net, vat_rate, template_name, template_content, tranches, custom_paragraphs, notes, created_at')
         .in('estimate_id', estimateIds)
         .order('created_at', { ascending: false })
       const merged = [

@@ -3852,6 +3852,23 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   font-weight: 600;
   color: var(--color-text-primary);
 }
+.client-docs__preview-btn {
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-light);
+  background: transparent;
+  color: var(--color-brand, #77BA8A);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.client-docs__preview-btn:hover {
+  background: var(--color-brand, #77BA8A);
+  color: #fff;
+  border-color: var(--color-brand, #77BA8A);
+}
 .client-docs__error {
   font-size: 13px;
   color: var(--color-danger, #EF6B6B);
