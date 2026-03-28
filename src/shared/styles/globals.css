@@ -2568,6 +2568,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .exp-parse-status { font-size: 12px; padding: 7px 10px; }
   .exp-ocr-badge { padding: 8px 10px; }
   .exp-label-auto { display: none; }
+  /* Doc preview: constrain iframe so modal body doesn't double-scroll */
+  .doc-preview__frame { min-height: 0; height: calc(100dvh - 200px); }
 }
 
 /* ====================================================================
@@ -3110,8 +3112,11 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .toast-viewport { right: 8px; left: 8px; }
   .toast { min-width: 0; width: 100%; }
 
-  /* Doc preview: smaller frame */
-  .doc-preview__frame { min-height: 50vh; }
+  /* Doc preview: fill available height, no nested scroll.
+     Header ~50px + padding 24px + tab-row ~44px + gap 14px + padding 24px = ~156px chrome.
+     The iframe gets a precise calculated height so modal__body never overflows → single scroll. */
+  .doc-preview { display: flex; flex-direction: column; gap: 10px; }
+  .doc-preview__frame { min-height: 0; height: calc(100dvh - 180px); }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
