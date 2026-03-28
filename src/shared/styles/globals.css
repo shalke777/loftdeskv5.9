@@ -2568,8 +2568,12 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .exp-parse-status { font-size: 12px; padding: 7px 10px; }
   .exp-ocr-badge { padding: 8px 10px; }
   .exp-label-auto { display: none; }
-  /* Doc preview: constrain iframe so modal body doesn't double-scroll */
-  .doc-preview__frame { min-height: 0; height: calc(100dvh - 200px); }
+  /* Doc preview: disable outer scroll on modal body, give iframe full flex fill.
+     :has() supported Chrome 105+, Safari 15.4+, Firefox 121+. */
+  .modal__body:has(.doc-preview) { overflow: hidden; display: flex; flex-direction: column; min-height: 0; padding-bottom: 0; }
+  .doc-preview { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .doc-preview__tabs { flex-wrap: nowrap; overflow-x: auto; flex-shrink: 0; scrollbar-width: none; }
+  .doc-preview__frame { flex: 1; min-height: 0; height: 100%; }
 }
 
 /* ====================================================================
@@ -3112,11 +3116,11 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .toast-viewport { right: 8px; left: 8px; }
   .toast { min-width: 0; width: 100%; }
 
-  /* Doc preview: fill available height, no nested scroll.
-     Header ~50px + padding 24px + tab-row ~44px + gap 14px + padding 24px = ~156px chrome.
-     The iframe gets a precise calculated height so modal__body never overflows → single scroll. */
-  .doc-preview { display: flex; flex-direction: column; gap: 10px; }
-  .doc-preview__frame { min-height: 0; height: calc(100dvh - 180px); }
+  /* Doc preview: same flex-fill approach as ≤768px, more aggressive at phone size */
+  .modal__body:has(.doc-preview) { overflow: hidden; display: flex; flex-direction: column; min-height: 0; padding-bottom: 0; }
+  .doc-preview { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  .doc-preview__tabs { flex-wrap: nowrap; overflow-x: auto; flex-shrink: 0; scrollbar-width: none; gap: 6px; }
+  .doc-preview__frame { flex: 1; min-height: 0; height: 100%; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
