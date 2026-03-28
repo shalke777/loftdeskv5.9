@@ -39,14 +39,14 @@ export interface ClientInvoice {
   status: string
   issue_date: string
   due_date?: string | null
-  total_gross: number
+  total_gross?: number | null
   notes?: string | null
 }
 
 export interface ClientContract {
   id: string
   number: string
-  name: string
+  name?: string | null
   status: string
   start_date?: string | null
   end_date?: string | null
@@ -141,7 +141,7 @@ export const clientPortalApi = {
     if (!supabase) return []
     const { data, error } = await supabase
       .from('invoices')
-      .select('id, number, status, issue_date, due_date, total_gross, notes')
+      .select('id, number, status, issue_date, due_date, notes')
       .eq('project_id', projectId)
       .order('issue_date', { ascending: false })
     if (error) throw error
@@ -153,7 +153,7 @@ export const clientPortalApi = {
     // Primary path: contracts with direct project_id (most reliable, matches operator view)
     const { data: byProject, error: err1 } = await supabase
       .from('contracts')
-      .select('id, number, name, status, start_date, end_date, value_net, created_at')
+      .select('id, number, status, start_date, end_date, value_net, created_at')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
     if (err1) throw err1
@@ -166,7 +166,7 @@ export const clientPortalApi = {
       const estimateIds = estimates.map((e) => e.id)
       const { data: viaEst } = await supabase
         .from('contracts')
-        .select('id, number, name, status, start_date, end_date, value_net, created_at')
+        .select('id, number, status, start_date, end_date, value_net, created_at')
         .in('estimate_id', estimateIds)
         .order('created_at', { ascending: false })
       const merged = [
