@@ -31,8 +31,6 @@ import type { ProjectThread } from '@/features/portal/model/project-portal.types
 
 // ─── Typy ────────────────────────────────────────────────────────────────────
 
-type FilterMode = 'all' | 'unread' | 'client' | 'internal'
-
 // ─── NewThreadModal ───────────────────────────────────────────────────────────
 
 interface NewThreadModalProps {
@@ -177,8 +175,6 @@ function NewThreadModal({ onClose, onCreated }: NewThreadModalProps) {
 export function ChatPage() {
   const companyId   = useCompanyId()
   const [activeId, setActiveId]           = useState<string | null>(null)
-  const [filter, setFilter]               = useState<FilterMode>('all')
-  const [projectFilter, setProjectFilter] = useState<string>('all')
   const [search, setSearch]               = useState('')
   const [showNewThread, setShowNewThread] = useState(false)
   const [mobileView, setMobileView]       = useState<'list' | 'thread'>('list')
@@ -199,20 +195,8 @@ export function ChatPage() {
     refetchInterval: 30_000,
   })
 
-  const projects = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const t of allThreads ?? []) {
-      if (t.project_id && t.project_name) map.set(t.project_id, t.project_name)
-    }
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }))
-  }, [allThreads])
-
   const threads = useMemo<InboxThread[]>(() => {
     let list = allThreads ?? []
-    if (filter === 'unread')   list = list.filter(t => t.unread_count_operator > 0)
-    if (filter === 'client')   list = list.filter(t => t.visibility === 'client_shared')
-    if (filter === 'internal') list = list.filter(t => t.visibility === 'internal')
-    if (projectFilter !== 'all') list = list.filter(t => t.project_id === projectFilter)
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       list = list.filter(t =>
@@ -222,7 +206,7 @@ export function ChatPage() {
       )
     }
     return list
-  }, [allThreads, filter, projectFilter, search])
+  }, [allThreads, search])
 
   const activeThread = useMemo(
     () => (allThreads ?? []).find(t => t.id === activeId) ?? null,
@@ -273,56 +257,6 @@ export function ChatPage() {
               />
             </div>
 
-            <div className="chat-sidebar__filters">
-              <button
-                className={`chat-filter-btn${filter === 'all' ? ' chat-filter-btn--active' : ''}`}
-                onClick={() => setFilter('all')}
-              >
-                Wszystkie
-              </button>
-              <button
-                className={`chat-filter-btn${filter === 'unread' ? ' chat-filter-btn--active' : ''}`}
-                onClick={() => setFilter('unread')}
-              >
-                Nieprzeczytane
-                {totalUnread > 0 && (
-                  <span style={{ marginLeft: 4, fontWeight: 700 }}>({totalUnread})</span>
-                )}
-              </button>
-              <button
-                className={`chat-filter-btn${filter === 'client' ? ' chat-filter-btn--active chat-filter-btn--client' : ''}`}
-                onClick={() => setFilter('client')}
-              >
-                Klient
-              </button>
-              <button
-                className={`chat-filter-btn${filter === 'internal' ? ' chat-filter-btn--active chat-filter-btn--internal' : ''}`}
-                onClick={() => setFilter('internal')}
-              >
-                Wewnętrzne
-              </button>
-            </div>
-
-            {projects.length > 1 && (
-              <div className="chat-sidebar__project-chips">
-                <button
-                  className={`chat-project-chip${projectFilter === 'all' ? ' chat-project-chip--active' : ''}`}
-                  onClick={() => setProjectFilter('all')}
-                >
-                  Wszystkie projekty
-                </button>
-                {projects.map(p => (
-                  <button
-                    key={p.id}
-                    className={`chat-project-chip${projectFilter === p.id ? ' chat-project-chip--active' : ''}`}
-                    onClick={() => setProjectFilter(projectFilter === p.id ? 'all' : p.id)}
-                  >
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            )}
-
             {isLoading ? (
               <div style={{ padding: 32, textAlign: 'center', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spinner /></div>
             ) : (
@@ -330,15 +264,7 @@ export function ChatPage() {
                 threads={threads}
                 activeId={activeId}
                 showProject={true}
-                emptyLabel={
-                  filter === 'unread'
-                    ? 'Brak nieprzeczytanych wiadomości'
-                    : filter === 'client'
-                    ? 'Brak wątków z klientami'
-                    : filter === 'internal'
-                    ? 'Brak wątków wewnętrznych'
-                    : 'Brak wątków'
-                }
+                emptyLabel="Brak wątków"
                 onSelect={(t) => { setActiveId(t.id); setMobileView('thread') }}
                 onNewThread={() => setShowNewThread(true)}
               />

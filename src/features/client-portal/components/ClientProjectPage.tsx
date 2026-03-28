@@ -190,7 +190,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
   return (
     <div className="client-docs">
       {/* Wyceny */}
-      <section className="client-docs__section">
+      <section className="client-docs__section client-docs__section--estimate">
         <h4 className="client-docs__section-title">Wyceny</h4>
         {errorEst ? (
           <p className="client-docs__error">Nie udało się załadować wycen.</p>
@@ -217,7 +217,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
       </section>
 
       {/* Umowy */}
-      <section className="client-docs__section">
+      <section className="client-docs__section client-docs__section--contract">
         <h4 className="client-docs__section-title">Umowy</h4>
         {errorCon ? (
           <p className="client-docs__error">Nie udało się załadować umów.</p>
@@ -239,7 +239,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
       </section>
 
       {/* Faktury */}
-      <section className="client-docs__section">
+      <section className="client-docs__section client-docs__section--invoice">
         <h4 className="client-docs__section-title">Faktury</h4>
         {errorInv ? (
           <p className="client-docs__error">Nie udało się załadować faktur.</p>
