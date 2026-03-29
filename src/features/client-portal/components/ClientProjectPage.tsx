@@ -29,26 +29,40 @@ import type { ClientEstimate, ClientInvoice, ClientContract, ClientDocSignatureR
 // ── Status labels ─────────────────────────────────────────────────────────────
 
 const ESTIMATE_STATUS: Record<string, string> = {
-  draft:    'Szkic',
-  sent:     'Wysłana',
+  draft:    'W przygotowaniu',
+  sent:     'Wysłana do akceptacji',
   accepted: 'Zaakceptowana',
   rejected: 'Odrzucona',
 }
 
+const ESTIMATE_BADGE: Record<string, 'default' | 'success' | 'warning' | 'danger'> = {
+  draft:    'default',
+  sent:     'warning',
+  accepted: 'success',
+  rejected: 'danger',
+}
+
 const INVOICE_STATUS: Record<string, string> = {
-  draft:    'Szkic',
+  draft:    'W przygotowaniu',
   issued:   'Wystawiona',
-  sent:     'Wysłana',
+  sent:     'Do zapłaty',
   paid:     'Opłacona',
   overdue:  'Przeterminowana',
   cancelled:'Anulowana',
 }
 
 const CONTRACT_STATUS: Record<string, string> = {
-  draft:     'Szkic',
-  sent:      'Wysłana',
+  draft:     'W przygotowaniu',
+  sent:      'Do podpisania',
   signed:    'Podpisana',
   cancelled: 'Anulowana',
+}
+
+const CONTRACT_BADGE: Record<string, 'default' | 'success' | 'warning' | 'danger'> = {
+  draft:     'default',
+  sent:      'warning',
+  signed:    'success',
+  cancelled: 'danger',
 }
 
 const APPROVAL_STATUS_LABEL: Record<string, string> = {
@@ -271,7 +285,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
                   <span className="client-docs__row-amount">
                     {e.total_gross?.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })}
                   </span>
-                  <Badge variant="default">{ESTIMATE_STATUS[e.status] ?? e.status}</Badge>
+                  <Badge variant={ESTIMATE_BADGE[e.status] ?? 'default'}>{ESTIMATE_STATUS[e.status] ?? e.status}</Badge>
                   <button type="button" className="client-docs__preview-btn" onClick={() => openEstimatePreview(e)}>Podgląd</button>
                 </div>
               </li>
@@ -296,7 +310,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
                   <span className="client-docs__row-name">{c.name}</span>
                 </div>
                 <div className="client-docs__row-right">
-                  <Badge variant="default">{CONTRACT_STATUS[c.status] ?? c.status}</Badge>
+                  <Badge variant={CONTRACT_BADGE[c.status] ?? 'default'}>{CONTRACT_STATUS[c.status] ?? c.status}</Badge>
                   <button type="button" className="client-docs__preview-btn" onClick={() => openContractPreview(c)}>Podgląd</button>
                 </div>
               </li>
@@ -324,7 +338,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
                   <span className="client-docs__row-amount">
                     {inv.total_gross?.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })}
                   </span>
-                  <Badge variant={inv.status === 'paid' ? 'success' : inv.status === 'overdue' ? 'danger' : 'default'}>
+                  <Badge variant={inv.status === 'paid' ? 'success' : inv.status === 'overdue' ? 'danger' : inv.status === 'sent' ? 'warning' : 'default'}>
                     {INVOICE_STATUS[inv.status] ?? inv.status}
                   </Badge>
                   <button type="button" className="client-docs__preview-btn" onClick={() => openInvoicePreview(inv)}>Podgląd</button>
@@ -403,7 +417,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
           open
           onClose={() => setPreview(null)}
           title={preview.title}
-          tabs={[{ key: 'pdf', label: 'Podgłąd', type: 'html', content: preview.html }]}
+          tabs={[{ key: 'pdf', label: 'Podgląd', type: 'html', content: preview.html }]}
         />
       )}
     </>
