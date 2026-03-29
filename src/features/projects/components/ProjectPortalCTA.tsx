@@ -18,6 +18,7 @@ import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { AccessNotice } from '@/shared/ui/AccessNotice/AccessNotice'
 import { supabase, isDemoMode } from '@/shared/lib/supabase'
 import { netlifyFn } from '@/shared/lib/functions'
+import { threadsApi } from '@/features/projects/api/threads.api'
 import { useProjectPortalAccess, useRevokeProjectAccess } from '@/features/portal/hooks/usePortalData'
 
 const INVITE_ENDPOINT = netlifyFn('client-identify')
@@ -51,6 +52,7 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
   const [emailSent,     setEmailSent]    = useState(false)
   const [copied,        setCopied]       = useState(false)
   const [revokeConfirm, setRevokeConfirm] = useState(false)
+  const [openingChat,   setOpeningChat]  = useState(false)
 
   const didPrefill = useRef(false)
 
@@ -153,6 +155,22 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
     await revoke.mutateAsync(access.id)
     setRevokeConfirm(false)
     setMode('view')
+  }
+
+  async function handleOpenMessages() {
+    if (!access) return
+    setOpeningChat(true)
+    try {
+      const thread = await threadsApi.getOrCreateClientSharedThread(
+        projectId,
+        access.clientAccountId,
+        `Wiadomości z ${access.fullName || access.email}`,
+        companyId ?? undefined,
+      )
+      void navigate({ to: '/chat', search: { threadId: thread.id } })
+    } finally {
+      setOpeningChat(false)
+    }
   }
 
   // ── Plan gate ─────────────────────────────────────────────────────────────
@@ -286,7 +304,8 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
             /* 🟢 Klient ma aktywny dostęp — główne CTA: Otwórz wiadomości */
             <>
               <Button
-                onClick={() => void navigate({ to: '/portal-inbox' })}
+                loading={openingChat}
+                onClick={() => void handleOpenMessages()}
               >
                 Otwórz wiadomości
               </Button>
