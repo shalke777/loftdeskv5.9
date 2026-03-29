@@ -32,9 +32,11 @@ interface Props {
   onSubmit: (input: { name: string; client_id: string | null; project_id?: string | null; notes?: string; company_id: string; status?: Estimate['status']; valid_until?: string | null; items?: EstimateItem[] }) => void | Promise<void>
   companyId: string
   initialEstimate?: Estimate | null
+  initialProjectId?: string | null
+  initialClientId?: string | null
 }
 
-export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
+export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProjectId, initialClientId }: Props) {
   const isNew = !initialEstimate
   const saveGuard = useRef(false)
 
@@ -88,8 +90,8 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate }: Props) {
         setItems((draft.items as EstimateItem[]) ?? [])
         setIsAiDraft(draft._source === 'ai_analysis' || draft._source === 'project_analysis')
       } else {
-        setName(''); setNotes(''); setClientId(''); setStatus('draft')
-        setValidUntil(todayStr()); setProjectId(''); setItems([])
+        setName(''); setNotes(''); setClientId(initialClientId || ''); setStatus('draft')
+        setValidUntil(todayStr()); setProjectId(initialProjectId || ''); setItems([])
         setIsAiDraft(false)
       }
     }

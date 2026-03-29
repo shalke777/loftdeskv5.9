@@ -3,6 +3,7 @@ import type { Project } from '@/entities/project/model'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
+import { Modal } from '@/shared/ui/Modal/Modal'
 import { ProjectTimeline } from '@/features/projects/components/ProjectTimeline'
 import { ProjectNotes } from '@/features/projects/components/ProjectNotes'
 import { ProjectDocuments } from '@/features/projects/components/ProjectDocuments'
@@ -14,6 +15,9 @@ import { ProjectApprovalsTab } from '@/features/expenses/components/ProjectAppro
 import { ProjectTimelineTab }  from '@/features/projects/components/ProjectTimelineTab'
 import { ProjectPhotosSection } from '@/features/projects/components/ProjectPhotosSection'
 import { useClients } from '@/features/clients/hooks/useClients'
+import { useCreateEstimate } from '@/features/estimates/hooks/useEstimates'
+import { EstimateForm, clearDraft as clearEstimateDraft } from '@/features/estimates/components/EstimateModal/EstimateForm'
+import { useCompanyId } from '@/features/auth/hooks/useAuth'
 
 const STATUS_LABEL: Record<Project['status'], string> = {
   offer:     'Oferta',
@@ -26,8 +30,11 @@ type MainTab = 'overview' | 'threads' | 'expenses' | 'approvals' | 'photos' | 't
 
 export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: Project | null; onEdit?: (project: Project) => void; onCreateInvoice?: (id: string) => void }) {
   const [tab, setTab] = useState<MainTab>('overview')
+  const [showEstimateModal, setShowEstimateModal] = useState(false)
   const { data: clients } = useClients()
   const linkedClient = clients?.find(c => c.id === project?.client_id)
+  const companyId = useCompanyId()
+  const createEstimate = useCreateEstimate()
 
   if (!project) return null
 
@@ -50,6 +57,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
         </div>
         <div className="actions-row">
           {onEdit ? <Button variant="secondary" onClick={() => onEdit(project)}>Edytuj projekt</Button> : null}
+          <Button variant="secondary" onClick={() => setShowEstimateModal(true)}>Nowa wycena</Button>
           {onCreateInvoice ? <Button onClick={() => onCreateInvoice(project.id)}>Generuj fakturę</Button> : null}
         </div>
 
@@ -94,8 +102,31 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
             clientName={linkedClient?.name ?? null}
           />
         <ProjectNotes project={project} />
-        <ProjectDocuments project={project} />
+        <ProjectDocuments project={project} onCreateEstimate={() => setShowEstimateModal(true)} />
       </div>
+
+      {/* Nowa wycena — pre-seeded z projektu */}
+      <Modal
+        open={showEstimateModal}
+        onClose={() => { clearEstimateDraft(); setShowEstimateModal(false) }}
+        title="Nowa wycena"
+      >
+        <EstimateForm
+          companyId={companyId}
+          initialEstimate={null}
+          initialProjectId={project.id}
+          initialClientId={project.client_id ?? null}
+          onSubmit={async (input) => {
+            await createEstimate.mutateAsync({
+              ...input,
+              status: input.status ?? 'draft',
+              valid_until: input.valid_until ?? null,
+            })
+            clearEstimateDraft()
+            setShowEstimateModal(false)
+          }}
+        />
+      </Modal>
     </div>
   )
 }

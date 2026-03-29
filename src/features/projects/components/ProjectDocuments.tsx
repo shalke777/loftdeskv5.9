@@ -41,7 +41,7 @@ const DELETABLE_TYPES = new Set(['estimate', 'contract', 'invoice'])
 
 const APPROVAL_TYPES = new Set(['estimate', 'contract'])
 
-export function ProjectDocuments({ project }: { project: Project }) {
+export function ProjectDocuments({ project, onCreateEstimate }: { project: Project; onCreateEstimate?: () => void }) {
   const qc = useQueryClient()
   const companyId = useCompanyId()
   const { data: docs = [], isLoading } = useProjectDocuments(project.id)
@@ -178,9 +178,25 @@ export function ProjectDocuments({ project }: { project: Project }) {
       {isLoading ? (
         <p style={{ color: '#A7ABB3', fontSize: 14 }}>Ładowanie dokumentów…</p>
       ) : docs.length === 0 ? (
-        <p style={{ color: '#A7ABB3', fontSize: 14 }}>
-          Brak dokumentów. Dokumenty są przypisywane automatycznie po powiązaniu z projektem.
-        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '8px 0' }}>
+          <p style={{ color: '#A7ABB3', fontSize: 14, margin: 0 }}>
+            Brak dokumentów. Zacznij od wyceny — po akceptacji naturalnie przejdziesz do umowy i faktury.
+          </p>
+          {onCreateEstimate && (
+            <button
+              type="button"
+              onClick={onCreateEstimate}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', borderRadius: 8, border: '1px dashed var(--color-brand, #77BA8A)',
+                background: 'rgba(119,186,138,0.07)', color: 'var(--color-brand, #77BA8A)',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer', width: 'fit-content',
+              }}
+            >
+              + Nowa wycena
+            </button>
+          )}
+        </div>
       ) : (
         Object.entries(grouped).map(([type, typeDocs]) => (
           <div key={type} style={{ marginBottom: 16 }}>
