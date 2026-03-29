@@ -102,7 +102,7 @@ const STATUS_LABEL: Record<string, string> = {
 // ── Stage progress rail (shared for operator + client) ───────────────────────
 
 const STAGE_STEPS = [
-  { key: 'offer',  label: 'Oferta',      order: 0 },
+  { key: 'offer',  label: 'Wycena',       order: 0 },
   { key: 'active', label: 'W realizacji', order: 1 },
   { key: 'done',   label: 'Zakończony',  order: 2 },
 ]
@@ -168,7 +168,7 @@ type TabKey = 'documents' | 'chat' | 'approvals' | 'timeline'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'documents',  label: 'Dokumenty' },
-  { key: 'chat',       label: 'Chat' },
+  { key: 'chat',       label: 'Wiadomości' },
   { key: 'approvals',  label: 'Do zatwierdzenia' },
   { key: 'timeline',   label: 'Oś czasu' },
 ]
