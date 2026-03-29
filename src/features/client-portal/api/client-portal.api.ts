@@ -355,7 +355,7 @@ export const clientPortalApi = {
       .from('project_photo_docs')
       .select('id, title, category, image_url, note, taken_at')
       .eq('project_id', projectId)
-      .order('taken_at', { ascending: false })
+      .order('taken_at', { ascending: false, nullsFirst: false })
     if (error) throw error
     return (data ?? []) as ClientPhotoDoc[]
   },
@@ -387,10 +387,21 @@ export const clientPortalApi = {
       console.warn('[clientPortal] listDocSignatureRequests failed:', error.message)
       return []
     }
-    return ((data ?? []) as any[]).map(row => ({
+    const rows = ((data ?? []) as any[]).map(row => ({
       ...row,
       participants: row.signature_participants ?? [],
     })) as ClientDocSignatureRequest[]
+
+    // Deduplicate: if the same document was sent to approval more than once (without
+    // cancelling the previous request), only show the most-recent request.
+    // The query orders by created_at DESC, so the first occurrence per key is the latest.
+    const seen = new Set<string>()
+    return rows.filter(r => {
+      const key = `${r.document_type}:${r.document_id}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
   },
 
   /** Client approves / rejects / questions a document */

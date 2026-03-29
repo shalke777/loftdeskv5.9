@@ -63,6 +63,7 @@ function formatRelative(iso: string): string {
 
 export function ClientNotificationBell() {
   const [open, setOpen] = useState(false)
+  const [panelPos, setPanelPos] = useState<{ top: number; right: number } | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
@@ -103,7 +104,17 @@ export function ClientNotificationBell() {
       {/* Przycisk dzwonka */}
       <button
         className="cn-bell"
-        onClick={() => setOpen(v => !v)}
+        onClick={() => {
+          const next = !open
+          setOpen(next)
+          if (next && panelRef.current) {
+            const rect = panelRef.current.getBoundingClientRect()
+            setPanelPos({
+              top: rect.bottom + 8,
+              right: Math.max(8, window.innerWidth - rect.right),
+            })
+          }
+        }}
         title="Powiadomienia"
         aria-label={`Powiadomienia${unread > 0 ? ` (${unread} nieprzeczytanych)` : ''}`}
       >
@@ -115,9 +126,12 @@ export function ClientNotificationBell() {
         )}
       </button>
 
-      {/* Panel dropdown */}
-      {open && (
-        <div className="cn-panel">
+      {/* Panel dropdown — position:fixed escapes overflow:hidden on .client-shell grid container */}
+      {open && panelPos && (
+        <div
+          className="cn-panel"
+          style={{ position: 'fixed', top: panelPos.top, right: panelPos.right, zIndex: 9999 }}
+        >
           <div className="cn-panel__header">
             <span className="cn-panel__title">Powiadomienia</span>
             {unread > 0 && (

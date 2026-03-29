@@ -180,6 +180,7 @@ const PHOTO_CATEGORY_LABEL: Record<string, string> = {
   before:   'Stan przed',
   after:    'Stan po',
   issue:    'Problem',
+  handover: 'Odbiór',
   delivery: 'Dostawa',
   other:    'Inne',
 }

@@ -12,6 +12,7 @@ import { ProjectThreadsTab }   from '@/features/projects/components/ProjectThrea
 import { ProjectExpensesTab }  from '@/features/expenses/components/ProjectExpensesTab'
 import { ProjectApprovalsTab } from '@/features/expenses/components/ProjectApprovalsTab'
 import { ProjectTimelineTab }  from '@/features/projects/components/ProjectTimelineTab'
+import { ProjectPhotosSection } from '@/features/projects/components/ProjectPhotosSection'
 import { useClients } from '@/features/clients/hooks/useClients'
 
 const STATUS_LABEL: Record<Project['status'], string> = {
@@ -88,6 +89,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
           />
         <ProjectNotes project={project} />
         <ProjectDocuments project={project} />
+        <ProjectPhotosSection project={project} />
       </div>
     </div>
   )

@@ -95,6 +95,16 @@ export const documentationApi = {
     if (error) throw error
     return { ok: true }
   },
+  async listByProject(projectId: string): Promise<PhotoDocumentation[]> {
+    if (!supabase) return []
+    const { data, error } = await supabase
+      .from('project_photo_docs')
+      .select('id, company_id, client_id, project_id, title, category, taken_at, image_url, note')
+      .eq('project_id', projectId)
+      .order('taken_at', { ascending: false, nullsFirst: false })
+    if (error) throw error
+    return (data ?? []) as PhotoDocumentation[]
+  },
   async createStandard(input: Omit<TechnicalStandard, 'id'>) {
     return documentationStore.standards.create(input)
   },

@@ -3245,6 +3245,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   display: flex;
   align-items: center;
   gap: 8px;
+  overflow: visible;
 }
 .client-topbar__email {
   font-size: 13px;
@@ -3309,6 +3310,9 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 /* ── Notification bell ──────────────────────────────────────────────────────── */
 .cn-bell-wrap {
   position: relative;
+  /* overflow:visible ensures the badge (-4px outside the button) is never clipped
+     by an ancestor container (iOS Safari quirk with grid + overflow:hidden) */
+  overflow: visible;
 }
 .cn-bell {
   background: rgba(255,255,255,0.06);
@@ -3321,6 +3325,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   border-radius: 6px;
   transition: background 0.15s, color 0.15s;
   position: relative;
+  overflow: visible;
 }
 .cn-bell:hover {
   background: rgba(255,255,255,0.12);
@@ -3343,20 +3348,19 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   padding: 0 4px;
   line-height: 1;
   pointer-events: none;
+  z-index: 1;
 }
 
 /* ── Notification panel ─────────────────────────────────────────────────────── */
+/* Position (fixed/absolute) and coordinates are applied via inline style in JS
+   to escape overflow:hidden on ancestor grid containers (iOS Safari compat).    */
 .cn-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
   width: min(360px, calc(100vw - 32px));
-  max-height: 420px;
+  max-height: min(420px, calc(100dvh - 80px));
   background: var(--color-surface);
   border: 1px solid var(--color-border-light);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  z-index: 100;
   display: flex;
   flex-direction: column;
   overflow: hidden;

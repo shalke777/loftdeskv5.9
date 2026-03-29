@@ -7,6 +7,7 @@ import type { ClientDecision, HandoverProtocol, PhotoDocumentation, TechnicalSta
 const documentationKeys = {
   all: ['documentation'] as const,
   overview: (companyId: string) => [...documentationKeys.all, companyId] as const,
+  projectPhotos: (projectId: string) => [...documentationKeys.all, 'project-photos', projectId] as const,
 }
 
 export function useDocumentationOverview() {
@@ -67,6 +68,15 @@ export function useUpdatePhoto() {
 export function useDeletePhoto() {
   const { toast, invalidate } = useInvalidate()
   return useMutation({ mutationFn: (id: string) => documentationApi.deletePhoto(id), onSuccess: () => { invalidate(); toast.info('Zdjęcie usunięte') } })
+}
+
+export function useProjectPhotos(projectId: string) {
+  return useQuery({
+    queryKey: documentationKeys.projectPhotos(projectId),
+    queryFn: () => documentationApi.listByProject(projectId),
+    enabled: Boolean(projectId),
+    staleTime: 30_000,
+  })
 }
 
 export function useCreateStandard() {

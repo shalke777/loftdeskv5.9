@@ -176,7 +176,7 @@ export function AuthLayout() {
             <Link to="/billing" className={user.plan === 'free' ? 'shell-pill shell-pill--upgrade' : 'shell-pill'} style={{ textDecoration: 'none', cursor: 'pointer' }}>
               {user.plan === 'free' ? '⭐ Przejdź na Business' : `Plan: ${user.plan}`}
             </Link>
-            <div ref={notifRef} style={{ position: 'relative' }}>
+            <div ref={notifRef} style={{ position: 'relative', display: 'inline-flex' }}>
               <Button variant="ghost" size="sm" onClick={() => {
                 const opening = !showNotifications
                 setShowNotifications(opening)
@@ -188,19 +188,18 @@ export function AuthLayout() {
                   })
                   markAllRead()
                 }
-              }} icon={<Bell size={18} />}>
-                {unreadCount > 0 && (
-                  <span style={{
-                    position: 'absolute', top: 2, right: 2,
-                    background: '#EF6B6B', color: '#fff', fontSize: 11, fontWeight: 700,
-                    borderRadius: '50%', minWidth: 18, height: 18,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: '0 4px', lineHeight: 1,
-                  }}>
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-              </Button>
+              }} icon={<Bell size={18} />} />
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: -4, right: -4,
+                  background: '#EF6B6B', color: '#fff', fontSize: 11, fontWeight: 700,
+                  borderRadius: '50%', minWidth: 18, height: 18,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 4px', lineHeight: 1, pointerEvents: 'none',
+                }}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
               {showNotifications && dropdownPos && (
                 <div style={{
                   position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999,
