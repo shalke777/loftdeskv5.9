@@ -486,14 +486,31 @@ function ChatTab({ projectId }: { projectId: string }) {
                   : msg.body
                 }
               </div>              {!msg.deleted_at && msg.has_attachments && msg.attachment_url && (
-                <a
-                  href={msg.attachment_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="client-chat__attachment"
-                >
-                  \ud83d\udcce {msg.attachment_name ?? 'Za\u0142\u0105cznik'}
-                </a>
+                msg.attachment_mime?.startsWith('image/') ? (
+                  <a
+                    href={msg.attachment_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="client-chat__attachment-img-link"
+                    title={msg.attachment_name ?? 'Otwórz zdjęcie'}
+                  >
+                    <img
+                      src={msg.attachment_url}
+                      alt={msg.attachment_name ?? 'Załącznik'}
+                      className="client-chat__attachment-img"
+                      loading="lazy"
+                    />
+                  </a>
+                ) : (
+                  <a
+                    href={msg.attachment_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="client-chat__attachment"
+                  >
+                    \ud83d\udcce {msg.attachment_name ?? 'Za\u0142\u0105cznik'}
+                  </a>
+                )
               )}              <div className="client-chat__msg-meta">
                 <span className="client-chat__msg-time">
                   {new Date(msg.created_at).toLocaleString('pl-PL', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}

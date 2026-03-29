@@ -13,10 +13,11 @@
 //   - Obsługa braku internetu: mutation.error → komunikat
 
 import { useRef, useState, type KeyboardEvent } from 'react'
-import { Send, Paperclip, X } from 'lucide-react'
+import { Send, Paperclip, X, Images } from 'lucide-react'
 import { useSendThreadMessage } from '@/features/projects/hooks/useSendThreadMessage'
 import { uploadProjectAsset } from '@/shared/lib/uploadProjectAsset'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
+import { useProjectPhotos } from '@/features/documentation/hooks/useDocumentation'
 import type { ProjectThread } from '@/features/portal/model/project-portal.types'
 
 interface Props {
@@ -26,14 +27,16 @@ interface Props {
 }
 
 export function MessageComposer({ thread, projectId, disabled }: Props) {
-  const [body, setBody]             = useState('')
-  const [attachment, setAttachment] = useState<{ url: string; name: string; mime: string } | null>(null)
-  const [uploading,  setUploading]  = useState(false)
-  const [uploadErr,  setUploadErr]  = useState<string | null>(null)
-  const textRef                     = useRef<HTMLTextAreaElement>(null)
-  const fileInputRef                = useRef<HTMLInputElement>(null)
-  const companyId                   = useCompanyId()
-  const send                        = useSendThreadMessage(projectId)
+  const [body, setBody]                     = useState('')
+  const [attachment, setAttachment]         = useState<{ url: string; name: string; mime: string } | null>(null)
+  const [uploading,  setUploading]          = useState(false)
+  const [uploadErr,  setUploadErr]          = useState<string | null>(null)
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false)
+  const textRef                             = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef                        = useRef<HTMLInputElement>(null)
+  const companyId                           = useCompanyId()
+  const send                                = useSendThreadMessage(projectId)
+  const { data: projectPhotos = [] }        = useProjectPhotos(projectId)
 
   const handleFileChosen = async (file: File) => {
     setUploadErr(null)
@@ -189,6 +192,17 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
         >
           <Paperclip size={15} strokeWidth={2} />
         </button>
+        {projectPhotos.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowPhotoPicker(v => !v)}
+            disabled={disabled || send.isPending}
+            className={`chat-attach-btn${showPhotoPicker ? ' chat-attach-btn--active' : ''}`}
+            title="Wybierz zdjęcie z projektu"
+          >
+            <Images size={15} strokeWidth={2} />
+          </button>
+        )}
         <button
           onClick={handleSend}
           disabled={(!body.trim() && !attachment) || disabled || send.isPending}
@@ -199,6 +213,29 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
           <Send size={16} strokeWidth={2.5} />
         </button>
       </div>
+
+      {/* Mini photo picker — zdjęcia z projektu bez re-uploadu */}
+      {showPhotoPicker && projectPhotos.length > 0 && (
+        <div className="chat-photo-picker">
+          <div className="chat-photo-picker__label">Zdjęcia projektu</div>
+          <div className="chat-photo-picker__grid">
+            {projectPhotos.filter(ph => ph.image_url).map(ph => (
+              <button
+                key={ph.id}
+                type="button"
+                className="chat-photo-picker__thumb"
+                title={ph.title}
+                onClick={() => {
+                  setAttachment({ url: ph.image_url!, name: ph.title || 'Zdjęcie', mime: 'image/jpeg' })
+                  setShowPhotoPicker(false)
+                }}
+              >
+                <img src={ph.image_url!} alt={ph.title} loading="lazy" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {uploadErr && (
         <div style={{ marginTop: 4, fontSize: 12, color: 'var(--color-error)' }}>

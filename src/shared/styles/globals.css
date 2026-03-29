@@ -1382,6 +1382,77 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   cursor: not-allowed;
 }
 
+.chat-attach-btn--active {
+  background: var(--color-brand-subtle, rgba(119,186,138,0.15));
+  color: var(--color-brand, #77BA8A);
+  border-color: var(--color-brand, #77BA8A);
+}
+
+/* ── Photo picker — wybierz zdjęcie z projektu bez re-uploadu ───── */
+.chat-photo-picker {
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  background: var(--color-surface-raised, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+.chat-photo-picker__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.chat-photo-picker__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chat-photo-picker__thumb {
+  width: 54px;
+  height: 54px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  background: var(--color-surface-soft, #f3f4f5);
+  flex-shrink: 0;
+  transition: border-color 0.12s, transform 0.1s;
+}
+.chat-photo-picker__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.chat-photo-picker__thumb:hover {
+  border-color: var(--color-brand, #77BA8A);
+  transform: scale(1.05);
+}
+
+/* ── Image attachment — inline thumbnail in chat bubble ─────────── */
+.chat-bubble__attachment-img-link {
+  display: block;
+  margin-top: 6px;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 220px;
+  cursor: zoom-in;
+}
+.chat-bubble__attachment-img {
+  width: 100%;
+  height: auto;
+  max-height: 160px;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.15s;
+}
+.chat-bubble__attachment-img-link:hover .chat-bubble__attachment-img {
+  opacity: 0.88;
+}
+
 .chat-hint {
   font-size: 11px;
   color: var(--color-text-tertiary, #787E88);
@@ -4122,6 +4193,25 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .client-chat__attachment:hover {
   background: rgba(160,170,180,0.18);
   text-decoration: underline;
+}
+.client-chat__attachment-img-link {
+  display: block;
+  margin-top: 6px;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 200px;
+  cursor: zoom-in;
+}
+.client-chat__attachment-img {
+  width: 100%;
+  height: auto;
+  max-height: 150px;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.15s;
+}
+.client-chat__attachment-img-link:hover .client-chat__attachment-img {
+  opacity: 0.88;
 }
 .client-chat__msg-deleted {
   font-style: italic;

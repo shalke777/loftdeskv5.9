@@ -104,15 +104,32 @@ function MessageBubble({ msg, onDelete, deleting }: BubbleProps) {
 
         {/* Załącznik */}
         {msg.has_attachments && msg.attachment_url && (
-          <a
-            href={msg.attachment_url}
-            target="_blank"
-            rel="noreferrer"
-            className="chat-bubble__attachment"
-            style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 12 }}
-          >
-            📎 {msg.attachment_name ?? 'Załącznik'}
-          </a>
+          msg.attachment_mime?.startsWith('image/') ? (
+            <a
+              href={msg.attachment_url}
+              target="_blank"
+              rel="noreferrer"
+              className="chat-bubble__attachment-img-link"
+              title={msg.attachment_name ?? 'Otwórz zdjęcie'}
+            >
+              <img
+                src={msg.attachment_url}
+                alt={msg.attachment_name ?? 'Załącznik'}
+                className="chat-bubble__attachment-img"
+                loading="lazy"
+              />
+            </a>
+          ) : (
+            <a
+              href={msg.attachment_url}
+              target="_blank"
+              rel="noreferrer"
+              className="chat-bubble__attachment"
+              style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 12 }}
+            >
+              📎 {msg.attachment_name ?? 'Załącznik'}
+            </a>
+          )
         )}
 
         <span className="chat-bubble__time">{formatTime(msg.created_at)}</span>
