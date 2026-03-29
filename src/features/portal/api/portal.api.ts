@@ -75,6 +75,40 @@ export const portalApi = {
       }))
   },
 
+  async getProjectAccess(projectId: string): Promise<PortalAccessClient | null> {
+    if (isDemoMode || !supabase) return null
+    const { data, error } = await supabase
+      .from('project_client_access')
+      .select(`
+        id,
+        granted_at,
+        client_accounts!inner(id, email, full_name, phone),
+        projects!inner(id, name, number, status)
+      `)
+      .eq('project_id', projectId)
+      .order('granted_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error) {
+      if (error.code === '42P01') return null
+      throw error
+    }
+    if (!data) return null
+    const row = data as any
+    return {
+      id: row.id,
+      clientAccountId: row.client_accounts.id,
+      email: row.client_accounts.email,
+      fullName: row.client_accounts.full_name ?? null,
+      phone: row.client_accounts.phone ?? null,
+      projectId: row.projects.id,
+      projectName: row.projects.name,
+      projectNumber: row.projects.number,
+      projectStatus: row.projects.status,
+      grantedAt: row.granted_at,
+    }
+  },
+
   async revokePortalAccess(accessId: string): Promise<void> {
     if (isDemoMode || !supabase) return
     const { error } = await supabase

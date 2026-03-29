@@ -12,6 +12,7 @@ import { ProjectThreadsTab }   from '@/features/projects/components/ProjectThrea
 import { ProjectExpensesTab }  from '@/features/expenses/components/ProjectExpensesTab'
 import { ProjectApprovalsTab } from '@/features/expenses/components/ProjectApprovalsTab'
 import { ProjectTimelineTab }  from '@/features/projects/components/ProjectTimelineTab'
+import { useClients } from '@/features/clients/hooks/useClients'
 
 const STATUS_LABEL: Record<Project['status'], string> = {
   offer:     'Oferta',
@@ -24,6 +25,9 @@ type MainTab = 'overview' | 'threads' | 'expenses' | 'approvals' | 'timeline'
 
 export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: Project | null; onEdit?: (project: Project) => void; onCreateInvoice?: (id: string) => void }) {
   const [tab, setTab] = useState<MainTab>('overview')
+  const { data: clients } = useClients()
+  const linkedClient = clients?.find(c => c.id === project?.client_id)
+
   if (!project) return null
 
   return (
@@ -75,7 +79,13 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
       </Card>
 
       <div style={{ display: 'grid', gap: 16 }}>
-        <ProjectPortalCTA projectId={project.id} projectName={project.name} />
+        <ProjectPortalCTA
+            projectId={project.id}
+            projectName={project.name}
+            clientId={project.client_id}
+            clientEmail={linkedClient?.email ?? null}
+            clientName={linkedClient?.name ?? null}
+          />
         <ProjectNotes project={project} />
         <ProjectDocuments project={project} />
       </div>

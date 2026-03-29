@@ -1,88 +1,94 @@
 // =============================================================================
-// ProjectPortalCTA — Operator zaprasza kontrahenta do portalu projektu
+// ProjectPortalCTA — Operator zarządza dostępem klienta do portalu projektu
 // =============================================================================
-// Phase 5: tokenless email-first invite
-//   1. Operator wpisuje email + opcjonalną nazwę kontrahenta
-//   2. Klik "Zaproś kontrahenta"
-//   3. POST /.netlify/functions/client-identify
-//      Authorization: Bearer <operator_jwt>
-//      Body: { project_id, company_id, email, full_name? }
-//   4. Backend: company_members check + project check + client_accounts upsert
-//              + project_client_access upsert + magic link
-//   5. Kontrahent dostaje email → /auth/callback?mode=client&project_id=... → /client/project/:id
-//
-// Brak tokenów URL, brak project_portal_tokens, jeden kanoniczny portal.
+// Kanoniczny flow:
+//   1. Operator widzi status: Brak dostępu | Ma dostęp (email, od kiedy)
+//   2. Brak dostępu → formularz z email pre-filled z project.client_id
+//   3. "Udostępnij projekt klientowi" → POST /.netlify/functions/client-identify
+//   4. Ma dostęp → "Wyślij ponownie dostęp" | "Cofnij dostęp"
+//   5. Cofnięcie → usuwa project_client_access → powrót do formularza
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { AccessNotice } from '@/shared/ui/AccessNotice/AccessNotice'
 import { supabase, isDemoMode } from '@/shared/lib/supabase'
-
 import { netlifyFn } from '@/shared/lib/functions'
+import { useProjectPortalAccess, useRevokeProjectAccess } from '@/features/portal/hooks/usePortalData'
 
 const INVITE_ENDPOINT = netlifyFn('client-identify')
-
-// ── localStorage invite persistence ──────────────────────────────────────────
-
-interface PersistedInvite {
-  email: string
-  status: 'sent' | 'failed'
-  timestamp: string
-  error?: string
-}
-
-function inviteKey(projectId: string) { return `portal-invite-${projectId}` }
-function loadInvite(projectId: string): PersistedInvite | null {
-  try { return JSON.parse(localStorage.getItem(inviteKey(projectId)) ?? 'null') } catch { return null }
-}
-function saveInvite(projectId: string, data: PersistedInvite) {
-  try { localStorage.setItem(inviteKey(projectId), JSON.stringify(data)) } catch {}
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface Props {
   projectId:    string
   projectName?: string
+  clientId?:    string | null
+  clientEmail?: string | null
+  clientName?:  string | null
 }
 
-export function ProjectPortalCTA({ projectId, projectName }: Props) {
-  const companyId = useCompanyId()
+type Mode = 'view' | 'invite' | 'sending' | 'sent' | 'failed'
 
-  const [email,      setEmail]      = useState('')
-  const [fullName,   setFullName]   = useState('')
-  const [status,     setStatus]     = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
-  const [errorMsg,   setErrorMsg]   = useState<string | null>(null)
-  const [magicLink,  setMagicLink]  = useState<string | null>(null)
-  const [emailSent,  setEmailSent]  = useState(false)
-  const [copied,     setCopied]     = useState(false)
-  const [lastInvite, setLastInvite] = useState<PersistedInvite | null>(() => loadInvite(projectId))
+export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) {
+  const companyId    = useCompanyId()
+  const navigate     = useNavigate()
+  const queryClient  = useQueryClient()
+  const canUsePortal = useFeatureAccess('portal')
 
+  const { data: access, isLoading } = useProjectPortalAccess(projectId)
+  const revoke = useRevokeProjectAccess(projectId)
+
+  const [mode,          setMode]         = useState<Mode>('view')
+  const [email,         setEmail]        = useState('')
+  const [fullName,      setFullName]     = useState('')
+  const [errorMsg,      setErrorMsg]     = useState<string | null>(null)
+  const [magicLink,     setMagicLink]    = useState<string | null>(null)
+  const [emailSent,     setEmailSent]    = useState(false)
+  const [copied,        setCopied]       = useState(false)
+  const [revokeConfirm, setRevokeConfirm] = useState(false)
+
+  const didPrefill = useRef(false)
+
+  // Reset on project change
   useEffect(() => {
-    setLastInvite(loadInvite(projectId))
-    setStatus('idle')
+    setMode('view')
     setEmail('')
     setFullName('')
     setErrorMsg(null)
     setMagicLink(null)
     setEmailSent(false)
     setCopied(false)
+    setRevokeConfirm(false)
+    didPrefill.current = false
   }, [projectId])
 
+  // Pre-fill email/name from linked client when no existing access
   useEffect(() => {
-    if (import.meta.env.DEV) console.info('CLIENT_PORTAL_OPEN', { projectId, projectName })
-  }, [projectId, projectName])
+    if (!isLoading && !access && !didPrefill.current && (clientEmail || clientName)) {
+      didPrefill.current = true
+      setEmail(clientEmail ?? '')
+      setFullName(clientName ?? '')
+    }
+  }, [isLoading, access, clientEmail, clientName])
 
-  const canUsePortal = useFeatureAccess('portal')
-  const navigate = useNavigate()
+  function openInviteForm(preEmail?: string, preName?: string) {
+    setEmail(preEmail ?? clientEmail ?? '')
+    setFullName(preName ?? clientName ?? '')
+    setMode('invite')
+    setErrorMsg(null)
+    setMagicLink(null)
+    setEmailSent(false)
+    setCopied(false)
+  }
 
   async function handleInvite() {
     if (!email.trim()) return
-    setStatus('sending')
+    setMode('sending')
     setErrorMsg(null)
     if (import.meta.env.DEV) console.info('CLIENT_PORTAL_INVITE_SUBMIT', { projectId, email: email.trim() })
 
@@ -118,50 +124,54 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
 
       if (!res.ok) {
         const msg = body?.error ?? 'Nie udało się wysłać zaproszenia'
-        setStatus('failed')
+        setMode('failed')
         setErrorMsg(msg)
-        const rec: PersistedInvite = { email: email.trim(), status: 'failed', timestamp: new Date().toISOString(), error: msg }
-        saveInvite(projectId, rec)
-        setLastInvite(rec)
-        if (import.meta.env.DEV) console.info('CLIENT_PORTAL_INVITE_ERROR', { projectId, error: msg })
       } else {
-        setStatus('sent')
         setMagicLink(body?.magic_link ?? null)
         setEmailSent(body?.email_sent ?? false)
-        const rec: PersistedInvite = { email: email.trim(), status: 'sent', timestamp: new Date().toISOString() }
-        saveInvite(projectId, rec)
-        setLastInvite(rec)
-        if (import.meta.env.DEV) console.info('CLIENT_PORTAL_INVITE_SUCCESS', { projectId, email: email.trim(), has_link: !!body?.magic_link })
+        setMode('sent')
+        void queryClient.invalidateQueries({ queryKey: ['portal', 'project-access', projectId] })
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Błąd połączenia'
-      setStatus('failed')
+      setMode('failed')
       setErrorMsg(msg)
-      const rec: PersistedInvite = { email: email.trim(), status: 'failed', timestamp: new Date().toISOString(), error: msg }
-      saveInvite(projectId, rec)
-      setLastInvite(rec)
     }
   }
 
-  // Plan gate — portal invite requires Pro/Business
+  async function copyLink() {
+    if (!magicLink) return
+    try {
+      await navigator.clipboard.writeText(magicLink)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch {}
+  }
+
+  async function handleRevoke() {
+    if (!access) return
+    await revoke.mutateAsync(access.id)
+    setRevokeConfirm(false)
+    setMode('view')
+  }
+
+  // ── Plan gate ─────────────────────────────────────────────────────────────
   if (!canUsePortal) {
     return (
       <AccessNotice
-        title="Portal klienta"
-        description="Zapraszanie klientów do portalu projektu jest dostępne od planu Pro lub Business."
+        title="Dostęp klienta"
+        description="Udostępnianie projektu klientowi jest dostępne od planu Pro lub Business."
         actionLabel="Zmień plan"
         onAction={() => void navigate({ to: '/billing' })}
       />
     )
   }
 
-  // Demo mode
+  // ── Demo mode ─────────────────────────────────────────────────────────────
   if (isDemoMode) {
     return (
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
-          <h3 style={{ margin: 0 }}>Portal klienta</h3>
-        </div>
+        <h3 style={{ margin: '0 0 8px' }}>Dostęp klienta</h3>
         <p style={{ fontSize: 13, color: '#D4960A', background: 'rgba(212,150,10,0.15)', border: '1px solid rgba(212,150,10,0.30)', borderRadius: 6, padding: '8px 12px', margin: 0 }}>
           Portal klienta działa tylko w trybie produkcyjnym (wymaga Supabase + Netlify).
         </p>
@@ -169,25 +179,24 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
     )
   }
 
-  // ── Success state ─────────────────────────────────────────────────────────
-  if (status === 'sent') {
-    async function copyLink() {
-      if (!magicLink) return
-      try {
-        await navigator.clipboard.writeText(magicLink)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2500)
-      } catch {
-        // fallback: select the text
-      }
-    }
-
+  // ── Loading ───────────────────────────────────────────────────────────────
+  if (isLoading) {
     return (
       <Card>
-        <h3 style={{ margin: '0 0 12px' }}>Portal klienta</h3>
+        <h3 style={{ margin: '0 0 8px' }}>Dostęp klienta</h3>
+        <p style={{ fontSize: 13, color: '#A7ABB3' }}>Sprawdzanie statusu…</p>
+      </Card>
+    )
+  }
+
+  // ── Sukces (właśnie nadano / ponownie wysłano dostęp) ─────────────────────
+  if (mode === 'sent') {
+    return (
+      <Card>
+        <h3 style={{ margin: '0 0 12px' }}>Dostęp klienta</h3>
         <div style={{ background: 'rgba(119,186,138,0.12)', border: '1px solid rgba(119,186,138,0.30)', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
           <div style={{ fontWeight: 600, color: '#77BA8A', marginBottom: 6 }}>
-            ✅ Dostęp nadany dla {email}
+            ✅ Dostęp nadany — {email}
           </div>
           {emailSent ? (
             <p style={{ fontSize: 13, color: '#77BA8A', margin: 0, lineHeight: 1.6 }}>
@@ -197,8 +206,8 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
           ) : magicLink ? (
             <>
               <p style={{ fontSize: 13, color: '#77BA8A', margin: '0 0 10px', lineHeight: 1.6 }}>
-                Skopiuj link i wyślij do klienta (email, SMS, itp.).
-                Link jest jednorazowy — po użyciu klient może logować się ponownie przez email.
+                Skopiuj link i wyślij klientowi (email, SMS, WhatsApp).
+                Link jest jednorazowy — po użyciu klient może logować się przez email.
               </p>
               <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
                 <input
@@ -216,46 +225,105 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
               </div>
             </>
           ) : (
-            <p style={{ fontSize: 13, color: '#77BA8A', margin: 0, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 13, color: '#77BA8A', margin: 0 }}>
               Klient może zalogować się przez magic link na swój email.
             </p>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={() => { setStatus('idle'); setEmail(''); setMagicLink(null); setCopied(false); setEmailSent(false) }}>
-          Wyślij kolejne zaproszenie
+        <Button variant="ghost" size="sm" onClick={() => setMode('view')}>
+          Gotowe
         </Button>
       </Card>
     )
   }
 
-  // ── Invite form ───────────────────────────────────────────────────────────
-  return (
-    <Card>
-      <div style={{ marginBottom: 12 }}>
-        <h3 style={{ margin: 0 }}>Portal klienta</h3>
-        <p style={{ fontSize: 13, color: '#A7ABB3', marginTop: 4 }}>
-          Zaproś kontrahenta emailem — otrzyma link logowania do portalu projektu
-        </p>
-      </div>
-
-      <p style={{ fontSize: 13, color: '#C0C4CC', lineHeight: 1.6, marginBottom: 16 }}>
-        Klient otrzyma dostęp do aktualizacji projektu, wiadomości, dokumentów i akceptacji kosztów.
-        Nie zobaczy kosztów wewnętrznych, marży ani notatek firmowych.
-      </p>
-
-      {/* Previous invite status */}
-      {lastInvite && status === 'idle' && (
-        <div style={{ marginBottom: 12 }}>
-          {lastInvite.status === 'sent' ? (
-            <div style={{ fontSize: 12, color: '#77BA8A', background: 'rgba(119,186,138,0.12)', border: '1px solid rgba(119,186,138,0.30)', borderRadius: 6, padding: '8px 12px' }}>
-              ✅ Poprzednio zaproszony: {lastInvite.email} — {new Date(lastInvite.timestamp).toLocaleDateString('pl-PL')}
-            </div>
+  // ── Ma dostęp ─────────────────────────────────────────────────────────────
+  if (access && mode === 'view') {
+    const since = new Date(access.grantedAt).toLocaleDateString('pl-PL')
+    return (
+      <Card>
+        <h3 style={{ margin: '0 0 12px' }}>Dostęp klienta</h3>
+        <div style={{ background: 'rgba(119,186,138,0.08)', border: '1px solid rgba(119,186,138,0.25)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
+          <div style={{ fontWeight: 600, color: '#77BA8A', fontSize: 13, marginBottom: 4 }}>
+            🔐 Ma dostęp
+          </div>
+          <div style={{ fontSize: 13, color: '#C0C4CC' }}>
+            {access.fullName ? `${access.fullName} · ` : ''}{access.email}
+          </div>
+          <div style={{ fontSize: 11, color: '#8A8F98', marginTop: 4 }}>
+            dostęp od {since}
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => openInviteForm(access.email, access.fullName ?? undefined)}
+          >
+            Wyślij ponownie dostęp
+          </Button>
+          {!revokeConfirm ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setRevokeConfirm(true)}
+            >
+              Cofnij dostęp
+            </Button>
           ) : (
-            <div style={{ fontSize: 12, color: '#EF6B6B', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 6, padding: '8px 12px' }}>
-              ⚠️ Poprzednie zaproszenie nie zostało wysłane ({lastInvite.error ?? 'błąd'})
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                style={{ color: 'var(--color-danger, #EF6B6B)' }}
+                loading={revoke.isPending}
+                onClick={() => void handleRevoke()}
+              >
+                Potwierdź cofnięcie
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setRevokeConfirm(false)}
+              >
+                Anuluj
+              </Button>
             </div>
           )}
         </div>
+      </Card>
+    )
+  }
+
+  // ── Brak dostępu / formularz zaproszenia ──────────────────────────────────
+  // mode=view (brak dostępu) | mode=invite (re-invite) | mode=sending | mode=failed
+  const isReInvite = mode === 'invite' || (mode !== 'view' && Boolean(access))
+
+  return (
+    <Card>
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ margin: 0 }}>Dostęp klienta</h3>
+        {!isReInvite && (
+          <p style={{ fontSize: 13, color: '#A7ABB3', marginTop: 4 }}>
+            Udostępnij projekt klientowi — otrzyma link logowania do portalu
+          </p>
+        )}
+      </div>
+
+      {!isReInvite && (
+        <p style={{ fontSize: 13, color: '#C0C4CC', lineHeight: 1.6, marginBottom: 16 }}>
+          Klient otrzyma dostęp do dokumentów, wiadomości, sekcji Do zatwierdzenia i osi czasu.
+          Nie zobaczy kosztów wewnętrznych, marży ani notatek firmowych.
+        </p>
+      )}
+
+      {isReInvite && (
+        <button
+          style={{ background: 'none', border: 'none', color: '#8A8F98', fontSize: 12, cursor: 'pointer', padding: '0 0 10px', textDecoration: 'underline', display: 'block' }}
+          onClick={() => setMode('view')}
+        >
+          ← Wróć
+        </button>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -264,10 +332,10 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
           onChange={e => setEmail(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && void handleInvite()}
           type="email"
-          placeholder="Email kontrahenta *"
+          placeholder="Email klienta *"
           className="input"
           style={{ fontSize: 13, padding: '8px 12px' }}
-          disabled={status === 'sending'}
+          disabled={mode === 'sending'}
         />
         <input
           value={fullName}
@@ -275,14 +343,14 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
           placeholder="Imię i nazwisko / nazwa (opcjonalnie)"
           className="input"
           style={{ fontSize: 13, padding: '8px 12px' }}
-          disabled={status === 'sending'}
+          disabled={mode === 'sending'}
         />
-        {status === 'failed' && errorMsg && (
+        {mode === 'failed' && errorMsg && (
           <div style={{ fontSize: 12, color: 'var(--color-error, #EF6B6B)', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 6, padding: '8px 12px' }}>
             ⚠️ {errorMsg}{' '}
             <button
               style={{ background: 'none', border: 'none', color: '#EF6B6B', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: 12 }}
-              onClick={() => { setStatus('idle'); setErrorMsg(null) }}
+              onClick={() => { setMode(isReInvite ? 'invite' : 'view'); setErrorMsg(null) }}
             >
               Spróbuj ponownie
             </button>
@@ -290,10 +358,10 @@ export function ProjectPortalCTA({ projectId, projectName }: Props) {
         )}
         <Button
           onClick={() => void handleInvite()}
-          disabled={!email.trim() || status === 'sending'}
-          loading={status === 'sending'}
+          disabled={!email.trim() || mode === 'sending'}
+          loading={mode === 'sending'}
         >
-          {status === 'sending' ? 'Wysyłanie…' : '📧 Zaproś kontrahenta'}
+          {mode === 'sending' ? 'Wysyłanie…' : isReInvite ? 'Wyślij ponownie dostęp' : 'Udostępnij projekt klientowi'}
         </Button>
       </div>
     </Card>

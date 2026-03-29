@@ -31,6 +31,25 @@ export function usePortalProjectSummaries(projectIds: string[]) {
   })
 }
 
+export function useProjectPortalAccess(projectId: string) {
+  return useQuery({
+    queryKey: ['portal', 'project-access', projectId],
+    queryFn: () => portalApi.getProjectAccess(projectId),
+    enabled: Boolean(projectId),
+    staleTime: 30_000,
+  })
+}
+
+export function useRevokeProjectAccess(projectId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (accessId: string) => portalApi.revokePortalAccess(accessId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal', 'project-access', projectId] })
+    },
+  })
+}
+
 // ── Legacy: estimate-level URL tokens ────────────────────────────────────────
 
 export function usePortalTokens(companyId: string) {

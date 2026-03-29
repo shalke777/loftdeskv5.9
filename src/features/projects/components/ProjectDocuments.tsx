@@ -17,6 +17,7 @@ import { useClients } from '@/features/clients/hooks/useClients'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { projectDocumentsApi } from '@/features/projects/api/projectDocuments.api'
 import { getAppOrigin } from '@/shared/lib/native'
+import { SignatureStatusBadge } from '@/features/signatures/components/SignatureStatusBadge'
 
 const TYPE_LABEL: Record<string, string> = {
   estimate: 'Wycena',
@@ -188,6 +189,12 @@ export function ProjectDocuments({ project }: { project: Project }) {
                 <span style={{ flex: 1, fontSize: 13 }} title={doc.doc_id}>
                   {docNamesLoading ? '…' : resolveDocName(doc.doc_type, doc.doc_id)}
                 </span>
+                {(doc.doc_type === 'estimate' || doc.doc_type === 'contract') && (
+                  <SignatureStatusBadge
+                    documentType={doc.doc_type as 'estimate' | 'contract'}
+                    documentId={doc.doc_id}
+                  />
+                )}
                 {doc.linked_automatically && (
                   <Badge variant="default">auto</Badge>
                 )}
