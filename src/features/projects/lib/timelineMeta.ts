@@ -98,6 +98,20 @@ const METADATA: Record<string, TimelineEventMeta> = {
     dotColor: '#52525b', bgColor: '#f4f4f5', category: 'approvals',
   },
 
+  // ── Akceptacje dokumentów ─────────────────────────────────────────────────
+  doc_approval_sent: {
+    icon: Send, label: 'Wysłano dokument do akceptacji',
+    dotColor: '#7c3aed', bgColor: '#ede9fe', category: 'approvals',
+  },
+  doc_approved: {
+    icon: CheckCircle2, label: 'Klient zaakceptował dokument',
+    dotColor: '#059669', bgColor: '#d1fae5', category: 'approvals',
+  },
+  doc_rejected: {
+    icon: XCircle, label: 'Klient odrzucił dokument',
+    dotColor: '#e11d48', bgColor: '#ffe4e6', category: 'approvals',
+  },
+
   // ── Komunikacja ──────────────────────────────────────────────────────────
   message_sent: {
     icon: MessageSquare, label: 'Wiadomość wysłana do klienta',
@@ -177,8 +191,12 @@ export function buildTimelineEventDescription(event: ProjectTimelineEvent): stri
   if (amount != null && !isNaN(Number(amount))) {
     parts.push(`${Number(amount).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} ${currency}`)
   }
+  const PROJECT_STATUS_PL: Record<string, string> = {
+    offer: 'Oferta', active: 'W realizacji', done: 'Zakończony', cancelled: 'Anulowany',
+  }
+
   if (comment)     parts.push(`Komentarz: ${comment}`)
-  if (newStat)     parts.push(`Status: ${newStat}`)
+  if (newStat)     parts.push(`Status: ${PROJECT_STATUS_PL[newStat] ?? newStat}`)
   if (docTitle)    parts.push(`Dokument: ${docTitle}`)
   if (bodyPreview) parts.push(bodyPreview.slice(0, 80))
 

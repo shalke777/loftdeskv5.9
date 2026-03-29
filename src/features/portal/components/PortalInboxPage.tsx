@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, MessageCircle, Users } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/shared/ui/Button/Button'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { usePortalAccessClients, usePortalProjectSummaries, useRevokePortalAccess } from '@/features/portal/hooks/usePortalData'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { threadsApi } from '@/features/projects/api/threads.api'
 
 type FilterKey = 'active' | 'all' | 'inactive'
 type SortKey = 'recent' | 'client' | 'project'
@@ -37,10 +39,28 @@ export function PortalInboxPage() {
     [summaries],
   )
 
+  const navigate = useNavigate()
+
   const [filter, setFilter] = useState<FilterKey>('active')
   const [sortBy, setSortBy] = useState<SortKey>('recent')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null)
+  const [openingChatId, setOpeningChatId] = useState<string | null>(null)
+
+  async function handleOpenMessages(item: { id: string; projectId: string; clientAccountId: string; fullName: string | null; email: string }) {
+    setOpeningChatId(item.id)
+    try {
+      const thread = await threadsApi.getOrCreateClientSharedThread(
+        item.projectId,
+        item.clientAccountId,
+        `Wiadomości z ${item.fullName || item.email}`,
+        companyId,
+      )
+      void navigate({ to: '/chat', search: { threadId: thread.id } })
+    } finally {
+      setOpeningChatId(null)
+    }
+  }
 
   const displayed = useMemo(() => {
     let list = [...clients]
@@ -219,6 +239,17 @@ export function PortalInboxPage() {
                     </div>
 
                     <div className="proj-row__actions" style={{ gap: 8 }}>
+                      {item.hasLoggedIn && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          loading={openingChatId === item.id}
+                          disabled={openingChatId === item.id}
+                          onClick={(e) => { e.stopPropagation(); void handleOpenMessages(item) }}
+                        >
+                          Otwórz wiadomości
+                        </Button>
+                      )}
                       {!isConfirming ? (
                         <Button
                           variant="ghost"

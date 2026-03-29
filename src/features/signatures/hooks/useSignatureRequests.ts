@@ -5,6 +5,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { signatureRequestsApi, approvalEventsApi } from '../api/signature-requests.api'
 import type { CreateSignatureRequestInput, RecordApprovalInput } from '../types/signature.types'
+import { createTimelineEvent } from '@/features/projects/lib/timeline'
 
 export const signatureKeys = {
   forDocument: (type: string, id: string) => ['signature-requests', type, id] as const,
@@ -54,8 +55,26 @@ export function useCreateSignatureRequest(documentType: string, documentId: stri
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateSignatureRequestInput) => signatureRequestsApi.create(input),
-    onSuccess: () => {
+    onSuccess: (_, input) => {
       void queryClient.invalidateQueries({ queryKey: signatureKeys.forDocument(documentType, documentId) })
+      if (input.projectId) {
+        void createTimelineEvent({
+          company_id:     input.companyId,
+          project_id:     input.projectId,
+          event_type:     'doc_approval_sent',
+          visibility:     'internal',
+          title:          `Wysłano do akceptacji: ${input.documentLabel ?? documentType}`,
+          actor_type:     'operator',
+          actor_id:       input.createdByUserId ?? undefined,
+          reference_id:   documentId,
+          reference_type: 'document',
+          payload: {
+            document_type:  documentType,
+            document_id:    documentId,
+            document_label: input.documentLabel ?? null,
+          },
+        }).catch((err) => console.warn('[signatures] timeline event failed:', err))
+      }
     },
   })
 }

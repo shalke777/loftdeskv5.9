@@ -18,6 +18,7 @@ import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { projectDocumentsApi } from '@/features/projects/api/projectDocuments.api'
 import { getAppOrigin } from '@/shared/lib/native'
 import { SignatureStatusBadge } from '@/features/signatures/components/SignatureStatusBadge'
+import { SendToApprovalModal } from '@/features/signatures/components/SendToApprovalModal'
 
 const TYPE_LABEL: Record<string, string> = {
   estimate: 'Wycena',
@@ -37,6 +38,8 @@ const MAILABLE_TYPES = new Set(['estimate', 'contract', 'invoice'])
 
 const DELETABLE_TYPES = new Set(['estimate', 'contract', 'invoice'])
 
+const APPROVAL_TYPES = new Set(['estimate', 'contract'])
+
 export function ProjectDocuments({ project }: { project: Project }) {
   const qc = useQueryClient()
   const companyId = useCompanyId()
@@ -47,6 +50,14 @@ export function ProjectDocuments({ project }: { project: Project }) {
   const [sendDoc, setSendDoc] = useState<{ type: 'estimate' | 'contract' | 'invoice'; name: string; defaultEmail?: string } | null>(null)
   const [packageSendOpen, setPackageSendOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [approvalDoc, setApprovalDoc] = useState<{
+    type: 'estimate' | 'contract'
+    id: string
+    label: string
+    contentForHash: string
+    clientEmail?: string
+    clientName?: string
+  } | null>(null)
 
   const deleteEstimate = useDeleteEstimate()
   const deleteContract = useDeleteContract()
@@ -86,6 +97,12 @@ export function ProjectDocuments({ project }: { project: Project }) {
       docType === 'contract' ? contracts.find(c => c.id === docId)?.client_id :
       docType === 'invoice'  ? invoices.find(i => i.id === docId)?.client_id  : undefined
     return clientId ? (clients.find(c => c.id === clientId)?.email || undefined) : undefined
+  }
+  const resolveClientName = (docType: string, docId: string): string | undefined => {
+    const clientId =
+      docType === 'estimate' ? estimates.find(e => e.id === docId)?.client_id :
+      docType === 'contract' ? contracts.find(c => c.id === docId)?.client_id : undefined
+    return clientId ? (clients.find(c => c.id === clientId)?.name || undefined) : undefined
   }
   const projectClientEmail = project.client_id
     ? (clients.find(c => c.id === project.client_id)?.email || undefined)
@@ -196,7 +213,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
                   />
                 )}
                 {doc.linked_automatically && (
-                  <Badge variant="default">auto</Badge>
+                  <Badge variant="default">Automat.</Badge>
                 )}
                 {doc.linked_manually && (
                   <Badge variant="warning">ręcznie</Badge>
@@ -205,6 +222,46 @@ export function ProjectDocuments({ project }: { project: Project }) {
                   <span style={{ fontSize: 11, color: '#8A8F98' }}>
                     z: {TYPE_LABEL[doc.source_doc_type] ?? doc.source_doc_type}
                   </span>
+                )}
+                {APPROVAL_TYPES.has(doc.doc_type) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="Wyślij do akceptacji klienta"
+                    onClick={() => {
+                      const est = doc.doc_type === 'estimate' ? estimates.find(e => e.id === doc.doc_id) : null
+                      const ctr = doc.doc_type === 'contract' ? contracts.find(c => c.id === doc.doc_id) : null
+                      if (!est && !ctr) return
+                      setApprovalDoc(est
+                        ? {
+                            type: 'estimate',
+                            id: est.id,
+                            label: `${est.number} – ${est.name}`,
+                            contentForHash: JSON.stringify({
+                              id: est.id, number: est.number, name: est.name,
+                              total_gross: est.total_gross, valid_until: est.valid_until ?? null,
+                              items: est.items.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, unit: i.unit, unit_price: i.unit_price, vat_rate: i.vat_rate })),
+                            }),
+                            clientEmail: resolveClientEmail('estimate', est.id),
+                            clientName:  resolveClientName('estimate', est.id),
+                          }
+                        : {
+                            type: 'contract',
+                            id: ctr!.id,
+                            label: ctr!.number,
+                            contentForHash: JSON.stringify({
+                              id: ctr!.id, number: ctr!.number, value: ctr!.value,
+                              start_date: ctr!.start_date ?? null, end_date: ctr!.end_date ?? null,
+                              location: ctr!.location ?? null, tranches: ctr!.tranches ?? [],
+                            }),
+                            clientEmail: resolveClientEmail('contract', ctr!.id),
+                            clientName:  resolveClientName('contract', ctr!.id),
+                          }
+                      )
+                    }}
+                  >
+                    Do akceptacji
+                  </Button>
                 )}
                 {MAILABLE_TYPES.has(doc.doc_type) && (
                   <Button
@@ -279,6 +336,21 @@ export function ProjectDocuments({ project }: { project: Project }) {
         portalUrl={`${getAppOrigin()}/client/project/${project.id}`}
         docSummary={packageDocNames}
       />
+
+      {approvalDoc && (
+        <SendToApprovalModal
+          open={!!approvalDoc}
+          onClose={() => setApprovalDoc(null)}
+          documentType={approvalDoc.type}
+          documentId={approvalDoc.id}
+          documentLabel={approvalDoc.label}
+          documentContentForHash={approvalDoc.contentForHash}
+          projectId={project.id}
+          defaultClientEmail={approvalDoc.clientEmail}
+          defaultClientName={approvalDoc.clientName}
+          onSent={() => setApprovalDoc(null)}
+        />
+      )}
     </Card>
   )
 }
