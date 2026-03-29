@@ -111,6 +111,10 @@ const METADATA: Record<string, TimelineEventMeta> = {
     icon: XCircle, label: 'Klient odrzucił dokument',
     dotColor: '#e11d48', bgColor: '#ffe4e6', category: 'approvals',
   },
+  doc_questioned: {
+    icon: CircleHelp, label: 'Klient zadał pytanie o dokument',
+    dotColor: '#0284c7', bgColor: '#e0f2fe', category: 'approvals',
+  },
 
   // ── Komunikacja ──────────────────────────────────────────────────────────
   message_sent: {

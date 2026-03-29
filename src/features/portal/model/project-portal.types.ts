@@ -173,6 +173,7 @@ export type TimelineEventType =
   | 'doc_approval_sent'
   | 'doc_approved'
   | 'doc_rejected'
+  | 'doc_questioned'
   | 'portal_activated'
   | 'portal_revoked'
   | 'project_status_changed'

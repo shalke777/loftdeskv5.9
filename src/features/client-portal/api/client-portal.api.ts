@@ -435,12 +435,18 @@ export const clientPortalApi = {
       })
     if (evtErr) throw evtErr
 
-    // 2. Update signature_participants.status (RLS allows client UPDATE their own row)
-    const { error: partErr } = await supabase
-      .from('signature_participants')
-      .update({ status: input.decision, action_at: new Date().toISOString() })
-      .eq('id', input.participantId)
-    if (partErr) throw partErr
+    // 2. Update signature_participants.status (only for final decisions)
+    // Skip 'questioned' — a question is not a final decision, the participant remains
+    // 'pending' and can still approve or reject after the conversation.
+    // This also avoids a potential CHECK constraint failure on older DB instances
+    // where 'questioned' may not have been added to the status enum.
+    if (input.decision !== 'questioned') {
+      const { error: partErr } = await supabase
+        .from('signature_participants')
+        .update({ status: input.decision, action_at: new Date().toISOString() })
+        .eq('id', input.participantId)
+      if (partErr) throw partErr
+    }
 
     // 3. If questioned: auto-create or find message thread and post the question
     //    client_send_message (migration 062) handles find-or-create + fires trigger 070

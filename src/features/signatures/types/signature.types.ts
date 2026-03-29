@@ -26,7 +26,7 @@ export type SignatureDocumentType =
 export type SignatureProviderName = 'autenti' | 'mszafir' | 'certum'
 
 export type ParticipantRole   = 'signer' | 'approver' | 'observer'
-export type ParticipantStatus = 'pending' | 'notified' | 'viewed' | 'approved' | 'signed' | 'rejected'
+export type ParticipantStatus = 'pending' | 'notified' | 'viewed' | 'approved' | 'signed' | 'rejected' | 'questioned'
 export type ArtifactType      = 'original_pdf' | 'signed_pdf' | 'evidence_card' | 'provider_receipt'
 export type ApprovalDecision  = 'approved' | 'rejected' | 'questioned'
 

@@ -227,8 +227,12 @@ export const threadsApi = {
       (t) => t.visibility === 'client_shared' && t.type === 'general',
     )
     if (found) return found
+    // NOTE: client_id intentionally omitted — project_threads.client_id FKs to
+    // the legacy `clients` table, but the new portal system uses `client_accounts`.
+    // Passing a client_accounts.id would violate the FK constraint (23503 → 409).
+    // The thread is project-scoped; the client is identified via project_client_access.
     return threadsApi.createThread(
-      { project_id: projectId, type: 'general', visibility: 'client_shared', title, client_id: clientId ?? undefined },
+      { project_id: projectId, type: 'general', visibility: 'client_shared', title },
       companyId,
     )
   },

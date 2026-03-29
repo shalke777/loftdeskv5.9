@@ -14,6 +14,7 @@ import { useEstimates, useDeleteEstimate } from '@/features/estimates/hooks/useE
 import { useContracts, useDeleteContract } from '@/features/contracts/hooks/useContracts'
 import { useInvoices, useDeleteInvoice } from '@/features/invoices/hooks/useInvoices'
 import { useClients } from '@/features/clients/hooks/useClients'
+import { useProjectPortalAccess } from '@/features/portal/hooks/usePortalData'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { projectDocumentsApi } from '@/features/projects/api/projectDocuments.api'
 import { getAppOrigin } from '@/shared/lib/native'
@@ -84,6 +85,7 @@ export function ProjectDocuments({ project }: { project: Project }) {
   const { data: contracts = [], isLoading: ctLoading } = useContracts()
   const { data: invoices = [], isLoading: invLoading } = useInvoices()
   const { data: clients = [] } = useClients()
+  const { data: portalAccess } = useProjectPortalAccess(project.id)
   const docNamesLoading = estLoading || ctLoading || invLoading
   const resolveDocName = (docType: string, docId: string): string => {
     if (docType === 'estimate') return estimates.find(e => e.id === docId)?.number ?? docId.slice(0, 8)
@@ -107,6 +109,17 @@ export function ProjectDocuments({ project }: { project: Project }) {
   const projectClientEmail = project.client_id
     ? (clients.find(c => c.id === project.client_id)?.email || undefined)
     : undefined
+  const projectClientName = project.client_id
+    ? (clients.find(c => c.id === project.client_id)?.name || undefined)
+    : undefined
+  // new-portal fallback: project_client_access → client_accounts
+  const portalClientEmail = portalAccess?.email || undefined
+  const portalClientName  = portalAccess?.fullName || undefined
+  // Resolved email/name for approvals: doc → project (legacy) → portal access (new)
+  const resolveApprovalEmail = (docType: string, docId: string): string | undefined =>
+    resolveClientEmail(docType, docId) ?? projectClientEmail ?? portalClientEmail
+  const resolveApprovalName  = (docType: string, docId: string): string | undefined =>
+    resolveClientName(docType, docId) ?? projectClientName ?? portalClientName
 
   const mailableDocs = docs.filter(d => MAILABLE_TYPES.has(d.doc_type))
   // Mailable docs selected by the user (or all mailable if none explicitly selected)
@@ -242,8 +255,8 @@ export function ProjectDocuments({ project }: { project: Project }) {
                               total_gross: est.total_gross, valid_until: est.valid_until ?? null,
                               items: est.items.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, unit: i.unit, unit_price: i.unit_price, vat_rate: i.vat_rate })),
                             }),
-                            clientEmail: resolveClientEmail('estimate', est.id),
-                            clientName:  resolveClientName('estimate', est.id),
+                            clientEmail: resolveApprovalEmail('estimate', est.id),
+                            clientName:  resolveApprovalName('estimate', est.id),
                           }
                         : {
                             type: 'contract',
@@ -254,8 +267,8 @@ export function ProjectDocuments({ project }: { project: Project }) {
                               start_date: ctr!.start_date ?? null, end_date: ctr!.end_date ?? null,
                               location: ctr!.location ?? null, tranches: ctr!.tranches ?? [],
                             }),
-                            clientEmail: resolveClientEmail('contract', ctr!.id),
-                            clientName:  resolveClientName('contract', ctr!.id),
+                            clientEmail: resolveApprovalEmail('contract', ctr!.id),
+                            clientName:  resolveApprovalName('contract', ctr!.id),
                           }
                       )
                     }}
