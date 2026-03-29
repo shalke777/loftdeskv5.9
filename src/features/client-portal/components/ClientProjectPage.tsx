@@ -171,11 +171,11 @@ const PHOTO_CATEGORY_LABEL: Record<string, string> = {
 }
 
 const DOC_TYPE_LABEL: Record<string, string> = {
-  estimate: 'Wycena',
-  invoice:  'Faktura',
-  contract: 'Umowa',
-  photo:    'Zdjęcie',
-  other:    'Dokument',
+  attachment: 'Załącznik',
+  note:       'Notatka',
+  protocol:   'Protokół',
+  photo:      'Zdjęcie',
+  other:      'Dokument',
 }
 
 function DocumentsTab({ projectId }: { projectId: string }) {
@@ -335,28 +335,28 @@ function DocumentsTab({ projectId }: { projectId: string }) {
         )}
       </section>
 
-      {/* Powiązane dokumenty projektu */}
-      <section className="client-docs__section">
-        <h4 className="client-docs__section-title">Dokumenty projektu</h4>
-        {errorPD ? (
-          <p className="client-docs__error">Nie udało się załadować dokumentów projektu.</p>
-        ) : !projDocs?.length ? (
-          <p className="client-docs__empty">Brak powiązanych dokumentów.</p>
-        ) : (
-          <ul className="client-docs__list">
-            {projDocs.map((d: ClientProjectDocument) => (
-              <li key={d.id} className="client-docs__row">
-                <div>
-                  <Badge variant="default">{DOC_TYPE_LABEL[d.doc_type] ?? d.doc_type}</Badge>
-                </div>
-                <span className="client-docs__row-date">
-                  {fmtDate(d.created_at)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* Dodatkowe materiały / pliki projektu — sekcja ukryta gdy brak danych */}
+      {(errorPD || (projDocs && projDocs.length > 0)) && (
+        <section className="client-docs__section">
+          <h4 className="client-docs__section-title">Dodatkowe materiały</h4>
+          {errorPD ? (
+            <p className="client-docs__error">Nie udało się załadować dokumentów projektu.</p>
+          ) : (
+            <ul className="client-docs__list">
+              {projDocs!.map((d: ClientProjectDocument) => (
+                <li key={d.id} className="client-docs__row">
+                  <div>
+                    <Badge variant="default">{DOC_TYPE_LABEL[d.doc_type] ?? d.doc_type}</Badge>
+                  </div>
+                  <span className="client-docs__row-date">
+                    {fmtDate(d.created_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       {/* Zdjęcia / dokumentacja fotograficzna */}
       <section className="client-docs__section">
