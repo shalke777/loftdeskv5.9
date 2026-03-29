@@ -1786,7 +1786,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   display: flex;
   align-items: center;
   gap: 4px;
-  opacity: 0.8;
+  color: var(--color-brand, #77BA8A);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -3930,11 +3930,36 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .client-photos__card:hover {
   border-color: var(--color-brand-border);
 }
+.client-photos__img-link {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+}
+.client-photos__img-link:hover .client-photos__img-overlay {
+  opacity: 1;
+}
+.client-photos__img-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
 .client-photos__img {
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
   display: block;
+  transition: transform 0.15s;
+}
+.client-photos__img-link:hover .client-photos__img {
+  transform: scale(1.03);
 }
 .client-photos__placeholder {
   width: 100%;
@@ -4078,6 +4103,29 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .client-chat__send:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.client-chat__attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(160,170,180,0.10);
+  border: 1px solid rgba(160,170,180,0.20);
+  font-size: 12px;
+  color: var(--color-brand, #77BA8A);
+  text-decoration: none;
+  word-break: break-word;
+  max-width: 100%;
+}
+.client-chat__attachment:hover {
+  background: rgba(160,170,180,0.18);
+  text-decoration: underline;
+}
+.client-chat__msg-deleted {
+  font-style: italic;
+  opacity: 0.5;
 }
 
 /* ── Approvals tab ──────────────────────────────────────────────────────────── */
@@ -4236,6 +4284,12 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   color: var(--color-text-primary);
   margin: 0 0 3px;
   line-height: 1.5;
+}
+.client-timeline__desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin: 0 0 3px;
+  line-height: 1.4;
 }
 .client-timeline__date {
   font-size: 11px;

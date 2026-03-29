@@ -81,7 +81,7 @@ export function AuthLayout() {
   const markAllReadMutation = useMarkAllOperatorNotificationsRead()
   function markAllRead() { markAllReadMutation.mutate() }
   const [showNotifications, setShowNotifications] = useState(false)
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null)
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null)
   const notifRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -182,9 +182,12 @@ export function AuthLayout() {
                 setShowNotifications(opening)
                 if (opening && notifRef.current) {
                   const rect = notifRef.current.getBoundingClientRect()
+                  const PANEL_W = Math.min(340, window.innerWidth - 16)
+                  const desiredLeft = rect.right - PANEL_W
+                  const clampedLeft = Math.max(8, Math.min(desiredLeft, window.innerWidth - PANEL_W - 8))
                   setDropdownPos({
                     top: rect.bottom + 4,
-                    right: Math.max(8, window.innerWidth - rect.right),
+                    left: clampedLeft,
                   })
                   markAllRead()
                 }
@@ -202,7 +205,7 @@ export function AuthLayout() {
               )}
               {showNotifications && dropdownPos && (
                 <div style={{
-                  position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999,
+                  position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, zIndex: 9999,
                   background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10,
                   boxShadow: '0 8px 32px rgba(0,0,0,0.32)',
                   width: Math.min(340, window.innerWidth - 16), maxHeight: 400, overflow: 'auto',

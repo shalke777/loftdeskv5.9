@@ -385,12 +385,21 @@ function DocumentsTab({ projectId }: { projectId: string }) {
             {photoDocs.map((ph: ClientPhotoDoc) => (
               <div key={ph.id} className="client-photos__card">
                 {ph.image_url ? (
-                  <img
-                    src={ph.image_url}
-                    alt={ph.title}
-                    className="client-photos__img"
-                    loading="lazy"
-                  />
+                  <a
+                    href={ph.image_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="client-photos__img-link"
+                    title="Otwórz zdjęcie w pełnym rozmiarze"
+                  >
+                    <img
+                      src={ph.image_url}
+                      alt={ph.title}
+                      className="client-photos__img"
+                      loading="lazy"
+                    />
+                    <span className="client-photos__img-overlay">🔍</span>
+                  </a>
                 ) : (
                   <div className="client-photos__placeholder">Brak podglądu</div>
                 )}
@@ -476,8 +485,16 @@ function ChatTab({ projectId }: { projectId: string }) {
                   ? <span className="client-chat__msg-deleted">Wiadomość usunięta</span>
                   : msg.body
                 }
-              </div>
-              <div className="client-chat__msg-meta">
+              </div>              {!msg.deleted_at && msg.has_attachments && msg.attachment_url && (
+                <a
+                  href={msg.attachment_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="client-chat__attachment"
+                >
+                  \ud83d\udcce {msg.attachment_name ?? 'Za\u0142\u0105cznik'}
+                </a>
+              )}              <div className="client-chat__msg-meta">
                 <span className="client-chat__msg-time">
                   {new Date(msg.created_at).toLocaleString('pl-PL', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
                 </span>
@@ -728,7 +745,10 @@ function TimelineTab({ projectId }: { projectId: string }) {
         <li key={ev.id} className="client-timeline__item">
           <span className="client-timeline__dot" />
           <div className="client-timeline__content">
-            <p className="client-timeline__body">{ev.body}</p>
+            <p className="client-timeline__body">{ev.title}</p>
+            {ev.description && (
+              <p className="client-timeline__desc">{ev.description}</p>
+            )}
             <span className="client-timeline__date">
               {new Date(ev.created_at).toLocaleString('pl-PL', {
                 day: 'numeric', month: 'short', year: 'numeric',

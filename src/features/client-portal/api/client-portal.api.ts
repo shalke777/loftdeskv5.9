@@ -103,6 +103,10 @@ export interface ClientMessage {
   created_at: string
   read_by_client: boolean
   deleted_at: string | null
+  has_attachments: boolean
+  attachment_url: string | null
+  attachment_name: string | null
+  attachment_mime: string | null
 }
 
 export interface ClientApproval {
@@ -160,7 +164,8 @@ export interface ClientPhotoDoc {
 
 export interface ClientTimelineEvent {
   id: string
-  body: string
+  title: string
+  description: string | null
   event_type: string
   created_at: string
 }
@@ -256,7 +261,7 @@ export const clientPortalApi = {
     if (!supabase) return []
     const { data, error } = await supabase
       .from('project_messages')
-      .select('id, body, sender_type, sender_name, created_at, read_by_client, deleted_at')
+      .select('id, body, sender_type, sender_name, created_at, read_by_client, deleted_at, has_attachments, attachment_url, attachment_name, attachment_mime')
       .eq('project_id', projectId)
       .in('visibility', ['client_shared', 'approval'])
       .order('created_at', { ascending: true })
@@ -364,7 +369,7 @@ export const clientPortalApi = {
     if (!supabase) return []
     const { data, error } = await supabase
       .from('project_timeline_events')
-      .select('id, body, event_type, created_at')
+      .select('id, event_type, title, description, created_at')
       .eq('project_id', projectId)
       .eq('visibility', 'client_shared')
       .order('created_at', { ascending: false })

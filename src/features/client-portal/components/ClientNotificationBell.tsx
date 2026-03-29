@@ -63,7 +63,7 @@ function formatRelative(iso: string): string {
 
 export function ClientNotificationBell() {
   const [open, setOpen] = useState(false)
-  const [panelPos, setPanelPos] = useState<{ top: number; right: number } | null>(null)
+  const [panelPos, setPanelPos] = useState<{ top: number; left: number } | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
@@ -109,9 +109,12 @@ export function ClientNotificationBell() {
           setOpen(next)
           if (next && panelRef.current) {
             const rect = panelRef.current.getBoundingClientRect()
+            const PANEL_W = Math.min(360, window.innerWidth - 32)
+            const desiredLeft = rect.right - PANEL_W
+            const clampedLeft = Math.max(8, Math.min(desiredLeft, window.innerWidth - PANEL_W - 8))
             setPanelPos({
               top: rect.bottom + 8,
-              right: Math.max(8, window.innerWidth - rect.right),
+              left: clampedLeft,
             })
           }
         }}
@@ -130,7 +133,7 @@ export function ClientNotificationBell() {
       {open && panelPos && (
         <div
           className="cn-panel"
-          style={{ position: 'fixed', top: panelPos.top, right: panelPos.right, zIndex: 9999 }}
+          style={{ position: 'fixed', top: panelPos.top, left: panelPos.left, zIndex: 9999 }}
         >
           <div className="cn-panel__header">
             <span className="cn-panel__title">Powiadomienia</span>
