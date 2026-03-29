@@ -16,7 +16,21 @@ export const contractsApi = {
   async create(input: CreateContractInput): Promise<Contract> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.contracts.create(input as Contract))
     const scope = await getDataScope(input.company_id)
-    const payload = withScope(scope, { number: `UMW/${new Date().getFullYear()}/${Date.now().toString().slice(-4)}`, client_id: input.client_id, project_id: input.project_id ?? null, estimate_id: input.estimate_id ?? null, status: input.status, sign_date: input.sign_date, start_date: input.start_date ?? null, end_date: input.end_date ?? null, location: input.location ?? null, value: input.value, value_net: input.value_net ?? null, vat_rate: input.vat_rate ?? null, notes: input.notes ?? null, template_name: input.template_name ?? null, template_content: input.template_content ?? null, custom_paragraphs: input.custom_paragraphs ?? [], tranches: input.tranches ?? [] })
+
+    // Resolve sequential contract number via DB function (atomic, per-company, per-year-month)
+    let contractNumber: string
+    const { data: numData, error: numError } = await supabase.rpc('next_doc_number', { p_company_id: input.company_id, p_doc_type: 'contract' })
+    if (numError || !numData) {
+      // Fallback: count-based, month-aware (non-atomic, safe for single-user edge case)
+      const now = new Date()
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+      const { count } = await supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('company_id', input.company_id).gte('created_at', monthStart)
+      contractNumber = `UM/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${(count ?? 0) + 1}`
+    } else {
+      contractNumber = numData as string
+    }
+
+    const payload = withScope(scope, { number: contractNumber, client_id: input.client_id, project_id: input.project_id ?? null, estimate_id: input.estimate_id ?? null, status: input.status, sign_date: input.sign_date, start_date: input.start_date ?? null, end_date: input.end_date ?? null, location: input.location ?? null, value: input.value, value_net: input.value_net ?? null, vat_rate: input.vat_rate ?? null, notes: input.notes ?? null, template_name: input.template_name ?? null, template_content: input.template_content ?? null, custom_paragraphs: input.custom_paragraphs ?? [], tranches: input.tranches ?? [] })
     const { data, error } = await supabase.from('contracts').insert(payload).select('*').single(); if (error) throw error
     if (input.project_id) { try { await projectDocumentsApi.link(input.company_id, input.project_id, 'contract', data.id, { manual: true }) } catch (err) { console.warn('[contracts] project document link failed:', err) } }
     return { id: data.id, company_id: data.company_id ?? input.company_id, client_id: data.client_id, project_id: data.project_id, estimate_id: data.estimate_id ?? null, number: data.number, status: data.status, sign_date: data.sign_date, start_date: data.start_date ?? null, end_date: data.end_date ?? null, location: data.location ?? '', value: Number(data.value ?? 0), value_net: data.value_net != null ? Number(data.value_net) : undefined, vat_rate: data.vat_rate != null ? Number(data.vat_rate) : undefined, notes: data.notes ?? '', template_name: data.template_name ?? '', template_content: data.template_content ?? '', custom_paragraphs: data.custom_paragraphs ?? [], tranches: data.tranches ?? [], created_at: data.created_at }

@@ -19,7 +19,21 @@ export const estimatesApi = {
     const items = input.items ?? []
     const totals = calcTotals(items)
     const scope = await getDataScope(input.company_id)
-    const payload = withScope(scope, { number: `KE/${new Date().getFullYear()}/${Date.now().toString().slice(-4)}`, name: input.name, client_id: input.client_id, project_id: input.project_id ?? null, status: input.status ?? 'draft', total_net: totals.net, total_gross: totals.gross, notes: input.notes ?? null, valid_until: input.valid_until ?? null })
+
+    // Resolve sequential estimate number via DB function (atomic, per-company, per-year-month)
+    let estimateNumber: string
+    const { data: numData, error: numError } = await supabase.rpc('next_doc_number', { p_company_id: input.company_id, p_doc_type: 'estimate' })
+    if (numError || !numData) {
+      // Fallback: count-based, month-aware (non-atomic, safe for single-user edge case)
+      const now = new Date()
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+      const { count } = await supabase.from('cost_estimates').select('*', { count: 'exact', head: true }).eq('company_id', input.company_id).gte('created_at', monthStart)
+      estimateNumber = `WY/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${(count ?? 0) + 1}`
+    } else {
+      estimateNumber = numData as string
+    }
+
+    const payload = withScope(scope, { number: estimateNumber, name: input.name, client_id: input.client_id, project_id: input.project_id ?? null, status: input.status ?? 'draft', total_net: totals.net, total_gross: totals.gross, notes: input.notes ?? null, valid_until: input.valid_until ?? null })
     const { data, error } = await supabase.from('cost_estimates').insert(payload).select('*').single()
     if (error) throw error
     if (items.length > 0) {
