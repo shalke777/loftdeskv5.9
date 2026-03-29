@@ -15,6 +15,8 @@ export interface PortalAccessClient {
   projectNumber: string
   projectStatus: string
   grantedAt: string
+  /** true if client has ever completed the magic-link sign-in (auth_user_id IS NOT NULL) */
+  hasLoggedIn: boolean
 }
 
 export interface PortalProjectSummary {
@@ -51,7 +53,7 @@ export const portalApi = {
       .select(`
         id,
         granted_at,
-        client_accounts!inner(id, email, full_name, phone),
+        client_accounts!inner(id, email, full_name, phone, auth_user_id),
         projects!inner(id, name, number, status)
       `)
       .order('granted_at', { ascending: false })
@@ -72,6 +74,7 @@ export const portalApi = {
         projectNumber: row.projects.number,
         projectStatus: row.projects.status,
         grantedAt: row.granted_at,
+        hasLoggedIn: Boolean(row.client_accounts.auth_user_id),
       }))
   },
 
@@ -82,7 +85,7 @@ export const portalApi = {
       .select(`
         id,
         granted_at,
-        client_accounts!inner(id, email, full_name, phone),
+        client_accounts!inner(id, email, full_name, phone, auth_user_id),
         projects!inner(id, name, number, status)
       `)
       .eq('project_id', projectId)
@@ -106,6 +109,7 @@ export const portalApi = {
       projectNumber: row.projects.number,
       projectStatus: row.projects.status,
       grantedAt: row.granted_at,
+      hasLoggedIn: Boolean(row.client_accounts.auth_user_id),
     }
   },
 

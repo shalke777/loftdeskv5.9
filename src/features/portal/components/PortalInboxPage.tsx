@@ -155,11 +155,20 @@ export function PortalInboxPage() {
                     </div>
                   </div>
 
-                  {/* Right: status + communication badges + chevron */}
+                  {/* Right: login status + communication badges + chevron */}
                   <div className="proj-row__right">
                     <span className={`proj-status ${isActive ? 'proj-status--active' : 'proj-status--cancelled'}`}>
                       {PROJECT_STATUS_LABEL[item.projectStatus] ?? item.projectStatus}
                     </span>
+                    {item.hasLoggedIn ? (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#77BA8A', background: 'rgba(119,186,138,0.10)', borderRadius: 6, padding: '2px 7px' }}>
+                        zalogowany
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: '#D4960A', background: 'rgba(212,150,10,0.10)', borderRadius: 6, padding: '2px 7px' }}>
+                        wysłano
+                      </span>
+                    )}
                     {hasUnread && (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: '#77BA8A', background: 'rgba(119,186,138,0.12)', borderRadius: 6, padding: '2px 7px' }}>
                         <MessageCircle size={11} />
@@ -200,6 +209,12 @@ export function PortalInboxPage() {
                       <div style={{ display: 'flex', gap: 8 }}>
                         <span style={{ color: '#A7ABB3', minWidth: 70 }}>Dodano:</span>
                         <span>{grantedLabel}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <span style={{ color: '#A7ABB3', minWidth: 70 }}>Status:</span>
+                        <span style={{ color: item.hasLoggedIn ? '#77BA8A' : '#D4960A' }}>
+                          {item.hasLoggedIn ? 'Klient zalogował się do portalu' : 'Dostęp wysłany — klient jeszcze nie otworzył portalu'}
+                        </span>
                       </div>
                     </div>
 

@@ -237,23 +237,50 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
     )
   }
 
-  // ── Ma dostęp ─────────────────────────────────────────────────────────────
+  // ── Ma dostęp (wysłany lub aktywny) ──────────────────────────────────────
   if (access && mode === 'view') {
     const since = new Date(access.grantedAt).toLocaleDateString('pl-PL')
+    const isActive  = access.hasLoggedIn
+    const statusColor  = isActive  ? '#77BA8A' : '#D4960A'
+    const statusBg     = isActive  ? 'rgba(119,186,138,0.08)' : 'rgba(212,150,10,0.10)'
+    const statusBorder = isActive  ? 'rgba(119,186,138,0.25)' : 'rgba(212,150,10,0.30)'
+    const statusLabel  = isActive  ? 'Klient ma aktywny dostęp' : 'Dostęp wysłany'
+    const statusIcon   = isActive  ? '🟢' : '🟡'
+    const contextLine  = isActive
+      ? 'Klient może otwierać dokumenty, odpowiadać na zatwierdzenia i pisać wiadomości.'
+      : 'Link dostępowy został wysłany. Klient jeszcze nie zalogował się do portalu.'
+
     return (
       <Card>
-        <h3 style={{ margin: '0 0 12px' }}>Dostęp klienta</h3>
-        <div style={{ background: 'rgba(119,186,138,0.08)', border: '1px solid rgba(119,186,138,0.25)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
-          <div style={{ fontWeight: 600, color: '#77BA8A', fontSize: 13, marginBottom: 4 }}>
-            🔐 Ma dostęp
+        <h3 style={{ margin: '0 0 14px' }}>Dostęp klienta</h3>
+
+        {/* A. Klient */}
+        <div style={{ marginBottom: 12 }}>
+          <p style={{ fontSize: 11, color: '#8A8F98', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>Klient</p>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#D0D4DA' }}>
+            {access.fullName || access.email}
           </div>
-          <div style={{ fontSize: 13, color: '#C0C4CC' }}>
-            {access.fullName ? `${access.fullName} · ` : ''}{access.email}
+          {access.fullName && (
+            <div style={{ fontSize: 12, color: '#8A8F98', marginTop: 2 }}>{access.email}</div>
+          )}
+        </div>
+
+        {/* B + C. Status dostępu + meta */}
+        <div style={{ background: statusBg, border: `1px solid ${statusBorder}`, borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: statusColor, marginBottom: 4 }}>
+            {statusIcon} {statusLabel}
           </div>
-          <div style={{ fontSize: 11, color: '#8A8F98', marginTop: 4 }}>
-            dostęp od {since}
+          <div style={{ fontSize: 12, color: '#8A8F98' }}>
+            Wysłano: {since}
           </div>
         </div>
+
+        {/* E. Kontekst operacyjny */}
+        <p style={{ fontSize: 12, color: '#8A8F98', lineHeight: 1.5, margin: '0 0 12px' }}>
+          {contextLine}
+        </p>
+
+        {/* D. Akcje */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Button
             variant="secondary"
@@ -298,23 +325,32 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
   // ── Brak dostępu / formularz zaproszenia ──────────────────────────────────
   // mode=view (brak dostępu) | mode=invite (re-invite) | mode=sending | mode=failed
   const isReInvite = mode === 'invite' || (mode !== 'view' && Boolean(access))
+  const knownClient = !isReInvite && (clientName || clientEmail)
 
   return (
     <Card>
-      <div style={{ marginBottom: 12 }}>
-        <h3 style={{ margin: 0 }}>Dostęp klienta</h3>
-        {!isReInvite && (
-          <p style={{ fontSize: 13, color: '#A7ABB3', marginTop: 4 }}>
-            Udostępnij projekt klientowi — otrzyma link logowania do portalu
-          </p>
-        )}
-      </div>
+      <h3 style={{ margin: '0 0 14px' }}>Dostęp klienta</h3>
 
+      {/* A. Klient — jeśli znany z projektu */}
+      {knownClient && (
+        <div style={{ marginBottom: 12 }}>
+          <p style={{ fontSize: 11, color: '#8A8F98', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>Klient</p>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#D0D4DA' }}>
+            {clientName || clientEmail}
+          </div>
+          {clientName && clientEmail && (
+            <div style={{ fontSize: 12, color: '#8A8F98', marginTop: 2 }}>{clientEmail}</div>
+          )}
+        </div>
+      )}
+
+      {/* B. Status */}
       {!isReInvite && (
-        <p style={{ fontSize: 13, color: '#C0C4CC', lineHeight: 1.6, marginBottom: 16 }}>
-          Klient otrzyma dostęp do dokumentów, wiadomości, sekcji Do zatwierdzenia i osi czasu.
-          Nie zobaczy kosztów wewnętrznych, marży ani notatek firmowych.
-        </p>
+        <div style={{ background: 'rgba(167,171,179,0.10)', border: '1px solid rgba(167,171,179,0.20)', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#A7ABB3' }}>
+            ⚪ Brak dostępu
+          </div>
+        </div>
       )}
 
       {isReInvite && (
@@ -326,6 +362,15 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
         </button>
       )}
 
+      {/* E. Kontekst */}
+      {!isReInvite && (
+        <p style={{ fontSize: 12, color: '#8A8F98', lineHeight: 1.5, margin: '0 0 12px' }}>
+          Klient otrzyma dostęp do dokumentów, wiadomości, sekcji Do zatwierdzenia i osi czasu.
+          Nie zobaczy kosztów wewnętrznych ani notatek firmowych.
+        </p>
+      )}
+
+      {/* D. Formularz */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <input
           value={email}
