@@ -276,19 +276,39 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
         </div>
 
         {/* E. Kontekst operacyjny */}
-        <p style={{ fontSize: 12, color: '#8A8F98', lineHeight: 1.5, margin: '0 0 12px' }}>
+        <p style={{ fontSize: 12, color: '#8A8F98', lineHeight: 1.5, margin: '0 0 14px' }}>
           {contextLine}
         </p>
 
-        {/* D. Akcje */}
+        {/* D. Akcje — dwa warianty zależne od stanu */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => openInviteForm(access.email, access.fullName ?? undefined)}
-          >
-            Wyślij ponownie dostęp
-          </Button>
+          {isActive ? (
+            /* 🟢 Klient ma aktywny dostęp — główne CTA: Otwórz wiadomości */
+            <>
+              <Button
+                onClick={() => void navigate({ to: '/portal-inbox' })}
+              >
+                Otwórz wiadomości
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => openInviteForm(access.email, access.fullName ?? undefined)}
+              >
+                Wyślij ponownie dostęp
+              </Button>
+            </>
+          ) : (
+            /* 🟡 Dostęp wysłany — główne CTA: Wyślij ponownie */
+            <Button
+              variant="secondary"
+              onClick={() => openInviteForm(access.email, access.fullName ?? undefined)}
+            >
+              Wyślij ponownie dostęp
+            </Button>
+          )}
+
+          {/* Cofnij dostęp — zawsze dostępne jako pomocnicze */}
           {!revokeConfirm ? (
             <Button
               variant="ghost"
