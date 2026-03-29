@@ -30,7 +30,7 @@ import type { ClientEstimate, ClientInvoice, ClientContract, ClientDocSignatureR
 
 const ESTIMATE_STATUS: Record<string, string> = {
   draft:    'W przygotowaniu',
-  sent:     'Wysłana do akceptacji',
+  sent:     'Do akceptacji',
   accepted: 'Zaakceptowana',
   rejected: 'Odrzucona',
 }
@@ -286,7 +286,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
                     {e.total_gross?.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })}
                   </span>
                   <Badge variant={ESTIMATE_BADGE[e.status] ?? 'default'}>{ESTIMATE_STATUS[e.status] ?? e.status}</Badge>
-                  <button type="button" className="client-docs__preview-btn" onClick={() => openEstimatePreview(e)}>Podgląd</button>
+                  <button type="button" className="client-docs__preview-btn" onClick={() => openEstimatePreview(e)}>Otwórz</button>
                 </div>
               </li>
             ))}
@@ -311,7 +311,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
                 </div>
                 <div className="client-docs__row-right">
                   <Badge variant={CONTRACT_BADGE[c.status] ?? 'default'}>{CONTRACT_STATUS[c.status] ?? c.status}</Badge>
-                  <button type="button" className="client-docs__preview-btn" onClick={() => openContractPreview(c)}>Podgląd</button>
+                  <button type="button" className="client-docs__preview-btn" onClick={() => openContractPreview(c)}>Otwórz</button>
                 </div>
               </li>
             ))}
@@ -341,7 +341,7 @@ function DocumentsTab({ projectId }: { projectId: string }) {
                   <Badge variant={inv.status === 'paid' ? 'success' : inv.status === 'overdue' ? 'danger' : inv.status === 'sent' ? 'warning' : 'default'}>
                     {INVOICE_STATUS[inv.status] ?? inv.status}
                   </Badge>
-                  <button type="button" className="client-docs__preview-btn" onClick={() => openInvoicePreview(inv)}>Podgląd</button>
+                  <button type="button" className="client-docs__preview-btn" onClick={() => openInvoicePreview(inv)}>Otwórz</button>
                 </div>
               </li>
             ))}
