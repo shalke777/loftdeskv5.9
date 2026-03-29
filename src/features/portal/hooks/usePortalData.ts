@@ -21,6 +21,16 @@ export function useRevokePortalAccess(companyId: string) {
   })
 }
 
+export function usePortalProjectSummaries(projectIds: string[]) {
+  const key = [...projectIds].sort().join(',')
+  return useQuery({
+    queryKey: ['portal', 'project-summaries', key],
+    queryFn: () => portalApi.listProjectSummaries(projectIds),
+    enabled: projectIds.length > 0,
+    staleTime: 30_000,
+  })
+}
+
 // ── Legacy: estimate-level URL tokens ────────────────────────────────────────
 
 export function usePortalTokens(companyId: string) {

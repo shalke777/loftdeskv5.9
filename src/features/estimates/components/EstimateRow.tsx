@@ -11,6 +11,8 @@ import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
 import { SendToApprovalModal } from '@/features/signatures/components/SendToApprovalModal'
 import { SignatureStatusBadge } from '@/features/signatures/components/SignatureStatusBadge'
+import { ApprovalEventList } from '@/features/signatures/components/ApprovalEventList'
+import { useSignatureRequestsForDocumentWithParts } from '@/features/signatures/hooks/useSignatureRequests'
 import { EstimateNextActions } from './EstimateNextActions'
 import { getAppOrigin } from '@/shared/lib/native'
 
@@ -43,6 +45,7 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
   const { data: clients = [] } = useClients()
   const { user } = useAuth()
   const companyMeta = useCompanyMeta()
+  const { data: sigReqs } = useSignatureRequestsForDocumentWithParts('estimate', estimate.id)
 
   const client = clients.find(c => c.id === estimate.client_id)
 
@@ -174,6 +177,11 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
           </div>
 
           <EstimateNextActions estimate={estimate} />
+
+          {(() => {
+            const active = sigReqs?.find(r => r.status !== 'cancelled' && r.status !== 'expired')
+            return active ? <ApprovalEventList signatureRequestId={active.id} /> : null
+          })()}
         </div>
       )}
 

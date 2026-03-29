@@ -1,7 +1,7 @@
 // =============================================================================
 // ClientProjectPage — szczegóły projektu w portalu klienta (v6.0)
 // =============================================================================
-// Zakładki: Dokumenty | Chat | Akceptacje | Oś czasu
+// Zakładki: Dokumenty | Chat | Do zatwierdzenia | Oś czasu
 // =============================================================================
 
 import { useState, useEffect, useRef, Fragment } from 'react'
@@ -14,8 +14,6 @@ import {
   useClientMessages,
   useClientSendMessage,
   useClientDeleteMessage,
-  useClientApprovals,
-  useClientRespondApproval,
   useClientPhotoDocs,
   useClientDocuments,
   useClientTimeline,
@@ -26,7 +24,7 @@ import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
 import { buildEstimatePreview, buildInvoicePreview, buildContractPreview } from '@/services/pdf/documentPreview'
-import type { ClientEstimate, ClientInvoice, ClientContract, ClientApproval, ClientDocSignatureRequest, ClientMessage, ClientPhotoDoc, ClientProjectDocument } from '@/features/client-portal/api/client-portal.api'
+import type { ClientEstimate, ClientInvoice, ClientContract, ClientDocSignatureRequest, ClientMessage, ClientPhotoDoc, ClientProjectDocument } from '@/features/client-portal/api/client-portal.api'
 
 // ── Status labels ─────────────────────────────────────────────────────────────
 
@@ -157,7 +155,7 @@ type TabKey = 'documents' | 'chat' | 'approvals' | 'timeline'
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'documents',  label: 'Dokumenty' },
   { key: 'chat',       label: 'Chat' },
-  { key: 'approvals',  label: 'Akceptacje' },
+  { key: 'approvals',  label: 'Do zatwierdzenia' },
   { key: 'timeline',   label: 'Oś czasu' },
 ]
 
@@ -510,7 +508,7 @@ function ChatTab({ projectId }: { projectId: string }) {
   )
 }
 
-// ── Zakładka Akceptacje ───────────────────────────────────────────────────────
+// ── Zakładka Do zatwierdzenia ────────────────────────────────────────────────
 
 const DOC_TYPE_LABEL_APPROVAL: Record<string, string> = {
   estimate: 'Wycena',
@@ -520,11 +518,9 @@ const DOC_TYPE_LABEL_APPROVAL: Record<string, string> = {
   other:    'Dokument',
 }
 
-function ApprovalsTab({ projectId }: { projectId: string }) {
+function ApprovalsTab({ projectId, onSwitchToChat }: { projectId: string; onSwitchToChat?: () => void }) {
   const { user } = useAuth()
-  const { data: approvals, isLoading } = useClientApprovals(projectId)
-  const { data: docRequests, isLoading: docLoading } = useClientDocSignatureRequests(projectId)
-  const respondMutation = useClientRespondApproval(projectId)
+  const { data: docRequests, isLoading } = useClientDocSignatureRequests(projectId)
   const respondDocMutation = useClientRespondDocApproval(projectId)
   const [comments, setComments] = useState<Record<string, string>>({})
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
@@ -543,6 +539,7 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
 
   async function handleDocDecision(req: ClientDocSignatureRequest) {
     if (!confirmDecision || !user) return
+    const decision = confirmDecision // capture before state updates
     // RLS returns only the current client's participant rows (matched by email).
     // client_account_id may be null at creation time, so use email as fallback.
     const myParticipant =
@@ -550,14 +547,15 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
       req.participants.find(p => p.email.toLowerCase() === (user.email ?? '').toLowerCase()) ??
       req.participants[0]
     if (!myParticipant) return
-    const consentText = `Klient potwierdzil zapoznanie sie z dokumentem "${req.document_label ?? req.document_type}" (SHA-256: ${req.document_hash.slice(0, 16)}) i podjal decyzje: ${confirmDecision}.`
+    const consentText = `Klient potwierdzil zapoznanie sie z dokumentem "${req.document_label ?? req.document_type}" (SHA-256: ${req.document_hash.slice(0, 16)}) i podjal decyzje: ${decision}.`
     await respondDocMutation.mutateAsync({
       signatureRequestId: req.id,
       participantId:      myParticipant.id,
-      decision:           confirmDecision,
+      decision,
       documentHash:       req.document_hash,
       documentType:       req.document_type,
       documentId:         req.document_id,
+      documentLabel:      req.document_label ?? null,
       companyId:          req.company_id,
       projectId:          req.project_id,
       actorId:            user.id,
@@ -568,11 +566,14 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
     })
     setConfirmingId(null)
     setConfirmDecision(null)
+    if (decision === 'questioned') {
+      onSwitchToChat?.()
+    }
   }
 
-  if (isLoading || docLoading) return <div className="client-tab-loading">Ładowanie akceptacji...</div>
+  if (isLoading) return <div className="client-tab-loading">Ładowanie akceptacji...</div>
 
-  const hasAnything = (approvals?.length ?? 0) + pendingDocs.length > 0
+  const hasAnything = pendingDocs.length > 0
 
   if (!hasAnything) {
     return (
@@ -693,80 +694,6 @@ function ApprovalsTab({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {/* ── Akceptacje kosztów (stary system) ── */}
-      {(approvals?.length ?? 0) > 0 && (
-        <>
-          {pendingDocs.length > 0 && (
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-              Akceptacje kosztów
-            </p>
-          )}
-          {approvals!.map((approval: ClientApproval) => (
-            <div key={approval.id} className="client-approval-card">
-              <div className="client-approval-card__header">
-                <h4 className="client-approval-card__title">{approval.snapshot_vendor || 'Pozycja do akceptacji'}</h4>
-                <Badge variant={APPROVAL_STATUS_VARIANT[approval.status] ?? 'default'}>
-                  {APPROVAL_STATUS_LABEL[approval.status] ?? approval.status}
-                </Badge>
-              </div>
-
-              {approval.snapshot_description && (
-                <p className="client-approval-card__desc">{approval.snapshot_description}</p>
-              )}
-
-              {approval.message_to_client && (
-                <p className="client-approval-card__desc" style={{ fontStyle: 'italic' }}>{approval.message_to_client}</p>
-              )}
-
-              {approval.snapshot_amount_gross != null && (
-                <p className="client-approval-card__amount">
-                  Kwota: <strong>{approval.snapshot_amount_gross.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })}</strong>
-                </p>
-              )}
-
-              {(approval.status === 'pending_client' || approval.status === 'pending') && (
-                <div className="client-approval-card__actions">
-                  <input
-                    className="client-approval-card__comment"
-                    placeholder="Komentarz (opcjonalnie)..."
-                    value={comments[approval.id] ?? ''}
-                    onChange={(e) => setComments((prev) => ({ ...prev, [approval.id]: e.target.value }))}
-                  />
-                  <div className="client-approval-card__btns">
-                    <button
-                      type="button"
-                      className="client-approval-card__btn client-approval-card__btn--accept"
-                      onClick={() => respondMutation.mutate({ id: approval.id, status: 'accepted', comment: comments[approval.id] })}
-                      disabled={respondMutation.isPending}
-                    >
-                      Akceptuję
-                    </button>
-                    <button
-                      type="button"
-                      className="client-approval-card__btn client-approval-card__btn--question"
-                      onClick={() => respondMutation.mutate({ id: approval.id, status: 'questioned', comment: comments[approval.id] })}
-                      disabled={respondMutation.isPending}
-                    >
-                      Mam pytanie
-                    </button>
-                    <button
-                      type="button"
-                      className="client-approval-card__btn client-approval-card__btn--reject"
-                      onClick={() => respondMutation.mutate({ id: approval.id, status: 'rejected', comment: comments[approval.id] })}
-                      disabled={respondMutation.isPending}
-                    >
-                      Odrzucam
-                    </button>
-                  </div>
-                  {respondMutation.isError && (
-                    <p className="client-approval-card__error">Nie udało się zapisać odpowiedzi. Spróbuj ponownie.</p>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </>
-      )}
     </div>
   )
 }
@@ -813,12 +740,11 @@ export function ClientProjectPage({ projectId }: Props) {
     : 'documents'
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
   const { data: project, isLoading, isError } = useClientProject(projectId)
-  // Gate on project?.id so approvals query doesn't fire (and return 406)
-  // when the project is deleted / inaccessible.
-  const { data: approvalsData } = useClientApprovals(project?.id ?? '')
-  const pendingCount = approvalsData
-    ?.filter((a: ClientApproval) => a.status === 'pending_client' || a.status === 'pending')
-    .length ?? 0
+  // Count pending doc-approvals for the tab badge (same query as ApprovalsTab — React Query deduplicates)
+  const { data: docSignatureData } = useClientDocSignatureRequests(project?.id ?? '')
+  const pendingCount = (docSignatureData ?? []).filter(
+    (r: ClientDocSignatureRequest) => r.status === 'pending' || r.status === 'in_progress'
+  ).length
 
   if (isLoading) {
     return <div className="client-page-loading">Ładowanie projektu...</div>
@@ -894,7 +820,7 @@ export function ClientProjectPage({ projectId }: Props) {
       <div className="client-tab-panel">
         {activeTab === 'documents'  && <DocumentsTab  projectId={projectId} />}
         {activeTab === 'chat'       && <ChatTab        projectId={projectId} />}
-        {activeTab === 'approvals'  && <ApprovalsTab   projectId={projectId} />}
+        {activeTab === 'approvals'  && <ApprovalsTab   projectId={projectId} onSwitchToChat={() => setActiveTab('chat')} />}
         {activeTab === 'timeline'   && <TimelineTab    projectId={projectId} />}
       </div>
     </div>

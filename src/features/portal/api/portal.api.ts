@@ -17,6 +17,12 @@ export interface PortalAccessClient {
   grantedAt: string
 }
 
+export interface PortalProjectSummary {
+  projectId: string
+  unreadOperator: number
+  pendingApprovals: number
+}
+
 // ── Legacy: estimate-level URL tokens (client_tokens table) ──────────────────
 
 export interface CompanyPortalToken {
@@ -76,6 +82,40 @@ export const portalApi = {
       .delete()
       .eq('id', accessId)
     if (error) throw error
+  },
+
+  /** Per-project communication summary for PortalInboxPage (operator view) */
+  async listProjectSummaries(projectIds: string[]): Promise<PortalProjectSummary[]> {
+    if (isDemoMode || !supabase || !projectIds.length) return []
+    const [threadsResult, sigReqResult] = await Promise.all([
+      supabase
+        .from('project_threads')
+        .select('project_id, unread_count_operator')
+        .in('project_id', projectIds)
+        .eq('archived', false),
+      supabase
+        .from('signature_requests')
+        .select('project_id')
+        .in('project_id', projectIds)
+        .in('status', ['pending', 'in_progress']),
+    ])
+    const unreadMap: Record<string, number> = {}
+    for (const t of threadsResult.data ?? []) {
+      if (t.project_id) {
+        unreadMap[t.project_id] = (unreadMap[t.project_id] ?? 0) + (t.unread_count_operator ?? 0)
+      }
+    }
+    const pendingMap: Record<string, number> = {}
+    for (const r of sigReqResult.data ?? []) {
+      if (r.project_id) {
+        pendingMap[r.project_id] = (pendingMap[r.project_id] ?? 0) + 1
+      }
+    }
+    return projectIds.map(pid => ({
+      projectId:       pid,
+      unreadOperator:  unreadMap[pid] ?? 0,
+      pendingApprovals: pendingMap[pid] ?? 0,
+    }))
   },
 
   // ── Legacy: estimate-level URL tokens ────────────────────────────────────

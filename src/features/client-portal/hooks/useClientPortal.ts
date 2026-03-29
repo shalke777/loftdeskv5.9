@@ -147,6 +147,8 @@ export function useClientRespondDocApproval(projectId: string) {
       clientPortalApi.respondDocApproval(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [...clientKeys.approvals(projectId), 'doc-signatures'] })
+      // auto-thread may have been created for 'questioned' — refresh messages
+      void queryClient.invalidateQueries({ queryKey: clientKeys.messages(projectId) })
     },
   })
 }

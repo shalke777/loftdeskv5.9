@@ -10,6 +10,8 @@ import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
 import { SendToApprovalModal } from '@/features/signatures/components/SendToApprovalModal'
 import { SignatureStatusBadge } from '@/features/signatures/components/SignatureStatusBadge'
+import { ApprovalEventList } from '@/features/signatures/components/ApprovalEventList'
+import { useSignatureRequestsForDocumentWithParts } from '@/features/signatures/hooks/useSignatureRequests'
 import { getAppOrigin } from '@/shared/lib/native'
 
 const STATUS_LABEL: Record<Contract['status'], string> = {
@@ -51,6 +53,7 @@ export function ContractRow({
 
   const { user } = useAuth()
   const companyMeta = useCompanyMeta()
+  const { data: sigReqs } = useSignatureRequestsForDocumentWithParts('contract', contract.id)
 
   const tabs = useMemo(() => [{
     key: 'pdf', label: 'Podgląd PDF', type: 'html' as const,
@@ -230,6 +233,11 @@ export function ContractRow({
               <Button onClick={() => onSign(contract.id)}>Oznacz jako podpisaną</Button>
             )}
           </div>
+
+          {(() => {
+            const active = sigReqs?.find(r => r.status !== 'cancelled' && r.status !== 'expired')
+            return active ? <ApprovalEventList signatureRequestId={active.id} /> : null
+          })()}
         </div>
       )}
 

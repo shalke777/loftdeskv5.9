@@ -397,6 +397,7 @@ export const clientPortalApi = {
     documentHash: string
     documentType: string
     documentId: string
+    documentLabel?: string | null
     companyId: string
     projectId: string | null
     actorId: string
@@ -436,6 +437,25 @@ export const clientPortalApi = {
       .update({ status: input.decision, action_at: new Date().toISOString() })
       .eq('id', input.participantId)
     if (partErr) throw partErr
+
+    // 3. If questioned: auto-create or find message thread and post the question
+    //    client_send_message (migration 062) handles find-or-create + fires trigger 070
+    if (input.decision === 'questioned' && input.projectId) {
+      const docLabel = input.documentLabel?.trim() || input.documentType
+      const body = input.comment?.trim()
+        ? `Mam pytanie dot. dokumentu „${docLabel}”: ${input.comment.trim()}`
+        : `Zadałem/am pytanie dot. dokumentu „${docLabel}”. Proszę o kontakt.`
+      const { error: threadErr } = await supabase.rpc('client_send_message', {
+        p_project_id:  input.projectId,
+        p_company_id:  input.companyId,
+        p_body:        body,
+        p_sender_name: input.actorName ?? 'Klient',
+      })
+      if (threadErr) {
+        // Non-fatal: approval_event was already recorded above
+        console.warn('[clientPortal] auto-thread for questioned failed:', threadErr.message)
+      }
+    }
     // Trigger 073 auto-updates signature_requests.status server-side
   },
 }

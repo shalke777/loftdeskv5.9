@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, Users } from 'lucide-react'
+import { ChevronDown, MessageCircle, Users } from 'lucide-react'
 import { Button } from '@/shared/ui/Button/Button'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
-import { usePortalAccessClients, useRevokePortalAccess } from '@/features/portal/hooks/usePortalData'
+import { usePortalAccessClients, usePortalProjectSummaries, useRevokePortalAccess } from '@/features/portal/hooks/usePortalData'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 
 type FilterKey = 'active' | 'all' | 'inactive'
@@ -29,6 +29,13 @@ export function PortalInboxPage() {
   const companyId = user?.companyId ?? ''
   const { data: clients = [], isLoading } = usePortalAccessClients(companyId)
   const revoke = useRevokePortalAccess(companyId)
+
+  const allProjectIds = useMemo(() => [...new Set(clients.map(c => c.projectId))], [clients])
+  const { data: summaries = [] } = usePortalProjectSummaries(allProjectIds)
+  const summaryByProject = useMemo(
+    () => Object.fromEntries(summaries.map(s => [s.projectId, s])),
+    [summaries],
+  )
 
   const [filter, setFilter] = useState<FilterKey>('active')
   const [sortBy, setSortBy] = useState<SortKey>('recent')
@@ -110,6 +117,9 @@ export function PortalInboxPage() {
             const isActive = ACTIVE_STATUSES.has(item.projectStatus)
             const grantedLabel = new Date(item.grantedAt).toLocaleDateString('pl-PL')
             const isConfirming = confirmRevokeId === item.id
+            const summary = summaryByProject[item.projectId]
+            const hasUnread = (summary?.unreadOperator ?? 0) > 0
+            const hasPending = (summary?.pendingApprovals ?? 0) > 0
 
             return (
               <div key={item.id} className={`proj-row${isOpen ? ' proj-row--open' : ''}`}>
@@ -145,11 +155,22 @@ export function PortalInboxPage() {
                     </div>
                   </div>
 
-                  {/* Right: status + chevron */}
+                  {/* Right: status + communication badges + chevron */}
                   <div className="proj-row__right">
                     <span className={`proj-status ${isActive ? 'proj-status--active' : 'proj-status--cancelled'}`}>
                       {PROJECT_STATUS_LABEL[item.projectStatus] ?? item.projectStatus}
                     </span>
+                    {hasUnread && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: '#77BA8A', background: 'rgba(119,186,138,0.12)', borderRadius: 6, padding: '2px 7px' }}>
+                        <MessageCircle size={11} />
+                        {summary!.unreadOperator}
+                      </span>
+                    )}
+                    {hasPending && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: '#E8A838', background: 'rgba(232,168,56,0.12)', borderRadius: 6, padding: '2px 7px' }}>
+                        {summary!.pendingApprovals} do zatw.
+                      </span>
+                    )}
                     <span
                       className="proj-row__chevron"
                       style={{ transform: isOpen ? 'rotate(180deg)' : undefined, transition: 'transform 0.2s' }}
