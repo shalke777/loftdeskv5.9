@@ -41,6 +41,11 @@ export default defineConfig({
   },
   // Proxy Netlify Functions so OCR works in dev mode (requires `netlify dev` on :8888)
   server: {
+    // strictPort: fail immediately if :5173 is taken instead of silently moving to :5174.
+    // This surfaces stale dev-server processes that would otherwise cause split-brain
+    // (two Vite instances, each exposing a different code state).
+    strictPort: true,
+    port: 5173,
     proxy: {
       '/.netlify/functions': {
         target: 'http://localhost:8888',

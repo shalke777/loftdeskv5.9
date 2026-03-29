@@ -31,6 +31,20 @@ initMonitoring()
   }
 })()
 
+// In dev mode, unregister any Service Workers left over from a previous production
+// build preview. VitePWA devOptions.enabled=false means no SW is injected in dev,
+// but a previously registered SW (e.g. from `npm run build` + vite preview) can
+// still intercept network requests and serve stale assets, making HMR invisible.
+// Explicitly unregistering on dev start guarantees a clean slate.
+if (import.meta.env.DEV && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const reg of registrations) {
+      void reg.unregister()
+      if (import.meta.env.DEV) console.info('[dev] unregistered SW:', reg.scope)
+    }
+  })
+}
+
 registerSW({ immediate: true })
 
 // Global unhandled rejection handler — catches async errors not caught by React error boundaries
