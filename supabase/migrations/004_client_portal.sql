@@ -2,7 +2,7 @@ create table if not exists public.client_tokens (
   id uuid primary key default gen_random_uuid(),
   company_id uuid,
   user_id uuid references auth.users(id) on delete cascade,
-  cost_estimate_id uuid references public.cost_estimates(id) on delete cascade,
+  cost_estimate_id uuid, -- FK to cost_estimates removed: legacy table, cost_estimates not guaranteed on fresh bootstrap
   client_name text,
   token text unique not null,
   active boolean not null default true,

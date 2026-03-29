@@ -9,36 +9,59 @@ alter table if exists public.portal_messages enable row level security;
 alter table if exists public.invoice_items enable row level security;
 alter table if exists public.cost_estimate_items enable row level security;
 
-drop policy if exists "projects_select" on public.projects;
-create policy "projects_select" on public.projects for select using (company_id = my_company_id());
-drop policy if exists "projects_insert" on public.projects;
-create policy "projects_insert" on public.projects for insert with check (company_id = my_company_id() and my_role() in ('owner','admin','manager'));
-drop policy if exists "projects_update" on public.projects;
-create policy "projects_update" on public.projects for update using (company_id = my_company_id()) with check (company_id = my_company_id() and my_role() in ('owner','admin','manager'));
-drop policy if exists "projects_delete" on public.projects;
-create policy "projects_delete" on public.projects for delete using (company_id = my_company_id() and my_role() in ('owner','admin'));
+-- ─── projects ─────────────────────────────────────────────────────────────────
+DO $$
+BEGIN
+  IF to_regclass('public.projects') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "projects_select" ON public.projects;
+    CREATE POLICY "projects_select" ON public.projects FOR SELECT USING (company_id = my_company_id());
+    DROP POLICY IF EXISTS "projects_insert" ON public.projects;
+    CREATE POLICY "projects_insert" ON public.projects FOR INSERT WITH CHECK (company_id = my_company_id() AND my_role() IN ('owner','admin','manager'));
+    DROP POLICY IF EXISTS "projects_update" ON public.projects;
+    CREATE POLICY "projects_update" ON public.projects FOR UPDATE USING (company_id = my_company_id()) WITH CHECK (company_id = my_company_id() AND my_role() IN ('owner','admin','manager'));
+    DROP POLICY IF EXISTS "projects_delete" ON public.projects;
+    CREATE POLICY "projects_delete" ON public.projects FOR DELETE USING (company_id = my_company_id() AND my_role() IN ('owner','admin'));
+  END IF;
+END
+$$;
 
-drop policy if exists "invoices_select" on public.invoices;
-create policy "invoices_select" on public.invoices for select using (company_id = my_company_id());
-drop policy if exists "invoices_insert" on public.invoices;
-create policy "invoices_insert" on public.invoices for insert with check (company_id = my_company_id() and my_role() in ('owner','admin','manager','accountant'));
-drop policy if exists "invoices_update" on public.invoices;
-create policy "invoices_update" on public.invoices for update using (company_id = my_company_id()) with check (company_id = my_company_id() and my_role() in ('owner','admin','manager','accountant'));
-drop policy if exists "invoices_delete" on public.invoices;
-create policy "invoices_delete" on public.invoices for delete using (company_id = my_company_id() and my_role() in ('owner','admin'));
+-- ─── invoices ─────────────────────────────────────────────────────────────────
+DO $$
+BEGIN
+  IF to_regclass('public.invoices') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "invoices_select" ON public.invoices;
+    CREATE POLICY "invoices_select" ON public.invoices FOR SELECT USING (company_id = my_company_id());
+    DROP POLICY IF EXISTS "invoices_insert" ON public.invoices;
+    CREATE POLICY "invoices_insert" ON public.invoices FOR INSERT WITH CHECK (company_id = my_company_id() AND my_role() IN ('owner','admin','manager','accountant'));
+    DROP POLICY IF EXISTS "invoices_update" ON public.invoices;
+    CREATE POLICY "invoices_update" ON public.invoices FOR UPDATE USING (company_id = my_company_id()) WITH CHECK (company_id = my_company_id() AND my_role() IN ('owner','admin','manager','accountant'));
+    DROP POLICY IF EXISTS "invoices_delete" ON public.invoices;
+    CREATE POLICY "invoices_delete" ON public.invoices FOR DELETE USING (company_id = my_company_id() AND my_role() IN ('owner','admin'));
+  END IF;
+END
+$$;
 
-drop policy if exists "contracts_select" on public.contracts;
-create policy "contracts_select" on public.contracts for select using (company_id = my_company_id());
-drop policy if exists "contracts_insert" on public.contracts;
-create policy "contracts_insert" on public.contracts for insert with check (company_id = my_company_id() and my_role() in ('owner','admin','manager'));
-drop policy if exists "contracts_update" on public.contracts;
-create policy "contracts_update" on public.contracts for update using (company_id = my_company_id()) with check (company_id = my_company_id() and my_role() in ('owner','admin','manager'));
-drop policy if exists "contracts_delete" on public.contracts;
-create policy "contracts_delete" on public.contracts for delete using (company_id = my_company_id() and my_role() in ('owner','admin'));
+-- ─── contracts ────────────────────────────────────────────────────────────────
+DO $$
+BEGIN
+  IF to_regclass('public.contracts') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "contracts_select" ON public.contracts;
+    CREATE POLICY "contracts_select" ON public.contracts FOR SELECT USING (company_id = my_company_id());
+    DROP POLICY IF EXISTS "contracts_insert" ON public.contracts;
+    CREATE POLICY "contracts_insert" ON public.contracts FOR INSERT WITH CHECK (company_id = my_company_id() AND my_role() IN ('owner','admin','manager'));
+    DROP POLICY IF EXISTS "contracts_update" ON public.contracts;
+    CREATE POLICY "contracts_update" ON public.contracts FOR UPDATE USING (company_id = my_company_id()) WITH CHECK (company_id = my_company_id() AND my_role() IN ('owner','admin','manager'));
+    DROP POLICY IF EXISTS "contracts_delete" ON public.contracts;
+    CREATE POLICY "contracts_delete" ON public.contracts FOR DELETE USING (company_id = my_company_id() AND my_role() IN ('owner','admin'));
+  END IF;
+END
+$$;
 
+-- ─── audit_logs — guaranteed by 003 ──────────────────────────────────────────
 drop policy if exists "audit_logs_select" on public.audit_logs;
 create policy "audit_logs_select" on public.audit_logs for select using (company_id = my_company_id());
 
+-- ─── client_tokens — guaranteed by 004 ───────────────────────────────────────
 drop policy if exists "client_tokens_select" on public.client_tokens;
 create policy "client_tokens_select" on public.client_tokens for select using (company_id = my_company_id());
 drop policy if exists "client_tokens_insert" on public.client_tokens;
@@ -46,6 +69,7 @@ create policy "client_tokens_insert" on public.client_tokens for insert with che
 drop policy if exists "client_tokens_update" on public.client_tokens;
 create policy "client_tokens_update" on public.client_tokens for update using (company_id = my_company_id()) with check (company_id = my_company_id() and my_role() in ('owner','admin','manager'));
 
+-- ─── portal_messages — guaranteed by 004 ─────────────────────────────────────
 drop policy if exists "portal_messages_select" on public.portal_messages;
 create policy "portal_messages_select" on public.portal_messages
 for select using (exists (select 1 from public.client_tokens ct where ct.id = token_id and ct.company_id = my_company_id()));
@@ -53,28 +77,44 @@ drop policy if exists "portal_messages_insert_company" on public.portal_messages
 create policy "portal_messages_insert_company" on public.portal_messages
 for insert with check (exists (select 1 from public.client_tokens ct where ct.id = token_id and ct.company_id = my_company_id()) and my_role() in ('owner','admin','manager'));
 
-drop policy if exists "invoice_items_select" on public.invoice_items;
-create policy "invoice_items_select" on public.invoice_items
-for select using (exists (select 1 from public.invoices i where i.id = invoice_id and i.company_id = my_company_id()));
-drop policy if exists "invoice_items_insert" on public.invoice_items;
-create policy "invoice_items_insert" on public.invoice_items
-for insert with check (exists (select 1 from public.invoices i where i.id = invoice_id and i.company_id = my_company_id() and my_role() in ('owner','admin','manager','accountant')));
-drop policy if exists "invoice_items_update" on public.invoice_items;
-create policy "invoice_items_update" on public.invoice_items
-for update using (exists (select 1 from public.invoices i where i.id = invoice_id and i.company_id = my_company_id())) with check (exists (select 1 from public.invoices i where i.id = invoice_id and i.company_id = my_company_id() and my_role() in ('owner','admin','manager','accountant')));
-drop policy if exists "invoice_items_delete" on public.invoice_items;
-create policy "invoice_items_delete" on public.invoice_items
-for delete using (exists (select 1 from public.invoices i where i.id = invoice_id and i.company_id = my_company_id() and my_role() in ('owner','admin')));
+-- ─── invoice_items ────────────────────────────────────────────────────────────
+DO $$
+BEGIN
+  IF to_regclass('public.invoice_items') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "invoice_items_select" ON public.invoice_items;
+    CREATE POLICY "invoice_items_select" ON public.invoice_items
+      FOR SELECT USING (EXISTS (SELECT 1 FROM public.invoices i WHERE i.id = invoice_id AND i.company_id = my_company_id()));
+    DROP POLICY IF EXISTS "invoice_items_insert" ON public.invoice_items;
+    CREATE POLICY "invoice_items_insert" ON public.invoice_items
+      FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM public.invoices i WHERE i.id = invoice_id AND i.company_id = my_company_id() AND my_role() IN ('owner','admin','manager','accountant')));
+    DROP POLICY IF EXISTS "invoice_items_update" ON public.invoice_items;
+    CREATE POLICY "invoice_items_update" ON public.invoice_items
+      FOR UPDATE USING (EXISTS (SELECT 1 FROM public.invoices i WHERE i.id = invoice_id AND i.company_id = my_company_id()))
+      WITH CHECK (EXISTS (SELECT 1 FROM public.invoices i WHERE i.id = invoice_id AND i.company_id = my_company_id() AND my_role() IN ('owner','admin','manager','accountant')));
+    DROP POLICY IF EXISTS "invoice_items_delete" ON public.invoice_items;
+    CREATE POLICY "invoice_items_delete" ON public.invoice_items
+      FOR DELETE USING (EXISTS (SELECT 1 FROM public.invoices i WHERE i.id = invoice_id AND i.company_id = my_company_id() AND my_role() IN ('owner','admin')));
+  END IF;
+END
+$$;
 
-drop policy if exists "cost_estimate_items_select_v47" on public.cost_estimate_items;
-create policy "cost_estimate_items_select_v47" on public.cost_estimate_items
-for select using (exists (select 1 from public.cost_estimates ce where ce.id = cost_estimate_id and ce.company_id = my_company_id()));
-drop policy if exists "cost_estimate_items_insert_v47" on public.cost_estimate_items;
-create policy "cost_estimate_items_insert_v47" on public.cost_estimate_items
-for insert with check (exists (select 1 from public.cost_estimates ce where ce.id = cost_estimate_id and ce.company_id = my_company_id() and my_role() in ('owner','admin','manager')));
-drop policy if exists "cost_estimate_items_update_v47" on public.cost_estimate_items;
-create policy "cost_estimate_items_update_v47" on public.cost_estimate_items
-for update using (exists (select 1 from public.cost_estimates ce where ce.id = cost_estimate_id and ce.company_id = my_company_id())) with check (exists (select 1 from public.cost_estimates ce where ce.id = cost_estimate_id and ce.company_id = my_company_id() and my_role() in ('owner','admin','manager')));
-drop policy if exists "cost_estimate_items_delete_v47" on public.cost_estimate_items;
-create policy "cost_estimate_items_delete_v47" on public.cost_estimate_items
-for delete using (exists (select 1 from public.cost_estimates ce where ce.id = cost_estimate_id and ce.company_id = my_company_id() and my_role() in ('owner','admin')));
+-- ─── cost_estimate_items ──────────────────────────────────────────────────────
+DO $$
+BEGIN
+  IF to_regclass('public.cost_estimate_items') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "cost_estimate_items_select_v47" ON public.cost_estimate_items;
+    CREATE POLICY "cost_estimate_items_select_v47" ON public.cost_estimate_items
+      FOR SELECT USING (EXISTS (SELECT 1 FROM public.cost_estimates ce WHERE ce.id = cost_estimate_id AND ce.company_id = my_company_id()));
+    DROP POLICY IF EXISTS "cost_estimate_items_insert_v47" ON public.cost_estimate_items;
+    CREATE POLICY "cost_estimate_items_insert_v47" ON public.cost_estimate_items
+      FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM public.cost_estimates ce WHERE ce.id = cost_estimate_id AND ce.company_id = my_company_id() AND my_role() IN ('owner','admin','manager')));
+    DROP POLICY IF EXISTS "cost_estimate_items_update_v47" ON public.cost_estimate_items;
+    CREATE POLICY "cost_estimate_items_update_v47" ON public.cost_estimate_items
+      FOR UPDATE USING (EXISTS (SELECT 1 FROM public.cost_estimates ce WHERE ce.id = cost_estimate_id AND ce.company_id = my_company_id()))
+      WITH CHECK (EXISTS (SELECT 1 FROM public.cost_estimates ce WHERE ce.id = cost_estimate_id AND ce.company_id = my_company_id() AND my_role() IN ('owner','admin','manager')));
+    DROP POLICY IF EXISTS "cost_estimate_items_delete_v47" ON public.cost_estimate_items;
+    CREATE POLICY "cost_estimate_items_delete_v47" ON public.cost_estimate_items
+      FOR DELETE USING (EXISTS (SELECT 1 FROM public.cost_estimates ce WHERE ce.id = cost_estimate_id AND ce.company_id = my_company_id() AND my_role() IN ('owner','admin')));
+  END IF;
+END
+$$;

@@ -46,11 +46,22 @@ begin
   return v_company_id;
 end $$;
 
-create or replace view public.company_bootstrap_status as
-select
-  p.id as user_id,
-  p.email,
-  p.company,
-  p.plan,
-  exists(select 1 from public.company_members cm where cm.user_id = p.id) as has_company_membership
-from public.profiles p;
+-- View depends on public.profiles — only create if the table exists.
+-- On fresh bootstrap, profiles is created later; the view will be recreated
+-- by whichever migration adds profiles.
+DO $$
+BEGIN
+  IF to_regclass('public.profiles') IS NOT NULL THEN
+    EXECUTE $sql$
+      CREATE OR REPLACE VIEW public.company_bootstrap_status AS
+      SELECT
+        p.id AS user_id,
+        p.email,
+        p.company,
+        p.plan,
+        EXISTS(SELECT 1 FROM public.company_members cm WHERE cm.user_id = p.id) AS has_company_membership
+      FROM public.profiles p
+    $sql$;
+  END IF;
+END
+$$;

@@ -1,7 +1,7 @@
+-- ─── companies + company_members — guaranteed by 001_multi_tenant ────────────
+
 alter table if exists companies enable row level security;
 alter table if exists company_members enable row level security;
-alter table if exists clients enable row level security;
-alter table if exists cost_estimates enable row level security;
 
 drop policy if exists "companies_select" on companies;
 create policy "companies_select" on companies
@@ -11,36 +11,56 @@ drop policy if exists "members_select" on company_members;
 create policy "members_select" on company_members
   for select using (company_id = my_company_id());
 
-drop policy if exists "clients_select" on clients;
-create policy "clients_select" on clients
-  for select using (company_id = my_company_id());
+-- ─── clients — may not exist on fresh bootstrap ───────────────────────────────
 
-drop policy if exists "clients_insert" on clients;
-create policy "clients_insert" on clients
-  for insert with check (company_id = my_company_id() and my_role() in ('owner','admin','manager'));
+alter table if exists clients enable row level security;
 
-drop policy if exists "clients_update" on clients;
-create policy "clients_update" on clients
-  for update using (company_id = my_company_id())
-  with check (company_id = my_company_id() and my_role() in ('owner','admin','manager'));
+DO $$
+BEGIN
+  IF to_regclass('public.clients') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "clients_select" ON clients;
+    CREATE POLICY "clients_select" ON clients
+      FOR SELECT USING (company_id = my_company_id());
 
-drop policy if exists "clients_delete" on clients;
-create policy "clients_delete" on clients
-  for delete using (company_id = my_company_id() and my_role() in ('owner','admin'));
+    DROP POLICY IF EXISTS "clients_insert" ON clients;
+    CREATE POLICY "clients_insert" ON clients
+      FOR INSERT WITH CHECK (company_id = my_company_id() AND my_role() IN ('owner','admin','manager'));
 
-drop policy if exists "estimates_select" on cost_estimates;
-create policy "estimates_select" on cost_estimates
-  for select using (company_id = my_company_id());
+    DROP POLICY IF EXISTS "clients_update" ON clients;
+    CREATE POLICY "clients_update" ON clients
+      FOR UPDATE USING (company_id = my_company_id())
+      WITH CHECK (company_id = my_company_id() AND my_role() IN ('owner','admin','manager'));
 
-drop policy if exists "estimates_insert" on cost_estimates;
-create policy "estimates_insert" on cost_estimates
-  for insert with check (company_id = my_company_id() and my_role() in ('owner','admin','manager'));
+    DROP POLICY IF EXISTS "clients_delete" ON clients;
+    CREATE POLICY "clients_delete" ON clients
+      FOR DELETE USING (company_id = my_company_id() AND my_role() IN ('owner','admin'));
+  END IF;
+END
+$$;
 
-drop policy if exists "estimates_update" on cost_estimates;
-create policy "estimates_update" on cost_estimates
-  for update using (company_id = my_company_id())
-  with check (company_id = my_company_id() and my_role() in ('owner','admin','manager'));
+-- ─── cost_estimates — may not exist on fresh bootstrap ───────────────────────
 
-drop policy if exists "estimates_delete" on cost_estimates;
-create policy "estimates_delete" on cost_estimates
-  for delete using (company_id = my_company_id() and my_role() in ('owner','admin'));
+alter table if exists cost_estimates enable row level security;
+
+DO $$
+BEGIN
+  IF to_regclass('public.cost_estimates') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "estimates_select" ON cost_estimates;
+    CREATE POLICY "estimates_select" ON cost_estimates
+      FOR SELECT USING (company_id = my_company_id());
+
+    DROP POLICY IF EXISTS "estimates_insert" ON cost_estimates;
+    CREATE POLICY "estimates_insert" ON cost_estimates
+      FOR INSERT WITH CHECK (company_id = my_company_id() AND my_role() IN ('owner','admin','manager'));
+
+    DROP POLICY IF EXISTS "estimates_update" ON cost_estimates;
+    CREATE POLICY "estimates_update" ON cost_estimates
+      FOR UPDATE USING (company_id = my_company_id())
+      WITH CHECK (company_id = my_company_id() AND my_role() IN ('owner','admin','manager'));
+
+    DROP POLICY IF EXISTS "estimates_delete" ON cost_estimates;
+    CREATE POLICY "estimates_delete" ON cost_estimates
+      FOR DELETE USING (company_id = my_company_id() AND my_role() IN ('owner','admin'));
+  END IF;
+END
+$$;
