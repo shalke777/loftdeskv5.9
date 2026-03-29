@@ -31,18 +31,26 @@ initMonitoring()
   }
 })()
 
-// In dev mode, unregister any Service Workers left over from a previous production
-// build preview. VitePWA devOptions.enabled=false means no SW is injected in dev,
-// but a previously registered SW (e.g. from `npm run build` + vite preview) can
-// still intercept network requests and serve stale assets, making HMR invisible.
-// Explicitly unregistering on dev start guarantees a clean slate.
-if (import.meta.env.DEV && 'serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    for (const reg of registrations) {
-      void reg.unregister()
-      if (import.meta.env.DEV) console.info('[dev] unregistered SW:', reg.scope)
-    }
-  })
+// ── DEV-only runtime hardening ────────────────────────────────────────────────
+// This entire block is dead code in production builds (Vite replaces
+// import.meta.env.DEV with `false` and tree-shakes it away).
+if (import.meta.env.DEV) {
+  // 1. Unregister any SW left over from a previous `npm run build` + preview.
+  //    VitePWA devOptions.enabled=false means no new SW is registered in dev,
+  //    but a stale SW can still intercept HMR asset requests and serve old JS.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      const count = registrations.length
+      for (const reg of registrations) void reg.unregister()
+      // 2. Startup diagnostic — confirms port, SW status, and dev mode.
+      //    Helps immediately spot "wrong port" or "SW still active" situations.
+      console.info(
+        `%c[LoftDesk DEV]%c port=${window.location.port || '80'}  SW=${count > 0 ? `cleared ${count} registration(s)` : 'none'}  HMR=active`,
+        'color:#77BA8A;font-weight:700',
+        'color:#A7ABB3',
+      )
+    })
+  }
 }
 
 registerSW({ immediate: true })
