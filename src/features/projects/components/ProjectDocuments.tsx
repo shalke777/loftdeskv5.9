@@ -41,7 +41,17 @@ const DELETABLE_TYPES = new Set(['estimate', 'contract', 'invoice'])
 
 const APPROVAL_TYPES = new Set(['estimate', 'contract'])
 
-export function ProjectDocuments({ project, onCreateEstimate }: { project: Project; onCreateEstimate?: () => void }) {
+export function ProjectDocuments({
+  project,
+  onCreateEstimate,
+  onCreateContract,
+  onCreateInvoice,
+}: {
+  project: Project
+  onCreateEstimate?: () => void
+  onCreateContract?: () => void
+  onCreateInvoice?: () => void
+}) {
   const qc = useQueryClient()
   const companyId = useCompanyId()
   const { data: docs = [], isLoading } = useProjectDocuments(project.id)
@@ -344,6 +354,54 @@ export function ProjectDocuments({ project, onCreateEstimate }: { project: Proje
           </div>
         ))
       )}
+
+      {/* Contextual next-step footer — only when docs exist */}
+      {docs.length > 0 && (() => {
+        const flags = (project.completeness_flags ?? {}) as Record<string, boolean>
+        if (flags.has_estimate && !flags.has_contract && onCreateContract) {
+          return (
+            <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--color-surface-soft)' }}>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary, #A7ABB3)', margin: '0 0 6px' }}>
+                Następny krok: utwórz umowę na podstawie wyceny
+              </p>
+              <button
+                type="button"
+                onClick={onCreateContract}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '7px 14px', borderRadius: 8, border: '1px dashed var(--color-brand, #77BA8A)',
+                  background: 'rgba(119,186,138,0.07)', color: 'var(--color-brand, #77BA8A)',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                + Nowa umowa
+              </button>
+            </div>
+          )
+        }
+        if (flags.has_contract && !flags.has_invoice && onCreateInvoice) {
+          return (
+            <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--color-surface-soft)' }}>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary, #A7ABB3)', margin: '0 0 6px' }}>
+                Następny krok: wygeneruj fakturę do umowy
+              </p>
+              <button
+                type="button"
+                onClick={onCreateInvoice}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '7px 14px', borderRadius: 8, border: '1px dashed var(--color-brand, #77BA8A)',
+                  background: 'rgba(119,186,138,0.07)', color: 'var(--color-brand, #77BA8A)',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                + Generuj fakturę
+              </button>
+            </div>
+          )
+        }
+        return null
+      })()}
 
       {sendDoc && (
         <SendToClientModal

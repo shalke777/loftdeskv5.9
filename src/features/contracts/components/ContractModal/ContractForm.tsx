@@ -41,8 +41,14 @@ function buildDefaultTranches(count: number, totalGross: number): ContractTranch
   return result
 }
 
-export function ContractForm({ companyId, onSubmit, initialContract }: { companyId: string; onSubmit: (input: CreateContractInput) => Promise<void>; initialContract?: Contract | null }) {
-  const [estimateId, setEstimateId] = useState(initialContract?.estimate_id || '')
+export function ContractForm({ companyId, onSubmit, initialContract, initialProjectId, initialEstimateId }: {
+  companyId: string
+  onSubmit: (input: CreateContractInput) => Promise<void>
+  initialContract?: Contract | null
+  initialProjectId?: string | null
+  initialEstimateId?: string | null
+}) {
+  const [estimateId, setEstimateId] = useState(initialContract?.estimate_id || initialEstimateId || '')
   const [trancheCount, setTrancheCount] = useState('2')
   const [tranches, setTranches] = useState<ContractTranche[]>([])
   const [customParagraphs, setCustomParagraphs] = useState<CustomParagraph[]>(initialContract?.custom_paragraphs || [])
@@ -51,7 +57,7 @@ export function ContractForm({ companyId, onSubmit, initialContract }: { company
   const [endDate, setEndDate] = useState(initialContract?.end_date || '')
   const [location, setLocation] = useState(initialContract?.location || '')
   const [notes, setNotes] = useState(initialContract?.notes || '')
-  const [projectId, setProjectId] = useState(initialContract?.project_id || '')
+  const [projectId, setProjectId] = useState(initialContract?.project_id || initialProjectId || '')
 
   const { data: estimates = [] } = useEstimates()
   const { data: clients = [] } = useClients()
