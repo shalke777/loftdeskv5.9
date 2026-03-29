@@ -179,10 +179,12 @@ export function ChatPage() {
   const [showNewThread, setShowNewThread] = useState(false)
   const [mobileView, setMobileView]       = useState<'list' | 'thread'>('list')
 
-  // Obsługa ?threadId= — otwiera konkretny wątek po nawigacji z wyceny/projektu
+  // Obsługa ?threadId= — otwiera konkretny wątek po nawigacji z wyceny/projektu.
+  // Guard !activeId usunięty celowo: gdyby pozostał, nawigacja z projektu B po
+  // wcześniejszym otwarciu projektu A nie przełączałaby wątku (activeId już ustawiony).
   const { threadId: searchThreadId } = useSearch({ from: '/_auth/chat' as any }) as { threadId?: string }
   useEffect(() => {
-    if (searchThreadId && !activeId) {
+    if (searchThreadId) {
       setActiveId(searchThreadId)
       setMobileView('thread')
     }
