@@ -13,8 +13,10 @@
 //   - Obsługa braku internetu: mutation.error → komunikat
 
 import { useRef, useState, type KeyboardEvent } from 'react'
-import { Send } from 'lucide-react'
+import { Send, Paperclip, X } from 'lucide-react'
 import { useSendThreadMessage } from '@/features/projects/hooks/useSendThreadMessage'
+import { uploadProjectAsset } from '@/shared/lib/uploadProjectAsset'
+import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import type { ProjectThread } from '@/features/portal/model/project-portal.types'
 
 interface Props {
@@ -24,24 +26,46 @@ interface Props {
 }
 
 export function MessageComposer({ thread, projectId, disabled }: Props) {
-  const [body, setBody] = useState('')
-  const textRef         = useRef<HTMLTextAreaElement>(null)
-  const send            = useSendThreadMessage(projectId)
+  const [body, setBody]             = useState('')
+  const [attachment, setAttachment] = useState<{ url: string; name: string; mime: string } | null>(null)
+  const [uploading,  setUploading]  = useState(false)
+  const [uploadErr,  setUploadErr]  = useState<string | null>(null)
+  const textRef                     = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef                = useRef<HTMLInputElement>(null)
+  const companyId                   = useCompanyId()
+  const send                        = useSendThreadMessage(projectId)
+
+  const handleFileChosen = async (file: File) => {
+    setUploadErr(null)
+    setUploading(true)
+    try {
+      const result = await uploadProjectAsset(file, companyId, 'messages')
+      setAttachment({ url: result.url, name: result.name, mime: result.mime })
+    } catch (err) {
+      setUploadErr(err instanceof Error ? err.message : 'Błąd przesyłania załącznika')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleSend = () => {
     const trimmed = body.trim()
-    if (!trimmed || send.isPending) return
+    if ((!trimmed && !attachment) || send.isPending) return
 
     send.mutate(
       {
-        thread_id:  thread.id,
-        project_id: projectId,
-        body:       trimmed,
-        visibility: thread.visibility === 'approval' ? 'client_shared' : thread.visibility,
+        thread_id:       thread.id,
+        project_id:      projectId,
+        body:            trimmed || (attachment ? `📎 ${attachment.name}` : ''),
+        visibility:      thread.visibility === 'approval' ? 'client_shared' : thread.visibility,
+        attachment_url:  attachment?.url,
+        attachment_name: attachment?.name,
+        attachment_mime: attachment?.mime,
       },
       {
         onSuccess: () => {
           setBody('')
+          setAttachment(null)
           textRef.current?.focus()
         },
       },
@@ -99,6 +123,45 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
         </div>
       )}
 
+      {/* Attachment chip — shown after successful upload */}
+      {attachment && (
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '4px 10px', marginBottom: 6,
+            background: 'var(--color-surface-raised, var(--color-surface))',
+            border: '1px solid var(--color-border)',
+            borderRadius: 6, fontSize: 12, color: 'var(--color-text-secondary)',
+          }}
+        >
+          <Paperclip size={12} />
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {attachment.name}
+          </span>
+          <button
+            type="button"
+            onClick={() => setAttachment(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'inherit', display: 'flex' }}
+            title="Usuń załącznik"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,.pdf"
+        style={{ display: 'none' }}
+        onChange={e => {
+          const file = e.target.files?.[0]
+          if (file) handleFileChosen(file)
+          e.target.value = ''
+        }}
+      />
+
       <div className="chat-thread__composer-row">
         <textarea
           ref={textRef}
@@ -117,8 +180,18 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
           className={`chat-textarea${thread.visibility === 'internal' ? ' chat-textarea--note' : ''}`}
         />
         <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={disabled || send.isPending || uploading}
+          className="chat-attach-btn"
+          title={uploading ? 'Przesyłam…' : 'Dodaj załącznik'}
+          style={{ opacity: uploading ? 0.6 : 1 }}
+        >
+          <Paperclip size={15} strokeWidth={2} />
+        </button>
+        <button
           onClick={handleSend}
-          disabled={!body.trim() || disabled || send.isPending}
+          disabled={(!body.trim() && !attachment) || disabled || send.isPending}
           className={`chat-send-btn${thread.visibility === 'internal' ? ' chat-send-btn--note' : ''}`}
           title="Wyślij (Ctrl+Enter)"
           type="button"
@@ -127,12 +200,17 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
         </button>
       </div>
 
+      {uploadErr && (
+        <div style={{ marginTop: 4, fontSize: 12, color: 'var(--color-error)' }}>
+          ⚠️ {uploadErr}
+        </div>
+      )}
       {send.isError ? (
         <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-error)' }}>
           ⚠️ Błąd wysyłki — sprawdź połączenie
         </div>
       ) : (
-        <div className="chat-hint">Ctrl+Enter aby wysłać</div>
+        <div className="chat-hint">{uploading ? 'Przesyłam załącznik…' : 'Ctrl+Enter aby wysłać'}</div>
       )}
     </div>
   )
