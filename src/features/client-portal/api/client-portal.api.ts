@@ -337,6 +337,10 @@ export const clientPortalApi = {
       .select('id, doc_type, doc_id, created_at')
       .eq('project_id', projectId)
       .is('archived_at', null)
+      // Exclude domain entities already shown in their own sections (Wyceny/Umowy/Faktury).
+      // project_documents is a junction table — it stores refs to ALL doc types including
+      // estimate/contract/invoice. Without this filter they would appear twice in the portal.
+      .not('doc_type', 'in', '(estimate,contract,invoice)')
       .order('created_at', { ascending: false })
     if (error) throw error
     return (data ?? []) as ClientProjectDocument[]
