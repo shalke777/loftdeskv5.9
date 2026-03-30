@@ -46,9 +46,9 @@ function loadDraft() {
 function saveDraft(data: object) { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(data)) } catch { /* ignore */ } }
 function clearDraft() { try { sessionStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ } }
 
-interface Props { companyId: string; onSubmit: (input: CreateInvoiceInput) => Promise<void>; initialInvoice?: Invoice | null }
+interface Props { companyId: string; onSubmit: (input: CreateInvoiceInput) => Promise<void>; onSaveDraft?: (input: CreateInvoiceInput) => Promise<void>; initialInvoice?: Invoice | null }
 
-export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
+export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice }: Props) {
   const isNew = !initialInvoice
   const saveGuard = useRef(false)
   const [submitting, setSubmitting] = useState(false)
@@ -187,35 +187,45 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
   function addItem() { setItems((prev) => [...prev, { id: generateId(), description: 'Nowa pozycja', unit: 'kpl', quantity: 1, unit_price: 0, vat_rate: 23, sort_order: prev.length + 1, tranche_label: '' }]) }
   function removeItem(id: string) { setItems((prev) => prev.filter((i) => i.id !== id).map((i, idx) => ({ ...i, sort_order: idx + 1 }))) }
 
-  async function handleSubmit() {
-    if (items.length === 0) {
-      toast.error('Brak pozycji', 'Dodaj co najmniej jedną pozycję do faktury.')
-      return
+  async function buildInput(asDraft: boolean): Promise<CreateInvoiceInput> {
+    return {
+      company_id: companyId,
+      client_id: clientId || null,
+      project_id: projectId || null,
+      contract_id: contractId || null,
+      status: asDraft ? 'draft' : (initialInvoice?.status && initialInvoice.status !== 'draft' ? initialInvoice.status : 'unpaid'),
+      draft: asDraft,
+      invoice_type: invoiceType as Invoice['invoice_type'],
+      issue_date: issueDate,
+      sale_date: saleDate || null,
+      issue_place: issuePlace || null,
+      due_date: dueDate || null,
+      payment_method: paymentMethod as Invoice['payment_method'],
+      bank_account: bankAccount || null,
+      tranche_id: selectedTrancheId || null,
+      advance_total: invoiceType === 'final' ? (Number(advanceTotal) || null) : null,
+      notes,
+      items,
     }
+  }
+
+  async function handleSubmit() {
+    if (items.length === 0) { toast.error('Brak pozycji', 'Dodaj co najmniej jedną pozycję do faktury.'); return }
     setSubmitting(true)
     try {
-      await onSubmit({
-        company_id: companyId,
-        client_id: clientId || null,
-        project_id: projectId || null,
-        contract_id: contractId || null,
-        status: initialInvoice?.status || 'unpaid',
-        invoice_type: invoiceType as Invoice['invoice_type'],
-        issue_date: issueDate,
-        sale_date: saleDate || null,
-        issue_place: issuePlace || null,
-        due_date: dueDate || null,
-        payment_method: paymentMethod as Invoice['payment_method'],
-        bank_account: bankAccount || null,
-        tranche_id: selectedTrancheId || null,
-        advance_total: invoiceType === 'final' ? (Number(advanceTotal) || null) : null,
-        notes,
-        items,
-      })
+      await onSubmit(await buildInput(false))
       clearDraft()
-    } finally {
-      setSubmitting(false)
-    }
+    } finally { setSubmitting(false) }
+  }
+
+  async function handleSaveDraft() {
+    if (items.length === 0) { toast.error('Brak pozycji', 'Dodaj co najmniej jedną pozycję do faktury.'); return }
+    setSubmitting(true)
+    try {
+      const cb = onSaveDraft ?? onSubmit
+      await cb(await buildInput(true))
+      clearDraft()
+    } finally { setSubmitting(false) }
   }
 
   return (
@@ -331,9 +341,16 @@ export function InvoiceForm({ companyId, onSubmit, initialInvoice }: Props) {
       </div>
 
       <div className="actions-row">
-        <Button loading={submitting} onClick={handleSubmit}>
-          {initialInvoice ? 'Zapisz zmiany' : 'Zapisz fakturę'}
-        </Button>
+        {initialInvoice ? (
+          <Button loading={submitting} onClick={handleSubmit}>Zapisz zmiany</Button>
+        ) : (
+          <>
+            {onSaveDraft !== undefined && (
+              <Button variant="secondary" loading={submitting} onClick={handleSaveDraft}>Zapisz szkic</Button>
+            )}
+            <Button loading={submitting} onClick={handleSubmit}>Wystaw fakturę</Button>
+          </>
+        )}
       </div>
     </div>
   )

@@ -12,9 +12,10 @@ import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientMod
 import { getAppOrigin } from '@/shared/lib/native'
 
 const STATUS_LABEL: Record<Invoice['status'], string> = {
-  unpaid: 'Nieopłacona', paid: 'Opłacona', overdue: 'Przeterminowana',
+  draft: 'Szkic', unpaid: 'Nieopłacona', paid: 'Opłacona', overdue: 'Przeterminowana',
 }
 const STATUS_CLASS: Record<Invoice['status'], string> = {
+  draft:   'proj-status proj-status--draft',
   unpaid:  'proj-status proj-status--unpaid',
   paid:    'proj-status proj-status--paid',
   overdue: 'proj-status proj-status--overdue',
@@ -40,6 +41,7 @@ interface Props {
   onDelete: (id: string) => void
   onMarkPaid: (id: string) => void
   onSendToKsef: (id: string) => void
+  onFinalize: (id: string) => void
   canDelete?: boolean
   canMarkPaid?: boolean
   canSendToKsef?: boolean
@@ -47,9 +49,10 @@ interface Props {
 
 export function InvoiceRow({
   invoice, clientName,
-  onEdit, onDelete, onMarkPaid, onSendToKsef,
+  onEdit, onDelete, onMarkPaid, onSendToKsef, onFinalize,
   canDelete = true, canMarkPaid = true, canSendToKsef = true,
 }: Props) {
+  const isDraft = invoice.status === 'draft'
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -102,7 +105,7 @@ export function InvoiceRow({
         </span>
 
         <div className="proj-row__info">
-          <span className="proj-row__name">{invoice.number}</span>
+          <span className="proj-row__name">{invoice.number ?? <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Szkic — bez numeru</span>}</span>
           <span className="proj-row__meta">
             {clientName && <span className="proj-row__client">{clientName}</span>}
             {invoice.due_date && (
@@ -122,20 +125,24 @@ export function InvoiceRow({
           )}
           <span className={STATUS_CLASS[invoice.status]}>{STATUS_LABEL[invoice.status]}</span>
           <div className="proj-row__actions">
-            <button
-              className="proj-action-btn"
-              title="Wyślij do klienta"
-              onClick={e => { e.stopPropagation(); setSendOpen(true) }}
-            >
-              <Mail size={14} />
-            </button>
-            <button
-              className="proj-action-btn"
-              title="PDF / XML"
-              onClick={e => { e.stopPropagation(); setPreviewOpen(true) }}
-            >
-              <FileText size={14} />
-            </button>
+            {!isDraft && (
+              <button
+                className="proj-action-btn"
+                title="Wyślij do klienta"
+                onClick={e => { e.stopPropagation(); setSendOpen(true) }}
+              >
+                <Mail size={14} />
+              </button>
+            )}
+            {!isDraft && (
+              <button
+                className="proj-action-btn"
+                title="PDF / XML"
+                onClick={e => { e.stopPropagation(); setPreviewOpen(true) }}
+              >
+                <FileText size={14} />
+              </button>
+            )}
             {canEdit && (
               <button
                 className="proj-action-btn"
@@ -145,7 +152,16 @@ export function InvoiceRow({
                 <Edit2 size={14} />
               </button>
             )}
-            {invoice.status !== 'paid' && canMarkPaid && (
+            {isDraft && (
+              <button
+                className="proj-action-btn proj-action-btn--primary"
+                title="Wystaw fakturę — nadaj numer"
+                onClick={e => { e.stopPropagation(); onFinalize(invoice.id) }}
+              >
+                <CheckCircle size={14} />
+              </button>
+            )}
+            {!isDraft && invoice.status !== 'paid' && canMarkPaid && (
               <button
                 className="proj-action-btn"
                 title="Oznacz jako opłaconą"
@@ -232,17 +248,23 @@ export function InvoiceRow({
           )}
 
           <div className="actions-row">
-            <Button variant="secondary" onClick={() => setPreviewOpen(true)}>PDF / XML</Button>
-            <Button variant="secondary" onClick={() => setSendOpen(true)}>Wyślij do klienta</Button>
-            {invoice.status !== 'paid' && canMarkPaid && (
-              <Button variant="secondary" onClick={() => onMarkPaid(invoice.id)}>
-                Oznacz jako opłaconą
-              </Button>
-            )}
-            {invoice.ksef_status !== 'ksef_sent' && canSendToKsef && (
-              <Button variant="secondary" onClick={() => onSendToKsef(invoice.id)}>
-                Wyślij do KSeF
-              </Button>
+            {isDraft ? (
+              <Button onClick={() => onFinalize(invoice.id)}>Wystaw fakturę</Button>
+            ) : (
+              <>
+                <Button variant="secondary" onClick={() => setPreviewOpen(true)}>PDF / XML</Button>
+                <Button variant="secondary" onClick={() => setSendOpen(true)}>Wyślij do klienta</Button>
+                {invoice.status !== 'paid' && canMarkPaid && (
+                  <Button variant="secondary" onClick={() => onMarkPaid(invoice.id)}>
+                    Oznacz jako opłaconą
+                  </Button>
+                )}
+                {invoice.ksef_status !== 'ksef_sent' && canSendToKsef && (
+                  <Button variant="secondary" onClick={() => onSendToKsef(invoice.id)}>
+                    Wyślij do KSeF
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -251,7 +273,7 @@ export function InvoiceRow({
       <DocumentPreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        title={`${invoice.number} · Podgląd dokumentu`}
+        title={`${invoice.number ?? 'Szkic'} · Podgląd dokumentu`}
         tabs={tabs}
       />
 
@@ -259,7 +281,7 @@ export function InvoiceRow({
         open={sendOpen}
         onClose={() => setSendOpen(false)}
         documentType="invoice"
-        documentName={invoice.number}
+        documentName={invoice.number ?? 'Szkic'}
         defaultEmail={client?.email}
         portalUrl={invoice.project_id ? `${getAppOrigin()}/client/project/${invoice.project_id}` : undefined}
       />

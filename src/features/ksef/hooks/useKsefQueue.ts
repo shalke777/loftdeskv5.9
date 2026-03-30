@@ -71,7 +71,7 @@ export function useKsefQueue() {
             } catch { /* DB update failed — continue */ }
             ksefService.appendHistory({
               invoiceId: invoice.id,
-              invoiceNumber: invoice.number,
+              invoiceNumber: invoice.number ?? "",
               timestamp: new Date().toISOString(),
               action: 'send',
               status: 'success',
@@ -106,7 +106,7 @@ export function useKsefQueue() {
               } catch { /* DB update failed — invoice sent but status not saved */ }
               ksefService.appendHistory({
                 invoiceId: invoice.id,
-                invoiceNumber: invoice.number,
+                invoiceNumber: invoice.number ?? "",
                 timestamp: new Date().toISOString(),
                 action: attempt > 1 ? 'retry' : 'send',
                 status: 'success',
@@ -127,7 +127,7 @@ export function useKsefQueue() {
             } catch { /* DB update failed — continue */ }
             ksefService.appendHistory({
               invoiceId: invoice.id,
-              invoiceNumber: invoice.number,
+              invoiceNumber: invoice.number ?? "",
               timestamp: new Date().toISOString(),
               action: 'send',
               status: 'error',

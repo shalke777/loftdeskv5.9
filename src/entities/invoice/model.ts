@@ -17,10 +17,11 @@ export const InvoiceSchema = z.object({
   client_id: z.string().nullable(),
   project_id: z.string().nullable(),
   contract_id: z.string().nullable().optional(),
-  number: z.string(),
+  /** null for drafts — assigned at issuance */
+  number: z.string().nullable(),
   /** Rodzaj faktury: standardowa / zaliczkowa / końcowa / częściowa */
   invoice_type: z.enum(['standard', 'advance', 'final', 'partial']).optional(),
-  status: z.enum(['unpaid', 'paid', 'overdue']),
+  status: z.enum(['draft', 'unpaid', 'paid', 'overdue']),
   issue_date: z.string(),
   /** Data sprzedaży / wykonania usługi */
   sale_date: z.string().nullable().optional(),
@@ -47,6 +48,8 @@ export const InvoiceSchema = z.object({
 export type Invoice = z.infer<typeof InvoiceSchema>
 export type InvoiceItem = z.infer<typeof InvoiceItemSchema>
 export type CreateInvoiceInput = Pick<Invoice, 'client_id' | 'project_id' | 'contract_id' | 'notes' | 'status'> & {
+  /** When true, skips number assignment — invoice saved as draft */
+  draft?: boolean
   company_id: string
   items: InvoiceItem[]
   issue_date: string

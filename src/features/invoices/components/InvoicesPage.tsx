@@ -6,7 +6,7 @@ import { Modal } from '@/shared/ui/Modal/Modal'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
-import { useCreateInvoice, useDeleteInvoice, useInvoices, useMarkInvoicePaid, useSendInvoiceToKsef, useUpdateInvoice } from '@/features/invoices/hooks/useInvoices'
+import { useCreateInvoice, useDeleteInvoice, useFinalizeInvoice, useInvoices, useMarkInvoicePaid, useSendInvoiceToKsef, useUpdateInvoice } from '@/features/invoices/hooks/useInvoices'
 import { InvoiceRow } from '@/features/invoices/components/InvoiceRow'
 import { InvoiceForm } from '@/features/invoices/components/InvoiceModal/InvoiceForm'
 import { useCan } from '@/features/auth/hooks/usePermissions'
@@ -35,6 +35,7 @@ export function InvoicesPage() {
   const createInvoice = useCreateInvoice()
   const updateInvoice = useUpdateInvoice()
   const deleteInvoice = useDeleteInvoice()
+  const finalizeInvoice = useFinalizeInvoice()
   const markPaid = useMarkInvoicePaid()
   const sendToKsef = useSendInvoiceToKsef()
   const canCreate = useCan('invoices.create')
@@ -65,6 +66,11 @@ export function InvoicesPage() {
   async function submit(input: any) {
     if (editing) await updateInvoice.mutateAsync({ id: editing.id, input })
     else await createInvoice.mutateAsync(input)
+    setEditing(null); setOpen(false)
+  }
+
+  async function saveDraft(input: any) {
+    await createInvoice.mutateAsync(input)
     setEditing(null); setOpen(false)
   }
 
@@ -116,6 +122,7 @@ export function InvoicesPage() {
               onDelete={id => deleteInvoice.mutate(id)}
               onMarkPaid={id => markPaid.mutate(id)}
               onSendToKsef={id => sendToKsef.mutate(id)}
+              onFinalize={id => finalizeInvoice.mutate(id)}
               canDelete={canDelete}
               canMarkPaid={canMarkPaid}
               canSendToKsef={canSendToKsef}
@@ -126,7 +133,7 @@ export function InvoicesPage() {
 
       {canCreate && (
         <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edytuj fakturę' : 'Nowa faktura'}>
-          <InvoiceForm companyId={companyId} initialInvoice={editing} onSubmit={submit} />
+          <InvoiceForm companyId={companyId} initialInvoice={editing} onSubmit={submit} onSaveDraft={editing ? undefined : saveDraft} />
         </Modal>
       )}
     </div>

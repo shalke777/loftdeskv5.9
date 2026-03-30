@@ -135,7 +135,7 @@ function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend
                   <span style={{ flex: 1, fontSize: 13 }}>{i.invoice.number}</span>
                   <code style={{ fontSize: 10, color: '#A7ABB3' }}>{i.ksefRef?.slice(0, 22)}…</code>
                   {i.ksefRef && (
-                    <Button variant="ghost" onClick={() => onShowUpo(i.ksefRef!, i.invoice.number)}>UPO</Button>
+                    <Button variant="ghost" onClick={() => onShowUpo(i.ksefRef!, i.invoice.number ?? '')}>UPO</Button>
                   )}
                 </div>
               ))}
@@ -424,7 +424,7 @@ export function KsefPage() {
                       <KsefStatusBadge status="ksef_sent" isMock={i.ksefRef?.startsWith('MOCK-') || i.ksefRef?.startsWith('DEMO-')} />
                       <span style={{ flex: 1, fontSize: 12 }}>{i.invoice.number}</span>
                       <code style={{ fontSize: 10, color: '#A7ABB3' }}>{i.ksefRef?.slice(0, 22)}…</code>
-                      <Button variant="ghost" onClick={() => handleShowUpo(i.ksefRef!, i.invoice.number)} loading={upo.loading}>UPO</Button>
+                      <Button variant="ghost" onClick={() => handleShowUpo(i.ksefRef!, i.invoice.number ?? '')} loading={upo.loading}>UPO</Button>
                     </div>
                   ))}
                   {lastResult.items.filter((i) => i.status === 'error').map((i) => (

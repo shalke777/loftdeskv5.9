@@ -339,7 +339,7 @@ export const ksefService = {
       iv: session.iv || '',
       env,
     })
-    return { ksefRef: result.ksefRef as string, invoiceNumber: invoice.number }
+    return { ksefRef: result.ksefRef as string, invoiceNumber: invoice.number ?? '' }
   },
 
   // ── Receive documents ───────────────────────────────────

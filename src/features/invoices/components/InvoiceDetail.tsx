@@ -38,7 +38,7 @@ export function InvoiceDetail({ invoice, onMarkPaid, onSendToKsef, onEdit, canMa
       <Card>
         <div className="toolbar">
           <div>
-            <h3>{invoice.number}</h3>
+            <h3>{invoice.number ?? 'Szkic'}</h3>
             <p>{client?.name || 'Bez klienta'}{contract ? ` · ${contract.number}` : ''}</p>
           </div>
           <Badge variant={invoice.status === 'paid' ? 'success' : invoice.status === 'overdue' ? 'danger' : 'warning'}>{invoice.status}</Badge>
@@ -60,7 +60,7 @@ export function InvoiceDetail({ invoice, onMarkPaid, onSendToKsef, onEdit, canMa
           {invoice.ksef_status !== 'ksef_sent' && canSendToKsef ? <Button onClick={() => onSendToKsef(invoice.id)}>Wyślij do KSeF</Button> : null}
         </div>
       </Card>
-      <DocumentPreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} title={`${invoice.number} · Podgląd dokumentu`} tabs={tabs} />
+      <DocumentPreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} title={`${invoice.number ?? 'Szkic'} · Podgląd dokumentu`} tabs={tabs} />
     </>
   )
 }

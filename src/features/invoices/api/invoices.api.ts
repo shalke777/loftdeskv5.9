@@ -19,27 +19,30 @@ export const invoicesApi = {
     if (isDemoMode || !supabase) { const totals = calcInvoiceTotals(input.items); return Promise.resolve(demoDb.invoices.create({ ...input, total_net: totals.totalNet, total_gross: totals.totalGross, ksef_status: 'ksef_pending', ksef_ref: null })) }
     const scope = await getDataScope(input.company_id)
 
-    // Resolve sequential invoice number:
-    // 1. next_doc_number (mig 079) — atomic, month-aware, format FV/YYYY/MM/N
-    // 2. next_invoice_number (mig 032) — atomic, year-only, fallback
-    // 3. count-based — non-atomic, last-resort edge case
-    let invoiceNumber: string
-    const { data: numData, error: numError } = await supabase.rpc('next_doc_number', { p_company_id: input.company_id, p_doc_type: 'invoice' })
-    if (!numError && numData) {
-      invoiceNumber = numData as string
-    } else {
-      const { data: legacyNum, error: legacyErr } = await supabase.rpc('next_invoice_number', { p_company_id: input.company_id })
-      if (!legacyErr && legacyNum) {
-        invoiceNumber = legacyNum as string
+    const isDraft = input.status === 'draft' || input.draft === true
+
+    let invoiceNumber: string | null = null
+    if (!isDraft) {
+      // Resolve sequential invoice number:
+      // 1. next_doc_number (mig 079) — atomic, month-aware, format FV/YYYY/MM/N
+      // 2. next_invoice_number (mig 032) — atomic, year-only, fallback
+      // 3. count-based — non-atomic, last-resort edge case
+      const { data: numData, error: numError } = await supabase.rpc('next_doc_number', { p_company_id: input.company_id, p_doc_type: 'invoice' })
+      if (!numError && numData) {
+        invoiceNumber = numData as string
       } else {
-        // Fallback: count-based, month-aware
-        const now = new Date()
-        const { count } = await supabase.from('invoices').select('*', { count: 'exact', head: true }).eq('company_id', input.company_id).gte('issue_date', `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`)
-        invoiceNumber = `FV/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${(count ?? 0) + 1}`
+        const { data: legacyNum, error: legacyErr } = await supabase.rpc('next_invoice_number', { p_company_id: input.company_id })
+        if (!legacyErr && legacyNum) {
+          invoiceNumber = legacyNum as string
+        } else {
+          const now = new Date()
+          const { count } = await supabase.from('invoices').select('*', { count: 'exact', head: true }).eq('company_id', input.company_id).gte('issue_date', `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`)
+          invoiceNumber = `FV/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${(count ?? 0) + 1}`
+        }
       }
     }
 
-    const payload = withScope(scope, { number: invoiceNumber, client_id: input.client_id, project_id: input.project_id, contract_id: input.contract_id ?? null, status: input.status, invoice_type: input.invoice_type ?? 'standard', issue_date: input.issue_date, sale_date: input.sale_date ?? null, issue_place: input.issue_place ?? null, due_date: input.due_date, payment_method: input.payment_method ?? 'transfer', bank_account: input.bank_account ?? null, tranche_id: input.tranche_id ?? null, advance_total: input.advance_total ?? null, ksef_status: 'ksef_pending', ksef_ref: null, notes: input.notes ?? null })
+    const payload = withScope(scope, { number: invoiceNumber, client_id: input.client_id, project_id: input.project_id, contract_id: input.contract_id ?? null, status: isDraft ? 'draft' : (input.status ?? 'unpaid'), invoice_type: input.invoice_type ?? 'standard', issue_date: input.issue_date, sale_date: input.sale_date ?? null, issue_place: input.issue_place ?? null, due_date: input.due_date, payment_method: input.payment_method ?? 'transfer', bank_account: input.bank_account ?? null, tranche_id: input.tranche_id ?? null, advance_total: input.advance_total ?? null, ksef_status: isDraft ? null : 'ksef_pending', ksef_ref: null, notes: input.notes ?? null })
     const { data: invoice, error } = await supabase.from('invoices').insert(payload).select('*').single(); if (error) throw error
     const items = input.items ?? []
     if (items.length > 0) {
@@ -85,6 +88,31 @@ export const invoicesApi = {
   },
   async markPaid(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.invoices.markPaid(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('invoices').update({ status: 'paid' }).eq('id', id), scope); const { error } = await query; if (error) throw error },
   async sendToKsef(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.invoices.sendToKsef(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('invoices').update({ ksef_status: 'ksef_pending', ksef_ref: null }).eq('id', id), scope); const { error } = await query; if (error) throw error },
+  async finalize(id: string, companyId: string): Promise<string> {
+    // Assigns a sequential FV number to a draft invoice and transitions it to 'unpaid'.
+    // Safe to call only once per invoice — if number is already set, throws.
+    if (isDemoMode || !supabase) {
+      const inv = demoDb.invoices.list(companyId).find(i => i.id === id)
+      if (!inv) throw new Error('Nie znaleziono faktury')
+      const num = `FV/${new Date().getFullYear()}/${String(new Date().getMonth() + 1).padStart(2, '0')}/1`
+      demoDb.invoices.update(id, { number: num as any, status: 'unpaid' })
+      return num
+    }
+    const scope = await getDataScope(companyId)
+    // Verify invoice is still a draft before consuming a number
+    const { data: current, error: fetchErr } = await supabase.from('invoices').select('id, status, number').eq('id', id).maybeSingle()
+    if (fetchErr) throw fetchErr
+    if (!current) throw new Error('Nie znaleziono faktury')
+    if (current.status !== 'draft') throw new Error('Faktura nie jest szkicem — nie można ponownie wystawić.')
+    if (current.number) throw new Error('Faktura ma już przypisany numer.')
+    // Consume next number atomically
+    const { data: numData, error: numError } = await supabase.rpc('next_doc_number', { p_company_id: scope.companyId, p_doc_type: 'invoice' })
+    if (numError || !numData) throw numError ?? new Error('Nie udało się pobrać numeru faktury.')
+    const invoiceNumber = numData as string
+    const { error: updateErr } = await supabase.from('invoices').update({ number: invoiceNumber, status: 'unpaid', ksef_status: 'ksef_pending' }).eq('id', id)
+    if (updateErr) throw updateErr
+    return invoiceNumber
+  },
   async createFromEstimate(companyId: string, estimateId: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.invoices.createFromEstimate(companyId, estimateId))
     const { data: estimate, error: estErr } = await supabase.from('cost_estimates').select('*, items:cost_estimate_items(*)').eq('id', estimateId).single()

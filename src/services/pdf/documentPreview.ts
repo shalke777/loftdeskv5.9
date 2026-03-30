@@ -297,14 +297,14 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
   const page = `<section class="page">
     <div class="topbar">
       <div class="topbar__title">${invoiceTitle}</div>
-      <span style="background:rgba(255,255,255,.2); padding:4px 16px; border-radius:999px; font-size:14px; font-weight:700;">Nr ${escapeHtml(invoice.number)}</span>
+      <span style="background:rgba(255,255,255,.2); padding:4px 16px; border-radius:999px; font-size:14px; font-weight:700;">Nr ${escapeHtml(invoice.number ?? 'Szkic')}</span>
     </div>
     <div class="content">
       <div class="invoice-head" style="margin-bottom:18px;">
         <div>
           <div style="display:inline-block; padding:3px 14px; border-radius:999px; background:${tagBg}; color:#fff; font-size:12px; font-weight:700; margin-bottom:12px; letter-spacing:.03em;">${invoiceTitle}</div>
           <div style="font-size:14px; line-height:2.1;">
-            <div><span style="color:var(--muted); display:inline-block; width:210px;">Numer faktury:</span> <strong>${escapeHtml(invoice.number)}</strong></div>
+            <div><span style="color:var(--muted); display:inline-block; width:210px;">Numer faktury:</span> <strong>${escapeHtml(invoice.number ?? 'Szkic')}</strong></div>
             <div><span style="color:var(--muted); display:inline-block; width:210px;">Data wystawienia:</span> ${escapeHtml(invoice.issue_date)}</div>
             <div><span style="color:var(--muted); display:inline-block; width:210px;">Data sprzeda\u017cy / us\u0142ugi:</span> ${escapeHtml(invoice.sale_date || invoice.issue_date)}</div>
             <div><span style="color:var(--muted); display:inline-block; width:210px;">Miejsce wystawienia:</span> ${escapeHtml(invoice.issue_place || contractMeta?.contractLocation || '\u2014')}</div>
@@ -387,7 +387,7 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
     </div>
     ${footer(company)}
   </section>`
-  return pageShell(invoice.number, invoiceTitle, page)
+  return pageShell(invoice.number ?? 'Szkic', invoiceTitle, page)
 }
 
 export function buildInvoiceXml(invoice: Invoice) {
