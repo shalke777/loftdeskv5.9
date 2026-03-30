@@ -124,4 +124,38 @@ export const settingsApi = {
     if (updateError) throw updateError
     return true
   },
+
+  async getDocNumberConfig(companyId: string): Promise<DocNumberConfig | null> {
+    if (isDemoMode || !supabase) return null
+    const scope = await getDataScope(companyId)
+    if (scope.mode !== 'multi-tenant') return null
+    const { data, error } = await supabase.from('companies').select('doc_number_config').eq('id', scope.companyId).maybeSingle()
+    if (error) throw error
+    return (data?.doc_number_config as DocNumberConfig) ?? null
+  },
+
+  async updateDocNumberConfig(companyId: string, config: DocNumberConfig): Promise<void> {
+    if (isDemoMode || !supabase) return
+    const scope = await getDataScope(companyId)
+    if (scope.mode !== 'multi-tenant') return
+    const { error } = await supabase.from('companies').update({ doc_number_config: config }).eq('id', scope.companyId)
+    if (error) throw error
+  },
+}
+
+export interface DocNumberTypeConfig {
+  prefix: string
+  start_seq: number
+}
+
+export interface DocNumberConfig {
+  estimate: DocNumberTypeConfig
+  contract: DocNumberTypeConfig
+  invoice: DocNumberTypeConfig
+}
+
+export const DOC_NUMBER_DEFAULTS: DocNumberConfig = {
+  estimate: { prefix: 'WY', start_seq: 1 },
+  contract:  { prefix: 'UM', start_seq: 1 },
+  invoice:   { prefix: 'FV', start_seq: 1 },
 }

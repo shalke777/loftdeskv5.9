@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
-import { settingsApi } from '@/features/settings/api/settings.api'
+import { settingsApi, type DocNumberConfig } from '@/features/settings/api/settings.api'
 import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
 import { useAuth } from '@/features/auth/hooks/useAuth'
@@ -10,6 +10,7 @@ const settingsKeys = {
   team: (companyId: string) => ['settings', 'team', companyId] as const,
   invitations: (companyId: string) => ['settings', 'invitations', companyId] as const,
   pendingEmail: (email: string) => ['settings', 'pending-email', email] as const,
+  docNumberConfig: (companyId: string) => ['settings', 'doc-number-config', companyId] as const,
 }
 
 export function useSettings() {
@@ -84,5 +85,27 @@ export function useAcceptInvitation() {
       toast.success('Zaproszenie zaakceptowane')
     },
     onError: (error) => toast.error('Nie udało się zaakceptować zaproszenia', translateError(error)),
+  })
+}
+
+export function useDocNumberConfig() {
+  const companyId = useCompanyId()
+  return useQuery({
+    queryKey: settingsKeys.docNumberConfig(companyId),
+    queryFn: () => settingsApi.getDocNumberConfig(companyId),
+  })
+}
+
+export function useUpdateDocNumberConfig() {
+  const companyId = useCompanyId()
+  const qc = useQueryClient()
+  const toast = useToast()
+  return useMutation({
+    mutationFn: (config: DocNumberConfig) => settingsApi.updateDocNumberConfig(companyId, config),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: settingsKeys.docNumberConfig(companyId) })
+      toast.success('Numeracja dokumentów zaktualizowana')
+    },
+    onError: (error) => toast.error('Nie udało się zapisać numeracji', translateError(error)),
   })
 }

@@ -17,6 +17,7 @@ import { WorkspaceReadinessCard } from '@/features/settings/components/Workspace
 import { WorkspaceLimitsCard } from '@/features/settings/components/WorkspaceLimitsCard'
 import { downloadBlob } from '@/shared/lib/downloads'
 import { LegalCenterCard } from '@/features/legal/components/LegalCenterCard'
+import { DocNumberingCard } from '@/features/settings/components/DocNumberingCard'
 
 function HelperCard({ icon, title, text, href }: { icon: ReactNode; title: string; text: string; href: string }) {
   const navigate = useNavigate()
@@ -96,6 +97,7 @@ export function SettingsPage() {
 
         <WorkspaceReadinessCard />
         <WorkspaceLimitsCard />
+        <DocNumberingCard />
         <TeamMembersCard />
 
         <LegalCenterCard />
