@@ -15,10 +15,12 @@ import { ProjectApprovalsTab } from '@/features/expenses/components/ProjectAppro
 import { ProjectTimelineTab }  from '@/features/projects/components/ProjectTimelineTab'
 import { ProjectPhotosSection } from '@/features/projects/components/ProjectPhotosSection'
 import { useClients } from '@/features/clients/hooks/useClients'
-import { useCreateEstimate } from '@/features/estimates/hooks/useEstimates'
+import { useCreateEstimate, useEstimates } from '@/features/estimates/hooks/useEstimates'
 import { EstimateForm, clearDraft as clearEstimateDraft } from '@/features/estimates/components/EstimateModal/EstimateForm'
-import { useCreateContract } from '@/features/contracts/hooks/useContracts'
+import { useCreateContract, useContracts } from '@/features/contracts/hooks/useContracts'
 import { ContractForm } from '@/features/contracts/components/ContractModal/ContractForm'
+import { useCreateInvoice } from '@/features/invoices/hooks/useInvoices'
+import { InvoiceForm } from '@/features/invoices/components/InvoiceModal/InvoiceForm'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 
 const STATUS_LABEL: Record<Project['status'], string> = {
@@ -34,13 +36,25 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
   const [tab, setTab] = useState<MainTab>('overview')
   const [showEstimateModal, setShowEstimateModal] = useState(false)
   const [showContractModal, setShowContractModal] = useState(false)
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const { data: clients } = useClients()
   const linkedClient = clients?.find(c => c.id === project?.client_id)
   const companyId = useCompanyId()
   const createEstimate = useCreateEstimate()
   const createContract = useCreateContract()
+  const createInvoice = useCreateInvoice()
+  const { data: estimates = [] } = useEstimates()
+  const { data: contracts = [] } = useContracts()
 
   if (!project) return null
+
+  const flags = (project.completeness_flags ?? {}) as Record<string, boolean>
+  const projectEstimates = estimates.filter(e => e.project_id === project.id)
+  const projectContracts = contracts.filter(c => c.project_id === project.id)
+  const hasEstimate = flags.has_estimate || projectEstimates.length > 0
+  const hasContract = flags.has_contract || projectContracts.length > 0
+  const latestEstimate = projectEstimates[projectEstimates.length - 1] ?? null
+  const latestContract = projectContracts[projectContracts.length - 1] ?? null
 
   return (
     <div className="grid-3" style={{ alignItems: 'start' }}>
@@ -61,9 +75,13 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
         </div>
         <div className="actions-row">
           {onEdit ? <Button variant="secondary" onClick={() => onEdit(project)}>Edytuj projekt</Button> : null}
-          <Button variant="secondary" onClick={() => setShowEstimateModal(true)}>Nowa wycena</Button>
-          <Button variant="secondary" onClick={() => setShowContractModal(true)}>Nowa umowa</Button>
-          {onCreateInvoice ? <Button onClick={() => onCreateInvoice(project.id)}>Generuj fakturę</Button> : null}
+          <Button variant={!hasEstimate ? undefined : 'secondary'} onClick={() => setShowEstimateModal(true)}>Nowa wycena</Button>
+          {hasEstimate && (
+            <Button variant={!hasContract ? undefined : 'secondary'} onClick={() => setShowContractModal(true)}>Nowa umowa</Button>
+          )}
+          {hasContract && (
+            <Button onClick={() => setShowInvoiceModal(true)}>Generuj fakturę</Button>
+          )}
         </div>
 
         {/* Zakładki główne */}
@@ -111,7 +129,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
           project={project}
           onCreateEstimate={() => setShowEstimateModal(true)}
           onCreateContract={() => setShowContractModal(true)}
-          onCreateInvoice={onCreateInvoice ? () => onCreateInvoice(project.id) : undefined}
+          onCreateInvoice={() => setShowInvoiceModal(true)}
         />
       </div>
 
@@ -148,9 +166,33 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
           companyId={companyId}
           initialContract={null}
           initialProjectId={project.id}
+          initialEstimateId={latestEstimate?.id ?? null}
           onSubmit={async (input) => {
             await createContract.mutateAsync(input)
             setShowContractModal(false)
+          }}
+        />
+      </Modal>
+
+      {/* Nowa faktura — pre-seeded z projektu i klienta */}
+      <Modal
+        open={showInvoiceModal}
+        onClose={() => setShowInvoiceModal(false)}
+        title="Nowa faktura"
+      >
+        <InvoiceForm
+          companyId={companyId}
+          initialInvoice={null}
+          initialProjectId={project.id}
+          initialClientId={project.client_id ?? null}
+          initialContractId={latestContract?.id ?? null}
+          onSubmit={async (input) => {
+            await createInvoice.mutateAsync(input)
+            setShowInvoiceModal(false)
+          }}
+          onSaveDraft={async (input) => {
+            await createInvoice.mutateAsync(input)
+            setShowInvoiceModal(false)
           }}
         />
       </Modal>

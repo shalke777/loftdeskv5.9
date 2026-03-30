@@ -46,9 +46,9 @@ function loadDraft() {
 function saveDraft(data: object) { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(data)) } catch { /* ignore */ } }
 function clearDraft() { try { sessionStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ } }
 
-interface Props { companyId: string; onSubmit: (input: CreateInvoiceInput) => Promise<void>; onSaveDraft?: (input: CreateInvoiceInput) => Promise<void>; initialInvoice?: Invoice | null }
+interface Props { companyId: string; onSubmit: (input: CreateInvoiceInput) => Promise<void>; onSaveDraft?: (input: CreateInvoiceInput) => Promise<void>; initialInvoice?: Invoice | null; initialProjectId?: string | null; initialClientId?: string | null; initialContractId?: string | null }
 
-export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice }: Props) {
+export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, initialProjectId, initialClientId, initialContractId }: Props) {
   const isNew = !initialInvoice
   const saveGuard = useRef(false)
   const [submitting, setSubmitting] = useState(false)
@@ -129,9 +129,9 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice }
         setDueDays('14'); setDueDate(addDays(today, 14))
         setIssuePlace(''); setPaymentMethod('transfer')
         setBankAccount(companyIban)
-        setClientId(''); setContractId(''); setSelectedTrancheId(''); setAdvanceTotal('0')
+        setClientId(initialClientId ?? ''); setContractId(initialContractId ?? ''); setSelectedTrancheId(''); setAdvanceTotal('0')
         setItems([{ id: generateId(), description: 'Usługa', unit: 'kpl', quantity: 1, unit_price: 0, vat_rate: 23, sort_order: 1, tranche_label: '' }])
-        setProjectId(''); setNotes('')
+        setProjectId(initialProjectId ?? ''); setNotes('')
       }
     }
     const t = setTimeout(() => { saveGuard.current = true }, 0)
