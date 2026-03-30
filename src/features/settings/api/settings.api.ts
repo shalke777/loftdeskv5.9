@@ -138,8 +138,11 @@ export const settingsApi = {
     if (isDemoMode || !supabase) return
     const scope = await getDataScope(companyId)
     if (scope.mode !== 'multi-tenant') return
-    const { error } = await supabase.from('companies').update({ doc_number_config: config }).eq('id', scope.companyId)
+    // .select('id').maybeSingle() exposes both RLS errors AND "0 rows matched" (silent failure
+    // in Supabase when update returns no data) — both surface as thrown errors, not false success.
+    const { data, error } = await supabase.from('companies').update({ doc_number_config: config }).eq('id', scope.companyId).select('id').maybeSingle()
     if (error) throw error
+    if (!data) throw new Error('Konfiguracja numeracji nie została zapisana. Sprawdź uprawnienia do firmy.')
   },
 }
 

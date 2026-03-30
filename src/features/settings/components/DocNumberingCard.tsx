@@ -12,10 +12,21 @@ const DOC_TYPES = [
   { key: 'invoice' as const, label: 'Faktury' },
 ]
 
-function buildPreview(cfg: DocNumberTypeConfig): string {
+function buildPrefixPreview(cfg: DocNumberTypeConfig): string {
   const now = new Date()
   const year = now.getFullYear()
   const month = String(now.getMonth() + 1).padStart(2, '0')
+  const prefix = (cfg.prefix || '??').toUpperCase().trim()
+  // Shows what the prefix will look like on the NEXT document — counter unknown intentionally
+  return `${prefix}/${year}/${month}/…`
+}
+
+function buildNewSeriesPreview(cfg: DocNumberTypeConfig): string {
+  // Next calendar month — the earliest a new start_seq can take effect for an existing company
+  const now = new Date()
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  const year = nextMonth.getFullYear()
+  const month = String(nextMonth.getMonth() + 1).padStart(2, '0')
   const prefix = (cfg.prefix || '??').toUpperCase().trim()
   const seq = cfg.start_seq ?? 1
   return `${prefix}/${year}/${month}/${seq}`
@@ -57,15 +68,16 @@ export function DocNumberingCard() {
   return (
     <Card>
       <h3>Numeracja dokumentów</h3>
-      <p style={{ fontSize: 13, color: '#A7ABB3', marginBottom: 16, marginTop: 4 }}>
-        Ustaw własny przedrostek i numer startowy dla każdego typu dokumentu. Zmiany dotyczą nowych serii (nowy miesiąc lub nowa firma) — aktualnie trwająca seria nie jest przerywana.
-      </p>
+      <div style={{ fontSize: 13, color: '#A7ABB3', marginBottom: 16, marginTop: 4, display: 'grid', gap: 4 }}>
+        <div><strong style={{ color: '#C9CCD4' }}>Przedrostek</strong> — stosowany natychmiastowo dla wszystkich nowych dokumentów.</div>
+        <div><strong style={{ color: '#C9CCD4' }}>Numer startowy</strong> — obowiązuje dopiero w nowej serii (pierwszy dokument nowego miesiąca lub nowej firmy). Nie zmienia trwającej serii.</div>
+      </div>
 
       <div style={{ display: 'grid', gap: 16 }}>
         {DOC_TYPES.map(({ key, label }) => (
           <div key={key}>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#E0E2E8' }}>{label}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 10, alignItems: 'flex-end' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignItems: 'flex-start' }}>
               <div>
                 <div className="field__label" style={{ marginBottom: 4 }}>Przedrostek</div>
                 <Input
@@ -75,6 +87,9 @@ export function DocNumberingCard() {
                   disabled={!canEdit}
                   maxLength={8}
                 />
+                <div style={{ fontSize: 11, color: '#6A6F7A', marginTop: 4 }}>
+                  Następny dokument: <span style={{ fontFamily: 'monospace', color: '#A7ABB3' }}>{buildPrefixPreview(config[key])}</span>
+                </div>
               </div>
               <div>
                 <div className="field__label" style={{ marginBottom: 4 }}>Numer startowy nowej serii</div>
@@ -85,11 +100,8 @@ export function DocNumberingCard() {
                   onChange={e => setField(key, 'start_seq', e.target.value)}
                   disabled={!canEdit}
                 />
-              </div>
-              <div style={{ paddingBottom: 1 }}>
-                <div className="field__label" style={{ marginBottom: 4 }}>Podgląd</div>
-                <div style={{ fontSize: 13, fontFamily: 'monospace', padding: '8px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: 6, color: '#A7ABB3', whiteSpace: 'nowrap' }}>
-                  {buildPreview(config[key])}
+                <div style={{ fontSize: 11, color: '#6A6F7A', marginTop: 4 }}>
+                  Nowa seria: <span style={{ fontFamily: 'monospace', color: '#A7ABB3' }}>{buildNewSeriesPreview(config[key])}</span>
                 </div>
               </div>
             </div>
