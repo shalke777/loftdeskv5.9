@@ -22,6 +22,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
 import { detectBathroomTriggers, expandDependencies, isBathroomSpace } from './shared/bathroom-triggers'
 import type { ClarificationQuestion } from './shared/bathroom-triggers'
+import { persistAnalysisBundle } from './shared/ai-persist'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 // Local interfaces match src/services/ai/engines/room.types.ts (RoomAnalysisResult v2)
@@ -145,6 +146,10 @@ function isRateLimited(userId: string): boolean {
 
 function ok(result: RoomAnalysisResult) {
   return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify({ ok: true, result }) }
+}
+
+function okWithRunId(result: RoomAnalysisResult, runId: string) {
+  return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify({ ok: true, result, run_id: runId }) }
 }
 
 function err(statusCode: number, error: string, message: string) {
@@ -517,12 +522,24 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS_HEADERS, body: '' }
   if (event.httpMethod !== 'POST')    return err(405, 'method_not_allowed', 'Only POST allowed')
 
+  // Feature flag: AI Engine must be explicitly enabled in environment
+  if (process.env.VITE_AI_ENGINE_ENABLED !== 'true') {
+    return err(503, 'ai_disabled', 'AI Engine is not enabled in this environment')
+  }
+
   const userId = await verifyRequestAuth(event)
   if (!userId) return err(401, 'unauthorized', 'Valid authentication token required.')
+  // AI MVP requires real Supabase auth — 'dev' fallback (no Supabase configured) is not permitted
+  if (userId === 'dev') return err(503, 'auth_not_configured', 'AI Engine requires Supabase authentication')
   if (isRateLimited(userId)) return err(429, 'too_many_requests', 'Za dużo żądań. Spróbuj za chwilę.')
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) return err(503, 'ai_not_configured', 'OPENAI_API_KEY is not set')
+
+  // Service role required upfront — used for access check, plan check, and persist
+  const sbUrl         = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
+  const sbServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!sbUrl || !sbServiceRole) return err(503, 'supabase_not_configured', 'Supabase service role not configured')
 
   let body: Record<string, unknown>
   try {
@@ -530,6 +547,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
   } catch {
     return err(400, 'invalid_json', 'Request body must be valid JSON')
   }
+
+  // ── Required: project context ─────────────────────────────────────────────
+  const projectId = typeof body.project_id === 'string' && body.project_id.trim()
+    ? body.project_id.trim() : null
+  if (!projectId) return err(400, 'missing_project_id', 'project_id is required')
+
+  const textDescription = typeof body.text_description === 'string'
+    ? body.text_description.slice(0, 2000) : undefined
+  const dimensionsJson  = (body.dimensions && typeof body.dimensions === 'object' && !Array.isArray(body.dimensions))
+    ? body.dimensions as Record<string, unknown> : undefined
+  const operatorNotes   = typeof body.notes === 'string' ? body.notes.slice(0, 1000) : undefined
 
   const imageBase64 = body.image_base64 as string | undefined
   const imageType   = String(body.image_type ?? 'image/jpeg')
@@ -539,11 +567,35 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const rawImages = Array.isArray(body.images) ? body.images as Array<{base64?: string; type?: string}> : []
   const multiImages = rawImages
     .filter(img => typeof img.base64 === 'string' && img.base64.length > 0)
-    .slice(0, 10) // max 10 images
+    .slice(0, 5) // P0 max 5 images
+
+  // Sprint 3 dual flow:
+  //   images:{base64,type} — fed directly to OpenAI vision API for inference
+  //   image_references    — storage paths uploaded to ai-inputs bucket; persisted to
+  //                         ai_input_assets for the mandatory Sprint 3 audit trail.
+  //   The backend does NOT analyse storage objects directly — base64 is still required.
+  interface ImageRef { storage_path: string; original_filename: string; mime_type: string; file_size: number }
+  const rawRefs = Array.isArray(body.image_references) ? body.image_references as Array<Record<string, unknown>> : []
+  const imageRefs: ImageRef[] = rawRefs
+    .filter(r => typeof r.storage_path === 'string' && r.storage_path.length > 0)
+    .map(r => ({
+      storage_path:      String(r.storage_path).slice(0, 500),
+      original_filename: typeof r.original_filename === 'string' ? r.original_filename.slice(0, 255) : 'photo',
+      mime_type:         typeof r.mime_type === 'string' ? r.mime_type.slice(0, 100) : 'image/jpeg',
+      file_size:         typeof r.file_size === 'number' ? Math.max(0, Math.floor(r.file_size)) : 0,
+    }))
+    .slice(0, 5) // P0 max 5 images
 
   // Clarification data from guided form
   const clarification = (body.clarification ?? null) as Record<string, unknown> | null
-  const roomType = typeof body.room_type === 'string' ? body.room_type.slice(0, 50) : null
+
+  // P0 scope: room_type is always restricted to bathroom | wc — no legacy fallback
+  const rawRoomType = typeof body.room_type === 'string' ? body.room_type.trim() : ''
+  if (!rawRoomType) return err(400, 'missing_room_type', 'room_type is required')
+  if (!['bathroom', 'wc'].includes(rawRoomType)) {
+    return err(400, 'invalid_room_type', 'AI MVP scope is limited to bathroom and wc room types')
+  }
+  const roomType = rawRoomType as 'bathroom' | 'wc'
 
   // Need at least one image (from multi-photo or legacy single-photo)
   if (multiImages.length === 0 && !imageBase64) return err(400, 'missing_image', 'image_base64 is required')
@@ -554,7 +606,60 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const model = process.env.OPENAI_MODEL_VISION?.trim() || process.env.OPENAI_MODEL?.trim() || 'gpt-4o'
   const imageCount = multiImages.length || 1
 
-  console.info('ROOM_ANALYSIS_START', JSON.stringify({ model, imageType, imageCount, hasContext: !!context, hasClarification: !!clarification, roomType }))
+  // ── Verify project access and resolve authoritative company_id ───────────
+  // Two queries with service role — no PostgREST join, no FK assumption.
+  // Step 1: get project's owning company (also confirms project exists)
+  // Step 2: confirm user is a member of that company
+  // company_id is derived from the project record, never from the request payload.
+  const sbService = createClient(sbUrl, sbServiceRole, { auth: { persistSession: false } })
+
+  const { data: project, error: projErr } = await sbService
+    .from('projects')
+    .select('company_id')
+    .eq('id', projectId)
+    .maybeSingle()
+
+  if (projErr) {
+    console.error('[analyze-room-photo] Project lookup failed:', projErr.message)
+    return err(500, 'access_check_failed', 'Could not verify project access')
+  }
+  if (!project || !(project as { company_id?: string }).company_id) {
+    return err(403, 'project_access_denied', 'Project not found or access denied')
+  }
+
+  const companyId = (project as { company_id: string }).company_id
+
+  const { data: member, error: memberErr } = await sbService
+    .from('company_members')
+    .select('user_id')
+    .eq('company_id', companyId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (memberErr) {
+    console.error('[analyze-room-photo] Member lookup failed:', memberErr.message)
+    return err(500, 'access_check_failed', 'Could not verify project access')
+  }
+  if (!member) {
+    return err(403, 'project_access_denied', 'Project not found or access denied')
+  }
+
+  // ── Plan check: AI Engine requires Pro or Business tier ───────────────────
+  const { data: company, error: planErr } = await sbService
+    .from('companies')
+    .select('plan')
+    .eq('id', companyId)
+    .single()
+
+  if (planErr || !company) {
+    console.error('[analyze-room-photo] Plan check failed:', planErr?.message)
+    return err(500, 'plan_check_failed', 'Could not verify company plan')
+  }
+  if (!['pro', 'business', 'admin'].includes((company as { plan: string }).plan)) {
+    return err(403, 'plan_insufficient', 'AI Engine requires a Pro or Business plan')
+  }
+
+  console.info('ROOM_ANALYSIS_START', JSON.stringify({ model, imageType, imageCount, hasContext: !!context, hasClarification: !!clarification, roomType, projectId: projectId ?? null }))
 
   // ── Build input ─────────────────────────────────────────────────────────
 
@@ -915,5 +1020,27 @@ export const handler: Handler = async (event: HandlerEvent) => {
     warnings:       result.warnings.length,
   }))
 
-  return ok(result)
+  // ── Persist analysis bundle — REQUIRED for auditability ──────────────────
+  // Must succeed. If persist fails, the endpoint does NOT return a success response.
+  const persistResult = await persistAnalysisBundle({
+    sb:             sbService,
+    userId,
+    companyId,
+    projectId,
+    roomType,
+    textDescription,
+    clarification:  clarification ?? undefined,
+    dimensionsJson,
+    notes:          operatorNotes,
+    modelName:      model,
+    imageRefs:      imageRefs.length > 0 ? imageRefs : undefined,
+    result,
+  })
+
+  if (!persistResult.ok) {
+    console.error('[analyze-room-photo] Persist failed — withholding success response:', persistResult.error)
+    return err(500, 'persist_failed', 'Analysis completed but could not be saved. Please retry.')
+  }
+
+  return okWithRunId(result, persistResult.run_id)
 }

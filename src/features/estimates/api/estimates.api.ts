@@ -33,7 +33,7 @@ export const estimatesApi = {
       estimateNumber = numData as string
     }
 
-    const payload = withScope(scope, { number: estimateNumber, name: input.name, client_id: input.client_id, project_id: input.project_id ?? null, status: input.status ?? 'draft', total_net: totals.net, total_gross: totals.gross, notes: input.notes ?? null, valid_until: input.valid_until ?? null })
+    const payload = withScope(scope, { number: estimateNumber, name: input.name, client_id: input.client_id, project_id: input.project_id ?? null, status: input.status ?? 'draft', total_net: totals.net, total_gross: totals.gross, notes: input.notes ?? null, valid_until: input.valid_until ?? null, ai_source_run_id: input.ai_source_run_id ?? null })
     const { data, error } = await supabase.from('cost_estimates').insert(payload).select('*').single()
     if (error) throw error
     if (items.length > 0) {

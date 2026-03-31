@@ -14,6 +14,7 @@ import { ProjectExpensesTab }  from '@/features/expenses/components/ProjectExpen
 import { ProjectApprovalsTab } from '@/features/expenses/components/ProjectApprovalsTab'
 import { ProjectTimelineTab }  from '@/features/projects/components/ProjectTimelineTab'
 import { ProjectPhotosSection } from '@/features/projects/components/ProjectPhotosSection'
+import { ProjectAiTab }        from '@/features/ai-review/components/ProjectAiTab'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useCreateEstimate, useEstimates } from '@/features/estimates/hooks/useEstimates'
 import { EstimateForm, clearDraft as clearEstimateDraft } from '@/features/estimates/components/EstimateModal/EstimateForm'
@@ -21,7 +22,10 @@ import { useCreateContract, useContracts } from '@/features/contracts/hooks/useC
 import { ContractForm } from '@/features/contracts/components/ContractModal/ContractForm'
 import { useCreateInvoice } from '@/features/invoices/hooks/useInvoices'
 import { InvoiceForm } from '@/features/invoices/components/InvoiceModal/InvoiceForm'
-import { useCompanyId } from '@/features/auth/hooks/useAuth'
+import { useCompanyId, useAuth } from '@/features/auth/hooks/useAuth'
+
+// AI tab is shown only when the feature flag is on AND the user has an eligible plan.
+const AI_TAB_ENABLED = import.meta.env.VITE_AI_ENGINE_ENABLED === 'true'
 
 const STATUS_LABEL: Record<Project['status'], string> = {
   offer:     'Oferta',
@@ -30,7 +34,7 @@ const STATUS_LABEL: Record<Project['status'], string> = {
   cancelled: 'Anulowany',
 }
 
-type MainTab = 'overview' | 'threads' | 'expenses' | 'approvals' | 'photos' | 'timeline'
+type MainTab = 'overview' | 'threads' | 'expenses' | 'approvals' | 'photos' | 'timeline' | 'ai'
 
 export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: Project | null; onEdit?: (project: Project) => void; onCreateInvoice?: (id: string) => void }) {
   const [tab, setTab] = useState<MainTab>('overview')
@@ -40,6 +44,8 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
   const { data: clients } = useClients()
   const linkedClient = clients?.find(c => c.id === project?.client_id)
   const companyId = useCompanyId()
+  const { user } = useAuth()
+  const showAiTab = AI_TAB_ENABLED && (user?.plan === 'pro' || user?.plan === 'business' || user?.plan === 'admin')
   const createEstimate = useCreateEstimate()
   const createContract = useCreateContract()
   const createInvoice = useCreateInvoice()
@@ -86,7 +92,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
 
         {/* Zakładki główne */}
         <div className="proj-detail-tabs" style={{ display: 'flex', gap: 4, marginTop: 20, marginBottom: 16, borderBottom: '1px solid var(--color-border)', paddingBottom: 0, overflowX: 'auto' }}>
-          {(['overview', 'threads', 'expenses', 'approvals', 'photos', 'timeline'] as MainTab[]).map(t => (
+          {(['overview', 'threads', 'expenses', 'approvals', 'photos', 'timeline', ...(showAiTab ? ['ai'] : [])] as MainTab[]).map(t => (
             <button
               key={t}
               className="proj-detail-tab"
@@ -102,7 +108,8 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
                : t === 'expenses'  ? '💰 Koszty'
                : t === 'approvals' ? '✅ Akceptacje'
                : t === 'photos'    ? '📷 Zdjęcia'
-               : '🕒 Oś czasu'}
+               : t === 'timeline'  ? '🕒 Oś czasu'
+               : '🤖 Analiza AI'}
             </button>
           ))}
         </div>
@@ -114,6 +121,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
         {tab === 'approvals'  && <ProjectApprovalsTab projectId={project.id} />}
         {tab === 'photos'     && <ProjectPhotosSection project={project} />}
         {tab === 'timeline'   && <ProjectTimelineTab  projectId={project.id} />}
+        {tab === 'ai' && showAiTab && <ProjectAiTab projectId={project.id} companyId={companyId} />}
       </Card>
 
       <div style={{ display: 'grid', gap: 16 }}>

@@ -29,4 +29,10 @@ export const EstimateSchema = z.object({
 
 export type Estimate = z.infer<typeof EstimateSchema>
 export type EstimateItem = z.infer<typeof EstimateItemSchema>
-export type CreateEstimateInput = Pick<Estimate, 'name' | 'client_id' | 'notes' | 'status' | 'valid_until'> & { company_id: string; project_id?: string | null; items?: EstimateItem[] }
+export type CreateEstimateInput = Pick<Estimate, 'name' | 'client_id' | 'notes' | 'status' | 'valid_until'> & {
+  company_id:        string
+  project_id?:       string | null
+  items?:            EstimateItem[]
+  /** Sprint 4: links this draft to the AI analysis run that produced it. */
+  ai_source_run_id?: string | null
+}
