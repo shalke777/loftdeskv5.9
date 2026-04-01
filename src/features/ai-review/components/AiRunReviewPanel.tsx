@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
+import { computeConfidenceBand } from '@/shared/lib/confidence-model'
 import {
   useAiScopeItems,
   useAiQuestions,
@@ -142,10 +143,10 @@ function ScopeItemRow({
             {item.description}
           </span>
           {item.scope_layer === 'HIDDEN_PROBABLE_SCOPE' && (
-            <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-warning, #F59E0B)' }}>
-              ukryty zakres
-            </span>
-          )}
+          <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-warning, #F59E0B)' }}>
+            ukryty zakres
+          </span>
+        )}
         </div>
         <span style={{ fontSize: 11, color: SCOPE_STATUS_COLOR[item.review_status], whiteSpace: 'nowrap' }}>
           {SCOPE_STATUS_LABEL[item.review_status]}
@@ -160,9 +161,6 @@ function ScopeItemRow({
         )}
         {item.price_suggested_by_ai != null && (
           <span>Cena AI: {item.price_suggested_by_ai} zł</span>
-        )}
-        {item.confidence != null && (
-          <span>Pewność: {Math.round(item.confidence * 100)}%</span>
         )}
         {item.missing_price && (
           <span style={{ color: 'var(--color-warning, #F59E0B)' }}>brak ceny</span>
@@ -539,6 +537,15 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
   const pendingQuestions = questions.filter(q => q.status === 'unanswered').length
   const openRisks        = risks.filter(r => r.status === 'open').length
 
+  const runConfidenceBand = run.confidence_summary != null
+    ? computeConfidenceBand({
+        rawScore:           run.confidence_summary,
+        hasMissingData:     run.missing_data,
+        openQuestionsCount: pendingQuestions,
+        openRisksCount:     openRisks,
+      })
+    : null
+
   return (
     <div style={{ display: 'grid', gap: 20 }}>
       {/* Run metadata header */}
@@ -557,10 +564,15 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
           <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: '0 0 2px' }}>Pokój</p>
           <p style={{ fontSize: 13, margin: 0 }}>{run.room_type === 'bathroom' ? 'Łazienka' : 'WC'}</p>
         </div>
-        {run.confidence_summary != null && (
+        {runConfidenceBand != null && (
           <div>
-            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: '0 0 2px' }}>Pewność AI</p>
-            <p style={{ fontSize: 13, margin: 0 }}>{Math.round(run.confidence_summary * 100)}%</p>
+            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: '0 0 2px' }}>Jakość analizy</p>
+            <p style={{ fontSize: 13, margin: 0, color: runConfidenceBand.color, fontWeight: 500 }}>
+              {runConfidenceBand.label}
+            </p>
+            <p style={{ fontSize: 10, color: 'var(--color-text-secondary)', margin: '2px 0 0', fontStyle: 'italic' }}>
+              na podstawie dostępnych źródeł
+            </p>
           </div>
         )}
         {run.missing_data && (

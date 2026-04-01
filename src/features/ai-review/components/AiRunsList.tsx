@@ -3,6 +3,7 @@
 // Sprint 5: accepts optional statsMap (keyed by run_id) for per-run badges.
 // =============================================================================
 
+import { computeConfidenceBand } from '@/shared/lib/confidence-model'
 import type { AiAnalysisRun } from '../api/ai-review.api'
 import type { AiRunStats }    from '../hooks/useAiReview'
 
@@ -42,9 +43,14 @@ export function AiRunsList({ runs, selectedRunId, onSelect, statsMap = {} }: Pro
       </p>
       {runs.map(run => {
         const isSelected = selectedRunId === run.id
-        const confidence = run.confidence_summary != null
-          ? ` · ${Math.round(run.confidence_summary * 100)}%`
-          : ''
+        const confidenceBand = run.confidence_summary != null
+          ? computeConfidenceBand({
+              rawScore:           run.confidence_summary,
+              hasMissingData:     run.missing_data,
+              openQuestionsCount: 0, // not available in list context
+              openRisksCount:     0,
+            })
+          : null
         const stats = statsMap[run.id]
 
         return (
@@ -104,9 +110,13 @@ export function AiRunsList({ runs, selectedRunId, onSelect, statsMap = {} }: Pro
                 </>
               )}
 
-              <span style={{ fontSize: 12, color: STATUS_COLOR[run.status], whiteSpace: 'nowrap' }}>
-                {STATUS_LABEL[run.status]}
-                {run.status === 'completed' ? confidence : ''}
+              <span style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                <span style={{ color: STATUS_COLOR[run.status] }}>{STATUS_LABEL[run.status]}</span>
+                {run.status === 'completed' && confidenceBand && (
+                  <span style={{ color: confidenceBand.color, marginLeft: 4 }}>
+                    · {confidenceBand.label}
+                  </span>
+                )}
               </span>
             </span>
           </button>
