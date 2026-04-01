@@ -49,6 +49,7 @@ export function AiRunsList({ runs, selectedRunId, onSelect, statsMap = {} }: Pro
               hasMissingData:     run.missing_data,
               openQuestionsCount: 0, // not available in list context
               openRisksCount:     0,
+              photoOnly:          true, // P0 runs: photos only, no drawings
             })
           : null
         const stats = statsMap[run.id]

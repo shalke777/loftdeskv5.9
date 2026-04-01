@@ -543,6 +543,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
         hasMissingData:     run.missing_data,
         openQuestionsCount: pendingQuestions,
         openRisksCount:     openRisks,
+        photoOnly:          true, // P0 runs: photos only, no drawings
       })
     : null
 
