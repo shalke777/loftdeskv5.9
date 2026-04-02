@@ -84,31 +84,61 @@ R-27: Zabudowa GK na całą wysokość → znacznie redukuje pow. ścian.
   → confidence: 0.70
 
 ROOM_LABEL — ZASADA PROPAGACJI (R-RL1):
-Pole room_label musi zawierać nazwę pomieszczenia. Nigdy nie zostawiaj go pustym jeśli pomieszczenie jest znane lub daje się wyciągnąć z kontekstu.
+Wypełnij room_label jeśli pomieszczenie da się ustalić z pewnego źródła.
+WAŻNE: null jest lepsze niż błędna wartość. Zgadywanie jest niedopuszczalne.
+Jeśli nie masz pewnej podstawy z R-RL1a lub R-RL1b — ustaw room_label = null.
 
-R-RL1a — Propagacja z pól payload:
+R-RL1a — Propagacja z pól payload (priorytet: wysoki):
   Jeśli dim_subject zawiera nazwę pomieszczenia (np. "pokój dzienny — długość ściany") → room_label = "pokój dzienny"
   Jeśli fix_name, fix_category lub fix_note zawiera pomieszczenie → room_label = to pomieszczenie
   Jeśli sh_description zawiera pomieszczenie (np. "hydroizolacja w łazience") → room_label = "łazienka"
   Reguła: room_label = pierwsze rozpoznane pomieszczenie z dowolnego pola tego evidence item.
 
-R-RL1b — Propagacja z kontekstu strony (dla tile_spec / material):
+R-RL1b — Propagacja z kontekstu strony (dla tile_spec / material, priorytet: wysoki):
   Jeśli zestawienie/tabela dotyczy JEDNEGO pomieszczenia (nagłówek sekcji to wskazuje) → room_label = to pomieszczenie
   Jeśli sekcja ma tytuł jak "RŚ-04 Łazienka" lub "Zestawienie łazienka" → room_label = "łazienka"
   Jeśli cały rysunek dotyczy jednego pomieszczenia (np. LAZIENKA PARTER) → wszystkie evidence z tej strony dziedziczą room_label = "łazienka"
-  Jeśli zestawienie obejmuje cały lokal (bez podziału na pomieszczenia) → room_label = "cały_lokal"
-  Jeśli nie da się ustalić pomieszczenia → room_label = null (dopuszczalne tylko wtedy)
+  cały_lokal: używaj TYLKO gdy item naprawdę obejmuje wszystkie pomieszczenia LUB zestawienie nie ma podziału na sekcje pokojowe.
+    CORRECT: wymiar "całkowita długość mieszkania" bez sekcji → cały_lokal ✓
+    CORRECT: tile_spec z zestawienia bez żadnych nagłówków pokojowych → cały_lokal ✓
+    WRONG: tile_spec z sekcji "Kuchnia" w zestawieniu wielopokojowym → NIE cały_lokal ✗
+    WRONG: fixture prysznic z łazienki → NIE cały_lokal ✗
+  Jeśli nie da się ustalić pomieszczenia → room_label = null
 
 R-RL1c — Rozróżnienie zone vs room_label:
   zone (ts_zone, mat_zone) = logiczna strefa wykończenia: "Posadzki", "Ściany", "Sufit", etc.
   room_label = fizyczne pomieszczenie: "łazienka", "kuchnia", "pokój dzienny", etc.
   NIE mieszaj tych pól. tile_spec może mieć zone:"Ściany" I room_label:"łazienka" jednocześnie.
 
+R-RL1d — Niejawne wnioskowanie z kategorii armatury (fixture):
+  Kategoria armatury jednoznacznie identyfikująca pomieszczenie = pewne źródło room_label.
+  ŁAZIENKA: brodzik / prysznic / walk-in shower / wanna / kabina prysznicowa / bidet / umywalka łazienkowa / WC / miska WC / deszczownica / armatura łazienkowa
+    → room_label = "łazienka" (chyba że kontekst sekcji/strony wskazuje inne pomieszczenie)
+  KUCHNIA: zlew kuchenny / blat kuchenny / okap kuchenny / zmywarka / bateria kuchenna
+    → room_label = "kuchnia" (j.w.)
+  Zasada: jeśli fix_category lub fix_name jednoznacznie wskazuje na pomieszczenie — użyj R-RL1d jako pewne źródło.
+  Nie stosuj R-RL1d jeśli wyższy priorytet (SH, PP) jest sprzeczny.
+
+R-RL2 — PRIORYTET ŹRÓDEŁ room_label (hierarchia od najwyższego):
+  1. SH: Nagłówek sekcji w tabeli/zestawieniu (np. "— ŁAZIENKA —", "RŚ-04 Łazienka")
+  2. PP: Pole payload tego evidence item (dim_subject, fix_name, sh_description)
+  3. SK: Kontekst strony / tytuł rysunku (tytuł PDF lub nazwa pliku — np. "LAZIENKA PARTER")
+  4. FH: Filename hint (logiczne wnioskowanie z rozszerzonej nazwy pliku)
+  ZASADA KONFLIKTU: wyższy priorytet zawsze wygrywa. FH (poz. 4) NIGDY nie nadpisuje SH (poz. 1) ani PP (poz. 2).
+  ZASADA ANTI-LEAKAGE: W zestawieniu wielopokojowym — każda pozycja odczytuje room_label z WŁASNEJ sekcji.
+    NIE dziedziczy room_label z poprzedniej pozycji jeśli nagłówek sekcji się zmienił.
+    Przykład: zestawienie ma sekcje "Łazienka" / "Kuchnia" — pozycja z sekcji "Kuchnia" → room_label="kuchnia".
+    NIE: "łazienka" tylko dlatego, że łazienka była wcześniej w tabeli.
+
 Przykłady prawidłowe:
-  dim_subject: "pokój dzienny — długość ściany wsch." → room_label: "pokój dzienny"
-  dim_subject: "korytarz — szerokość" → room_label: "korytarz"
-  tile_spec z sekcji "RŚ-04 Łazienka" → room_label: "łazienka"
-  fixture: prysznic z odpływem liniowym (widoczny w narożniku łazienki) → room_label: "łazienka"
+  dim_subject: "pokój dzienny — długość ściany wsch." → room_label: "pokój dzienny"      ← R-RL1a (PP)
+  dim_subject: "korytarz — szerokość" → room_label: "korytarz"                            ← R-RL1a (PP)
+  dim_subject: "cały lokal — długość" → room_label: "cały_lokal"                         ← R-RL1a (PP — dim_subject zawiera "cały lokal")
+  tile_spec z sekcji "RŚ-04 Łazienka" → room_label: "łazienka"                           ← R-RL1b (SH)
+  tile_spec z sekcji "Kuchnia" w tym samym zestawieniu → room_label: "kuchnia"            ← R-RL1b (SH, niezależna sekcja)
+  fixture: brodzik / prysznic / kabina / wanna → room_label: "łazienka"                  ← R-RL1d (kategoria armatury)
+  fixture: prysznic z odpływem liniowym (widoczny w narożniku łazienki) → room_label: "łazienka"  ← R-RL1a (PP)
+  wymiar rozkładu całego mieszkania bez sekcji → room_label: null lub "cały_lokal"        ← brak PP/SH
 
 WYPEŁNIANIE PÓL:
 Każdy evidence item ma WSPÓLNE POLA + POLA SPECYFICZNE dla evidence_type (prefiksowane):
@@ -281,8 +311,8 @@ export function buildEvidenceUserMessage(
       lines.push('R-26 NIE ZWALNIA ze sweep rzutu: po tile_spec z zestawienia — wróć do każdej strony z planem i zrób sweep.')
       lines.push('Wymiary rzutu: dwie linie wym. z różnych przekrojów → confidence 0.85. Jedna → 0.65. Skala nieznana → max 0.50.')
       lines.push('Jeśli sufit podwieszany (sp) w legendzie lub opisie — zastosuj R-15.')
-      lines.push('ROOM_LABEL: Dla każdego evidence item — uzupełnij room_label zgodnie z R-RL1. Jeśli dim_subject zawiera pomieszczenie — wpisz je też w room_label.')
-      lines.push('TILE_SPEC: Jeśli nagłówek sekcji lub tytuł rzutu wskazuje jedno pomieszczenie → wszystkie tile_spec i material z tej sekcji mają room_label = to pomieszczenie.')
+      lines.push('ROOM_LABEL: Wypełnij zgodnie z R-RL2 (SH > PP > SK > FH). Null jest lepszy niż błędna wartość — nie zgaduj pomieszczenia.')
+      lines.push('TILE_SPEC w zestawieniu wielopokojowym: każda sekcja (Łazienka/Kuchnia/...) to oddzielny kontekst. Nie dziedzicz room_label między sekcjami (R-RL2 anti-leakage).')
       break
     case 'design_visualization':
       lines.push('[TYP ASSETU: Wizualizacja 3D / render wnętrza]')
