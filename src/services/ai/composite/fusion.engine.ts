@@ -87,6 +87,67 @@ function normalizeKey(s: unknown): string {
   return String(s).toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_\u00e0-\u017f]/g, '')
 }
 
+// ── Canonical zone normalization (R-F-norm2) ──────────────────────────────────
+// Maps Polish zone/surface name variants to stable ASCII keys for group key use.
+// Prevents false splits when two sources describe the same surface differently:
+//   "ściana" / "ściany" / "ściany boczne" → "sciana"
+//   "podłoga" / "posadzka" / "floor" → "podloga"
+const ZONE_CANONICAL: [RegExp, string][] = [
+  [/[śs]cian/,           'sciana'],    // ściana, ściany, ściany boczne, sciana
+  [/pod[łl]og|posadzk|floor/, 'podloga'],  // podłoga, podłogi, posadzka, floor
+  [/sufit|ceiling/,      'sufit'],
+  [/podest|stopnic/,     'podest'],
+  [/cok[oó][łl]|skirting/, 'cokol'],
+]
+
+function normalizeZone(zone: unknown): string {
+  if (zone == null) return 'null'
+  const z = String(zone).trim()
+  if (!z) return 'null'
+  const lower = z.toLowerCase()
+  for (const [re, canonical] of ZONE_CANONICAL) {
+    if (re.test(lower)) return canonical
+  }
+  return normalizeKey(z)
+}
+
+// ── Product/material name key normalization (R-F-norm1) ───────────────────────
+// Strips leading Polish type-prefix words, format dimensions, and unit suffixes
+// from product/material names before building the group key.
+// Prevents false splits when one source includes the format or type prefix
+// in the name string and another omits it.
+//
+// Examples that collapse to the same key:
+//   "Płytki Cifre Reload White 120x120" → "cifre_reload_white"
+//   "Cifre Reload White"                 → "cifre_reload_white"  ← same group
+//
+//   "farba Beckers Perfect White 10L" → "beckers_perfect_white"
+//   "Beckers Perfect White"            → "beckers_perfect_white" ← same group
+//
+// The format field is still checked in CONFLICT_FIELDS — genuine format
+// discrepancies will surface as an explicit conflict within the merged group.
+
+// Leading type prefix words that AI commonly prepends to product names.
+// Matched after toLowerCase() — only unambiguous, high-frequency Polish words.
+const PRODUCT_TYPE_PREFIX_RE = /^(?:p[łl]ytki?|kafelki?|kafle?|gres|terakot[ay]?|farb[ay]?|emulsj[ay]?|tynk|szpachl[ay]?|ok[łl]adzin[ay]?|p[łl]yta)\s+/
+
+// Dimension pattern: "120x120", "60 x 60", "120×60 cm"
+const PRODUCT_FORMAT_DIM_RE = /\b\d+\s*[x×]\s*\d+\s*(?:cm|mm)?\b/g
+
+// Unit suffix: "10L", "5 kg", "12 mb", "2 szt"
+const PRODUCT_UNIT_SUFFIX_RE = /\b\d+\s*(?:l|kg|m2|m²|szt|mb|pcs)\b/g
+
+function normalizeProductKey(name: unknown): string {
+  if (name == null) return ''
+  const lower = String(name).toLowerCase()
+  const stripped = lower
+    .replace(PRODUCT_TYPE_PREFIX_RE, '')
+    .replace(PRODUCT_FORMAT_DIM_RE,  '')
+    .replace(PRODUCT_UNIT_SUFFIX_RE, '')
+    .trim()
+  return normalizeKey(stripped)
+}
+
 function shortHash(s: string): string {
   return createHash('sha1').update(s).digest('hex').slice(0, 8)
 }
@@ -106,14 +167,14 @@ function computeGroupKey(row: EvidenceRow): string | null {
       return `fixture:${room}:${name}`
     }
     case 'tile_spec': {
-      const product = normalizeKey(c.product)
-      const zone = normalizeKey(c.zone)
+      const product = normalizeProductKey(c.product)   // R-F-norm1: strip prefix/format/units
+      const zone    = normalizeZone(c.zone)             // R-F-norm2: canonical zone
       if (!product) return null
       return `tile_spec:${room}:${product}:${zone}`
     }
     case 'material': {
-      const name = normalizeKey(c.name)
-      const zone = normalizeKey(c.zone)
+      const name = normalizeProductKey(c.name)          // R-F-norm1: strip prefix/format/units
+      const zone = normalizeZone(c.zone)                // R-F-norm2: canonical zone
       if (!name) return null
       return `material:${room}:${name}:${zone}`
     }

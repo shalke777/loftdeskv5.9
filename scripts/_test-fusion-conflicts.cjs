@@ -218,7 +218,10 @@ function runScenario(tag, rows, expectConflictField, notes) {
     ? (result.fused_scope_candidates.some(c => c.category_peer_conflict) ? '✅' : '❌')
     : null
 
-  if (expectConflictField === 'PEER') {
+  if (expectConflictField === 'MERGE') {
+    const hasMerge = result.fused_scope_candidates.some(c => c.merged_from_count > 1)
+    console.log(`    EXPECTED: at least 1 merged group (merged_from_count>1) ${hasMerge ? '✅' : '❌'}`)
+  } else if (expectConflictField === 'PEER') {
     const hasPeer = result.fused_scope_candidates.some(c => c.category_peer_conflict)
     console.log(`    EXPECTED: category_peer_conflict detected ${hasPeer ? '✅' : '❌'}`)
   } else if (expectConflictField === 'NO_PEER') {
@@ -250,6 +253,71 @@ runScenario('S5: WC + prysznic same room (coexistence_ok — different canonical
 
 runScenario('S6: two showers same room same category (peer_review_needed)', S6, 'PEER',
   'EXPECT: 2 separate groups, peer_review_needed flagged (both showers by canonical type)')
+
+// ── S7–S9: R-F-norm1 + R-F-norm2 normalization scenarios ─────────────────────
+
+// S7: Same tile_spec — render uses full name+format in string, zone "ściana"
+//     zestawienie uses short name, zone "Ściany" (plural)
+//     BEFORE R-F-norm1/2: two separate groups
+//     AFTER:  one merged group + conflict on area_netto
+const S7 = [
+  {
+    id: 's7-render', evidence_type: 'tile_spec', room_label: 'łazienka',
+    confidence_score: 0.65, asset_id: 'asset_vis',
+    source_anchor: 'render.jpg | render | tile | widok_sciana',
+    content: { product: 'Płytki Cifre Reload White 120x120', format: '120x120', area_netto: 14.0, waste_multi: 1.1, zone: 'ściana' },
+  },
+  {
+    id: 's7-spec', evidence_type: 'tile_spec', room_label: 'łazienka',
+    confidence_score: 0.95, asset_id: 'asset_spec',
+    source_anchor: 'zestawienie.pdf | str:2 | – | ZESTAWIENIE POWIERZCHNI | Cifre Reload White',
+    content: { product: 'Cifre Reload White', format: '120x120', area_netto: 15.56, waste_multi: 1.1, zone: 'Ściany' },
+  },
+]
+
+// S8: Same material — one source prepends type word "farba" and unit "10L",
+//     the other uses clean brand name only.
+//     BEFORE: two separate groups; AFTER: one merged group + conflict on area_netto
+const S8 = [
+  {
+    id: 's8-vis', evidence_type: 'material', room_label: 'salon',
+    confidence_score: 0.60, asset_id: 'asset_vis',
+    source_anchor: 'render-salon.jpg | render | farba | kolor_biały',
+    content: { name: 'farba Beckers Perfect White 10L', category: 'malowanie', area_netto: 25.0 },
+  },
+  {
+    id: 's8-tech', evidence_type: 'material', room_label: 'salon',
+    confidence_score: 0.85, asset_id: 'asset_tech',
+    source_anchor: 'zestawienie_salon.pdf | str:3 | – | ZESTAWIENIE | Beckers Perfect White',
+    content: { name: 'Beckers Perfect White', category: 'malowanie', area_netto: 27.5 },
+  },
+]
+
+// S9: Same material, same name, zone "podłoga" vs "posadzka" (synonyms in Polish)
+//     BEFORE: two separate groups; AFTER: one merged group + conflict on area_netto
+const S9 = [
+  {
+    id: 's9-tech', evidence_type: 'material', room_label: 'łazienka',
+    confidence_score: 0.85, asset_id: 'asset_tech',
+    source_anchor: 'rzut_instalacji.pdf | str:1 | A-01 | Rzut | wylewka',
+    content: { name: 'wylewka Ardex A 35', category: 'podłogi', area_netto: 12.0, zone: 'podłoga' },
+  },
+  {
+    id: 's9-vis', evidence_type: 'material', room_label: 'łazienka',
+    confidence_score: 0.65, asset_id: 'asset_vis',
+    source_anchor: 'render.jpg | render | posadzka | Ardex',
+    content: { name: 'wylewka Ardex A 35', category: 'podłogi', area_netto: 10.8, zone: 'posadzka' },
+  },
+]
+
+runScenario('S7: tile_spec — type prefix + format in name + zone ściana vs Ściany', S7, 'area_netto',
+  'EXPECT: 1 merged group (R-F-norm1+2), conflict on area_netto (14.0 vs 15.56)')
+
+runScenario('S8: material — type prefix "farba" + unit suffix "10L" stripped', S8, 'area_netto',
+  'EXPECT: 1 merged group (R-F-norm1), conflict on area_netto (25.0 vs 27.5)')
+
+runScenario('S9: material — zone "podłoga" vs "posadzka" canonical (R-F-norm2)', S9, 'area_netto',
+  'EXPECT: 1 merged group (R-F-norm2), conflict on area_netto (12.0 vs 10.8, >5% diff)')
 
 fs.unlinkSync(outFile)
 console.log('─────────────────────────────────────────────────────────────────────')
