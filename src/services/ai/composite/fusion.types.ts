@@ -53,6 +53,16 @@ export interface FusedScopeCandidate {
   /** Conflicts detected in this group */
   conflicts: FusedConflict[]
 
+  /**
+   * R-F-hard-2: True when another candidate in the same bundle shares
+   * room_label + evidence_type + category but has a different subject (name/product).
+   * Indicates two items that may be the same real-world object described differently
+   * — requires human review to decide if they should be merged or kept separate.
+   */
+  category_peer_conflict: boolean
+  /** IDs of peer candidates that triggered the category_peer_conflict flag */
+  category_peer_ids: string[]
+
   /** Winning merged payload from highest-priority source */
   payload:    Record<string, unknown>
 }

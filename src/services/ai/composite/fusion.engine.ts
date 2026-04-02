@@ -177,11 +177,13 @@ function detectConflicts(
 }
 
 // Conflict fields to check, per evidence_type
+// R-F-hard-1: installation.description added — different descriptions of same
+// electrical/plumbing layer in same room = meaningful scope discrepancy.
 const CONFLICT_FIELDS: Record<string, string[]> = {
   fixture:      ['dims', 'quantity'],
   tile_spec:    ['area_netto', 'format', 'waste_multi'],
   material:     ['area_netto', 'format'],
-  installation: ['type', 'layer'],
+  installation: ['type', 'layer', 'description'],
 }
 
 // Subject display label, per evidence_type
@@ -270,24 +272,54 @@ export function runFusion(
     const candidateId = shortHash(groupKey)
 
     candidates.push({
-      id:                candidateId,
-      evidence_type:     winner.evidence_type as FusedScopeCandidate['evidence_type'],
-      room_label:        winner.room_label,
-      category:          extractCategory(winner.evidence_type, winner.content),
-      subject:           extractSubject(winner.evidence_type, winner.content),
-      zone:              extractZone(winner.evidence_type, winner.content),
-      confidence:        Math.max(...groupRows.map(r => r.confidence_score)),
-      merged_from_count: groupRows.length,
-      evidence_ids:      groupRows.map(r => r.id),
-      source_anchors:    dedupeAnchors,
+      id:                    candidateId,
+      evidence_type:         winner.evidence_type as FusedScopeCandidate['evidence_type'],
+      room_label:            winner.room_label,
+      category:              extractCategory(winner.evidence_type, winner.content),
+      subject:               extractSubject(winner.evidence_type, winner.content),
+      zone:                  extractZone(winner.evidence_type, winner.content),
+      confidence:            Math.max(...groupRows.map(r => r.confidence_score)),
+      merged_from_count:     groupRows.length,
+      evidence_ids:          groupRows.map(r => r.id),
+      source_anchors:        dedupeAnchors,
       conflicts,
-      payload:           cPayload,
+      // populated in post-merge pass below
+      category_peer_conflict: false,
+      category_peer_ids:      [],
+      payload:               cPayload,
     })
   }
 
   // Ungroupable fusible rows become pass-through
   for (const row of ungrouped) {
     passthroughRows.push(row)
+  }
+
+  // ─── 3b. R-F-hard-2: Category peer conflict detection ─────────────────────
+  // After all groups are formed, scan for candidates that share
+  // room_label + evidence_type + category but have different subjects.
+  // These are items that may represent the same real-world object described
+  // differently across assets — flag for human review.
+  for (let i = 0; i < candidates.length; i++) {
+    const ca = candidates[i]
+    if (!ca.category) continue   // no category = can't do peer check
+    for (let j = i + 1; j < candidates.length; j++) {
+      const cb = candidates[j]
+      if (!cb.category) continue
+      if (
+        ca.evidence_type === cb.evidence_type &&
+        ca.room_label    === cb.room_label    &&
+        ca.category      === cb.category      &&
+        ca.id            !== cb.id
+      ) {
+        // Mutual flagging
+        ca.category_peer_conflict = true
+        cb.category_peer_conflict = true
+        if (!ca.category_peer_ids.includes(cb.id)) ca.category_peer_ids.push(cb.id)
+        if (!cb.category_peer_ids.includes(ca.id)) cb.category_peer_ids.push(ca.id)
+        totalConflicts++
+      }
+    }
   }
 
   // ─── 4. Pass-through items ────────────────────────────────────────────────
