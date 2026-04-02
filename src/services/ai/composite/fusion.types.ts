@@ -55,13 +55,23 @@ export interface FusedScopeCandidate {
 
   /**
    * R-F-hard-2: True when another candidate in the same bundle shares
-   * room_label + evidence_type + category but has a different subject (name/product).
+   * room_label + evidence_type + category but has a different subject (name/product),
+   * AND the canonical fixture types are the same (or unresolvable).
    * Indicates two items that may be the same real-world object described differently
    * — requires human review to decide if they should be merged or kept separate.
+   *
+   * NOT set when canonical types differ (e.g. toilet + shower in same bathroom)
+   * — those are coexistence_ok and are NOT flagged.
    */
   category_peer_conflict: boolean
   /** IDs of peer candidates that triggered the category_peer_conflict flag */
   category_peer_ids: string[]
+  /**
+   * R-F-peer2: Semantic peer conflict classification.
+   * - 'peer_review_needed': same canonical fixture type in same room (may be duplicate)
+   * - null: no peer relationship, or coexistence_ok (different canonical types suppressed)
+   */
+  peer_conflict_type: 'peer_review_needed' | null
 
   /** Winning merged payload from highest-priority source */
   payload:    Record<string, unknown>

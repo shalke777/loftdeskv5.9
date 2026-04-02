@@ -57,6 +57,29 @@ export interface QuestionRiskRow {
 const FUSIBLE_TYPES = new Set(['fixture', 'tile_spec', 'material', 'installation'])
 const PASSTHROUGH_TYPES = new Set(['dimension', 'scope_hint', 'missing_data', 'hypothesis'])
 
+// ── Canonical fixture type lookup (R-F-peer2) ─────────────────────────────────
+// Maps regex patterns against a fixture's normalized name to a functional semantic type.
+// When two fixtures in the same room share the same category but have DIFFERENT
+// canonical types (e.g. toilet vs shower), they legitimately coexist — do NOT flag.
+// When canonical types are the SAME (two showers), flag as peer_review_needed.
+const FIXTURE_CANONICAL_TYPES: [RegExp, string][] = [
+  [/prysznic|walk[\s-]?in|kabina.*prysznic|kabina.*walk|shower/,     'shower'],
+  [/wanna|bathtub/,                                                    'bath'],
+  [/\bwc\b|miska.*wc|toaleta|toilet|sedes|kompakt/,                  'toilet'],
+  [/umywalka|lavabo|washbasin/,                                       'washbasin'],
+  [/brodzik|shower[\s-]?tray/,                                        'shower_tray'],
+  [/grzejnik|radiator|ogrzewanie/,                                    'heating'],
+  [/od[pł]yw|drain/,                                                  'drain'],
+]
+
+function getCanonicalFixtureType(name: string): string | null {
+  const lower = name.toLowerCase()
+  for (const [re, type] of FIXTURE_CANONICAL_TYPES) {
+    if (re.test(lower)) return type
+  }
+  return null
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function normalizeKey(s: unknown): string {
@@ -286,6 +309,7 @@ export function runFusion(
       // populated in post-merge pass below
       category_peer_conflict: false,
       category_peer_ids:      [],
+      peer_conflict_type:     null,
       payload:               cPayload,
     })
   }
@@ -295,11 +319,12 @@ export function runFusion(
     passthroughRows.push(row)
   }
 
-  // ─── 3b. R-F-hard-2: Category peer conflict detection ─────────────────────
+  // ─── 3b. R-F-peer2: Category peer conflict detection ──────────────────────
   // After all groups are formed, scan for candidates that share
   // room_label + evidence_type + category but have different subjects.
-  // These are items that may represent the same real-world object described
-  // differently across assets — flag for human review.
+  // For fixtures: if both resolve to DIFFERENT canonical types (toilet vs shower)
+  // they legitimately coexist — skip. Only flag when same canonical type or
+  // canonical type is unresolvable (fallback to category check).
   for (let i = 0; i < candidates.length; i++) {
     const ca = candidates[i]
     if (!ca.category) continue   // no category = can't do peer check
@@ -312,9 +337,21 @@ export function runFusion(
         ca.category      === cb.category      &&
         ca.id            !== cb.id
       ) {
-        // Mutual flagging
+        // R-F-peer2: For fixtures, use canonical type to avoid false positives.
+        // Different canonical types (toilet + shower) = coexistence_ok → suppress.
+        if (ca.evidence_type === 'fixture') {
+          const typeA = getCanonicalFixtureType(ca.subject)
+          const typeB = getCanonicalFixtureType(cb.subject)
+          if (typeA !== null && typeB !== null && typeA !== typeB) {
+            // Coexistence OK — different fixture functions in same room. Skip.
+            continue
+          }
+        }
+        // Mutual flagging — same type or unresolvable
         ca.category_peer_conflict = true
         cb.category_peer_conflict = true
+        ca.peer_conflict_type = 'peer_review_needed'
+        cb.peer_conflict_type = 'peer_review_needed'
         if (!ca.category_peer_ids.includes(cb.id)) ca.category_peer_ids.push(cb.id)
         if (!cb.category_peer_ids.includes(ca.id)) cb.category_peer_ids.push(ca.id)
         totalConflicts++
