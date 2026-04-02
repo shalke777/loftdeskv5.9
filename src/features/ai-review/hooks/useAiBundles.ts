@@ -9,6 +9,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
+import { netlifyFn } from '@/shared/lib/functions'
 import {
   listBundlesForProject,
   getBundleWithAssets,
@@ -16,6 +17,8 @@ import {
 } from '../api/ai-bundle.api'
 import { assessBundleReadiness } from '@/services/ai/composite/bundle-readiness'
 import type { BundleReadinessSummary } from '@/services/ai/composite/bundle-readiness'
+import { buildReviewQueue } from '@/services/ai/composite/fusion.review'
+import type { FusionReviewQueue } from '@/services/ai/composite/fusion.types'
 
 export function useBundlesForProject(projectId: string | undefined) {
   return useQuery({
@@ -69,4 +72,45 @@ export function useProjectBundleReadiness(projectId: string | undefined) {
     isLoading:   bundlesQuery.isLoading || (Boolean(latestBundleId) && readinessQuery.isLoading),
     isError:     bundlesQuery.isError || readinessQuery.isError,
   }
+}
+
+/**
+ * Fetch fusion output via bundle-fusion Netlify function,
+ * then build a FusionReviewQueue client-side using buildReviewQueue().
+ *
+ * Only enabled when bundleId is provided and the bundle is eligible.
+ * Stale time: 60s — fusion is pure compute, result is deterministic.
+ */
+async function fetchFusionReviewQueue(bundleId: string): Promise<FusionReviewQueue> {
+  if (!supabase) throw new Error('Supabase not initialised')
+  const { data: { session } } = await supabase.auth.getSession()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`
+  }
+
+  const res = await fetch(netlifyFn('bundle-fusion'), {
+    method:  'POST',
+    headers,
+    body:    JSON.stringify({ bundle_id: bundleId }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: string }).error ?? `bundle-fusion error ${res.status}`)
+  }
+  const output = await res.json()
+  return buildReviewQueue(output)
+}
+
+export function useFusionReviewQueue(
+  bundleId: string | undefined,
+  eligible: boolean,
+) {
+  return useQuery<FusionReviewQueue, Error>({
+    queryKey:  ['fusion-review-queue', bundleId],
+    queryFn:   () => fetchFusionReviewQueue(bundleId!),
+    enabled:   Boolean(bundleId) && eligible,
+    staleTime: 60_000,
+    retry:     1,
+  })
 }

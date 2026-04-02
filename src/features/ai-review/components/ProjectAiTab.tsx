@@ -11,11 +11,12 @@
 
 import { useState } from 'react'
 import { useAiRunsForProject, useAiRunStatsForProject, type AiRunStats } from '../hooks/useAiReview'
-import { useProjectBundleReadiness } from '../hooks/useAiBundles'
-import { AiIntakeSection }    from './AiIntakeSection'
-import { AiRunsList }         from './AiRunsList'
-import { AiRunReviewPanel }   from './AiRunReviewPanel'
-import { BundleReadinessCard } from './BundleReadinessCard'
+import { useProjectBundleReadiness, useBundlesForProject, useFusionReviewQueue } from '../hooks/useAiBundles'
+import { AiIntakeSection }         from './AiIntakeSection'
+import { AiRunsList }              from './AiRunsList'
+import { AiRunReviewPanel }        from './AiRunReviewPanel'
+import { BundleReadinessCard }     from './BundleReadinessCard'
+import { FusionReviewQueuePanel }  from './FusionReviewQueuePanel'
 
 interface Props {
   projectId:    string
@@ -30,6 +31,13 @@ export function ProjectAiTab({ projectId, companyId, planEnabled = true }: Props
   const { data: runs  = [], isLoading, isError: runsError }  = useAiRunsForProject(projectId)
   const { data: statsArr = [] }          = useAiRunStatsForProject(projectId)
   const { readiness: bundleReadiness, bundleCount } = useProjectBundleReadiness(projectId)
+
+  // Fusion review queue — only when bundle is eligible for composite
+  const bundlesQuery    = useBundlesForProject(projectId)
+  const latestBundleId  = bundlesQuery.data?.[0]?.id
+  const isEligible      = bundleReadiness?.eligible_for_composite ?? false
+  const { data: reviewQueue, isLoading: queueLoading, error: queueError } =
+    useFusionReviewQueue(latestBundleId, isEligible)
 
   // Auto-select a run: prefer user selection, fall back to latest completed
   const selectedRun = runs.find(r => r.id === selectedRunId)
@@ -93,6 +101,15 @@ export function ProjectAiTab({ projectId, companyId, planEnabled = true }: Props
       {/* P1: composite bundle readiness — shown when bundles exist */}
       {bundleReadiness && (
         <BundleReadinessCard readiness={bundleReadiness} bundleCount={bundleCount} />
+      )}
+
+      {/* P2: fusion review queue — shown when bundle is eligible for composite */}
+      {isEligible && (queueLoading || reviewQueue || queueError) && (
+        <FusionReviewQueuePanel
+          queue={reviewQueue ?? null}
+          isLoading={queueLoading}
+          error={queueError ?? null}
+        />
       )}
 
       {/* History or access error */}
