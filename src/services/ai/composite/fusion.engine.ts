@@ -423,6 +423,8 @@ export function runFusion(
       linked_scope_hints:     [],
       strong_context_count:   0,
       fallback_context_count: 0,
+      review_readiness:       'ready',
+      review_reasons:         [],
       payload:               cPayload,
     })
   }
@@ -533,6 +535,50 @@ export function runFusion(
     candidate.fallback_context_count =
       candidate.linked_dimensions.filter(d => d.match_strength === 'room_fallback').length +
       candidate.linked_scope_hints.filter(h => h.match_strength === 'room_fallback').length
+  }
+
+  // ─── 3d. R-F-triage: Review readiness per candidate ─────────────────────
+  // Rules applied in priority order: blocked first, then needs_review, else ready.
+  // Based only on already-computed signals — no new DB reads, no ML.
+  for (const candidate of candidates) {
+    const reasons: string[] = []
+
+    // ── blocked conditions ──────────────────────────────────────────────────
+    if (candidate.confidence < 0.60) {
+      reasons.push('low_confidence')
+    }
+    for (const cf of candidate.conflicts) {
+      if (cf.resolution === 'unresolved') {
+        reasons.push(`unresolved_conflict:${cf.field}`)
+      }
+    }
+    if (reasons.length > 0) {
+      candidate.review_readiness = 'blocked'
+      candidate.review_reasons   = reasons
+      continue
+    }
+
+    // ── needs_review conditions ─────────────────────────────────────────────
+    if (candidate.peer_conflict_type === 'peer_review_needed') {
+      reasons.push('peer_conflict')
+    }
+    for (const cf of candidate.conflicts) {
+      // Any conflict (resolved or not) warrants human check
+      reasons.push(`conflict:${cf.field}`)
+    }
+    const totalLinks = candidate.strong_context_count + candidate.fallback_context_count
+    if (totalLinks === 0) {
+      reasons.push('no_linked_context')
+    }
+    if (reasons.length > 0) {
+      candidate.review_readiness = 'needs_review'
+      candidate.review_reasons   = reasons
+      continue
+    }
+
+    // ── ready ───────────────────────────────────────────────────────────────
+    candidate.review_readiness = 'ready'
+    candidate.review_reasons   = []
   }
 
   // ─── 4. Pass-through items ────────────────────────────────────────────────

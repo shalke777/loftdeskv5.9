@@ -151,6 +151,10 @@ async function main() {
     if (totalLinks > 0) {
       console.log(`         🎯 context: strong=${c.strong_context_count ?? 0} fallback=${c.fallback_context_count ?? 0}`)
     }
+    // triage
+    const triageIcon = c.review_readiness === 'ready' ? '✅' : c.review_readiness === 'needs_review' ? '⚠️ ' : '🚫'
+    const reasonStr  = c.review_reasons?.length > 0 ? ` [${c.review_reasons.join(', ')}]` : ''
+    console.log(`         ${triageIcon} review_readiness: ${c.review_readiness ?? '?'}${reasonStr}`)
   }
 
   console.log('\n── PASS-THROUGH ITEMS ──────────────────────────────────────────────')

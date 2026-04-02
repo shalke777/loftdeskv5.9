@@ -104,6 +104,27 @@ export interface FusedScopeCandidate {
    * where match_strength === 'room_fallback'. 0 when all links are strong.
    */
   fallback_context_count: number
+
+  /**
+   * R-F-triage: Readiness bucket for this candidate.
+   *
+   * 'ready'        — no conflicts, no peer issues, confidence ≥ 0.60,
+   *                  at least some linked context (or still ready with fallback-only context)
+   * 'needs_review' — resolved conflict, or peer_review_needed, or zero linked context
+   * 'blocked'      — unresolved conflict (same source_priority, no authority winner)
+   *                  OR confidence < 0.60
+   *
+   * Priority: blocked > needs_review > ready.
+   * Rule details in review_reasons.
+   */
+  review_readiness: 'ready' | 'needs_review' | 'blocked'
+
+  /**
+   * R-F-triage: Human-readable reasons why this readiness bucket was assigned.
+   * E.g. ['unresolved_conflict:area_netto', 'peer_conflict', 'low_confidence'].
+   * Empty when bucket is 'ready'.
+   */
+  review_reasons: string[]
 }
 
 // ── Pass-through items (not merged, just collected) ────────────────────────────

@@ -218,6 +218,10 @@ function runScenario(tag, rows, expectConflictField, notes) {
     if (totalLinks > 0) {
       console.log(`      🎯 context: strong=${c.strong_context_count ?? 0} fallback=${c.fallback_context_count ?? 0}`)
     }
+    // triage
+    const triageIcon = c.review_readiness === 'ready' ? '✅' : c.review_readiness === 'needs_review' ? '⚠️ ' : '🚫'
+    const reasonStr  = c.review_reasons?.length > 0 ? ` [${c.review_reasons.join(', ')}]` : ''
+    console.log(`      ${triageIcon} review_readiness: ${c.review_readiness ?? '?'}${reasonStr}`)
   }
 
   // Expected check
@@ -250,6 +254,24 @@ function runScenario(tag, rows, expectConflictField, notes) {
     } else {
       console.log(`    ❌ PREC FAIL — expected both strong and room_fallback links`)
     }
+  } else if (expectConflictField === 'TRIAGE') {
+    // Triage check: expects the result object to be { ready, needs_review, blocked } bucket lists
+    const buckets = { ready: [], needs_review: [], blocked: [] }
+    for (const c of result.fused_scope_candidates) {
+      buckets[c.review_readiness]?.push(c.evidence_type)
+    }
+    console.log(`    TRIAGE buckets:`)
+    console.log(`      ready:        [${buckets.ready.join(', ')}]`)
+    console.log(`      needs_review: [${buckets.needs_review.join(', ')}]`)
+    console.log(`      blocked:      [${buckets.blocked.join(', ')}]`)
+    // Pass if each bucket has been populated as expected by the notes
+    const hasBlocked      = buckets.blocked.length > 0
+    const hasNeedsReview  = buckets.needs_review.length > 0
+    const hasReady        = buckets.ready.length > 0
+    const allAssigned     = result.fused_scope_candidates.every(c =>
+      ['ready', 'needs_review', 'blocked'].includes(c.review_readiness)
+    )
+    console.log(`      all assigned correctly: ${allAssigned ? '✅' : '❌'}`)
   } else if (expectConflictField === 'PEER') {
     const hasPeer = result.fused_scope_candidates.some(c => c.category_peer_conflict)
     console.log(`    EXPECTED: category_peer_conflict detected ${hasPeer ? '✅' : '❌'}`)
@@ -460,6 +482,96 @@ const S11_all = [...S11_fusible, ...S11_passthrough]
 
 runScenario('S11: enrichment precision — strong vs room_fallback links', S11_all, 'PREC',
   'EXPECT: dim-sciana=strong for tile_spec(zone:ściany), fallback for material+fixture; scope-tiles=strong for tile_spec only')
+
+// ── S12: R-F-triage — three triage buckets in one run ───────────────────────
+//
+// Candidates:
+//  (A) tile_spec — two sources, area_netto conflict RESOLVED (diff priorities) → needs_review [conflict:area_netto]
+//  (B) fixture   — two sources, area_netto conflict UNRESOLVED (same priority)  → blocked    [unresolved_conflict:...]
+//  (C) material  — single source, no conflict, has linked context               → ready
+//  (D) installation — single source, no conflict, no linked context             → needs_review [no_linked_context]
+//
+// Pass-through: 1 dimension (room=salon) — only links to material (same room)
+const S12_PRIORITY_OVERRIDE = { 'asset_A': 10, 'asset_B': 10, 'asset_C': 20 }
+const S12_rows = [
+  // (A) tile_spec — conflict resolved (asset_A pri=10 wins over asset_C pri=20)
+  {
+    id: 's12-tile-A', evidence_type: 'tile_spec', room_label: 'salon',
+    confidence_score: 0.88, asset_id: 'asset_A',
+    source_anchor: 'zestawienie.pdf | str:1 | A-01 | Zestawienie | Cifre',
+    content: { product: 'Cifre Reload White', format: '60x60', area_netto: 20.0 },
+  },
+  {
+    id: 's12-tile-B', evidence_type: 'tile_spec', room_label: 'salon',
+    confidence_score: 0.75, asset_id: 'asset_C',
+    source_anchor: 'rzut.pdf | str:1 | A-01 | Rzut | Cifre',
+    content: { product: 'Cifre Reload White', format: '60x60', area_netto: 18.5 },
+  },
+  // (B) fixture — conflict UNRESOLVED (asset_A pri=10 === asset_B pri=10)
+  {
+    id: 's12-fix-A', evidence_type: 'fixture', room_label: 'salon',
+    confidence_score: 0.82, asset_id: 'asset_A',
+    source_anchor: 'rzut.pdf | str:1 | A-01 | Rzut | umywalka',
+    content: { name: 'umywalka Koło Elipso', category: 'umywalka', dims: '55x43' },
+  },
+  {
+    id: 's12-fix-B', evidence_type: 'fixture', room_label: 'salon',
+    confidence_score: 0.79, asset_id: 'asset_B',
+    source_anchor: 'wizualizacja.pdf | str:2 | A-02 | Wizualizacja | umywalka',
+    content: { name: 'umywalka Koło Elipso', category: 'umywalka', dims: '60x45' },
+  },
+  // (C) material — single source, no conflict, has linked dim context
+  {
+    id: 's12-mat', evidence_type: 'material', room_label: 'salon',
+    confidence_score: 0.91, asset_id: 'asset_A',
+    source_anchor: 'zestawienie.pdf | str:1 | A-01 | Zestawienie | wylewka',
+    content: { name: 'Ardex A 35', category: 'wylewka', area_netto: 18.0 },
+  },
+  // (D) installation — single source, no conflict, room_label=null (no linked context possible)
+  {
+    id: 's12-inst', evidence_type: 'installation', room_label: null,
+    confidence_score: 0.77, asset_id: 'asset_A',
+    source_anchor: 'zestawienie.pdf | str:2 | A-01 | Zestawienie | montaz',
+    content: { type: 'montaż płytek', layer: 'ściany', description: 'klej Ardex' },
+  },
+  // pass-through dimension — only links to salon candidates
+  {
+    id: 's12-dim', evidence_type: 'dimension', room_label: 'salon',
+    confidence_score: 0.88, asset_id: 'asset_A',
+    source_anchor: 'rzut.pdf | str:1 | A-01 | Rzut | pow_salonu',
+    content: { subject: 'salon — pow. podłogi', unit: 'm2', value: 21.3, zone: 'podłoga' },
+  },
+]
+
+// Note: S12 uses a custom priority map — pass via runScenario's result inspection below
+// Since runScenario doesn't accept a custom priority map, we call runFusion directly here.
+;(function() {
+  const result = runFusion('test-bundle-s12', S12_rows, S12_PRIORITY_OVERRIDE, [])
+  console.log(`─── S12: R-F-triage — three buckets: ready / needs_review / blocked ────────────`)
+  console.log(`    EXPECT: tile_spec=needs_review(conflict:resolved), fixture=blocked(unresolved), material=ready, installation=needs_review(no_context)`)
+  for (const c of result.fused_scope_candidates) {
+    const triageIcon = c.review_readiness === 'ready' ? '✅' : c.review_readiness === 'needs_review' ? '⚠️ ' : '🚫'
+    const reasonStr  = c.review_reasons?.length > 0 ? ` [${c.review_reasons.join(', ')}]` : ''
+    const ctxStr     = (c.strong_context_count + c.fallback_context_count) > 0
+      ? ` ctx:strong=${c.strong_context_count} fallback=${c.fallback_context_count}`
+      : ' ctx:none'
+    console.log(`    ${triageIcon} ${c.evidence_type} room:${c.room_label ?? 'null'}${ctxStr} → ${c.review_readiness}${reasonStr}`)
+  }
+  const buckets = { ready: [], needs_review: [], blocked: [] }
+  for (const c of result.fused_scope_candidates) { buckets[c.review_readiness]?.push(c.evidence_type) }
+  const hasBlocked     = buckets.blocked.length > 0
+  const hasNeedsReview = buckets.needs_review.length > 0
+  const hasReady       = buckets.ready.length > 0
+  const allAssigned    = result.fused_scope_candidates.every(c => ['ready','needs_review','blocked'].includes(c.review_readiness))
+  console.log(`    buckets — ready:[${buckets.ready.join(',')}] needs_review:[${buckets.needs_review.join(',')}] blocked:[${buckets.blocked.join(',')}]`)
+  console.log(`    has ready:${hasReady?'✅':'❌'}  needs_review:${hasNeedsReview?'✅':'❌'}  blocked:${hasBlocked?'✅':'❌'}  all_assigned:${allAssigned?'✅':'❌'}`)
+  if (hasBlocked && hasNeedsReview && hasReady && allAssigned) {
+    console.log(`    ✅ TRIAGE PASS — all three buckets correctly populated`)
+  } else {
+    console.log(`    ❌ TRIAGE FAIL`)
+  }
+  console.log()
+})()
 
 fs.unlinkSync(outFile)
 console.log('─────────────────────────────────────────────────────────────────────')
