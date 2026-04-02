@@ -79,13 +79,16 @@ export interface FusedScopeCandidate {
   /**
    * R-F-enrich-dim: Dimension evidence items from the same room, linked to this candidate.
    * Safe match: dimension.room_label === candidate.room_label (non-null).
-   * Consumers may use these to contextualise area/count/length without a DB lookup.
+   * R-F-prec1: match_strength='strong' when zones also match; 'room_fallback' otherwise.
+   * Consumers preferring precision should filter to match_strength='strong'.
    */
   linked_dimensions:  LinkedDimension[]
 
   /**
    * R-F-enrich-scope: Scope hint items from the same room, linked to this candidate.
    * Safe match: scope_hint.room_label === candidate.room_label (non-null).
+   * R-F-prec2: match_strength='strong' when scope_hint.category overlaps candidate
+   * category or evidence_type; 'room_fallback' otherwise.
    */
   linked_scope_hints: LinkedScopeHint[]
 }
@@ -106,26 +109,38 @@ export interface PassthroughItem {
 /**
  * A dimension evidence item linked to this fused candidate.
  * Linked when dimension.room_label === candidate.room_label (non-null match).
+ *
+ * match_strength:
+ *   'strong'        — zone of the dimension also matches the candidate's zone
+ *                     (both non-null, after canonical normalization)
+ *   'room_fallback' — only room_label matched; zone unavailable or mismatched
  */
 export interface LinkedDimension {
-  source_id:     string          // PassthroughItem.id (original evidence row id)
-  subject:       string | null   // e.g. "łazienka — pow. podłogi"
-  unit:          string | null   // "m2", "cm", "szt", "mb"
-  value:         number | null
-  source_anchor: string | null
+  source_id:      string          // PassthroughItem.id (original evidence row id)
+  subject:        string | null   // e.g. "łazienka — pow. podłogi"
+  unit:           string | null   // "m2", "cm", "szt", "mb"
+  value:          number | null
+  source_anchor:  string | null
+  match_strength: 'strong' | 'room_fallback'
 }
 
 /**
  * A scope_hint evidence item linked to this fused candidate.
  * Linked when scope_hint.room_label === candidate.room_label (non-null match).
+ *
+ * match_strength:
+ *   'strong'        — scope_hint.category overlaps candidate.category or evidence_type
+ *                     (normalized partial match — e.g. "płytki" in category "kaflowanie")
+ *   'room_fallback' — only room_label matched; category unavailable or no overlap
  */
 export interface LinkedScopeHint {
-  source_id:     string
-  category:      string | null   // scope_hint.category field
-  unit:          string | null
-  priority:      string | null   // "wysoki", "krytyczny" etc.
-  note:          string | null   // scope_hint.note / text if present
-  source_anchor: string | null
+  source_id:      string
+  category:       string | null   // scope_hint.category field
+  unit:           string | null
+  priority:       string | null   // "wysoki", "krytyczny" etc.
+  note:           string | null   // scope_hint.note / text if present
+  source_anchor:  string | null
+  match_strength: 'strong' | 'room_fallback'
 }
 
 // ── Questions and risks ────────────────────────────────────────────────────────

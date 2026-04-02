@@ -209,10 +209,10 @@ function runScenario(tag, rows, expectConflictField, notes) {
     }
     // enrichment links
     if (c.linked_dimensions?.length > 0) {
-      console.log(`      📐 linked_dimensions: ${c.linked_dimensions.map(d => `${d.subject || '?'} (${d.value} ${d.unit})`).join(', ')}`)
+      console.log(`      📐 linked_dimensions: ${c.linked_dimensions.map(d => `${d.subject || '?'} (${d.value} ${d.unit}) [${d.match_strength}]`).join(', ')}`)
     }
     if (c.linked_scope_hints?.length > 0) {
-      console.log(`      💡 linked_scope_hints: ${c.linked_scope_hints.map(h => `cat:${h.category || '?'} prio:${h.priority || '?'}`).join(', ')}`)
+      console.log(`      💡 linked_scope_hints: ${c.linked_scope_hints.map(h => `cat:${h.category || '?'} prio:${h.priority || '?'} [${h.match_strength}]`).join(', ')}`)
     }
   }
 
@@ -233,6 +233,19 @@ function runScenario(tag, rows, expectConflictField, notes) {
       c => (c.linked_dimensions?.length > 0) || (c.linked_scope_hints?.length > 0)
     )
     console.log(`    EXPECTED: at least 1 candidate has linked_dimensions or linked_scope_hints ${hasLinks ? '✅' : '❌'}`)
+  } else if (expectConflictField === 'PREC') {
+    // Precision boundary: at least 1 'strong' AND at least 1 'room_fallback' across all links
+    const allDimStrengths = result.fused_scope_candidates.flatMap(c => (c.linked_dimensions ?? []).map(d => d.match_strength))
+    const allHintStrengths = result.fused_scope_candidates.flatMap(c => (c.linked_scope_hints ?? []).map(h => h.match_strength))
+    const hasStrong = [...allDimStrengths, ...allHintStrengths].some(s => s === 'strong')
+    const hasFallback = [...allDimStrengths, ...allHintStrengths].some(s => s === 'room_fallback')
+    console.log(`    EXPECTED: mix of strong + room_fallback links present`)
+    console.log(`      has strong: ${hasStrong ? '✅' : '❌'}  has room_fallback: ${hasFallback ? '✅' : '❌'}`)
+    if (hasStrong && hasFallback) {
+      console.log(`    ✅ PREC PASS — precision boundaries correctly assigned`)
+    } else {
+      console.log(`    ❌ PREC FAIL — expected both strong and room_fallback links`)
+    }
   } else if (expectConflictField === 'PEER') {
     const hasPeer = result.fused_scope_candidates.some(c => c.category_peer_conflict)
     console.log(`    EXPECTED: category_peer_conflict detected ${hasPeer ? '✅' : '❌'}`)
@@ -380,6 +393,69 @@ const S10_all = [...S10_fusible, ...S10_passthrough]
 
 runScenario('S10: enrichment — dimension + scope_hint linked to room-matched candidates', S10_all, 'ENRICH',
   'EXPECT: tile_spec+fixture in łazienka get linked_dimensions=[m2:18.4] + linked_scope_hints; salon dim NOT linked; missing_data stays global (no room)')
+
+// ── S11: R-F-prec1 + R-F-prec2 — precision boundary test ────────────────────
+//
+// Room: łazienka — 3 candidates:
+//   (A) tile_spec zone:ściany category:null
+//   (B) material  zone:podłoga category:podłogi
+//   (C) fixture   zone:null     category:armatura łazienkowa
+//
+// Pass-through:
+//   (dim-sciana)  dimension zone:ściany       → should be 'strong' for (A), 'room_fallback' for (B)+(C)
+//   (dim-podloga) dimension zone:podłoga       → should be 'strong' for (B), 'room_fallback' for (A)+(C)
+//   (scope-tiles) scope_hint category:płytki   → strong for (A) tile_spec, fallback for (B)+(C)
+//   (scope-laz)   scope_hint category:łazienka → room_fallback for ALL (no token overlap with specific types)
+const S11_fusible = [
+  {
+    id: 's11-tile', evidence_type: 'tile_spec', room_label: 'łazienka',
+    confidence_score: 0.90, asset_id: 'asset_tech',
+    source_anchor: 'zestawienie.pdf | str:2 | – | ZESTAWIENIE | Cifre',
+    content: { product: 'Cifre Reload White', format: '120x120', area_netto: 15.56, zone: 'ściany' },
+  },
+  {
+    id: 's11-mat', evidence_type: 'material', room_label: 'łazienka',
+    confidence_score: 0.85, asset_id: 'asset_tech',
+    source_anchor: 'rzut.pdf | str:1 | A-01 | Rzut | wylewka',
+    content: { name: 'wylewka Ardex A 35', category: 'podłogi', area_netto: 12.0, zone: 'podłoga' },
+  },
+  {
+    id: 's11-fix', evidence_type: 'fixture', room_label: 'łazienka',
+    confidence_score: 0.90, asset_id: 'asset_tech',
+    source_anchor: 'rzut.pdf | str:1 | A-01 | Rzut | umywalka',
+    content: { name: 'umywalka Villeroy & Boch', category: 'armatura łazienkowa' },
+  },
+]
+const S11_passthrough = [
+  {
+    id: 's11-dim-sciana', evidence_type: 'dimension', room_label: 'łazienka',
+    confidence_score: 0.85, asset_id: 'asset_tech',
+    source_anchor: 'rzut.pdf | str:1 | A-01 | Rzut | pow_scian',
+    content: { subject: 'łazienka — pow. ścian', unit: 'm2', value: 18.4, zone: 'ściany' },
+  },
+  {
+    id: 's11-dim-podloga', evidence_type: 'dimension', room_label: 'łazienka',
+    confidence_score: 0.85, asset_id: 'asset_tech',
+    source_anchor: 'rzut.pdf | str:1 | A-01 | Rzut | pow_podlogi',
+    content: { subject: 'łazienka — pow. podłogi', unit: 'm2', value: 6.2, zone: 'podłoga' },
+  },
+  {
+    id: 's11-scope-tiles', evidence_type: 'scope_hint', room_label: 'łazienka',
+    confidence_score: 0.80, asset_id: 'asset_tech',
+    source_anchor: 'rzut.pdf | str:1 | A-01 | Rzut | zakres_plytki',
+    content: { category: 'płytki', unit: 'm2', priority: 'wysoki' },
+  },
+  {
+    id: 's11-scope-laz', evidence_type: 'scope_hint', room_label: 'łazienka',
+    confidence_score: 0.70, asset_id: 'asset_tech',
+    source_anchor: 'rzut.pdf | str:1 | A-01 | Rzut | zakres_laz',
+    content: { category: 'łazienka', unit: 'szt', priority: 'normalny' },
+  },
+]
+const S11_all = [...S11_fusible, ...S11_passthrough]
+
+runScenario('S11: enrichment precision — strong vs room_fallback links', S11_all, 'PREC',
+  'EXPECT: dim-sciana=strong for tile_spec(zone:ściany), fallback for material+fixture; scope-tiles=strong for tile_spec only')
 
 fs.unlinkSync(outFile)
 console.log('─────────────────────────────────────────────────────────────────────')

@@ -138,13 +138,13 @@ async function main() {
     if (c.linked_dimensions?.length > 0) {
       console.log(`         📐 linked_dimensions (${c.linked_dimensions.length}):`)
       for (const d of c.linked_dimensions) {
-        console.log(`            • ${d.subject ?? '?'} — ${d.value} ${d.unit ?? ''}`)
+        console.log(`            \u2022 ${d.subject ?? '?'} \u2014 ${d.value} ${d.unit ?? ''} [${d.match_strength ?? '?'}]`)
       }
     }
     if (c.linked_scope_hints?.length > 0) {
       console.log(`         💡 linked_scope_hints (${c.linked_scope_hints.length}):`)
       for (const h of c.linked_scope_hints) {
-        console.log(`            • cat:${h.category ?? '?'} unit:${h.unit ?? '?'} prio:${h.priority ?? '?'}`)
+        console.log(`            \u2022 cat:${h.category ?? '?'} unit:${h.unit ?? '?'} prio:${h.priority ?? '?'} [${h.match_strength ?? '?'}]`)
       }
     }
   }

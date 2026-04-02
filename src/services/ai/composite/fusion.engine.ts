@@ -150,6 +150,52 @@ function normalizeProductKey(name: unknown): string {
   return normalizeKey(stripped)
 }
 
+// ── Enrichment precision scoring helpers (R-F-prec1 + R-F-prec2) ─────────────
+
+/**
+ * R-F-prec1: Determine match_strength for a dimension ↔ candidate link.
+ * 'strong'        — dimension has a zone string AND it canonicalizes to the same
+ *                   zone as the candidate (candidate must have a zone too)
+ * 'room_fallback' — room match only; zone unavailable or doesn't match
+ */
+function dimensionMatchStrength(
+  dimContent:  Record<string, unknown>,
+  candidate:   { zone: string | null },
+): 'strong' | 'room_fallback' {
+  const dimZoneRaw = String(dimContent.zone ?? dimContent.unit_type ?? '')
+  if (!dimZoneRaw) return 'room_fallback'
+  if (!candidate.zone) return 'room_fallback'
+  return normalizeZone(dimZoneRaw) === normalizeZone(candidate.zone) ? 'strong' : 'room_fallback'
+}
+
+/**
+ * R-F-prec2: Determine match_strength for a scope_hint ↔ candidate link.
+ * 'strong'        — scope_hint.category normalized overlaps the candidate's
+ *                   category OR evidence_type (substring/token match after
+ *                   normalizeKey; avoids NLP, uses only structural tokens)
+ * 'room_fallback' — only room matched; no category overlap found
+ */
+function scopeHintMatchStrength(
+  hintContent:   Record<string, unknown>,
+  candidate:     { category: string | null; evidence_type: string },
+): 'strong' | 'room_fallback' {
+  const rawHintCat = String(hintContent.category ?? '')
+  if (!rawHintCat) return 'room_fallback'
+  const hintKey = normalizeKey(rawHintCat)           // e.g. "łazienka" → "łazienka"
+  const candKey = normalizeKey(candidate.category ?? '') // e.g. "brodzik"
+  const typeKey = normalizeKey(candidate.evidence_type)  // e.g. "tile_spec"
+
+  if (!hintKey) return 'room_fallback'
+
+  // Token overlap: any shared word-token of length ≥3 counts as a match
+  const hintTokens = hintKey.split('_').filter(t => t.length >= 3)
+  const candTokens = [...candKey.split('_'), ...typeKey.split('_')].filter(t => t.length >= 3)
+  for (const ht of hintTokens) {
+    if (candTokens.some(ct => ct.includes(ht) || ht.includes(ct))) return 'strong'
+  }
+  return 'room_fallback'
+}
+
 function shortHash(s: string): string {
   return createHash('sha1').update(s).digest('hex').slice(0, 8)
 }
@@ -424,42 +470,50 @@ export function runFusion(
     }
   }
 
-  // ─── 3c. R-F-enrich-dim + R-F-enrich-scope: Link pass-through to candidates ─
+  // ─── 3c. R-F-enrich + R-F-prec: Link pass-through to candidates ────────────
   // Attach dimension and scope_hint pass-through items to fused candidates that
   // share the same non-null room_label.
   //
   // Safety rule: only link when room_label is non-null on BOTH sides.
   // missing_data and hypothesis remain global (room_label often null, subject
   // overlap matching too unreliable without text similarity).
+  //
+  // R-F-prec1 (dimension): add match_strength='strong' when zone also matches.
+  // R-F-prec2 (scope_hint): add match_strength='strong' when category overlaps
+  //   candidate category/evidence_type; 'room_fallback' otherwise.
+  // All room-matched items are still linked (coverage preserved) — consumers
+  // can filter to match_strength='strong' for higher precision.
   const dimensionRows  = passthroughRows.filter(r => r.evidence_type === 'dimension'  && r.room_label)
   const scopeHintRows  = passthroughRows.filter(r => r.evidence_type === 'scope_hint' && r.room_label)
 
   for (const candidate of candidates) {
     if (!candidate.room_label) continue
 
-    // Link dimensions in the same room
+    // Link dimensions in the same room (R-F-enrich-dim + R-F-prec1)
     for (const row of dimensionRows) {
       if (row.room_label !== candidate.room_label) continue
       const dim: LinkedDimension = {
-        source_id:     row.id,
-        subject:       String(row.content.subject ?? row.content.name ?? '') || null,
-        unit:          String(row.content.unit   ?? '') || null,
-        value:         typeof row.content.value === 'number' ? row.content.value : null,
-        source_anchor: row.source_anchor,
+        source_id:      row.id,
+        subject:        String(row.content.subject ?? row.content.name ?? '') || null,
+        unit:           String(row.content.unit   ?? '') || null,
+        value:          typeof row.content.value === 'number' ? row.content.value : null,
+        source_anchor:  row.source_anchor,
+        match_strength: dimensionMatchStrength(row.content, candidate),
       }
       candidate.linked_dimensions.push(dim)
     }
 
-    // Link scope_hints in the same room
+    // Link scope_hints in the same room (R-F-enrich-scope + R-F-prec2)
     for (const row of scopeHintRows) {
       if (row.room_label !== candidate.room_label) continue
       const hint: LinkedScopeHint = {
-        source_id:     row.id,
-        category:      String(row.content.category ?? '') || null,
-        unit:          String(row.content.unit     ?? '') || null,
-        priority:      String(row.content.priority ?? '') || null,
-        note:          String(row.content.note ?? row.content.text ?? '') || null,
-        source_anchor: row.source_anchor,
+        source_id:      row.id,
+        category:       String(row.content.category ?? '') || null,
+        unit:           String(row.content.unit     ?? '') || null,
+        priority:       String(row.content.priority ?? '') || null,
+        note:           String(row.content.note ?? row.content.text ?? '') || null,
+        source_anchor:  row.source_anchor,
+        match_strength: scopeHintMatchStrength(row.content, candidate),
       }
       candidate.linked_scope_hints.push(hint)
     }
