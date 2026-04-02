@@ -234,6 +234,47 @@ const EVIDENCE_SCHEMA = {
   },
 }
 
+// ── buildStructuredAnchor ────────────────────────────────────────────────────
+// Post-processes the AI-generated source_anchor to guarantee traceability.
+// If the AI already included the filename, the anchor is kept (with PDF page
+// enforcement for multi-page documents). Otherwise a structured fallback is built.
+//
+// Format guarantee after post-process:
+//   Images:  {filename} | {source_role_or_type} | {ai_anchor}
+//   PDFs:    {filename} | str:{N_or_?} | {drawing_nr} | {drawing_title} | {section}
+
+function buildStructuredAnchor(
+  filename:   string,
+  sourceRole: string,
+  layerType:  string | null,
+  aiAnchor:   string | null | undefined,
+): string {
+  const trimmed = (aiAnchor ?? '').trim()
+  const isPdf = filename.toLowerCase().endsWith('.pdf')
+
+  if (trimmed && trimmed.includes(filename)) {
+    // AI produced an anchor referencing the correct filename.
+    // For PDFs: enforce that str: page reference is present.
+    if (isPdf && !/\bstr:\S+/.test(trimmed)) {
+      return trimmed + ' | str:?'
+    }
+    return trimmed
+  }
+
+  // Build structured fallback from known asset metadata
+  const parts: string[] = [filename]
+  if (isPdf) {
+    // PDF fallback: always include page placeholder
+    parts.push('str:?')
+    if (layerType && layerType !== 'unknown') parts.push(layerType)
+  } else {
+    parts.push(sourceRole)
+    if (layerType && layerType !== 'unknown') parts.push(layerType)
+  }
+  parts.push(trimmed.length > 0 ? trimmed : 'anchor:unresolved')
+  return parts.join(' | ')
+}
+
 // ── OpenAI response type ──────────────────────────────────────────────────────
 
 interface ResponsesAPIResult {
@@ -296,7 +337,7 @@ export const handler: Handler = async (event) => {
     // Fetch asset row (RLS bypassed by service role — security via company_id check below)
     const { data: assetRow, error: assetErr } = await sbAdmin
       .from('ai_bundle_assets')
-      .select('id, bundle_id, company_id, project_id, source_role, room_hint, extraction_status')
+      .select('id, bundle_id, company_id, project_id, source_role, room_hint, extraction_status, original_filename, layer_type')
       .eq('id', assetId)
       .single()
 
@@ -352,14 +393,18 @@ export const handler: Handler = async (event) => {
 
     const content: ContentItem[] = []
 
+    const assetFilename = (assetRow.original_filename as string | null) ?? `asset_${assetId.slice(0, 8)}`
+    const assetLayerType = assetRow.layer_type as string | null
+
     const userMessage = buildEvidenceUserMessage(
       sourceRole as Parameters<typeof buildEvidenceUserMessage>[0],
       (roomHint ?? (assetRow.room_hint as string | null)),
+      { filename: assetFilename, layerType: assetLayerType },
     )
     content.push({ type: 'input_text', text: userMessage })
 
     if (isPdf) {
-      content.push({ type: 'input_file', filename: `asset_${assetId.slice(0, 8)}.pdf`, file_data: `data:application/pdf;base64,${fileBase64}` })
+      content.push({ type: 'input_file', filename: assetFilename, file_data: `data:application/pdf;base64,${fileBase64}` })
     } else {
       content.push({ type: 'input_image', image_url: `data:${fileMime};base64,${fileBase64}` })
     }
@@ -444,6 +489,15 @@ export const handler: Handler = async (event) => {
         risks:              Array.isArray(parsed.risks)     ? parsed.risks     : [],
         confidence_summary: typeof parsed.confidence_summary === 'number' ? parsed.confidence_summary : 0,
         missing_data:       typeof parsed.missing_data === 'boolean'      ? parsed.missing_data      : true,
+      }
+
+      // Post-process: ensure source_anchor contains filename + known metadata
+      // Guards against generic anchors like "wizualizacja 3D", "zdjęcie", null.
+      const _filename = assetFilename
+      const _role = sourceRole
+      const _layer = assetLayerType
+      for (const item of extracted.evidence) {
+        item.source_anchor = buildStructuredAnchor(_filename, _role, _layer, item.source_anchor)
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)

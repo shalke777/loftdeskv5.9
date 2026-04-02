@@ -89,7 +89,62 @@ Każdy evidence item ma WSPÓLNE POLA + POLA SPECYFICZNE dla evidence_type (pref
 - Wszystkie pozostałe pola prefixowane ustaw na null
 - confidence_score: 0.00–1.00 (nie 0–100)
 - confidence_reason: OBOWIĄZKOWY opis skąd wiesz (np. "Wymiar z rzutu z dwiema liniami wymiaru")
-- source_anchor: gdzie w dokumencie (np. "WIDOK A", "lewa ściana", "tabela płytek", "str. 2")
+
+SOURCE_ANCHOR — wymagany format strukturalny (separator: " | "):
+  Cel: precyzyjna identyfikacja miejsca w dokumencie dla traceability.
+  ZAWSZE zaczynaj od nazwy pliku podanej w [PLIK:]. Nigdy nie używaj ogólników.
+
+  Dla PDF / specyfikacji / rzutu technicznego:
+    Format:  {filename} | str:{N} | {nr_rysunku_lub_–} | {tytul_rysunku_lub_–} | {sekcja_lub_element}
+    Przykład: projekt_łazienki.pdf | str:2 | A-01 | Rzut łazienki | wymiar_długości_ściany
+    Przykład: projekt_łazienki.pdf | str:4 | – | Zestawienie okładzin ceramicznych | gres_antracyt_60x60
+    Przykład: rzut_techniczny.pdf | str:1 | – | Rzut funkcjonalny | legenda_symboliki
+    Jeśli nie możesz ustalić strony: użyj str:? — ale zawsze podaj tytuł lub sekcję.
+    Jeśli nr rysunku nieznany: użyj "–" w tym miejscu.
+
+  Dla wizualizacji 3D / renderu:
+    Format:  {filename} | render | {widoczne_elementy} | {widok_lub_kąt}
+    Przykład: wizualizacja_8.jpg | render | umywalka+armatura | widok_frontowy
+    Przykład: render_łazienki.jpg | render | kabina_prysznicowa+płytki | widok_od_wejścia
+
+  Dla zdjęcia budowy / site photo:
+    Format:  {filename} | photo | {widoczny_stan_lub_element} | {obszar_lub_faza}
+    Przykład: budowa_3.jpg | photo | gołe_ściany_murowane | stan_surowy
+    Przykład: postep_1.jpg | photo | rury_wod-kan_widoczne | instalacja_podposadzkowa
+
+  Nigdy: "wizualizacja 3D", "zdjęcie", "dokument", "Obiekt i Pomieszczenia".
+
+PDF — PROTOKÓŁ ANALIZY WIELOSTRONICOWEJ (dla plików .pdf):
+Gdy analizujesz PDF, wykonaj TRZY KROKI w tej kolejności:
+
+KROK 1 — SKAN STRON (wykonaj PRZED ekstrakcją):
+  Dla każdej strony PDF zidentyfikuj:
+  a) Typ: rzut_funkcjonalny | rzut_techniczny | przekrój | elewacja | zestawienie_okładzin |
+         zestawienie_stolarki | schemat_instalacji | opis_techniczny | strona_tytułowa | inne
+  b) Numer rysunku z tabeli nadrysunkowej (np. "A-01", "PZT", "E-01") — lub "–" jeśli brak
+  c) Tytuł rysunku z tabeli nadrysunkowej (np. "Rzut łazienki") — lub "–" jeśli brak
+  d) Skala (np. "1:50", "1:100", "bts") — lub "–" jeśli nieznana
+
+KROK 2 — EKSTRAKCJA Z KAŻDEJ STRONY:
+  Każdy evidence item MUSI zawierać w source_anchor pełne odwołanie do strony:
+  Format: {filename} | str:{N} | {nr_rysunku} | {tytul_rysunku} | {sekcja_lub_element}
+  Przykład rzutu:       projekt.pdf | str:2 | A-01 | Rzut łazienki | wymiar_długości_ściany
+  Przykład zestawienia: projekt.pdf | str:4 | – | Zestawienie okładzin ceramicznych | tile_spec_gres_60x60
+  Evidence z różnych stron MUSI mieć różny str:{N} w source_anchor.
+
+KROK 3 — SKALA I PEWNOŚĆ WYMIARÓW:
+  Skala znana + dwie linie wymiarowe z różnych przekrojów → confidence: 0.85
+  Skala znana + jedna linia wymiarowa                     → confidence: 0.65
+  Skala nieznana ("bts" lub "–")                          → confidence max 0.50 dla wymiarów
+  Zestawienie z POW. CAŁKOWITA                             → confidence: 0.95 (R-26 GOLD TRUTH)
+  Zawsze zapisz skalę w confidence_reason: np. "Rzut A-01, skala 1:50, dwie linie wymiarowe"
+
+TABELA NADRYSUNKOWA (TITLE BLOCK):
+  Szukaj w prawym dolnym rogu (lub innym narożniku) każdego rzutu technicznego:
+  - Numer rysunku / ID (np. "A-01", "01/2024") → użyj jako {nr_rysunku}
+  - Tytuł rysunku (np. "Rzut parteru — łazienka") → użyj jako {tytul_rysunku}
+  - Skala (np. "1:50") → użyj w confidence_reason
+  Jeśli tabela nadrysunkowa nieczytelna → opisz typ strony jako tytuł (np. "rzut_techniczny_str2").
 
 ZASADA MINIMUM EVIDENCE (R-08, R-19):
 Jeśli nic pewnego z dokumentu → wygeneruj przynajmniej:
@@ -124,18 +179,59 @@ export type EvidenceSourceRole =
   | 'text_note'
   | 'unknown'
 
+export interface EvidenceAssetContext {
+  filename?:     string | null
+  layerType?:    string | null
+  documentType?: string | null
+}
+
 export function buildEvidenceUserMessage(
   sourceRole: EvidenceSourceRole,
   roomHint: string | null,
+  ctx?: EvidenceAssetContext,
 ): string {
   const lines: string[] = []
+
+  // Structured file/layer context (FIX: enables page-aware anchoring)
+  if (ctx?.filename) {
+    lines.push(`[PLIK: "${ctx.filename}"]`)
+  }
+  if (ctx?.documentType) {
+    lines.push(`[BUNDLE: document_type="${ctx.documentType}"]`)
+  }
+  if (ctx?.layerType && ctx.layerType !== 'unknown') {
+    lines.push(`[LAYER: layer_type="${ctx.layerType}"]`)
+  }
+
+  // Anchor template per source type (FIX: gives AI concrete format to follow)
+  if (ctx?.filename) {
+    const fn = ctx.filename
+    const isPdf = fn.toLowerCase().endsWith('.pdf')
+    const isRender = sourceRole === 'design_visualization'
+    const isPhoto = sourceRole === 'site_photo' || sourceRole === 'progress_photo'
+    if (isPdf) {
+      lines.push(`[ANCHOR_TEMPLATE: "${fn} | str:{N} | {nr_rysunku_lub_–} | {tytul_rysunku_lub_–} | {sekcja_lub_element}"]`)
+      lines.push(`[PDF_SCAN: Wykonaj PDF_SCAN_PROTOCOL — najpierw zidentyfikuj każdą stronę (nr, tytuł, skalę), POTEM ekstrahuj evidence z każdej strony osobno]`)
+    } else if (isRender) {
+      lines.push(`[ANCHOR_TEMPLATE: "${fn} | render | {widoczne_elementy} | {widok}"]`)
+    } else if (isPhoto) {
+      lines.push(`[ANCHOR_TEMPLATE: "${fn} | photo | {widoczny_stan} | {obszar_lub_faza}"]`)
+    } else {
+      lines.push(`[ANCHOR_TEMPLATE: "${fn} | {typ} | {lokalizacja}"]`)
+    }
+  }
 
   // Source-role context
   switch (sourceRole) {
     case 'architectural_drawing':
-      lines.push('[TYP ASSETU: Rysunek architektoniczny — rzut techniczny z wymiarami]')
-      lines.push('Szukaj: wymiarów pomieszczeń, wysokości ścian/sufitu, legendy, opisu materiałów, armatury na rzucie.')
-      lines.push('CZYTAJ LEGENDĘ PIERWSZA (R-14). Weryfikuj czy przekrój jest "wymiary mebli" czy techniczny.')
+      lines.push('[TYP ASSETU: Rysunek architektoniczny — rzut lub projekt techniczny z wymiarami]')
+      lines.push('PROTOKÓŁ: wykonaj PDF_SCAN_PROTOCOL — najpierw zidentyfikuj KAŻDĄ stronę (typ, nr rysunku, tytuł, skala), POTEM ekstrahuj.')
+      lines.push('TABELA NADRYSUNKOWA: czytaj PIERWSZA na każdym rzucie — znajdź numer rysunku (np. A-01), tytuł i skalę. Użyj ich w source_anchor.')
+      lines.push('LEGENDA: czytaj PRZED wymiarami (R-14). Rozróżnij: "wymiary mebli" vs "wymiary pomieszczenia w świetle".')
+      lines.push('Szukaj: wymiarów pomieszczeń (wewnętrznych w świetle, NIE w osiach), wysokości ścian i sufitu, symboliki armatury na rzucie.')
+      lines.push('Szukaj też: oznaczeń materiałów na rzucie, opisów warstw posadzki/ściany, krzyżowych oznaczeń przekrojów.')
+      lines.push('Wymiary: dwie linie wym. z różnych przekrojów → confidence 0.85. Jedna linia wym. → 0.65. Skala nieznana → max 0.50.')
+      lines.push('Jeśli sp (sufit podwieszany) widoczny na rzucie lub w legendzie — zastosuj R-15.')
       break
     case 'design_visualization':
       lines.push('[TYP ASSETU: Wizualizacja 3D / render wnętrza]')
@@ -178,6 +274,9 @@ export function buildEvidenceUserMessage(
     lines.push('\nBRAK WSKAZANIA POMIESZCZENIA: Analizuj wszystkie pomieszczenia widoczne w assetzie.')
   }
 
+  if (ctx?.filename) {
+    lines.push('\nUżyj source_anchor w formacie z podanego ANCHOR_TEMPLATE dla każdego evidence item.')
+  }
   lines.push('\nZanalizuj ten asset i zwróć evidence[] zgodnie ze schematem JSON.')
   return lines.join('\n')
 }

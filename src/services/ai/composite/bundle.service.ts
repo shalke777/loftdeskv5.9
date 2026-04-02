@@ -16,10 +16,17 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   AiAnalysisBundle,
   AiBundleAsset,
+  BundleDocumentType,
   BundleStatus,
   CreateBundleInput,
   RegisterAssetInput,
+  StructuralMissingDataSignal,
   UpdateAssetStatusInput,
+} from './bundle.types'
+import {
+  BUNDLE_DOCUMENT_TYPES,
+  DOCUMENT_LAYER_META,
+  STRUCTURAL_MISSING_DATA,
 } from './bundle.types'
 import type { ExtractionContractOutput } from './extraction.contract'
 import { validateExtractionOutput } from './extraction.contract'
@@ -37,11 +44,12 @@ export async function createBundle(
   const { data, error } = await client
     .from('ai_analysis_bundles')
     .insert({
-      company_id: input.company_id,
-      project_id: input.project_id,
-      created_by: input.created_by,
-      label:      input.label ?? null,
-      status:     'pending',
+      company_id:    input.company_id,
+      project_id:    input.project_id,
+      created_by:    input.created_by,
+      label:         input.label ?? null,
+      document_type: input.document_type ?? null,
+      status:        'pending',
     })
     .select()
     .single()
@@ -60,6 +68,11 @@ export async function registerAsset(
   client: SupabaseClient,
   input: RegisterAssetInput,
 ): Promise<AiBundleAsset> {
+  // Auto-derive source_priority and source_role from layer_type when available
+  const layerMeta = input.layer_type && input.layer_type !== 'unknown'
+    ? DOCUMENT_LAYER_META[input.layer_type]
+    : null
+
   const { data, error } = await client
     .from('ai_bundle_assets')
     .insert({
@@ -71,9 +84,10 @@ export async function registerAsset(
       mime_type:          input.mime_type,
       file_size_bytes:    input.file_size_bytes ?? null,
       source_type:        input.source_type,
-      source_role:        input.source_role,
+      source_role:        input.source_role ?? layerMeta?.sourceRole ?? 'unknown',
+      layer_type:         input.layer_type ?? null,
       room_hint:          input.room_hint ?? null,
-      source_priority:    input.source_priority ?? 50,
+      source_priority:    input.source_priority ?? layerMeta?.sourcePriority ?? 50,
       extraction_status:  'pending',
       input_asset_id:     input.input_asset_id ?? null,
     })
@@ -198,6 +212,34 @@ export async function persistExtractionOutput(
     asset_id:          output.asset_id,
     extraction_status: 'extracted',
   })
+}
+
+// ── Composite eligibility guard (R-C-37) ──────────────────────────────────────
+
+/**
+ * Returns true if the given document type is eligible for composite analysis.
+ * visualization_pack MUST NOT reach the fusion engine — early-exit required.
+ */
+export function isBundleEligibleForComposite(
+  documentType: BundleDocumentType | null | undefined,
+): boolean {
+  if (!documentType || documentType === 'unknown') return false
+  const meta = BUNDLE_DOCUMENT_TYPES[documentType as Exclude<BundleDocumentType, 'unknown'>]
+  return meta?.structurallyComplete === true
+}
+
+// ── Structural missing-data signals ───────────────────────────────────────────
+
+/**
+ * Returns structural missing-data signals that are ALWAYS present for a given
+ * bundle document type — regardless of extraction quality.
+ * These describe format limitations, not extraction failures.
+ */
+export function getStructuralMissingData(
+  documentType: BundleDocumentType | null | undefined,
+): StructuralMissingDataSignal[] {
+  if (!documentType || documentType === 'unknown') return []
+  return STRUCTURAL_MISSING_DATA[documentType as Exclude<BundleDocumentType, 'unknown'>] ?? []
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────

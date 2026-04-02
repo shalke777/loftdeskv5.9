@@ -11,9 +11,11 @@
 
 import { useState } from 'react'
 import { useAiRunsForProject, useAiRunStatsForProject, type AiRunStats } from '../hooks/useAiReview'
+import { useProjectBundleReadiness } from '../hooks/useAiBundles'
 import { AiIntakeSection }    from './AiIntakeSection'
 import { AiRunsList }         from './AiRunsList'
 import { AiRunReviewPanel }   from './AiRunReviewPanel'
+import { BundleReadinessCard } from './BundleReadinessCard'
 
 interface Props {
   projectId:    string
@@ -27,6 +29,7 @@ export function ProjectAiTab({ projectId, companyId, planEnabled = true }: Props
 
   const { data: runs  = [], isLoading, isError: runsError }  = useAiRunsForProject(projectId)
   const { data: statsArr = [] }          = useAiRunStatsForProject(projectId)
+  const { readiness: bundleReadiness, bundleCount } = useProjectBundleReadiness(projectId)
 
   // Auto-select a run: prefer user selection, fall back to latest completed
   const selectedRun = runs.find(r => r.id === selectedRunId)
@@ -85,6 +88,11 @@ export function ProjectAiTab({ projectId, companyId, planEnabled = true }: Props
             </span>
           )}
         </div>
+      )}
+
+      {/* P1: composite bundle readiness — shown when bundles exist */}
+      {bundleReadiness && (
+        <BundleReadinessCard readiness={bundleReadiness} bundleCount={bundleCount} />
       )}
 
       {/* History or access error */}

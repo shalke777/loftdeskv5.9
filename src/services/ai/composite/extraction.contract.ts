@@ -15,6 +15,12 @@
 //   - Two tile zones = two evidence items (R-21)
 //   - Read legend first — source_role determines parsing strategy (R-14)
 //   - confidence_reason must explain the score (R-12 hierarchy)
+//
+// Calibration batch 2 (ai-calibration-bundle-v1.md, 6 project PDFs):
+//   - lighting_fixture_spec added for electrical WYKAZ LAMP evidence (R-C-11)
+//   - ConflictEvidence: "LUB" in material descriptions signals conflict (R-C-29)
+//   - floor_coverings: emit notes "bez zapasu produkcyjnego" when area is from legend (R-C-26)
+//   - Visualization 3D: max confidence 0.55 for material claims, 0.70 for room ID (R-C-07/08)
 // =============================================================================
 
 // ── Evidence payload types (content JSONB schema by evidence_type) ────────────
@@ -59,6 +65,32 @@ export interface TileSpecEvidence {
   waste_multi:   number             // 1.10 rect, 1.20 romb/cegiełka
   zone:          string             // 'ściany główne', 'obudowa wanny + wnęka'
   source_page?:  string             // 'ZESTAWIENIE OKŁADZIN ŚCIENNYCH, str. 3'
+}
+
+/**
+ * evidence_type: 'lighting_fixture_spec'
+ *
+ * Electrical lighting fixtures from WYKAZ LAMP table in electrical_lighting layer.
+ * Distinct from FixtureEvidence (sanitary) — lighting has id_on_drawing correlation
+ * and brand/SKU information from product catalog entries in the spec table.
+ *
+ * Calibration note (R-C-11): Correlation between id_on_drawing and the WYKAZ LAMP
+ * list is required — do NOT extract counts from drawing numbers without matching the
+ * legend first. "Oświetlenie meblowe" (under-cabinet LED strips) is an embedded
+ * furniture item, not a separate point on the electrical plan.
+ *
+ * TODO validate (batch 2): exact confidence_cap 0.92 and id-to-spec correlation
+ * logic needs evaluation against real extraction runs.
+ */
+export interface LightingFixtureSpecEvidence {
+  id_on_drawing:   number           // symbol number on floor plan
+  brand?:          string | null    // 'Nowodvorski', 'Maytoni', 'OXYLED'
+  model?:          string | null    // 'FLEA white', 'FAD MOD070WL-L6B3K'
+  sku?:            string | null    // '8202' — catalog number from WYKAZ LAMP
+  fixture_type:    string           // 'spot', 'pendant', 'led_strip', 'wall', 'plafon'
+  count_per_room?: Record<string, number> | null  // { salon: 3, sypialnia: 2 }
+  color_temp_K?:   number | null    // 3000, 4000 — if stated
+  note?:           string
 }
 
 /** evidence_type: 'installation' */
@@ -112,6 +144,7 @@ export type EvidenceContent =
   | FixtureEvidence
   | MaterialEvidence
   | TileSpecEvidence
+  | LightingFixtureSpecEvidence
   | InstallationEvidence
   | ScopeHintEvidence
   | MissingDataEvidence
@@ -126,6 +159,7 @@ export type EvidenceType =
   | 'material'
   | 'installation'
   | 'tile_spec'
+  | 'lighting_fixture_spec'  // WYKAZ LAMP entry — electrical layer (R-C-11)
   | 'scope_hint'
   | 'missing_data'
   | 'conflict'
