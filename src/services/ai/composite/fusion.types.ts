@@ -91,6 +91,19 @@ export interface FusedScopeCandidate {
    * category or evidence_type; 'room_fallback' otherwise.
    */
   linked_scope_hints: LinkedScopeHint[]
+
+  /**
+   * R-F-prec-op: Total count of linked_dimensions + linked_scope_hints
+   * where match_strength === 'strong'. 0 when no precise links exist.
+   * Useful for quickly assessing enrichment quality without iterating links.
+   */
+  strong_context_count:   number
+
+  /**
+   * R-F-prec-op: Total count of linked_dimensions + linked_scope_hints
+   * where match_strength === 'room_fallback'. 0 when all links are strong.
+   */
+  fallback_context_count: number
 }
 
 // ── Pass-through items (not merged, just collected) ────────────────────────────

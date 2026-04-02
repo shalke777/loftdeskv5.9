@@ -147,6 +147,10 @@ async function main() {
         console.log(`            \u2022 cat:${h.category ?? '?'} unit:${h.unit ?? '?'} prio:${h.priority ?? '?'} [${h.match_strength ?? '?'}]`)
       }
     }
+    const totalLinks = (c.linked_dimensions?.length ?? 0) + (c.linked_scope_hints?.length ?? 0)
+    if (totalLinks > 0) {
+      console.log(`         🎯 context: strong=${c.strong_context_count ?? 0} fallback=${c.fallback_context_count ?? 0}`)
+    }
   }
 
   console.log('\n── PASS-THROUGH ITEMS ──────────────────────────────────────────────')

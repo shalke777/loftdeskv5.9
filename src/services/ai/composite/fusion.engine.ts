@@ -421,6 +421,8 @@ export function runFusion(
       peer_conflict_type:     null,
       linked_dimensions:      [],
       linked_scope_hints:     [],
+      strong_context_count:   0,
+      fallback_context_count: 0,
       payload:               cPayload,
     })
   }
@@ -517,6 +519,20 @@ export function runFusion(
       }
       candidate.linked_scope_hints.push(hint)
     }
+
+    // R-F-prec-op: sort strong first, then compute context counts
+    candidate.linked_dimensions.sort((a, b) =>
+      a.match_strength === b.match_strength ? 0 : a.match_strength === 'strong' ? -1 : 1
+    )
+    candidate.linked_scope_hints.sort((a, b) =>
+      a.match_strength === b.match_strength ? 0 : a.match_strength === 'strong' ? -1 : 1
+    )
+    candidate.strong_context_count =
+      candidate.linked_dimensions.filter(d => d.match_strength === 'strong').length +
+      candidate.linked_scope_hints.filter(h => h.match_strength === 'strong').length
+    candidate.fallback_context_count =
+      candidate.linked_dimensions.filter(d => d.match_strength === 'room_fallback').length +
+      candidate.linked_scope_hints.filter(h => h.match_strength === 'room_fallback').length
   }
 
   // ─── 4. Pass-through items ────────────────────────────────────────────────
