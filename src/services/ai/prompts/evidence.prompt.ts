@@ -83,6 +83,33 @@ R-27: Zabudowa GK na całą wysokość → znacznie redukuje pow. ścian.
   → evidence_type: scope_hint z sh_description zawierającą "zabudowa GK redukuje pow. ścian"
   → confidence: 0.70
 
+ROOM_LABEL — ZASADA PROPAGACJI (R-RL1):
+Pole room_label musi zawierać nazwę pomieszczenia. Nigdy nie zostawiaj go pustym jeśli pomieszczenie jest znane lub daje się wyciągnąć z kontekstu.
+
+R-RL1a — Propagacja z pól payload:
+  Jeśli dim_subject zawiera nazwę pomieszczenia (np. "pokój dzienny — długość ściany") → room_label = "pokój dzienny"
+  Jeśli fix_name, fix_category lub fix_note zawiera pomieszczenie → room_label = to pomieszczenie
+  Jeśli sh_description zawiera pomieszczenie (np. "hydroizolacja w łazience") → room_label = "łazienka"
+  Reguła: room_label = pierwsze rozpoznane pomieszczenie z dowolnego pola tego evidence item.
+
+R-RL1b — Propagacja z kontekstu strony (dla tile_spec / material):
+  Jeśli zestawienie/tabela dotyczy JEDNEGO pomieszczenia (nagłówek sekcji to wskazuje) → room_label = to pomieszczenie
+  Jeśli sekcja ma tytuł jak "RŚ-04 Łazienka" lub "Zestawienie łazienka" → room_label = "łazienka"
+  Jeśli cały rysunek dotyczy jednego pomieszczenia (np. LAZIENKA PARTER) → wszystkie evidence z tej strony dziedziczą room_label = "łazienka"
+  Jeśli zestawienie obejmuje cały lokal (bez podziału na pomieszczenia) → room_label = "cały_lokal"
+  Jeśli nie da się ustalić pomieszczenia → room_label = null (dopuszczalne tylko wtedy)
+
+R-RL1c — Rozróżnienie zone vs room_label:
+  zone (ts_zone, mat_zone) = logiczna strefa wykończenia: "Posadzki", "Ściany", "Sufit", etc.
+  room_label = fizyczne pomieszczenie: "łazienka", "kuchnia", "pokój dzienny", etc.
+  NIE mieszaj tych pól. tile_spec może mieć zone:"Ściany" I room_label:"łazienka" jednocześnie.
+
+Przykłady prawidłowe:
+  dim_subject: "pokój dzienny — długość ściany wsch." → room_label: "pokój dzienny"
+  dim_subject: "korytarz — szerokość" → room_label: "korytarz"
+  tile_spec z sekcji "RŚ-04 Łazienka" → room_label: "łazienka"
+  fixture: prysznic z odpływem liniowym (widoczny w narożniku łazienki) → room_label: "łazienka"
+
 WYPEŁNIANIE PÓL:
 Każdy evidence item ma WSPÓLNE POLA + POLA SPECYFICZNE dla evidence_type (prefiksowane):
 - Wypełnij TYLKO pola relevant dla danego evidence_type
@@ -254,6 +281,8 @@ export function buildEvidenceUserMessage(
       lines.push('R-26 NIE ZWALNIA ze sweep rzutu: po tile_spec z zestawienia — wróć do każdej strony z planem i zrób sweep.')
       lines.push('Wymiary rzutu: dwie linie wym. z różnych przekrojów → confidence 0.85. Jedna → 0.65. Skala nieznana → max 0.50.')
       lines.push('Jeśli sufit podwieszany (sp) w legendzie lub opisie — zastosuj R-15.')
+      lines.push('ROOM_LABEL: Dla każdego evidence item — uzupełnij room_label zgodnie z R-RL1. Jeśli dim_subject zawiera pomieszczenie — wpisz je też w room_label.')
+      lines.push('TILE_SPEC: Jeśli nagłówek sekcji lub tytuł rzutu wskazuje jedno pomieszczenie → wszystkie tile_spec i material z tej sekcji mają room_label = to pomieszczenie.')
       break
     case 'design_visualization':
       lines.push('[TYP ASSETU: Wizualizacja 3D / render wnętrza]')
@@ -294,9 +323,27 @@ export function buildEvidenceUserMessage(
   // Room hint context
   if (roomHint) {
     lines.push(`\nKONTEKST POMIESZCZENIA: Ten asset dotyczy pomieszczenia: "${roomHint}".`)
-    lines.push('Jeśli asset zawiera dane o innych pomieszczeniach — oznacz je room_label i include, ale nie pomijaj.')
+    lines.push(`Wszystkie evidence items z tego assetu powinny mieć room_label = "${roomHint}" chyba że dotyczą innego pomieszczenia.`)
+    lines.push('Jeśli asset zawiera dane o innych pomieszczeniach — oznacz je odpowiednim room_label, ale nie pomijaj.')
   } else {
     lines.push('\nBRAK WSKAZANIA POMIESZCZENIA: Analizuj wszystkie pomieszczenia widoczne w assetzie.')
+    lines.push('Dla każdego evidence item: wyciągnij pomieszczenie z kontekstu (R-RL1a/b) i zapisz w room_label. Nie zostawiaj room_label = null jeśli pomieszczenie da się ustalić.')
+  }
+
+  // Filename-based room hint (if filename contains a room reference)
+  if (ctx?.filename) {
+    const fn = ctx.filename.toLowerCase()
+    const roomFromFilename =
+      fn.includes('lazien') || fn.includes('łazien') ? 'łazienka' :
+      fn.includes('kuchn') ? 'kuchnia' :
+      fn.includes('salon') || fn.includes('pokój') || fn.includes('pokoj') ? 'pokój dzienny' :
+      fn.includes('sypialn') ? 'sypialnia' :
+      fn.includes('przedpokoj') || fn.includes('przedpok') || fn.includes('korytarz') ? 'korytarz' :
+      fn.includes('wc') ? 'WC' :
+      null
+    if (roomFromFilename && !roomHint) {
+      lines.push(`[ROOM_HINT_FROM_FILENAME: Nazwa pliku sugeruje pomieszczenie: "${roomFromFilename}" — użyj jako domyślny room_label dla evidence z tego assetu jeśli nie ma innego wskazania]`)
+    }
   }
 
   if (ctx?.filename) {
