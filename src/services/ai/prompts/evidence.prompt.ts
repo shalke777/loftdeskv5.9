@@ -146,6 +146,23 @@ TABELA NADRYSUNKOWA (TITLE BLOCK):
   - Skala (np. "1:50") → użyj w confidence_reason
   Jeśli tabela nadrysunkowa nieczytelna → opisz typ strony jako tytuł (np. "rzut_techniczny_str2").
 
+WYMIARY — REGUŁA PRIORYTETU POMIESZCZEŃ (R-14b):
+Dim_subject w evidence_type:dimension ZAWSZE opisuje POMIESZCZENIE lub ELEMENT BUDOWLANY, NIGDY mebel.
+  POPRAWNE dim_subject: "łazienka — długość ściany wsch.", "łazienka — pow. podłogi", "wysokość ściany"
+  BŁĘDNE dim_subject:   "łóżko", "materac 180x200", "szafa", "stolik"
+Wymiary mebli z rzutu/legendy → zapisz wyłącznie w polu fix_dims na evidence_type:fixture, NIE jako osobny dimension item.
+
+OBOWIĄZKOWY SWEEP PER POMIESZCZENIE / PER STRONA (R-08b):
+Dla każdej strony PDF z rzutem (typ: rzut_funkcjonalny, rzut_techniczny, schemat_instalacji):
+  1. Idź kolejno po każdym pomieszczeniu widocznym na planie.
+  2. Dla każdego pomieszczenia: wygeneruj evidence_type:dimension dla podłogi lub ściany jeśli widać wymiar.
+  3. Dla każdego widocznego elementu armatury: wygeneruj evidence_type:fixture.
+  4. Jeśli R-17 (walk-in): wygeneruj scope_hint dla odpływu liniowego + baterii podtynkowej.
+  5. Jeśli R-22 (wanna zabudowana): wygeneruj scope_hint dla obudowy.
+  6. Jeśli brakuje wymiaru kluczowego: wygeneruj evidence_type:missing_data.
+Nie zatrzymuj się po znalezieniu zestawienia (R-26). Zestawienie tile_spec z str:N NIE zwalnia
+z obowiązkowego sweep stron z rzutami. Każda strona z planem musi mieć osobne evidence items.
+
 ZASADA MINIMUM EVIDENCE (R-08, R-19):
 Jeśli nic pewnego z dokumentu → wygeneruj przynajmniej:
   1× missing_data dla każdego brakującego kluczowego elementu
@@ -225,13 +242,18 @@ export function buildEvidenceUserMessage(
   switch (sourceRole) {
     case 'architectural_drawing':
       lines.push('[TYP ASSETU: Rysunek architektoniczny — rzut lub projekt techniczny z wymiarami]')
-      lines.push('PROTOKÓŁ: wykonaj PDF_SCAN_PROTOCOL — najpierw zidentyfikuj KAŻDĄ stronę (typ, nr rysunku, tytuł, skala), POTEM ekstrahuj.')
-      lines.push('TABELA NADRYSUNKOWA: czytaj PIERWSZA na każdym rzucie — znajdź numer rysunku (np. A-01), tytuł i skalę. Użyj ich w source_anchor.')
-      lines.push('LEGENDA: czytaj PRZED wymiarami (R-14). Rozróżnij: "wymiary mebli" vs "wymiary pomieszczenia w świetle".')
-      lines.push('Szukaj: wymiarów pomieszczeń (wewnętrznych w świetle, NIE w osiach), wysokości ścian i sufitu, symboliki armatury na rzucie.')
-      lines.push('Szukaj też: oznaczeń materiałów na rzucie, opisów warstw posadzki/ściany, krzyżowych oznaczeń przekrojów.')
-      lines.push('Wymiary: dwie linie wym. z różnych przekrojów → confidence 0.85. Jedna linia wym. → 0.65. Skala nieznana → max 0.50.')
-      lines.push('Jeśli sp (sufit podwieszany) widoczny na rzucie lub w legendzie — zastosuj R-15.')
+      lines.push('PROTOKÓŁ: wykonaj PDF_SCAN_PROTOCOL — najpierw zidentyfikuj KAŻDĄ stronę, POTEM sweep każdej strony z rzutem osobno.')
+      lines.push('TABELA NADRYSUNKOWA: czytaj PIERWSZA na każdym rzucie — numer rysunku (np. A-01), tytuł, skala → do source_anchor i confidence_reason.')
+      lines.push('LEGENDA: czytaj PRZED wymiarami (R-14). Rozróżnij: "wymiary mebli z legendy" (→ fix_dims, NIE dim) vs "wymiary pomieszczenia w świetle" (→ dim).')
+      lines.push('DIM PRIORYTET: dim_subject = "pomieszczenie — cecha" (np. "łazienka — długość", "pow. podłogi łazienki"). NIGDY nie twórz dim dla mebla.')
+      lines.push('SWEEP OBOWIĄZKOWY (R-08b): dla KAŻDEGO pomieszczenia widocznego na rzucie:')
+      lines.push('  - 1× dimension (podłoga lub ściana, jeśli widoczna linia wymiarowa)')
+      lines.push('  - 1× fixture per element armatury (walk-in, WC, umywalka, grzejnik, wanna)')
+      lines.push('  - 1× scope_hint jeśli R-17/R-22/R-27 dotyczy')
+      lines.push('  - 1× missing_data jeśli brakuje kluczowych danych')
+      lines.push('R-26 NIE ZWALNIA ze sweep rzutu: po tile_spec z zestawienia — wróć do każdej strony z planem i zrób sweep.')
+      lines.push('Wymiary rzutu: dwie linie wym. z różnych przekrojów → confidence 0.85. Jedna → 0.65. Skala nieznana → max 0.50.')
+      lines.push('Jeśli sufit podwieszany (sp) w legendzie lub opisie — zastosuj R-15.')
       break
     case 'design_visualization':
       lines.push('[TYP ASSETU: Wizualizacja 3D / render wnętrza]')
@@ -247,9 +269,12 @@ export function buildEvidenceUserMessage(
       break
     case 'installation_drawing':
       lines.push('[TYP ASSETU: Schemat instalacji — wod-kan lub elektryka]')
-      lines.push('Szukaj: punktów wod-kan, zasilania, grzejników, pralki, odpływów, gniazd elek.')
+      lines.push('Szukaj: punktów wod-kan, zasilania, grzejników, pralki, odpływów liniowych, gniazd elek.')
       lines.push('Każdą instalację zapisz jako evidence_type: installation z inst_layer.')
       lines.push('Elektryka zawsze inst_layer: separate_layer (R-18).')
+      lines.push('R-17: jeśli widoczny odpływ liniowy lub walk-in → wygeneruj scope_hint dla odpływu liniowego + baterii podtynkowej.')
+      lines.push('R-24: jeśli widoczny grzejnik → wygeneruj installation z inst_question_id: "Q-GRZEJNIK-TYP".')
+      lines.push('SWEEP: dla każdego pomieszczenia widocznego na schemacie — wygeneruj installation items oddzielnie.')
       break
     case 'site_photo':
     case 'progress_photo':
