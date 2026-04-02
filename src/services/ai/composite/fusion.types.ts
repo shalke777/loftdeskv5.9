@@ -223,3 +223,82 @@ export interface FusedBundleOutput {
   fused_risks:            FusedRisk[]
   stats:                  FusionStats
 }
+
+// ── Review queue — operator-facing read model ──────────────────────────────────
+
+/**
+ * A single item in the operator review queue.
+ * Derived from FusedScopeCandidate — no new computation, just projection + labelling.
+ */
+export interface ReviewQueueItem {
+  /** Stable candidate ID — same as FusedScopeCandidate.id */
+  candidate_id:   string
+  evidence_type:  'fixture' | 'tile_spec' | 'material' | 'installation'
+  room_label:     string | null
+  subject:        string
+  zone:           string | null
+
+  /** Triage bucket — determines position in review order */
+  review_readiness: 'ready' | 'needs_review' | 'blocked'
+
+  /** Machine reasons (from R-F-triage) */
+  review_reasons: string[]
+
+  /**
+   * Single human-readable action label for the operator.
+   * Derived deterministically from review_readiness + review_reasons.
+   * E.g.:
+   *   blocked     → 'Zablokowany: nierozwiązany konflikt (area_netto)'
+   *   needs_review→ 'Sprawdź: konflikt (area_netto)'
+   *                 'Sprawdź: możliwa duplikacja'
+   *                 'Sprawdź: brak danych kontekstowych'
+   *   ready       → 'Gotowy do zatwierdzenia'
+   */
+  action_label: string
+
+  /** Confidence of the winning merged item */
+  confidence: number
+
+  /** How many evidence items were merged into this candidate */
+  merged_from_count: number
+
+  /** Enrichment context quality */
+  strong_context_count:   number
+  fallback_context_count: number
+
+  /**
+   * Simplified conflict summaries for display.
+   * E.g. 'area_netto: 18.5 vs 20.0 → 20.0 [highest_priority]'
+   */
+  conflicts_summary: string[]
+
+  /**
+   * IDs of peer candidates (category_peer_conflict).
+   * Non-empty only when review_readiness triggered 'peer_conflict'.
+   */
+  peer_candidate_ids: string[]
+
+  /** Deduplicated source anchors — where this candidate came from */
+  source_anchors: string[]
+
+  /** Original evidence row IDs */
+  evidence_ids: string[]
+}
+
+/**
+ * Operator review queue for a single bundle.
+ * Sorted: blocked → needs_review → ready.
+ * Within each bucket: higher confidence first.
+ */
+export interface FusionReviewQueue {
+  bundle_id:   string
+  built_at:    string
+  summary: {
+    total:        number
+    ready:        number
+    needs_review: number
+    blocked:      number
+  }
+  /** Ordered review items: blocked first, then needs_review, then ready */
+  items: ReviewQueueItem[]
+}

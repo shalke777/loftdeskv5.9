@@ -20,13 +20,20 @@ const COMPANY_ID   = 'eff93f68-1fdd-4c60-bc71-1d9bc2a88d9a'
 const sb = createClient(SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
 
 // Compile fusion engine (not the Netlify handler — call engine directly)
-const outFile = path.resolve('./_test_fusion_engine.cjs')
+const outFile     = path.resolve('./_test_fusion_engine.cjs')
+const outReview   = path.resolve('./_test_fusion_review.cjs')
 buildSync({
   entryPoints: ['src/services/ai/composite/fusion.engine.ts'],
   bundle: true, platform: 'node', target: 'node20', format: 'cjs', outfile: outFile,
   absWorkingDir: process.cwd(),
 })
-const { runFusion } = require(outFile)
+buildSync({
+  entryPoints: ['src/services/ai/composite/fusion.review.ts'],
+  bundle: true, platform: 'node', target: 'node20', format: 'cjs', outfile: outReview,
+  absWorkingDir: process.cwd(),
+})
+const { runFusion }        = require(outFile)
+const { buildReviewQueue } = require(outReview)
 
 async function main() {
   const targetBundleId = process.argv[2] ?? null
@@ -179,7 +186,36 @@ async function main() {
     }
   }
 
+  // ── Review queue ──────────────────────────────────────────────────────────
+  const queue = buildReviewQueue(fused)
+  console.log(`\n── REVIEW QUEUE ────────────────────────────────────────────────────`)
+  console.log(`  bundle: ${queue.bundle_id}`)
+  console.log(`  total=${queue.summary.total}  ready=${queue.summary.ready}  needs_review=${queue.summary.needs_review}  blocked=${queue.summary.blocked}`)
+  console.log()
+  for (const item of queue.items) {
+    const icon   = item.review_readiness === 'ready' ? '\u2705' : item.review_readiness === 'needs_review' ? '\u26a0\ufe0f ' : '\uD83D\uDEAB'
+    const ctxStr = (item.strong_context_count + item.fallback_context_count) > 0
+      ? ` | ctx strong=${item.strong_context_count} fallback=${item.fallback_context_count}`
+      : ' | ctx: none'
+    console.log(`  ${icon} [${item.review_readiness.toUpperCase().replace('_', ' ')}] ${item.evidence_type} | room:${item.room_label ?? 'null'} | conf:${item.confidence}${ctxStr}`)
+    console.log(`     subject: "${item.subject}"`)
+    console.log(`     action:  ${item.action_label}`)
+    if (item.conflicts_summary.length > 0) {
+      for (const cs of item.conflicts_summary) {
+        console.log(`     conflict: ${cs}`)
+      }
+    }
+    if (item.peer_candidate_ids.length > 0) {
+      console.log(`     peer ids: [${item.peer_candidate_ids.join(', ')}]`)
+    }
+    if (item.source_anchors.length > 0) {
+      console.log(`     anchors: ${item.source_anchors.slice(0, 2).map(a => `"${a}"`).join(', ')}${item.source_anchors.length > 2 ? ` +${item.source_anchors.length - 2} more` : ''}`)
+    }
+    console.log()
+  }
+
   fs.unlinkSync(outFile)
+  if (fs.existsSync(outReview)) fs.unlinkSync(outReview)
 }
 
 main().catch(e => { console.error('FATAL:', e.message, e.stack); process.exit(1) })
