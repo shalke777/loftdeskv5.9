@@ -83,6 +83,20 @@ R-27: Zabudowa GK na całą wysokość → znacznie redukuje pow. ścian.
   → evidence_type: scope_hint z sh_description zawierającą "zabudowa GK redukuje pow. ścian"
   → confidence: 0.70
 
+R-LIT1 — PRIORYTET ADNOTACJI LITERALNYCH (literal annotation priority):
+Jeśli na rysunku lub rzucie jest JAWNY, CZYTELNY opis elementu wpisany bezpośrednio przy elemencie
+(np. "wanna zabudowana + parawan nawannowy", "stelaż geberit + miska WC wisząca",
+"przedścianka z płyt gips-karton do ukrycia rur", "długi blat, umywalka, pod blatem szafki"):
+  → ZAWSZE: confirmed=true (nie=false) dla fixture lub scope_hint wynikającego z tego opisu
+  → ZAWSZE: confidence ≥ 0.80 dla dosłownie zapisanego elementu
+  → confidence_reason: "Literalna adnotacja na rysunku: [cytat]"
+  → NIE degraduj do evidence_type:hypothesis gdy opis jest dosłownie wpisany — hipoteza tylko gdy wnioskujesz BEZ tekstu
+  → NIE stosuj confirmed=false dla czegoś co możesz PRZECZYTAĆ wprost z rysunku
+Zapis "A + B" na rysunku = dwa OSOBNE evidence items (A i B), każdy z confirmed=true.
+Zapis "typ X" (np. "geberit", "wolnostojąca") = specyfikacja → wpisz w fix_note lub fix_dims.
+Granica materiałów (np. "płytki gresowe — panele laminowane") → evidence_type:material dla każdej strefy osobno,
+  room_label z kontekstu pomieszczenia, zone: "posadzka", confirmed=true, confidence ≥ 0.80.
+
 ROOM_LABEL — ZASADA PROPAGACJI (R-RL1):
 Wypełnij room_label jeśli pomieszczenie da się ustalić z pewnego źródła.
 WAŻNE: null jest lepsze niż błędna wartość. Zgadywanie jest niedopuszczalne.
@@ -309,6 +323,15 @@ export function buildEvidenceUserMessage(
       lines.push('  - 1× scope_hint jeśli R-17/R-22/R-27 dotyczy')
       lines.push('  - 1× missing_data jeśli brakuje kluczowych danych')
       lines.push('R-26 NIE ZWALNIA ze sweep rzutu: po tile_spec z zestawienia — wróć do każdej strony z planem i zrób sweep.')
+      lines.push('R-MROOM1 — RZUT CAŁEGO LOKALU (wiele pomieszczeń na jednym rysunku):')
+      lines.push('  Jeśli rzut pokazuje wiele pomieszczeń (mieszkanie / piętro / cały lokal):')
+      lines.push('  1. NAJPIERW zidentyfikuj granice i etykiety KAŻDEGO pomieszczenia (np. "ŁAZIENKA", "SALON", "KUCHNIA").')
+      lines.push('  2. Dla KAŻDEGO pomieszczenia czytaj WYŁĄCZNIE adnotacje i opisy widoczne W GRANICACH tego pomieszczenia.')
+      lines.push('     Adnotacje z sąsiednich pomieszczeń NIE są dowodem dla aktualnego pomieszczenia — NIE mieszaj.')
+      lines.push('  3. Każda adnotacja tekstowa wpisana w obszarze pomieszczenia (np. "parawan nawannowy" w obszarze łazienki)')
+      lines.push('     → traktuj jak R-LIT1: confirmed=true, confidence ≥ 0.80, room_label = to pomieszczenie.')
+      lines.push('  4. Granica podłóg między pomieszczeniami (np. "płytki gresowe | panele laminowane")')
+      lines.push('     → evidence_type:material dla każdej strefy osobno z odpowiednim room_label i zone:"posadzka".')
       lines.push('Wymiary rzutu: dwie linie wym. z różnych przekrojów → confidence 0.85. Jedna → 0.65. Skala nieznana → max 0.50.')
       lines.push('Jeśli sufit podwieszany (sp) w legendzie lub opisie — zastosuj R-15.')
       lines.push('ROOM_LABEL: Wypełnij zgodnie z R-RL2 (SH > PP > SK > FH). Null jest lepszy niż błędna wartość — nie zgaduj pomieszczenia.')
