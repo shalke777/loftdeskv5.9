@@ -13,3 +13,9 @@ Thumbs.db
 
 # Local Netlify folder
 .netlify
+
+# Smoke test esbuild artefacts (one-time compiled bundles)
+_smoke_*.cjs
+_smoke_fn_bundle.cjs
+_smoke_pdf_bundle.cjs
+_smoke_*.js
