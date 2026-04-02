@@ -27,6 +27,8 @@ import type {
   FusedRisk,
   FusedScopeCandidate,
   FusionStats,
+  LinkedDimension,
+  LinkedScopeHint,
   PassthroughItem,
 } from './fusion.types'
 
@@ -371,6 +373,8 @@ export function runFusion(
       category_peer_conflict: false,
       category_peer_ids:      [],
       peer_conflict_type:     null,
+      linked_dimensions:      [],
+      linked_scope_hints:     [],
       payload:               cPayload,
     })
   }
@@ -417,6 +421,47 @@ export function runFusion(
         if (!cb.category_peer_ids.includes(ca.id)) cb.category_peer_ids.push(ca.id)
         totalConflicts++
       }
+    }
+  }
+
+  // ─── 3c. R-F-enrich-dim + R-F-enrich-scope: Link pass-through to candidates ─
+  // Attach dimension and scope_hint pass-through items to fused candidates that
+  // share the same non-null room_label.
+  //
+  // Safety rule: only link when room_label is non-null on BOTH sides.
+  // missing_data and hypothesis remain global (room_label often null, subject
+  // overlap matching too unreliable without text similarity).
+  const dimensionRows  = passthroughRows.filter(r => r.evidence_type === 'dimension'  && r.room_label)
+  const scopeHintRows  = passthroughRows.filter(r => r.evidence_type === 'scope_hint' && r.room_label)
+
+  for (const candidate of candidates) {
+    if (!candidate.room_label) continue
+
+    // Link dimensions in the same room
+    for (const row of dimensionRows) {
+      if (row.room_label !== candidate.room_label) continue
+      const dim: LinkedDimension = {
+        source_id:     row.id,
+        subject:       String(row.content.subject ?? row.content.name ?? '') || null,
+        unit:          String(row.content.unit   ?? '') || null,
+        value:         typeof row.content.value === 'number' ? row.content.value : null,
+        source_anchor: row.source_anchor,
+      }
+      candidate.linked_dimensions.push(dim)
+    }
+
+    // Link scope_hints in the same room
+    for (const row of scopeHintRows) {
+      if (row.room_label !== candidate.room_label) continue
+      const hint: LinkedScopeHint = {
+        source_id:     row.id,
+        category:      String(row.content.category ?? '') || null,
+        unit:          String(row.content.unit     ?? '') || null,
+        priority:      String(row.content.priority ?? '') || null,
+        note:          String(row.content.note ?? row.content.text ?? '') || null,
+        source_anchor: row.source_anchor,
+      }
+      candidate.linked_scope_hints.push(hint)
     }
   }
 

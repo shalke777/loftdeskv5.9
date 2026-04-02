@@ -75,6 +75,19 @@ export interface FusedScopeCandidate {
 
   /** Winning merged payload from highest-priority source */
   payload:    Record<string, unknown>
+
+  /**
+   * R-F-enrich-dim: Dimension evidence items from the same room, linked to this candidate.
+   * Safe match: dimension.room_label === candidate.room_label (non-null).
+   * Consumers may use these to contextualise area/count/length without a DB lookup.
+   */
+  linked_dimensions:  LinkedDimension[]
+
+  /**
+   * R-F-enrich-scope: Scope hint items from the same room, linked to this candidate.
+   * Safe match: scope_hint.room_label === candidate.room_label (non-null).
+   */
+  linked_scope_hints: LinkedScopeHint[]
 }
 
 // ── Pass-through items (not merged, just collected) ────────────────────────────
@@ -86,6 +99,33 @@ export interface PassthroughItem {
   source_anchor: string | null
   confidence:    number
   payload:       Record<string, unknown>
+}
+
+// ── Enrichment links — pass-through evidence attached to a candidate ───────────
+
+/**
+ * A dimension evidence item linked to this fused candidate.
+ * Linked when dimension.room_label === candidate.room_label (non-null match).
+ */
+export interface LinkedDimension {
+  source_id:     string          // PassthroughItem.id (original evidence row id)
+  subject:       string | null   // e.g. "łazienka — pow. podłogi"
+  unit:          string | null   // "m2", "cm", "szt", "mb"
+  value:         number | null
+  source_anchor: string | null
+}
+
+/**
+ * A scope_hint evidence item linked to this fused candidate.
+ * Linked when scope_hint.room_label === candidate.room_label (non-null match).
+ */
+export interface LinkedScopeHint {
+  source_id:     string
+  category:      string | null   // scope_hint.category field
+  unit:          string | null
+  priority:      string | null   // "wysoki", "krytyczny" etc.
+  note:          string | null   // scope_hint.note / text if present
+  source_anchor: string | null
 }
 
 // ── Questions and risks ────────────────────────────────────────────────────────

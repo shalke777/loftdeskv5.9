@@ -207,6 +207,13 @@ function runScenario(tag, rows, expectConflictField, notes) {
     if (peers && !('category_peer_conflict' in c)) {
       console.log(`      [no peer detection yet]`)
     }
+    // enrichment links
+    if (c.linked_dimensions?.length > 0) {
+      console.log(`      📐 linked_dimensions: ${c.linked_dimensions.map(d => `${d.subject || '?'} (${d.value} ${d.unit})`).join(', ')}`)
+    }
+    if (c.linked_scope_hints?.length > 0) {
+      console.log(`      💡 linked_scope_hints: ${c.linked_scope_hints.map(h => `cat:${h.category || '?'} prio:${h.priority || '?'}`).join(', ')}`)
+    }
   }
 
   // Expected check
@@ -221,6 +228,11 @@ function runScenario(tag, rows, expectConflictField, notes) {
   if (expectConflictField === 'MERGE') {
     const hasMerge = result.fused_scope_candidates.some(c => c.merged_from_count > 1)
     console.log(`    EXPECTED: at least 1 merged group (merged_from_count>1) ${hasMerge ? '✅' : '❌'}`)
+  } else if (expectConflictField === 'ENRICH') {
+    const hasLinks = result.fused_scope_candidates.some(
+      c => (c.linked_dimensions?.length > 0) || (c.linked_scope_hints?.length > 0)
+    )
+    console.log(`    EXPECTED: at least 1 candidate has linked_dimensions or linked_scope_hints ${hasLinks ? '✅' : '❌'}`)
   } else if (expectConflictField === 'PEER') {
     const hasPeer = result.fused_scope_candidates.some(c => c.category_peer_conflict)
     console.log(`    EXPECTED: category_peer_conflict detected ${hasPeer ? '✅' : '❌'}`)
@@ -318,6 +330,56 @@ runScenario('S8: material — type prefix "farba" + unit suffix "10L" stripped',
 
 runScenario('S9: material — zone "podłoga" vs "posadzka" canonical (R-F-norm2)', S9, 'area_netto',
   'EXPECT: 1 merged group (R-F-norm2), conflict on area_netto (12.0 vs 10.8, >5% diff)')
+
+// ── S10: R-F-enrich-dim + R-F-enrich-scope: pass-through linking ─────────────
+
+// S10: tile_spec + dimension in the same room + scope_hint in the same room.
+//      dimension (m2) and scope_hint should be linked to tile_spec candidate.
+//      dimension in salon (different room) should NOT be linked to tile_spec.
+const S10_fusible = [
+  {
+    id: 's10-tile', evidence_type: 'tile_spec', room_label: 'łazienka',
+    confidence_score: 0.90, asset_id: 'asset_tech',
+    source_anchor: 'zestawienie.pdf | str:2 | – | ZESTAWIENIE POWIERZCHNI | Cifre',
+    content: { product: 'Cifre Reload White', format: '120x120', area_netto: 15.56, waste_multi: 1.1, zone: 'ściany' },
+  },
+  {
+    id: 's10-fixture', evidence_type: 'fixture', room_label: 'łazienka',
+    confidence_score: 0.85, asset_id: 'asset_tech',
+    source_anchor: 'rzut.pdf | str:1 | A-01 | Rzut | umywalka',
+    content: { name: 'umywalka Duravit ME by Starck', category: 'armatura łazienkowa', quantity: 1 },
+  },
+]
+const S10_passthrough = [
+  {
+    id: 's10-dim-laz', evidence_type: 'dimension', room_label: 'łazienka',
+    confidence_score: 0.85, asset_id: 'asset_tech',
+    source_anchor: 'rzut.pdf | str:1 | A-01 | Rzut | wymiary',
+    content: { subject: 'łazienka — pow. ścian', unit: 'm2', value: 18.4 },
+  },
+  {
+    id: 's10-dim-salon', evidence_type: 'dimension', room_label: 'salon',
+    confidence_score: 0.70, asset_id: 'asset_tech',
+    source_anchor: 'rzut.pdf | str:1 | A-01 | Rzut | salon-dlugosc',
+    content: { subject: 'salon — długość ściany', unit: 'cm', value: 414.7 },
+  },
+  {
+    id: 's10-scope', evidence_type: 'scope_hint', room_label: 'łazienka',
+    confidence_score: 0.80, asset_id: 'asset_tech',
+    source_anchor: 'rzut.pdf | str:1 | A-01 | Rzut | scope_comment',
+    content: { category: 'łazienka', unit: 'szt', priority: 'wysoki' },
+  },
+  {
+    id: 's10-missing', evidence_type: 'missing_data', room_label: null,
+    confidence_score: 0.0, asset_id: 'asset_tech',
+    source_anchor: null,
+    content: { subject: 'powierzchnia podłogi', impact: 'krytyczna dla wyceny', severity: 'critical' },
+  },
+]
+const S10_all = [...S10_fusible, ...S10_passthrough]
+
+runScenario('S10: enrichment — dimension + scope_hint linked to room-matched candidates', S10_all, 'ENRICH',
+  'EXPECT: tile_spec+fixture in łazienka get linked_dimensions=[m2:18.4] + linked_scope_hints; salon dim NOT linked; missing_data stays global (no room)')
 
 fs.unlinkSync(outFile)
 console.log('─────────────────────────────────────────────────────────────────────')
