@@ -659,6 +659,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return err(403, 'plan_insufficient', 'AI Engine requires a Pro or Business plan')
   }
 
+  // ── Daily company limit ─────────────────────────────────────────────────
+  const dailyLimit = parseInt(process.env.AI_DAILY_LIMIT ?? '50', 10)
+  const { count: todayCount, error: countErr } = await sbService
+    .from('ai_analysis_runs')
+    .select('id', { count: 'exact', head: true })
+    .eq('company_id', companyId)
+    .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
+
+  if (!countErr && typeof todayCount === 'number' && todayCount >= dailyLimit) {
+    console.warn('[analyze-room-photo] Daily limit exceeded', { companyId, todayCount, dailyLimit })
+    return err(429, 'daily_limit_exceeded', `Dzienny limit analiz AI (${dailyLimit}) został wyczerpany. Spróbuj ponownie jutro.`)
+  }
+
   console.info('ROOM_ANALYSIS_START', JSON.stringify({ model, imageType, imageCount, hasContext: !!context, hasClarification: !!clarification, roomType, projectId: projectId ?? null }))
 
   // ── Build input ─────────────────────────────────────────────────────────

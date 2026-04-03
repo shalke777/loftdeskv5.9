@@ -191,6 +191,8 @@ export async function callAnalyzeRoomPhoto(file: File, context?: string): Promis
       throw new Error('Sesja wygasła — zaloguj się ponownie.')
     if (resp.status === 429 || errCode === 'too_many_requests')
       throw new Error('Za dużo żądań. Spróbuj za chwilę.')
+    if (errCode === 'daily_limit_exceeded')
+      throw new Error('Dzienny limit analiz AI został wyczerpany. Spróbuj ponownie jutro.')
     if (errCode === 'ai_not_configured')
       throw new Error('AI nie jest skonfigurowane (brak OPENAI_API_KEY)')
     throw new Error(String(data.message ?? `HTTP ${resp.status}`))
@@ -248,6 +250,12 @@ export function useAnalyzeRoomPhoto() {
   return useMutation({
     mutationFn: ({ file, context }: { file: File; context?: string }) =>
       callAnalyzeRoomPhoto(file, context),
+    retry: (failureCount, error) => {
+      if (failureCount >= 1) return false
+      const msg = error instanceof Error ? error.message : ''
+      return /502|503|504|niedostępny|network|fetch/i.test(msg)
+    },
+    retryDelay: 3000,
   })
 }
 
@@ -278,6 +286,7 @@ export async function callAnalyzeRoomPhotos(
   files: File[],
   clarification?: BathroomClarification,
   roomType?: string,
+  projectId?: string,
 ): Promise<AnalysisResult> {
   if (files.length === 0) {
     return {
@@ -323,6 +332,7 @@ export async function callAnalyzeRoomPhotos(
         context: context || undefined,
         clarification,
         room_type: roomType || undefined,
+        project_id: projectId || undefined,
       }),
     })
   } catch {
@@ -337,6 +347,8 @@ export async function callAnalyzeRoomPhotos(
       throw new Error('Sesja wygasła — zaloguj się ponownie.')
     if (resp.status === 429 || errCode === 'too_many_requests')
       throw new Error('Za dużo żądań. Spróbuj za chwilę.')
+    if (errCode === 'daily_limit_exceeded')
+      throw new Error('Dzienny limit analiz AI został wyczerpany. Spróbuj ponownie jutro.')
     if (errCode === 'ai_not_configured')
       throw new Error('AI nie jest skonfigurowane (brak OPENAI_API_KEY)')
     throw new Error(String(data.message ?? `HTTP ${resp.status}`))
@@ -389,7 +401,13 @@ export async function callAnalyzeRoomPhotos(
 
 export function useAnalyzeRoomPhotos() {
   return useMutation({
-    mutationFn: ({ files, clarification, roomType }: { files: File[]; clarification?: BathroomClarification; roomType?: string }) =>
-      callAnalyzeRoomPhotos(files, clarification, roomType),
+    mutationFn: ({ files, clarification, roomType, projectId }: { files: File[]; clarification?: BathroomClarification; roomType?: string; projectId?: string }) =>
+      callAnalyzeRoomPhotos(files, clarification, roomType, projectId),
+    retry: (failureCount, error) => {
+      if (failureCount >= 1) return false
+      const msg = error instanceof Error ? error.message : ''
+      return /502|503|504|niedostępny|network|fetch/i.test(msg)
+    },
+    retryDelay: 3000,
   })
 }

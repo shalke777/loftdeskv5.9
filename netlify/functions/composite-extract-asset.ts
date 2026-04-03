@@ -363,6 +363,19 @@ export const handler: Handler = async (event) => {
     const projectId = assetRow.project_id as string
     const sourceRole = (sourceRoleOverride ?? assetRow.source_role ?? 'unknown') as string
 
+    // ── Daily company limit ───────────────────────────────────────────────
+    const dailyLimit = parseInt(process.env.AI_DAILY_LIMIT ?? '50', 10)
+    const { count: todayCount, error: countErr } = await sbAdmin
+      .from('ai_analysis_runs')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId)
+      .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
+
+    if (!countErr && typeof todayCount === 'number' && todayCount >= dailyLimit) {
+      console.warn('[composite-extract-asset] Daily limit exceeded', { companyId, todayCount, dailyLimit })
+      return err(429, 'daily_limit_exceeded', `Dzienny limit analiz AI (${dailyLimit}) został wyczerpany. Spróbuj ponownie jutro.`)
+    }
+
     // Mark as processing
     await sbAdmin.from('ai_bundle_assets').update({ extraction_status: 'processing' }).eq('id', assetId)
 
@@ -430,7 +443,7 @@ export const handler: Handler = async (event) => {
           instructions:      EVIDENCE_SYSTEM_PROMPT,
           input:             [{ role: 'user', content }],
           text:              { format: EVIDENCE_SCHEMA },
-          max_output_tokens: 5_000,
+          max_output_tokens: 10_000,
         }),
       })
 

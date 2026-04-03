@@ -390,11 +390,67 @@ export const handler: Handler = async (event) => {
   const fileType   = typeof body.file_type   === 'string' ? body.file_type.trim()   : ''
   const fileName   = typeof body.file_name   === 'string' ? body.file_name.trim()   : 'project'
   const context    = typeof body.context     === 'string' ? body.context.slice(0, 2000) : ''
+  const projectId  = typeof body.project_id  === 'string' && body.project_id.trim()
+    ? body.project_id.trim() : null
 
-  console.info('BODY_PARSED', JSON.stringify({ fileType, fileName, hasContext: !!context, elapsed_ms: Date.now() - t0 }))
+  console.info('BODY_PARSED', JSON.stringify({ fileType, fileName, hasContext: !!context, projectId: projectId ?? null, elapsed_ms: Date.now() - t0 }))
 
   if (!fileBase64) return err(400, 'missing_file', 'file_base64 is required')
   if (!fileType)   return err(400, 'missing_type', 'file_type is required')
+  if (!projectId)  return err(400, 'missing_project_id', 'project_id is required')
+
+  // ── Verify project access and resolve company_id ────────────────────────
+  const sbUrl         = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? ''
+  const sbServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+  if (!sbServiceRole) {
+    console.error('[analyze-project] SUPABASE_SERVICE_ROLE_KEY not set')
+    return err(500, 'config_error', 'Server configuration error')
+  }
+  const sbService = createClient(sbUrl, sbServiceRole, { auth: { persistSession: false } })
+
+  const { data: project, error: projErr } = await sbService
+    .from('projects')
+    .select('company_id')
+    .eq('id', projectId)
+    .maybeSingle()
+
+  if (projErr) {
+    console.error('[analyze-project] Project lookup failed:', projErr.message)
+    return err(500, 'access_check_failed', 'Could not verify project access')
+  }
+  if (!project || !(project as { company_id?: string }).company_id) {
+    return err(403, 'project_access_denied', 'Project not found or access denied')
+  }
+  const companyId = (project as { company_id: string }).company_id
+
+  // Confirm user is a member of this company
+  const { data: member, error: memberErr } = await sbService
+    .from('company_members')
+    .select('user_id')
+    .eq('company_id', companyId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (memberErr) {
+    console.error('[analyze-project] Member lookup failed:', memberErr.message)
+    return err(500, 'access_check_failed', 'Could not verify project access')
+  }
+  if (!member) {
+    return err(403, 'project_access_denied', 'Project not found or access denied')
+  }
+
+  // ── Daily company limit ─────────────────────────────────────────────────
+  const dailyLimit = parseInt(process.env.AI_DAILY_LIMIT ?? '50', 10)
+  const { count: todayCount, error: countErr } = await sbService
+    .from('ai_analysis_runs')
+    .select('id', { count: 'exact', head: true })
+    .eq('company_id', companyId)
+    .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
+
+  if (!countErr && typeof todayCount === 'number' && todayCount >= dailyLimit) {
+    console.warn('[analyze-project] Daily limit exceeded', { companyId, todayCount, dailyLimit })
+    return err(429, 'daily_limit_exceeded', `Dzienny limit analiz AI (${dailyLimit}) został wyczerpany. Spróbuj ponownie jutro.`)
+  }
 
   // Size guard (~15 MB base64 ≈ 11 MB binary)
   const base64Len = fileBase64.length

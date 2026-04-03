@@ -63,6 +63,7 @@ function validateProjectFile(file: File): string | null {
 export async function callAnalyzeProject(
   file: File,
   context?: string,
+  projectId?: string,
 ): Promise<ProjectAnalysisResult> {
   const validationError = validateProjectFile(file)
   if (validationError) {
@@ -99,6 +100,7 @@ export async function callAnalyzeProject(
         file_name:         file.name,
         context:           context ?? undefined,
         project_type_hint: fileType === 'application/pdf' ? 'pdf' : 'visualization',
+        project_id:        projectId || undefined,
       }),
     })
   } catch {
@@ -115,6 +117,8 @@ export async function callAnalyzeProject(
       throw new Error('Błąd konfiguracji endpointu AI (405). Odśwież stronę i spróbuj ponownie.')
     if (resp.status === 429 || errCode === 'too_many_requests')
       throw new Error('Za dużo żądań. Spróbuj za chwilę.')
+    if (errCode === 'daily_limit_exceeded')
+      throw new Error('Dzienny limit analiz AI został wyczerpany. Spróbuj ponownie jutro.')
     if (resp.status === 413 || errCode === 'file_too_large')
       throw new Error('Plik jest za duży. Skompresuj PDF lub zmniejsz rozdzielczość.')
     if (resp.status === 422 || errCode === 'invalid_input')
@@ -142,7 +146,13 @@ export async function callAnalyzeProject(
 
 export function useAnalyzeProject() {
   return useMutation({
-    mutationFn: ({ file, context }: { file: File; context?: string }) =>
-      callAnalyzeProject(file, context),
+    mutationFn: ({ file, context, projectId }: { file: File; context?: string; projectId?: string }) =>
+      callAnalyzeProject(file, context, projectId),
+    retry: (failureCount, error) => {
+      if (failureCount >= 1) return false
+      const msg = error instanceof Error ? error.message : ''
+      return /502|503|504|niedostępny|network|fetch/i.test(msg)
+    },
+    retryDelay: 3000,
   })
 }

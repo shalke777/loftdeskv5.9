@@ -2,7 +2,7 @@
 // ProjectAnalysisPage — Project / Design Intelligence Engine v1
 // =============================================================================
 // Entry point from dashboard "AI Projekt" tile.
-// Flow: upload (PDF or image) → processing → results.
+// Flow: project picker → upload (PDF or image) → processing → results.
 // Supports: architectural drawings, design visualizations, technical specs.
 // Results can be transferred to estimate via ProjectEstimateSection.
 
@@ -12,9 +12,10 @@ import { useAnalyzeProject } from '@/features/expenses/hooks/useAnalyzeProject'
 import { useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import { compareProjectToReality } from '@/services/ai/engines/comparison'
 import type { ProjectAnalysisResult, ProjectComparisonResult } from '@/services/ai/engines/project.types'
-import { AiErrorState, AiQualityBadge, AiReliabilityBanner, AiUploadRules, aiPreflightValidate, sniffFileIntent } from '@/shared/ui/AiGuidance'
+import { AiErrorState, AiQualityBadge, AiReliabilityBanner, AiUploadRules, AiProgressSteps, aiPreflightValidate, sniffFileIntent } from '@/shared/ui/AiGuidance'
 import { computeProjectReliability } from '@/services/ai/engines/reliability'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
+import { useProjects } from '@/features/projects/hooks/useProjects'
 import {
   ProjectSummaryBar,
   ProjectRoomsSection,
@@ -25,7 +26,7 @@ import {
 } from './ProjectAnalysisSections'
 import { ComparisonResultView } from './ComparisonResultView'
 
-type Step = 'upload' | 'processing' | 'results'
+type Step = 'project' | 'upload' | 'processing' | 'results'
 
 const ACCEPTED_EXTENSIONS = '.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif'
 
@@ -73,8 +74,10 @@ export function ProjectAnalysisPage() {
   const analyze     = useAnalyzeProject()
   const analyzeRoom = useAnalyzeRoomPhotos()
   const navigate    = useNavigate()
+  const { data: projects = [], isLoading: projectsLoading } = useProjects()
 
-  const [step, setStep]       = useState<Step>('upload')
+  const [step, setStep]       = useState<Step>('project')
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('')
   const [file, setFile]       = useState<File | null>(null)
   const [context, setContext] = useState('')
   const [result, setResult]   = useState<ProjectAnalysisResult | null>(null)
@@ -95,7 +98,8 @@ export function ProjectAnalysisPage() {
   const compareInputRef = useRef<HTMLInputElement>(null)
 
   function reset() {
-    setStep('upload')
+    setStep('project')
+    setSelectedProjectId('')
     setFile(null)
     setContext('')
     setResult(null)
@@ -124,7 +128,7 @@ export function ProjectAnalysisPage() {
     setComparingRoom(true)
     setComparisonError(null)
     analyzeRoom.mutate(
-      { files: compareFiles, roomType: inferRoomType(result) },
+      { files: compareFiles, roomType: inferRoomType(result), projectId: selectedProjectId },
       {
         onSuccess: (roomResult) => {
           const comparison = compareProjectToReality(result, roomResult)
@@ -177,7 +181,7 @@ export function ProjectAnalysisPage() {
       return
     }
     setStep('processing')
-    analyze.mutate({ file, context: context.trim() || undefined }, {
+    analyze.mutate({ file, context: context.trim() || undefined, projectId: selectedProjectId }, {
       onSuccess: (res) => {
         setResult(res)
         setError(null)
@@ -191,6 +195,74 @@ export function ProjectAnalysisPage() {
   }
 
   const isPdf = file?.type === 'application/pdf' || file?.name.toLowerCase().endsWith('.pdf')
+
+  // ── Project selection ──
+  if (step === 'project') {
+    return (
+      <div>
+        <PageHeader title="AI Analiza projektu" />
+        <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 16px' }}>
+          <div style={{ textAlign: 'right', marginBottom: 6 }}>
+            <button
+              type="button"
+              onClick={() => navigate({ to: '/ai' as any })}
+              style={{ fontSize: 13, color: '#6B7280', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              ← Tryb pomieszczenia
+            </button>
+          </div>
+          <div style={{
+            background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 12,
+            padding: 24, marginBottom: 16,
+          }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Wybierz projekt</h3>
+            <p style={{ fontSize: 13, color: '#6B7280', marginBottom: 16 }}>
+              Analiza AI wymaga kontekstu projektu. Wyniki zostaną powiązane z wybranym projektem.
+            </p>
+            {projectsLoading ? (
+              <p style={{ color: '#9CA3AF', fontSize: 13 }}>Ładowanie projektów…</p>
+            ) : projects.length === 0 ? (
+              <p style={{ color: '#EF4444', fontSize: 13 }}>
+                Brak projektów. Utwórz projekt, aby korzystać z analizy AI.
+              </p>
+            ) : (
+              <>
+                <select
+                  value={selectedProjectId}
+                  onChange={e => setSelectedProjectId(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 8,
+                    border: '1px solid #D1D5DB', fontSize: 14, marginBottom: 16,
+                    background: '#FFFFFF',
+                  }}
+                >
+                  <option value="">— Wybierz projekt —</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.number} · {p.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={!selectedProjectId}
+                  onClick={() => setStep('upload')}
+                  style={{
+                    width: '100%', padding: '12px 0', borderRadius: 10,
+                    background: selectedProjectId ? '#2563EB' : '#D1D5DB',
+                    color: '#fff', fontWeight: 600, fontSize: 15,
+                    border: 'none', cursor: selectedProjectId ? 'pointer' : 'default',
+                  }}
+                >
+                  Dalej — wgraj materiały
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
 
   // ── Upload step ──────────────────────────────────────────────────────────
@@ -353,16 +425,10 @@ export function ProjectAnalysisPage() {
             border: '1px solid var(--color-border)',
             borderRadius: 8, minHeight: 280,
           }}>
-            <div className="spinner" style={{ width: 40, height: 40 }} />
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: 15 }}>
-                {isPdf ? 'Czytam PDF projektu…' : 'Analizuję wizualizację…'}
-              </p>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-                AI wyciąga pomieszczenia, materiały, zakres prac i przygotowuje draft wyceny.<br />
-                Trwa 20–45&nbsp;sekund.
-              </p>
-            </div>
+            <AiProgressSteps variant="project" />
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.6, textAlign: 'center' }}>
+              Trwa 20–45&nbsp;sekund.
+            </p>
           </div>
         </div>
       </div>

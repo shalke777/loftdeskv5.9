@@ -1,9 +1,9 @@
 // =============================================================================
-// RoomAnalysisPage — standalone AI room analysis (no project context needed)
+// RoomAnalysisPage — AI room analysis (requires project context)
 // =============================================================================
 // Entry point from dashboard "AI Analiza" tile.
-// Flow: room type selector → multi-photo → clarification → AI analysis → results.
-// Results can be transferred to estimates via session storage.
+// Flow: project picker → room type selector → multi-photo → clarification → AI analysis → results.
+// Every analysis is tied to a project (company_id + project_id).
 
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
@@ -14,9 +14,10 @@ import { getRoomTypeName } from '@/services/ai/room-types'
 import type { AnalysisResult } from '@/services/ai/analysis.types'
 import type { ClarificationAnswer } from '@/services/ai/engines/clarification.types'
 import { applyAnswersToResult } from '@/services/ai/engines/clarification-effects'
-import { AiErrorState, AiReliabilityBanner, AiUploadRules } from '@/shared/ui/AiGuidance'
+import { AiErrorState, AiReliabilityBanner, AiUploadRules, AiProgressSteps } from '@/shared/ui/AiGuidance'
 import { computeRoomReliabilityFromAnalysis } from '@/services/ai/engines/reliability'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
+import { useProjects } from '@/features/projects/hooks/useProjects'
 import { ExpenseCameraCapture } from './ExpenseCameraCapture'
 import { BathroomClarificationForm } from './BathroomClarificationForm'
 import {
@@ -26,7 +27,7 @@ import {
   ClarificationQuestionsSection,
 } from './AnalysisSections'
 
-type Step = 'capture' | 'clarification' | 'processing' | 'results'
+type Step = 'project' | 'capture' | 'clarification' | 'processing' | 'results'
 
 const ROOM_UPLOAD_RULES = {
   formats: ['JPG', 'PNG', 'WEBP', 'HEIC'],
@@ -45,8 +46,10 @@ const ROOM_UPLOAD_RULES = {
 export function RoomAnalysisPage() {
   const navigate = useNavigate()
   const analyzeRooms = useAnalyzeRoomPhotos()
+  const { data: projects = [], isLoading: projectsLoading } = useProjects()
 
-  const [step, setStep] = useState<Step>('capture')
+  const [step, setStep] = useState<Step>('project')
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('')
   const [roomFiles, setRoomFiles] = useState<File[]>([])
   const [roomType, setRoomType] = useState<RoomTypeId>('bathroom')
   const [result, setResult] = useState<AnalysisResult | null>(null)
@@ -67,7 +70,8 @@ export function RoomAnalysisPage() {
   const reliabilityReport = displayResult ? computeRoomReliabilityFromAnalysis(displayResult) : null
 
   function reset() {
-    setStep('capture')
+    setStep('project')
+    setSelectedProjectId('')
     setRoomFiles([])
     setRoomType('bathroom')
     setResult(null)
@@ -100,7 +104,7 @@ export function RoomAnalysisPage() {
   function startAnalysis(clarification?: BathroomClarification) {
     setStep('processing')
     setClarificationAnswers([])
-    analyzeRooms.mutate({ files: roomFiles, clarification, roomType }, {
+    analyzeRooms.mutate({ files: roomFiles, clarification, roomType, projectId: selectedProjectId }, {
       onSuccess: (res) => { setResult(res); setError(null); setStep('results') },
       onError: (err) => {
         setError(err instanceof Error ? err.message : 'Analiza nie powiodła się.')
@@ -114,6 +118,74 @@ export function RoomAnalysisPage() {
       ...prev.filter(a => a.questionId !== answer.questionId),
       answer,
     ])
+  }
+
+  // ── Project selection ──
+  if (step === 'project') {
+    return (
+      <div>
+        <PageHeader title="AI Analiza pomieszczenia" />
+        <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 16px' }}>
+          <div style={{ textAlign: 'right', marginBottom: 6 }}>
+            <button
+              type="button"
+              onClick={() => navigate({ to: '/ai' as any })}
+              style={{ fontSize: 13, color: '#6B7280', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              ← Tryb projektu
+            </button>
+          </div>
+          <div style={{
+            background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 12,
+            padding: 24, marginBottom: 16,
+          }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Wybierz projekt</h3>
+            <p style={{ fontSize: 13, color: '#6B7280', marginBottom: 16 }}>
+              Analiza AI wymaga kontekstu projektu. Wyniki zostaną powiązane z wybranym projektem.
+            </p>
+            {projectsLoading ? (
+              <p style={{ color: '#9CA3AF', fontSize: 13 }}>Ładowanie projektów…</p>
+            ) : projects.length === 0 ? (
+              <p style={{ color: '#EF4444', fontSize: 13 }}>
+                Brak projektów. Utwórz projekt, aby korzystać z analizy AI.
+              </p>
+            ) : (
+              <>
+                <select
+                  value={selectedProjectId}
+                  onChange={e => setSelectedProjectId(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 8,
+                    border: '1px solid #D1D5DB', fontSize: 14, marginBottom: 16,
+                    background: '#FFFFFF',
+                  }}
+                >
+                  <option value="">— Wybierz projekt —</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.number} · {p.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={!selectedProjectId}
+                  onClick={() => setStep('capture')}
+                  style={{
+                    width: '100%', padding: '12px 0', borderRadius: 10,
+                    background: selectedProjectId ? '#2563EB' : '#D1D5DB',
+                    color: '#fff', fontWeight: 600, fontSize: 15,
+                    border: 'none', cursor: selectedProjectId ? 'pointer' : 'default',
+                  }}
+                >
+                  Dalej — zrób zdjęcia
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // ── Capture ──
@@ -176,7 +248,6 @@ export function RoomAnalysisPage() {
 
   // ── Processing ──
   if (step === 'processing') {
-    const photoCount = roomFiles.length
     return (
       <div>
         <PageHeader title="AI Analiza pomieszczenia" />
@@ -188,16 +259,10 @@ export function RoomAnalysisPage() {
             border: '1px solid var(--color-border)',
             borderRadius: 8, minHeight: 280,
           }}>
-            <div className="spinner" style={{ width: 40, height: 40 }} />
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: 15 }}>
-                Analizuję {photoCount > 1 ? `${photoCount} zdjęć` : 'zdjęcie'}…
-              </p>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-                AI rozpoznaje materiały, stan wykończenia i generuje draft zakresu prac.<br />
-                Trwa 15–30&nbsp;sekund.
-              </p>
-            </div>
+            <AiProgressSteps variant="room" />
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.6, textAlign: 'center' }}>
+              Trwa 15–30&nbsp;sekund.
+            </p>
           </div>
         </div>
       </div>
