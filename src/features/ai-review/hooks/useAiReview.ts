@@ -111,6 +111,7 @@ export function useInsertReviewAction(runId: string, projectId: string) {
       void qc.invalidateQueries({ queryKey: aiKeys.questions(runId) })
       void qc.invalidateQueries({ queryKey: aiKeys.risks(runId) })
       void qc.invalidateQueries({ queryKey: aiKeys.runs(projectId) })
+      void qc.invalidateQueries({ queryKey: aiKeys.estimateForRun(runId) })
     },
   })
 }

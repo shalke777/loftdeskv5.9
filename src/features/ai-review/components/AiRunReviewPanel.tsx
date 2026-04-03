@@ -9,7 +9,7 @@
 // ai_scope_items.review_status is denormalized and updated by insertReviewAction.
 // =============================================================================
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
@@ -512,6 +512,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
     run.status === 'completed' ? run.id : null,
   )
   const [createdEstimate, setCreatedEstimate] = useState<{ number: string; itemCount: number } | null>(null)
+  const createMutexRef = useRef(false)
 
   if (run.status === 'processing') {
     return (
@@ -768,6 +769,8 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
                   type="button"
                   disabled={createEstimate.isPending}
                   onClick={() => {
+                    if (createMutexRef.current) return
+                    createMutexRef.current = true
                     createEstimate.mutate(
                       { run, scopeItems: scope, companyId, projectId },
                       {
@@ -779,6 +782,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
                         },
                         onError: (e: unknown) => {
                           console.error('[AiRunReviewPanel] createEstimate failed:', e)
+                          createMutexRef.current = false
                         },
                       },
                     )
@@ -809,7 +813,8 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
                 {(() => {
                   const err = createEstimate.error
                   const msg = err instanceof Error ? err.message : String((err as { message?: string } | null)?.message ?? '')
-                  const isDup = msg.includes('duplicate key') || msg.includes('23505')
+                  const code = (err as { code?: string } | null)?.code ?? ''
+                  const isDup = code === '23505' || msg.includes('duplicate key') || msg.includes('23505')
                   return isDup
                     ? 'Wycena dla tego runu już istnieje. Odśwież stronę, aby zobaczyć istniejącą wycenę.'
                     : (msg || 'Nie udało się utworzyć wyceny.')
