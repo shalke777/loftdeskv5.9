@@ -131,8 +131,20 @@ export function categorizeAiError(rawError: string): AiErrorCategory {
   if (e.includes('format') || e.includes('nieobsługiwan') || e.includes('unsupported') || e.includes('invalid type')) {
     return { title: 'Nieobsługiwany format pliku', detail: 'AI nie może przetworzyć tego formatu. Użyj PDF, JPG lub PNG.', action: 'change_file' }
   }
-  if (e.includes('api key') || e.includes('nie skonfigurowano') || e.includes('brak openai') || e.includes('ai nie jest skonfigurowane')) {
+  if (e.includes('api key') || e.includes('nie skonfigurowano') || e.includes('brak openai') || e.includes('ai nie jest skonfigurowane') || e.includes('moduł ai nie jest włączony') || e.includes('ai niedostępne')) {
     return { title: 'AI niedostępne w tej chwili', detail: 'Usługa AI nie jest aktywna. Spróbuj ponownie lub wprowadź dane ręcznie.', action: 'manual' }
+  }
+  if (e.includes('plan') && (e.includes('pro') || e.includes('business') || e.includes('wymaga'))) {
+    return { title: 'Wymagany wyższy plan', detail: 'AI Engine wymaga planu Pro lub Business. Zaktualizuj plan w ustawieniach konta.', action: 'manual' }
+  }
+  if (e.includes('brak dostępu') || e.includes('access denied') || e.includes('nie istnieje')) {
+    return { title: 'Brak dostępu do projektu', detail: 'Nie masz uprawnień do tego projektu lub projekt nie istnieje. Sprawdź wybór projektu.', action: 'retry' }
+  }
+  if (e.includes('nie wybrano projektu') || e.includes('wróć i wybierz')) {
+    return { title: 'Nie wybrano projektu', detail: 'Wróć do pierwszego kroku i wybierz projekt.', action: 'retry' }
+  }
+  if (e.includes('dzienny limit')) {
+    return { title: 'Limit dzienny wyczerpany', detail: 'Osiągnięto dzienny limit analiz AI dla Twojej firmy. Spróbuj ponownie jutro.', action: 'wait' }
   }
   return {
     title: 'Analiza nie powiodła się',
