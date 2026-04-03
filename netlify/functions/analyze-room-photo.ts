@@ -20,6 +20,7 @@
 
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 import { detectBathroomTriggers, expandDependencies, isBathroomSpace } from './shared/bathroom-triggers'
 import type { ClarificationQuestion } from './shared/bathroom-triggers'
 import { persistAnalysisBundle } from './shared/ai-persist'
@@ -520,6 +521,7 @@ interface ResponsesAPIResult {
 
 export const handler: Handler = async (event: HandlerEvent) => {
   const t0 = Date.now()
+  const requestId = crypto.randomUUID()
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS_HEADERS, body: '' }
   if (event.httpMethod !== 'POST')    return err(405, 'method_not_allowed', 'Only POST allowed')
 
@@ -675,6 +677,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   console.info('ROOM_ANALYSIS_START', JSON.stringify({
     endpoint:        'analyze-room-photo',
+    requestId,
     companyId:       companyId.slice(0, 8),
     projectId:       projectId?.slice(0, 8) ?? null,
     model, imageType, imageCount,
@@ -786,7 +789,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     aiRaw = data.output?.[0]?.content?.find(c => c.type === 'output_text')?.text ?? '{}'
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
-    console.error('ROOM_ANALYSIS_ERROR', msg)
+    console.error('ROOM_ANALYSIS_ERROR', JSON.stringify({
+      endpoint: 'analyze-room-photo', requestId, category: 'provider_error',
+      error: msg.slice(0, 500), elapsed_ms: Date.now() - t0,
+    }))
     return err(502, 'ai_call_failed', msg)
   }
 
@@ -796,7 +802,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
   try {
     ai = JSON.parse(aiRaw) as Record<string, unknown>
   } catch {
-    console.error('ROOM_ANALYSIS_PARSE_ERROR', aiRaw.slice(0, 300))
+    console.error('ROOM_ANALYSIS_PARSE_ERROR', JSON.stringify({
+      endpoint: 'analyze-room-photo', requestId, category: 'provider_error',
+      raw: aiRaw.slice(0, 300), elapsed_ms: Date.now() - t0,
+    }))
     return err(502, 'ai_invalid_json', 'AI returned non-JSON response')
   }
 
@@ -1030,6 +1039,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   console.info('ROOM_ANALYSIS_DONE', JSON.stringify({
     endpoint:       'analyze-room-photo',
+    requestId,
     companyId:      companyId.slice(0, 8),
     projectId:      projectId?.slice(0, 8) ?? null,
     model,

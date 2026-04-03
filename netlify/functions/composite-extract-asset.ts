@@ -29,6 +29,7 @@
 
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 import { persistEvidenceOutput } from './shared/evidence-persist'
 import type { FlatExtractionOutput, FlatEvidenceItem } from './shared/evidence-persist'
 import { EVIDENCE_SYSTEM_PROMPT, buildEvidenceUserMessage } from '../../src/services/ai/prompts/evidence.prompt'
@@ -294,11 +295,19 @@ export const handler: Handler = async (event) => {
   }
 
   const t0 = Date.now()
+  const requestId = crypto.randomUUID()
+
+  // Feature flag: AI Engine must be explicitly enabled
+  if (process.env.VITE_AI_ENGINE_ENABLED !== 'true') {
+    return err(503, 'ai_disabled', 'AI Engine is not enabled in this environment')
+  }
 
   try {
     // ── Auth ────────────────────────────────────────────────────────────────
     const auth = await resolveAuth(event)
     if (!auth) return err(401, 'unauthorized', 'Valid session required')
+    // AI requires real Supabase auth — 'dev' fallback is not permitted
+    if (auth.userId === 'dev') return err(503, 'auth_not_configured', 'AI Engine requires Supabase authentication')
     if (isRateLimited(auth.userId)) return err(429, 'too_many_requests', 'Rate limit exceeded')
 
     const apiKey = process.env.OPENAI_API_KEY
@@ -439,6 +448,7 @@ export const handler: Handler = async (event) => {
 
     console.info('EVIDENCE_EXTRACT_START', JSON.stringify({
       endpoint:   'composite-extract-asset',
+      requestId,
       companyId:  companyId.slice(0, 8),
       projectId:  projectId?.slice(0, 8) ?? null,
       assetId:    assetId.slice(0, 8),
@@ -471,10 +481,11 @@ export const handler: Handler = async (event) => {
       if (!resp.ok) {
         console.error('OPENAI_ERROR', JSON.stringify({
           endpoint:   'composite-extract-asset',
+          requestId,
           companyId:  companyId.slice(0, 8),
           assetId:    assetId.slice(0, 8),
           status:     resp.status,
-          category:   resp.status === 429 ? 'quota_exceeded' : 'provider_error',
+          category:   resp.status === 429 ? 'quota' : 'provider_error',
           body:       rawBody.slice(0, 300),
           elapsed_ms: Date.now() - t0,
         }))
@@ -567,6 +578,7 @@ export const handler: Handler = async (event) => {
     const extraction_ms = Date.now() - t0
     console.info('EVIDENCE_EXTRACT_DONE', JSON.stringify({
       endpoint:           'composite-extract-asset',
+      requestId,
       companyId:          companyId.slice(0, 8),
       projectId:          projectId?.slice(0, 8) ?? null,
       assetId:            assetId.slice(0, 8),
@@ -591,8 +603,9 @@ export const handler: Handler = async (event) => {
     const msg = e instanceof Error ? e.message : String(e)
     console.error('EVIDENCE_EXTRACT_FATAL', JSON.stringify({
       endpoint:   'composite-extract-asset',
+      requestId,
       error:      msg.slice(0, 500),
-      category:   'unhandled_exception',
+      category:   'internal',
       elapsed_ms: Date.now() - t0,
     }))
     return err(500, 'internal_error', `Unexpected error: ${msg.slice(0, 200)}`)

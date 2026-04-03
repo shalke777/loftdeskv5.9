@@ -26,6 +26,7 @@
 
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 import { detectBathroomTriggers, expandDependencies } from './shared/bathroom-triggers'
 import type { ClarificationQuestion } from './shared/bathroom-triggers'
 
@@ -357,17 +358,27 @@ export const handler: Handler = async (event) => {
   try {
 
   const t0 = Date.now()
+  const requestId = crypto.randomUUID()
+
+  // Feature flag: AI Engine must be explicitly enabled
+  if (process.env.VITE_AI_ENGINE_ENABLED !== 'true') {
+    return err(503, 'ai_disabled', 'AI Engine is not enabled in this environment')
+  }
+
   console.info('ANALYZE_PROJECT_START', JSON.stringify({
-    reqId:   event.headers['x-nf-request-id'] ?? null,
+    endpoint:  'analyze-project',
+    requestId,
     bodyLen: event.body?.length ?? 0,
     elapsed_ms: 0,
   }))
 
   const userId = await verifyRequestAuth(event)
   if (!userId) return err(401, 'unauthorized', 'Valid session required')
+  // AI requires real Supabase auth — 'dev' fallback is not permitted
+  if (userId === 'dev') return err(503, 'auth_not_configured', 'AI Engine requires Supabase authentication')
   if (isRateLimited(userId)) return err(429, 'too_many_requests', 'Rate limit exceeded')
 
-  console.info('AUTH_OK', JSON.stringify({ userId: userId === 'dev' ? 'dev' : userId.slice(0, 8) + '...', elapsed_ms: Date.now() - t0 }))
+  console.info('AUTH_OK', JSON.stringify({ requestId, userId: userId.slice(0, 8) + '...', elapsed_ms: Date.now() - t0 }))
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) return err(503, 'ai_not_configured', 'OPENAI_API_KEY not set')
@@ -813,6 +824,7 @@ export const handler: Handler = async (event) => {
 
   console.info('ANALYZE_PROJECT_DONE', JSON.stringify({
     endpoint:    'analyze-project',
+    requestId,
     companyId:   companyId.slice(0, 8),
     projectId:   projectId?.slice(0, 8) ?? null,
     model,
@@ -834,8 +846,9 @@ export const handler: Handler = async (event) => {
     const msg = fatal instanceof Error ? fatal.message : String(fatal)
     console.error('ANALYZE_PROJECT_FATAL', JSON.stringify({
       endpoint:    'analyze-project',
+      requestId:   typeof requestId !== 'undefined' ? requestId : null,
       error:       msg.slice(0, 500),
-      category:    'unhandled_exception',
+      category:    'internal',
       elapsed_ms:  typeof t0 !== 'undefined' ? Date.now() - t0 : -1,
     }))
     return {
