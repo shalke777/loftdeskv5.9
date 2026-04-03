@@ -19,3 +19,6 @@ _smoke_*.cjs
 _smoke_fn_bundle.cjs
 _smoke_pdf_bundle.cjs
 _smoke_*.js
+
+# Debug / diagnostic scripts (local-only)
+scripts/_*
