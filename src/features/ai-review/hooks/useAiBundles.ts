@@ -18,7 +18,7 @@ import {
 import { assessBundleReadiness } from '@/services/ai/composite/bundle-readiness'
 import type { BundleReadinessSummary } from '@/services/ai/composite/bundle-readiness'
 import { buildReviewQueue } from '@/services/ai/composite/fusion.review'
-import type { FusionReviewQueue } from '@/services/ai/composite/fusion.types'
+import type { FusionReviewQueue, FusedBundleOutput } from '@/services/ai/composite/fusion.types'
 
 export function useBundlesForProject(projectId: string | undefined) {
   return useQuery({
@@ -75,14 +75,27 @@ export function useProjectBundleReadiness(projectId: string | undefined) {
 }
 
 /**
- * Fetch fusion output via bundle-fusion Netlify function,
- * then build a FusionReviewQueue client-side using buildReviewQueue().
+ * Fetch fusion output — tries persisted snapshot first (instant DB read),
+ * falls back to bundle-fusion Netlify function (compute + save).
  *
  * Only enabled when bundleId is provided and the bundle is eligible.
  * Stale time: 60s — fusion is pure compute, result is deterministic.
  */
 async function fetchFusionReviewQueue(bundleId: string): Promise<FusionReviewQueue> {
   if (!supabase) throw new Error('Supabase not initialised')
+
+  // Fast path: read persisted snapshot directly from DB (no Netlify roundtrip)
+  const { data: snap } = await supabase
+    .from('ai_fusion_snapshots')
+    .select('result_json')
+    .eq('bundle_id', bundleId)
+    .single()
+
+  if (snap?.result_json) {
+    return buildReviewQueue(snap.result_json as FusedBundleOutput)
+  }
+
+  // Slow path: compute via Netlify function (also saves snapshot for future reads)
   const { data: { session } } = await supabase.auth.getSession()
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (session?.access_token) {
@@ -99,7 +112,7 @@ async function fetchFusionReviewQueue(bundleId: string): Promise<FusionReviewQue
     throw new Error((err as { error?: string }).error ?? `bundle-fusion error ${res.status}`)
   }
   const output = await res.json()
-  return buildReviewQueue(output)
+  return buildReviewQueue(output.fused as FusedBundleOutput)
 }
 
 export function useFusionReviewQueue(

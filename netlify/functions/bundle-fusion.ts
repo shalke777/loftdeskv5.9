@@ -1,16 +1,15 @@
 // =============================================================================
 // netlify/functions/bundle-fusion.ts
 // =============================================================================
-// Fusion Skeleton v1 — debug/read endpoint.
+// Fusion endpoint — computes and persists FusedBundleOutput.
 //
 // POST { bundle_id: string }
-// Returns FusedBundleOutput (computed in-process, not persisted to DB).
+// Returns FusedBundleOutput. Persists result to ai_fusion_snapshots for
+// instant retrieval on page reload. Staleness detected via evidence_count.
 //
 // Auth: requires valid Supabase JWT in Authorization header.
 // RLS: queries run with service-role but validate company_id from JWT claims.
 //      Bundle not belonging to caller's company → 403.
-//
-// v1 is read-only — no fused=true writes, no DB mutations.
 // =============================================================================
 
 import type { Handler, HandlerEvent } from '@netlify/functions'
@@ -132,10 +131,60 @@ export const handler: Handler = async (event: HandlerEvent) => {
     content:    (r.content as Record<string, unknown>) ?? {},
   }))
 
-  // ─── Run fusion ───────────────────────────────────────────────────────────
+  // ─── Check for valid cached snapshot ──────────────────────────────────────
+  const bundleMeta = {
+    id:             bundle.id,
+    document_type:  bundle.document_type,
+    status:         bundle.status,
+    asset_count:    bundle.asset_count,
+    extracted_count: bundle.extracted_count,
+    assets: (assets ?? []).map(a => ({
+      id:               a.id,
+      filename:         a.original_filename,
+      source_priority:  a.source_priority,
+      source_role:      a.source_role,
+      layer_type:       a.layer_type,
+    })),
+  }
+
+  const { data: snapshot } = await sb
+    .from('ai_fusion_snapshots')
+    .select('result_json, evidence_count, fusion_ms')
+    .eq('bundle_id', bundle_id)
+    .single()
+
+  if (snapshot && snapshot.evidence_count === rows.length) {
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ok: true,
+        cached: true,
+        fusion_ms: snapshot.fusion_ms,
+        bundle: bundleMeta,
+        fused: snapshot.result_json,
+      }, null, 2),
+    }
+  }
+
+  // ─── Run fusion (no valid snapshot) ─────────────────────────────────────
   const t0     = Date.now()
   const fused  = runFusion(bundle_id, rows, priorityMap, qrTyped)
   const fusionMs = Date.now() - t0
+
+  // ─── Persist snapshot ───────────────────────────────────────────────────
+  await sb
+    .from('ai_fusion_snapshots')
+    .upsert({
+      bundle_id:      bundle_id,
+      company_id:     bundle.company_id,
+      result_json:    fused,
+      evidence_count: rows.length,
+      fusion_ms:      fusionMs,
+    }, { onConflict: 'bundle_id' })
+    .then(({ error: snapErr }) => {
+      if (snapErr) console.error('[bundle-fusion] snapshot upsert failed:', snapErr.message)
+    })
 
   // ─── Return ───────────────────────────────────────────────────────────────
   return {
@@ -143,21 +192,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       ok: true,
+      cached: false,
       fusion_ms: fusionMs,
-      bundle: {
-        id:             bundle.id,
-        document_type:  bundle.document_type,
-        status:         bundle.status,
-        asset_count:    bundle.asset_count,
-        extracted_count: bundle.extracted_count,
-        assets: (assets ?? []).map(a => ({
-          id:               a.id,
-          filename:         a.original_filename,
-          source_priority:  a.source_priority,
-          source_role:      a.source_role,
-          layer_type:       a.layer_type,
-        })),
-      },
+      bundle: bundleMeta,
       fused,
     }, null, 2),
   }
