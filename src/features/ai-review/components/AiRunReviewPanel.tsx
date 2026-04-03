@@ -10,9 +10,11 @@
 // =============================================================================
 
 import { useState, useRef } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
+import { useToast } from '@/shared/hooks/useToast'
 import { computeConfidenceBand } from '@/shared/lib/confidence-model'
 import {
   useAiScopeItems,
@@ -502,6 +504,8 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
   const { user }    = useAuth()
   const companyId   = useCompanyId()
   const userId      = user?.id ?? 'unknown'
+  const toast       = useToast()
+  const navigate    = useNavigate()
 
   const { data: scope     = [], isLoading: lScope }  = useAiScopeItems(run.id)
   const { data: questions = [], isLoading: lQ }      = useAiQuestions(run.id)
@@ -753,16 +757,43 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
             {/* Estimate already exists (DB guard — survives refresh / multi-tab) */}
             {existingEstimate
               ? (
-                <p style={{ fontSize: 13, color: 'var(--color-success, #10B981)', margin: 0 }}>
-                  Wycena robocza <strong>{existingEstimate.number}</strong> już istnieje dla tego runu AI.
-                  {' '}Otwórz zakładkę Wyceny, aby ją edytować.
-                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <p style={{ fontSize: 13, color: 'var(--color-success, #10B981)', margin: 0 }}>
+                    Wycena robocza <strong>{existingEstimate.number}</strong> już istnieje dla tego runu AI.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate({ to: '/estimates', search: { create: undefined } })}
+                    style={{
+                      padding: '6px 16px', borderRadius: 6,
+                      border: '1px solid var(--color-brand)', background: 'transparent',
+                      color: 'var(--color-brand)', fontSize: 13, fontWeight: 600,
+                      cursor: 'pointer', width: 'fit-content',
+                    }}
+                  >
+                    Otwórz wyceny →
+                  </button>
+                </div>
               )
               : createdEstimate
               ? (
-                <p style={{ fontSize: 13, color: 'var(--color-success, #10B981)', margin: 0 }}>
-                  Wycena robocza <strong>{createdEstimate.number}</strong> utworzona ({createdEstimate.itemCount} pozycji). Otwórz zakładkę Wyceny, aby uzupełnić ceny i wysłać do klienta.
-                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <p style={{ fontSize: 13, color: 'var(--color-success, #10B981)', margin: 0 }}>
+                    ✓ Wycena robocza <strong>{createdEstimate.number}</strong> utworzona ({createdEstimate.itemCount} pozycji).
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate({ to: '/estimates', search: { create: undefined } })}
+                    style={{
+                      padding: '6px 16px', borderRadius: 6,
+                      border: '1px solid var(--color-brand)', background: 'var(--color-brand)',
+                      color: '#fff', fontSize: 13, fontWeight: 600,
+                      cursor: 'pointer', width: 'fit-content',
+                    }}
+                  >
+                    Otwórz wyceny — uzupełnij ceny i wyślij do klienta →
+                  </button>
+                </div>
               )
               : (
                 <button
@@ -779,6 +810,10 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
                             number:    result.estimateNumber,
                             itemCount: result.itemCount,
                           })
+                          toast.success(
+                            `Wycena ${result.estimateNumber} utworzona`,
+                            `${result.itemCount} pozycji — otwórz Wyceny, aby uzupełnić ceny`,
+                          )
                         },
                         onError: (e: unknown) => {
                           console.error('[AiRunReviewPanel] createEstimate failed:', e)
@@ -809,17 +844,39 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
             }
 
             {createEstimate.isError && (
-              <p style={{ fontSize: 12, color: 'var(--color-danger, #EF4444)', margin: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <p style={{ fontSize: 12, color: 'var(--color-danger, #EF4444)', margin: 0 }}>
+                  {(() => {
+                    const err = createEstimate.error
+                    const msg = err instanceof Error ? err.message : String((err as { message?: string } | null)?.message ?? '')
+                    const code = (err as { code?: string } | null)?.code ?? ''
+                    const isDup = code === '23505' || msg.includes('duplicate key') || msg.includes('23505')
+                    return isDup
+                      ? 'Wycena dla tego runu już istnieje.'
+                      : (msg || 'Nie udało się utworzyć wyceny.')
+                  })()}
+                </p>
                 {(() => {
                   const err = createEstimate.error
                   const msg = err instanceof Error ? err.message : String((err as { message?: string } | null)?.message ?? '')
                   const code = (err as { code?: string } | null)?.code ?? ''
                   const isDup = code === '23505' || msg.includes('duplicate key') || msg.includes('23505')
-                  return isDup
-                    ? 'Wycena dla tego runu już istnieje. Odśwież stronę, aby zobaczyć istniejącą wycenę.'
-                    : (msg || 'Nie udało się utworzyć wyceny.')
+                  return isDup ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate({ to: '/estimates', search: { create: undefined } })}
+                      style={{
+                        padding: '4px 12px', borderRadius: 6,
+                        border: '1px solid var(--color-brand)', background: 'transparent',
+                        color: 'var(--color-brand)', fontSize: 12, fontWeight: 600,
+                        cursor: 'pointer', width: 'fit-content',
+                      }}
+                    >
+                      Otwórz wyceny →
+                    </button>
+                  ) : null
                 })()}
-              </p>
+              </div>
             )}
           </div>
         )
