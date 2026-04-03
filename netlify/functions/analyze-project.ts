@@ -439,6 +439,21 @@ export const handler: Handler = async (event) => {
     return err(403, 'project_access_denied', 'Project not found or access denied')
   }
 
+  // ── Plan check: AI Engine requires Pro or Business tier ───────────────────
+  const { data: company, error: planErr } = await sbService
+    .from('companies')
+    .select('plan')
+    .eq('id', companyId)
+    .single()
+
+  if (planErr || !company) {
+    console.error('[analyze-project] Plan check failed:', planErr?.message)
+    return err(500, 'plan_check_failed', 'Could not verify company plan')
+  }
+  if (!['pro', 'business', 'admin'].includes((company as { plan: string }).plan)) {
+    return err(403, 'plan_insufficient', 'AI Engine requires a Pro or Business plan')
+  }
+
   // ── Daily company limit ─────────────────────────────────────────────────
   const dailyLimit = parseInt(process.env.AI_DAILY_LIMIT ?? '50', 10)
   const { count: todayCount, error: countErr } = await sbService
@@ -797,6 +812,9 @@ export const handler: Handler = async (event) => {
   // ── End bathroom dependency injection ─────────────────────────────────────
 
   console.info('ANALYZE_PROJECT_DONE', JSON.stringify({
+    endpoint:    'analyze-project',
+    companyId:   companyId.slice(0, 8),
+    projectId:   projectId?.slice(0, 8) ?? null,
     model,
     fileType,
     isPdf,
@@ -814,7 +832,12 @@ export const handler: Handler = async (event) => {
 
   } catch (fatal: unknown) {
     const msg = fatal instanceof Error ? fatal.message : String(fatal)
-    console.error('ANALYZE_PROJECT_FATAL', JSON.stringify({ error: msg.slice(0, 500), elapsed_ms: typeof t0 !== 'undefined' ? Date.now() - t0 : -1 }))
+    console.error('ANALYZE_PROJECT_FATAL', JSON.stringify({
+      endpoint:    'analyze-project',
+      error:       msg.slice(0, 500),
+      category:    'unhandled_exception',
+      elapsed_ms:  typeof t0 !== 'undefined' ? Date.now() - t0 : -1,
+    }))
     return {
       statusCode: 500,
       headers: CORS_HEADERS,

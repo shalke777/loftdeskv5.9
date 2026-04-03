@@ -519,6 +519,7 @@ interface ResponsesAPIResult {
 // ── Handler ──────────────────────────────────────────────────────────────────
 
 export const handler: Handler = async (event: HandlerEvent) => {
+  const t0 = Date.now()
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS_HEADERS, body: '' }
   if (event.httpMethod !== 'POST')    return err(405, 'method_not_allowed', 'Only POST allowed')
 
@@ -672,7 +673,16 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return err(429, 'daily_limit_exceeded', `Dzienny limit analiz AI (${dailyLimit}) został wyczerpany. Spróbuj ponownie jutro.`)
   }
 
-  console.info('ROOM_ANALYSIS_START', JSON.stringify({ model, imageType, imageCount, hasContext: !!context, hasClarification: !!clarification, roomType, projectId: projectId ?? null }))
+  console.info('ROOM_ANALYSIS_START', JSON.stringify({
+    endpoint:        'analyze-room-photo',
+    companyId:       companyId.slice(0, 8),
+    projectId:       projectId?.slice(0, 8) ?? null,
+    model, imageType, imageCount,
+    hasContext:       !!context,
+    hasClarification: !!clarification,
+    roomType,
+    elapsed_ms:      Date.now() - t0,
+  }))
 
   // ── Build input ─────────────────────────────────────────────────────────
 
@@ -1019,6 +1029,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // ── End bathroom dependency injection ─────────────────────────────────────
 
   console.info('ROOM_ANALYSIS_DONE', JSON.stringify({
+    endpoint:       'analyze-room-photo',
+    companyId:      companyId.slice(0, 8),
+    projectId:      projectId?.slice(0, 8) ?? null,
     model,
     imageCount,
     spaceType:      result.space_type,
@@ -1031,6 +1044,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     estimateItems:  result.suggested_estimate_items.length,
     confidence:     result.confidence,
     warnings:       result.warnings.length,
+    total_ms:       Date.now() - t0,
   }))
 
   // ── Persist analysis bundle — REQUIRED for auditability ──────────────────

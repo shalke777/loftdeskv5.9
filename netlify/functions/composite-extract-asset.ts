@@ -363,6 +363,21 @@ export const handler: Handler = async (event) => {
     const projectId = assetRow.project_id as string
     const sourceRole = (sourceRoleOverride ?? assetRow.source_role ?? 'unknown') as string
 
+    // ── Plan check: AI Engine requires Pro or Business tier ─────────────────
+    const { data: companyRow, error: planErr } = await sbAdmin
+      .from('companies')
+      .select('plan')
+      .eq('id', companyId)
+      .single()
+
+    if (planErr || !companyRow) {
+      console.error('[composite-extract-asset] Plan check failed:', planErr?.message)
+      return err(500, 'plan_check_failed', 'Could not verify company plan')
+    }
+    if (!['pro', 'business', 'admin'].includes((companyRow as { plan: string }).plan)) {
+      return err(403, 'plan_insufficient', 'AI Engine requires a Pro or Business plan')
+    }
+
     // ── Daily company limit ───────────────────────────────────────────────
     const dailyLimit = parseInt(process.env.AI_DAILY_LIMIT ?? '50', 10)
     const { count: todayCount, error: countErr } = await sbAdmin
@@ -423,7 +438,11 @@ export const handler: Handler = async (event) => {
     }
 
     console.info('EVIDENCE_EXTRACT_START', JSON.stringify({
-      assetId: assetId.slice(0, 8),
+      endpoint:   'composite-extract-asset',
+      companyId:  companyId.slice(0, 8),
+      projectId:  projectId?.slice(0, 8) ?? null,
+      assetId:    assetId.slice(0, 8),
+      bundleId:   bundleId.slice(0, 8),
       sourceRole,
       isPdf,
       elapsed_ms: Date.now() - t0,
@@ -450,7 +469,15 @@ export const handler: Handler = async (event) => {
       const rawBody = await resp.text()
 
       if (!resp.ok) {
-        console.error('OPENAI_ERROR', JSON.stringify({ status: resp.status, body: rawBody.slice(0, 300) }))
+        console.error('OPENAI_ERROR', JSON.stringify({
+          endpoint:   'composite-extract-asset',
+          companyId:  companyId.slice(0, 8),
+          assetId:    assetId.slice(0, 8),
+          status:     resp.status,
+          category:   resp.status === 429 ? 'quota_exceeded' : 'provider_error',
+          body:       rawBody.slice(0, 300),
+          elapsed_ms: Date.now() - t0,
+        }))
         await sbAdmin.from('ai_bundle_assets').update({
           extraction_status: 'failed',
           processing_error:  `OpenAI ${resp.status}: ${rawBody.slice(0, 200)}`,
@@ -539,8 +566,12 @@ export const handler: Handler = async (event) => {
 
     const extraction_ms = Date.now() - t0
     console.info('EVIDENCE_EXTRACT_DONE', JSON.stringify({
-      assetId: assetId.slice(0, 8),
-      evidence_count: persistResult.evidence_count,
+      endpoint:           'composite-extract-asset',
+      companyId:          companyId.slice(0, 8),
+      projectId:          projectId?.slice(0, 8) ?? null,
+      assetId:            assetId.slice(0, 8),
+      bundleId:           bundleId.slice(0, 8),
+      evidence_count:     persistResult.evidence_count,
       confidence_summary: extracted.confidence_summary,
       extraction_ms,
     }))
@@ -558,7 +589,12 @@ export const handler: Handler = async (event) => {
 
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
-    console.error('[composite-extract-asset] unhandled:', msg)
+    console.error('EVIDENCE_EXTRACT_FATAL', JSON.stringify({
+      endpoint:   'composite-extract-asset',
+      error:      msg.slice(0, 500),
+      category:   'unhandled_exception',
+      elapsed_ms: Date.now() - t0,
+    }))
     return err(500, 'internal_error', `Unexpected error: ${msg.slice(0, 200)}`)
   }
 }
