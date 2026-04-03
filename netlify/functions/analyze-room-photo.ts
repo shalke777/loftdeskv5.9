@@ -24,6 +24,7 @@ import crypto from 'crypto'
 import { detectBathroomTriggers, expandDependencies, isBathroomSpace } from './shared/bathroom-triggers'
 import type { ClarificationQuestion } from './shared/bathroom-triggers'
 import { persistAnalysisBundle } from './shared/ai-persist'
+import { isRateLimitedDb } from './shared/rate-limit'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 // Local interfaces match src/services/ai/engines/room.types.ts (RoomAnalysisResult v2)
@@ -130,19 +131,14 @@ async function verifyRequestAuth(event: HandlerEvent): Promise<string | null> {
   }
 }
 
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 const RATE_MAX       = 8
 const RATE_WINDOW_MS = 10 * 60 * 1000
 
-function isRateLimited(userId: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitMap.get(userId)
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_WINDOW_MS })
-    return false
-  }
-  entry.count++
-  return entry.count > RATE_MAX
+function makeRateLimitClient() {
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? ''
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+  if (!url || !key) return null
+  return createClient(url, key, { auth: { persistSession: false } })
 }
 
 function ok(result: RoomAnalysisResult) {
@@ -534,7 +530,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (!userId) return err(401, 'unauthorized', 'Valid authentication token required.')
   // AI MVP requires real Supabase auth — 'dev' fallback (no Supabase configured) is not permitted
   if (userId === 'dev') return err(503, 'auth_not_configured', 'AI Engine requires Supabase authentication')
-  if (isRateLimited(userId)) return err(429, 'too_many_requests', 'Za dużo żądań. Spróbuj za chwilę.')
+  const rlClient = makeRateLimitClient()
+  if (rlClient) {
+    const rl = await isRateLimitedDb(rlClient, userId, 'analyze-room-photo', RATE_MAX, RATE_WINDOW_MS)
+    if (rl.limited) return err(429, 'too_many_requests', 'Za dużo żądań. Spróbuj za chwilę.')
+  }
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) return err(503, 'ai_not_configured', 'OPENAI_API_KEY is not set')

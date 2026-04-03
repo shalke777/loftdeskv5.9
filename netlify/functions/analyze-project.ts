@@ -131,19 +131,16 @@ async function verifyRequestAuth(event: HandlerEvent): Promise<string | null> {
   }
 }
 
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+import { isRateLimitedDb } from './shared/rate-limit'
+
 const RATE_MAX       = 6
 const RATE_WINDOW_MS = 10 * 60 * 1000
 
-function isRateLimited(userId: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitMap.get(userId)
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_WINDOW_MS })
-    return false
-  }
-  entry.count++
-  return entry.count > RATE_MAX
+function makeRateLimitClient() {
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? ''
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+  if (!url || !key) return null
+  return createClient(url, key, { auth: { persistSession: false } })
 }
 
 function ok(result: ProjectAnalysisResult) {
@@ -376,7 +373,11 @@ export const handler: Handler = async (event) => {
   if (!userId) return err(401, 'unauthorized', 'Valid session required')
   // AI requires real Supabase auth — 'dev' fallback is not permitted
   if (userId === 'dev') return err(503, 'auth_not_configured', 'AI Engine requires Supabase authentication')
-  if (isRateLimited(userId)) return err(429, 'too_many_requests', 'Rate limit exceeded')
+  const rlClient = makeRateLimitClient()
+  if (rlClient) {
+    const rl = await isRateLimitedDb(rlClient, userId, 'analyze-project', RATE_MAX, RATE_WINDOW_MS)
+    if (rl.limited) return err(429, 'too_many_requests', 'Rate limit exceeded')
+  }
 
   console.info('AUTH_OK', JSON.stringify({ requestId, userId: userId.slice(0, 8) + '...', elapsed_ms: Date.now() - t0 }))
 

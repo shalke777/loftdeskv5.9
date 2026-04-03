@@ -32,6 +32,7 @@ import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 import { persistEvidenceOutput } from './shared/evidence-persist'
 import type { FlatExtractionOutput, FlatEvidenceItem } from './shared/evidence-persist'
+import { isRateLimitedDb } from './shared/rate-limit'
 import { EVIDENCE_SYSTEM_PROMPT, buildEvidenceUserMessage } from '../../src/services/ai/prompts/evidence.prompt'
 
 // ── Infra ────────────────────────────────────────────────────────────────────
@@ -89,20 +90,14 @@ async function resolveAuth(event: HandlerEvent): Promise<{
 
 // ── Rate limit ────────────────────────────────────────────────────────────────
 
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 const RATE_MAX = 10
 const RATE_WINDOW_MS = 10 * 60 * 1000
 
-function isRateLimited(userId: string): boolean {
-  if (userId === 'dev') return false
-  const now = Date.now()
-  const entry = rateLimitMap.get(userId)
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_WINDOW_MS })
-    return false
-  }
-  entry.count++
-  return entry.count > RATE_MAX
+function makeRateLimitClient() {
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? ''
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+  if (!url || !key) return null
+  return createClient(url, key, { auth: { persistSession: false } })
 }
 
 // ── JSON Schema for Structured Evidence Output ────────────────────────────────
@@ -308,7 +303,11 @@ export const handler: Handler = async (event) => {
     if (!auth) return err(401, 'unauthorized', 'Valid session required')
     // AI requires real Supabase auth — 'dev' fallback is not permitted
     if (auth.userId === 'dev') return err(503, 'auth_not_configured', 'AI Engine requires Supabase authentication')
-    if (isRateLimited(auth.userId)) return err(429, 'too_many_requests', 'Rate limit exceeded')
+    const rlClient = makeRateLimitClient()
+    if (rlClient) {
+      const rl = await isRateLimitedDb(rlClient, auth.userId, 'composite-extract-asset', RATE_MAX, RATE_WINDOW_MS)
+      if (rl.limited) return err(429, 'too_many_requests', 'Rate limit exceeded')
+    }
 
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) return err(503, 'ai_not_configured', 'OPENAI_API_KEY not set')

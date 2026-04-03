@@ -23,6 +23,7 @@ import type { Handler, HandlerEvent } from '@netlify/functions'
 import type { ParseInvoiceResult } from './parse-invoice'
 import { extractTextFromPDF, extractEmbeddedJpegsFromPdf, isPdfTextUsable } from './parse-invoice'
 import { createClient } from '@supabase/supabase-js'
+import { isRateLimitedDb } from './shared/rate-limit'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -52,21 +53,15 @@ async function verifyRequestAuth(event: HandlerEvent): Promise<string | null> {
   }
 }
 
-// ─── Rate limiting (in-memory, per user, 10 req / 10 min) ────────────────────
-// Stricter than OCR because each request calls the OpenAI API.
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+// ─── Rate limiting (persistent, per user, 10 req / 10 min) ────────────────────
 const RATE_MAX       = 10
 const RATE_WINDOW_MS = 10 * 60 * 1000
 
-function isRateLimited(userId: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitMap.get(userId)
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_WINDOW_MS })
-    return false
-  }
-  entry.count++
-  return entry.count > RATE_MAX
+function makeRateLimitClient() {
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? ''
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+  if (!url || !key) return null
+  return createClient(url, key, { auth: { persistSession: false } })
 }
 
 function ok(result: ParseInvoiceResult, meta: { aiModelUsed: string }) {
@@ -275,7 +270,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // Auth guard: valid Supabase session required
   const userId = await verifyRequestAuth(event)
   if (!userId) return err(401, 'unauthorized', 'Valid authentication token required.')
-  if (isRateLimited(userId)) return err(429, 'too_many_requests', 'Za dużo żądań. Spróbuj za chwilę.')
+  const rlClient = makeRateLimitClient()
+  if (rlClient) {
+    const rl = await isRateLimitedDb(rlClient, userId, 'parse-invoice-ai', RATE_MAX, RATE_WINDOW_MS)
+    if (rl.limited) return err(429, 'too_many_requests', 'Za dużo żądań. Spróbuj za chwilę.')
+  }
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
