@@ -132,6 +132,7 @@ async function verifyRequestAuth(event: HandlerEvent): Promise<string | null> {
 }
 
 import { isRateLimitedDb } from './shared/rate-limit'
+import { captureAiError, flushSentry } from './shared/sentry'
 
 const RATE_MAX       = 6
 const RATE_WINDOW_MS = 10 * 60 * 1000
@@ -852,6 +853,16 @@ export const handler: Handler = async (event) => {
       category:    'internal',
       elapsed_ms:  typeof t0 !== 'undefined' ? Date.now() - t0 : -1,
     }))
+    captureAiError(fatal, {
+      endpoint:   'analyze-project',
+      requestId:  typeof requestId !== 'undefined' ? requestId : null,
+      category:   'internal',
+      userId:     typeof userId !== 'undefined' ? userId ?? undefined : undefined,
+      companyId:  typeof companyId !== 'undefined' ? companyId : undefined,
+      projectId:  typeof projectId !== 'undefined' ? projectId || undefined : undefined,
+      elapsed_ms: typeof t0 !== 'undefined' ? Date.now() - t0 : undefined,
+    })
+    await flushSentry()
     return {
       statusCode: 500,
       headers: CORS_HEADERS,

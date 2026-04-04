@@ -30,6 +30,7 @@
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-slot": "^1.1.0",
+    "@sentry/node": "^10.47.0",
     "@sentry/react": "^10.45.0",
     "@stripe/stripe-js": "^8.9.0",
     "@supabase/supabase-js": "^2.56.0",

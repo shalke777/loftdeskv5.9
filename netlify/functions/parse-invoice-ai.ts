@@ -24,6 +24,7 @@ import type { ParseInvoiceResult } from './parse-invoice'
 import { extractTextFromPDF, extractEmbeddedJpegsFromPdf, isPdfTextUsable } from './parse-invoice'
 import { createClient } from '@supabase/supabase-js'
 import { isRateLimitedDb } from './shared/rate-limit'
+import { captureAiError, flushSentry } from './shared/sentry'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -516,6 +517,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error('OPENAI_AI_ERROR', JSON.stringify({ model, docKind, errorMessage: msg }))
+    captureAiError(e, {
+      endpoint: 'parse-invoice-ai', requestId: null, category: 'provider_error',
+      userId, extra: { model, docKind },
+    })
+    await flushSentry()
     return err(502, 'ai_call_failed', msg, { aiModelUsed: model, aiAttempted: true })
   }
 
@@ -526,6 +532,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
     ai = JSON.parse(aiRaw) as Record<string, unknown>
   } catch {
     console.error('OPENAI_AI_ERROR', JSON.stringify({ model, docKind, errorMessage: 'ai_invalid_json', preview: aiRaw.slice(0, 300) }))
+    captureAiError(new Error('AI returned non-JSON response'), {
+      endpoint: 'parse-invoice-ai', requestId: null, category: 'provider_error',
+      userId, extra: { model, docKind, rawPreview: aiRaw.slice(0, 300) },
+    })
+    await flushSentry()
     return err(502, 'ai_invalid_json', 'AI returned non-JSON response', { aiModelUsed: model, aiAttempted: true })
   }
 

@@ -33,6 +33,7 @@ import crypto from 'crypto'
 import { persistEvidenceOutput } from './shared/evidence-persist'
 import type { FlatExtractionOutput, FlatEvidenceItem } from './shared/evidence-persist'
 import { isRateLimitedDb } from './shared/rate-limit'
+import { captureAiError, flushSentry } from './shared/sentry'
 import { EVIDENCE_SYSTEM_PROMPT, buildEvidenceUserMessage } from '../../src/services/ai/prompts/evidence.prompt'
 
 // ── Infra ────────────────────────────────────────────────────────────────────
@@ -607,6 +608,16 @@ export const handler: Handler = async (event) => {
       category:   'internal',
       elapsed_ms: Date.now() - t0,
     }))
+    captureAiError(e, {
+      endpoint:   'composite-extract-asset',
+      requestId,
+      category:   'internal',
+      userId:     typeof userId !== 'undefined' ? userId : undefined,
+      companyId:  typeof companyId !== 'undefined' ? companyId : undefined,
+      projectId:  typeof projectId !== 'undefined' ? projectId ?? undefined : undefined,
+      elapsed_ms: Date.now() - t0,
+    })
+    await flushSentry()
     return err(500, 'internal_error', `Unexpected error: ${msg.slice(0, 200)}`)
   }
 }

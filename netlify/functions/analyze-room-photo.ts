@@ -25,6 +25,7 @@ import { detectBathroomTriggers, expandDependencies, isBathroomSpace } from './s
 import type { ClarificationQuestion } from './shared/bathroom-triggers'
 import { persistAnalysisBundle } from './shared/ai-persist'
 import { isRateLimitedDb } from './shared/rate-limit'
+import { captureAiError, flushSentry } from './shared/sentry'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 // Local interfaces match src/services/ai/engines/room.types.ts (RoomAnalysisResult v2)
@@ -793,6 +794,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
       endpoint: 'analyze-room-photo', requestId, category: 'provider_error',
       error: msg.slice(0, 500), elapsed_ms: Date.now() - t0,
     }))
+    captureAiError(e, {
+      endpoint: 'analyze-room-photo', requestId, category: 'provider_error',
+      userId, elapsed_ms: Date.now() - t0,
+    })
+    await flushSentry()
     return err(502, 'ai_call_failed', msg)
   }
 
@@ -806,6 +812,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
       endpoint: 'analyze-room-photo', requestId, category: 'provider_error',
       raw: aiRaw.slice(0, 300), elapsed_ms: Date.now() - t0,
     }))
+    captureAiError(new Error('AI returned non-JSON response'), {
+      endpoint: 'analyze-room-photo', requestId, category: 'provider_error',
+      userId, elapsed_ms: Date.now() - t0,
+      extra: { rawPreview: aiRaw.slice(0, 300) },
+    })
+    await flushSentry()
     return err(502, 'ai_invalid_json', 'AI returned non-JSON response')
   }
 
