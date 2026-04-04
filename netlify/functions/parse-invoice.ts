@@ -199,22 +199,177 @@ export function extractEmbeddedJpegsFromPdf(buffer: Buffer): Buffer[] {
 
 // ─── PDF text helpers ─────────────────────────────────────────────────────────
 
+// ── ToUnicode CMap support ───────────────────────────────────────────────────
+// Subsetted-font PDFs (LibreOffice, Word, many Polish accounting programs)
+// encode text as glyph IDs that need a ToUnicode CMap to decode.
+// Without CMap decoding, these PDFs appear as empty/garbage text.
+
+type GlyphMap = Map<number, number>  // glyphId → Unicode codepoint
+
+/** Parse a ToUnicode CMap stream into a glyph→Unicode map. */
+function parseCMap(text: string): GlyphMap {
+  const map: GlyphMap = new Map()
+  // beginbfchar entries: <glyphId> <unicode>
+  const bfcharRe = /beginbfchar\s*([\s\S]*?)endbfchar/g
+  let m: RegExpExecArray | null
+  while ((m = bfcharRe.exec(text)) !== null) {
+    const entryRe = /<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g
+    let em: RegExpExecArray | null
+    while ((em = entryRe.exec(m[1])) !== null) {
+      map.set(parseInt(em[1], 16), parseInt(em[2], 16))
+    }
+  }
+  // beginbfrange entries: <start> <end> <unicode_start>
+  const bfrangeRe = /beginbfrange\s*([\s\S]*?)endbfrange/g
+  while ((m = bfrangeRe.exec(text)) !== null) {
+    const rangeRe = /<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g
+    let rm: RegExpExecArray | null
+    while ((rm = rangeRe.exec(m[1])) !== null) {
+      const start = parseInt(rm[1], 16)
+      const end   = parseInt(rm[2], 16)
+      let unicode  = parseInt(rm[3], 16)
+      for (let g = start; g <= end; g++) map.set(g, unicode++)
+    }
+  }
+  return map
+}
+
+/** Build font name → CMap mapping by scanning the raw PDF. */
+async function buildFontCMaps(buffer: Buffer): Promise<Map<string, GlyphMap>> {
+  const str = buffer.toString('binary')
+  const result = new Map<string, GlyphMap>()
+
+  // Step 1: Find all object start positions
+  const objStarts: { id: number; pos: number }[] = []
+  const objStartRe = /(\d+)\s+0\s+obj\b/g
+  let om: RegExpExecArray | null
+  while ((om = objStartRe.exec(str)) !== null) {
+    objStarts.push({ id: parseInt(om[1]), pos: om.index })
+  }
+  objStarts.sort((a, b) => a.pos - b.pos)
+
+  function getObjBody(objId: number): string {
+    const entry = objStarts.find(o => o.id === objId)
+    if (!entry) return ''
+    const nextIdx = objStarts.findIndex(o => o.pos > entry.pos)
+    const nextPos = nextIdx >= 0 ? objStarts[nextIdx].pos : str.length
+    return str.substring(entry.pos, nextPos)
+  }
+
+  // Step 2: Decompress all streams and find CMap data keyed by object number
+  const objCMaps = new Map<number, GlyphMap>()
+  for (let i = 0; i < objStarts.length; i++) {
+    const { id, pos } = objStarts[i]
+    const nextPos = i + 1 < objStarts.length ? objStarts[i + 1].pos : str.length
+    const objText = str.substring(pos, nextPos)
+
+    const streamMatch = objText.match(/stream\r?\n([\s\S]*?)\r?\nendstream/)
+    if (!streamMatch) continue
+
+    const streamStartInObj = objText.indexOf(streamMatch[0])
+    const dataStart = streamStartInObj + streamMatch[0].indexOf('\n') + 1
+    const raw = buffer.slice(pos + dataStart, pos + dataStart + streamMatch[1].length)
+
+    let decompressed: string
+    try {
+      let dec: Buffer
+      try { dec = await inflateRawAsync(raw) } catch { dec = await inflateAsync(raw) }
+      decompressed = dec.toString('utf8')
+    } catch { continue }
+
+    if (decompressed.includes('beginbfchar') || decompressed.includes('beginbfrange')) {
+      const cmap = parseCMap(decompressed)
+      if (cmap.size > 0) objCMaps.set(id, cmap)
+    }
+  }
+
+  if (objCMaps.size === 0) return result
+
+  // Step 3: Find font resource name → font object mappings
+  // Handles both inline: /Font << /F1 5 0 R >> and indirect: /Font 25 0 R
+  const fontNameToObj = new Map<string, number>()
+
+  function parseFontDict(dictContent: string) {
+    const entryRe = /\/(\w+)\s+(\d+)\s+0\s+R/g
+    let fe: RegExpExecArray | null
+    while ((fe = entryRe.exec(dictContent)) !== null) {
+      fontNameToObj.set(fe[1], parseInt(fe[2]))
+    }
+  }
+
+  // Inline font dicts: /Font << /F1 5 0 R /F2 10 0 R >>
+  const fontDictRe = /\/Font\s*<<([\s\S]*?)>>/g
+  while ((om = fontDictRe.exec(str)) !== null) {
+    parseFontDict(om[1])
+  }
+
+  // Indirect font dicts: /Font 25 0 R → resolve object 25
+  const fontRefRe = /\/Font\s+(\d+)\s+0\s+R/g
+  while ((om = fontRefRe.exec(str)) !== null) {
+    const refObjId = parseInt(om[1])
+    const refBody = getObjBody(refObjId)
+    // Object contains << /F1 N 0 R /F2 M 0 R ... >>
+    const dictMatch = refBody.match(/<<([\s\S]*?)>>/)
+    if (dictMatch) parseFontDict(dictMatch[1])
+  }
+
+  // Step 4: For each font object, find its ToUnicode reference
+  for (const [fontName, fontObjId] of fontNameToObj) {
+    const objBody = getObjBody(fontObjId)
+    const tuMatch = objBody.match(/\/ToUnicode\s+(\d+)\s+0\s+R/)
+    if (tuMatch) {
+      const tuObjId = parseInt(tuMatch[1])
+      if (objCMaps.has(tuObjId)) {
+        result.set(fontName, objCMaps.get(tuObjId)!)
+        continue
+      }
+    }
+    // Check DescendantFonts for Type0 fonts
+    const descMatch = objBody.match(/\/DescendantFonts\s*\[\s*(\d+)\s+0\s+R/)
+    if (descMatch) {
+      const descBody = getObjBody(parseInt(descMatch[1]))
+      const descTU = descBody.match(/\/ToUnicode\s+(\d+)\s+0\s+R/)
+      if (descTU) {
+        const tuObjId = parseInt(descTU[1])
+        if (objCMaps.has(tuObjId)) result.set(fontName, objCMaps.get(tuObjId)!)
+      }
+    }
+  }
+
+  return result
+}
+
+/** Decode a hex string using a CMap glyph→Unicode table. */
+function decodePdfHexStrWithCMap(hex: string, cmap: GlyphMap): string {
+  const clean = hex.replace(/\s+/g, '')
+  if (clean.length === 0 || clean.length % 2 !== 0) return ''
+  const chars: string[] = []
+  for (let i = 0; i < clean.length; i += 2) {
+    const glyphId = parseInt(clean.slice(i, i + 2), 16)
+    const unicode = cmap.get(glyphId)
+    if (unicode != null && unicode >= 0x20) {
+      chars.push(String.fromCodePoint(unicode))
+    }
+  }
+  return chars.join('')
+}
+
 /**
  * Decode a PDF hex string literal <hexhex...> to readable text.
  *
- * Handles three cases common in modern Polish accounting PDFs:
+ * Handles four cases common in modern Polish accounting PDFs:
+ *   0. CMap-based decoding (subsetted fonts) — used when cmap is provided
  *   1. UTF-16 BE with BOM (FE FF ...) — headless Chrome, Puppeteer, jsPDF
- *   2. 2-byte Identity-H glyph IDs that ARE Unicode code points:
- *      - At least 80 % of code points fall in U+0020–U+017E (Basic Latin + Latin
- *        Extended-A = all ASCII + all Polish diacritics). Modern PDF generators
- *        (iFirma, Fakturownia, Comarch, wFirma, LibreOffice) embed ToUnicode CMaps
- *        so their glyph IDs equal the Unicode code point.
- *   3. Single-byte pure ASCII hex (simple embedded fonts).
- *
- * Returns '' for hex strings that look like raw glyph indices without a ToUnicode
- * mapping (i.e. mostly outside the plausible Latin range).
+ *   2. 2-byte Identity-H glyph IDs that ARE Unicode code points
+ *   3. Single-byte pure ASCII hex (simple embedded fonts)
  */
-function decodePdfHexStr(hex: string): string {
+function decodePdfHexStr(hex: string, cmap?: GlyphMap): string {
+  // Case 0: CMap-based decoding (subsetted fonts)
+  if (cmap && cmap.size > 0) {
+    const result = decodePdfHexStrWithCMap(hex, cmap)
+    if (result.trim()) return result
+  }
+
   const clean = hex.replace(/\s+/g, '')
   if (clean.length === 0 || clean.length % 2 !== 0) return ''
 
@@ -240,8 +395,6 @@ function decodePdfHexStr(hex: string): string {
     for (let i = 0; i + 1 < bytes.length; i += 2) {
       codePoints.push((bytes[i] << 8) | bytes[i + 1])
     }
-    // U+0020–U+017E covers all ASCII printable + Latin-1 Supplement + Latin Extended-A
-    // (includes ą ę ó ł ś ź ć ń ż Ą Ę Ó Ł Ś Ź Ć Ń Ż and all Polish diacritics)
     const plausible = codePoints.filter(cp => cp >= 0x0020 && cp <= 0x017E).length
     if (codePoints.length > 0 && plausible / codePoints.length >= 0.80) {
       return codePoints
@@ -263,9 +416,31 @@ function decodePdfHexStr(hex: string): string {
 /** Extract Tj/TJ operators from a single PDF text-object block (between BT/ET).
  *
  * Handles both parenthesized strings (legacy / WinAnsi) and hex strings
- * (CIDFont / Identity-H / UTF-16 BE used by modern invoicing apps). */
-function extractTjFromBlock(block: string): string {
+ * (CIDFont / Identity-H / UTF-16 BE / subsetted fonts with CMap).
+ * The fontCMaps parameter provides per-font glyph→Unicode mappings
+ * parsed from ToUnicode streams. */
+function extractTjFromBlock(block: string, fontCMaps?: Map<string, GlyphMap>): string {
   const parts: string[] = []
+
+  // Track current font via Tf operator (e.g. "/F1 12 Tf")
+  let currentFont = ''
+  const tfRe = /\/(\w+)\s+[\d.]+\s+Tf/g
+  const tfPositions: { pos: number; font: string }[] = []
+  let tm: RegExpExecArray | null
+  while ((tm = tfRe.exec(block)) !== null) {
+    tfPositions.push({ pos: tm.index, font: tm[1] })
+  }
+
+  function getCMapAt(pos: number): GlyphMap | undefined {
+    if (!fontCMaps || fontCMaps.size === 0) return undefined
+    // Find the most recent Tf before this position
+    let font = currentFont
+    for (const tp of tfPositions) {
+      if (tp.pos <= pos) font = tp.font
+      else break
+    }
+    return font ? fontCMaps.get(font) : undefined
+  }
 
   // (text) Tj — single parenthesized string
   const tjRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)\s*Tj/g
@@ -275,10 +450,11 @@ function extractTjFromBlock(block: string): string {
     if (t.trim()) parts.push(t.trim())
   }
 
-  // <hexhex> Tj — single hex string (CIDFont / UTF-16 BE)
+  // <hexhex> Tj — single hex string (CIDFont / UTF-16 BE / subsetted)
   const hexTjRe = /<([0-9A-Fa-f\s]+)>\s*Tj/g
   while ((m = hexTjRe.exec(block)) !== null) {
-    const t = decodePdfHexStr(m[1])
+    const cmap = getCMapAt(m.index)
+    const t = decodePdfHexStr(m[1], cmap)
     if (t) parts.push(t)
   }
 
@@ -286,6 +462,7 @@ function extractTjFromBlock(block: string): string {
   const tjArrRe = /\[([^\]]+)\]\s*TJ/g
   while ((m = tjArrRe.exec(block)) !== null) {
     const arrayContent = m[1]
+    const cmap = getCMapAt(m.index)
 
     // Parenthesized strings in the array — push separately
     const strRe = /\(([^)\\]*(?:\\.[^)\\]*)*)\)/g
@@ -300,7 +477,7 @@ function extractTjFromBlock(block: string): string {
     const hexFragments: string[] = []
     const hexRe = /<([0-9A-Fa-f\s]+)>/g
     while ((sm = hexRe.exec(arrayContent)) !== null) {
-      const t = decodePdfHexStr(sm[1])
+      const t = decodePdfHexStr(sm[1], cmap)
       if (t) hexFragments.push(t)
     }
     if (hexFragments.length > 0) {
@@ -320,8 +497,7 @@ function extractTjFromBlock(block: string): string {
  * (iFirma, Fakturownia, Comarch, wFirma, LibreOffice, Chrome-print) place each
  * field value in its own BT…ET block — this preserves that structure.
  * Falls back to flat space-joined extraction for older single-block PDFs. */
-function extractTjFromStream(stream: string): string {
-  // Split on BT (Begin-Text) markers — each BT…ET pair is a text object.
+function extractTjFromStream(stream: string, fontCMaps?: Map<string, GlyphMap>): string {
   const btRe = /\bBT\b([\s\S]*?)(?:\bET\b|$)/g
   const lines: string[] = []
   let m: RegExpExecArray | null
@@ -329,14 +505,13 @@ function extractTjFromStream(stream: string): string {
 
   while ((m = btRe.exec(stream)) !== null) {
     hasBt = true
-    const text = extractTjFromBlock(m[1])
+    const text = extractTjFromBlock(m[1], fontCMaps)
     if (text.trim()) lines.push(text.trim())
   }
 
   if (hasBt) return lines.join('\n')
 
-  // No BT markers — treat stream as one block (uncommon; legacy single-block PDFs)
-  return extractTjFromBlock(stream)
+  return extractTjFromBlock(stream, fontCMaps)
 }
 
 function decodePdfStr(s: string): string {
@@ -359,6 +534,12 @@ function decodePdfStr(s: string): string {
  * and fall through to the JPEG OCR extraction path.
  */
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+  // Pre-parse ToUnicode CMaps for subsetted-font PDFs
+  const fontCMaps = await buildFontCMaps(buffer)
+  if (fontCMaps.size > 0) {
+    console.info('PDF_CMAPS_FOUND', JSON.stringify({ fonts: [...fontCMaps.keys()], totalGlyphs: [...fontCMaps.values()].reduce((s, m) => s + m.size, 0) }))
+  }
+
   const chunks: string[] = []
   const str = buffer.toString('binary')
 
@@ -378,8 +559,6 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
     let content: string
     if (isFlate) {
       try {
-        // PDF spec §7.3.8.1 — strip the mandatory end-of-line before 'endstream'
-        // to avoid "Junk found after end of compressed data" errors
         let sliceEnd = streamEnd
         if (sliceEnd > streamStart && str[sliceEnd - 1] === '\n') sliceEnd--
         if (sliceEnd > streamStart && str[sliceEnd - 1] === '\r') sliceEnd--
@@ -387,28 +566,22 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
         const compressed = buffer.slice(streamStart, sliceEnd)
         let decompressed: Buffer
         try {
-          // PDFs use raw deflate (no zlib header)
           decompressed = await inflateRawAsync(compressed)
         } catch {
-          // A few generators wrap in zlib header — try as fallback
           decompressed = await inflateAsync(compressed)
         }
         content = decompressed.toString('latin1')
       } catch {
-        continue // stream failed to decompress — skip it
+        continue
       }
     } else {
       content = str.substring(streamStart, streamEnd)
     }
 
-    const text = extractTjFromStream(content)
+    const text = extractTjFromStream(content, fontCMaps.size > 0 ? fontCMaps : undefined)
     if (text) chunks.push(text)
   }
 
-  // Join streams with newlines so inter-stream structure reaches the AI engine.
-  // Normalize non-breaking spaces (U+00A0) and thin spaces (U+2009, U+202F) that
-  // many PDF generators use as thousands separators — they break downstream regex.
-  // /[ \t]{2,}/ collapses runs of spaces/tabs but preserves the \n separators.
   return chunks.join('\n')
     .replace(/[\u00A0\u2009\u202F\u2007]/g, ' ')
     .replace(/[ \t]{2,}/g, ' ')
