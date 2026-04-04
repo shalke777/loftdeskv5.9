@@ -5,6 +5,7 @@ import { Select } from '@/shared/ui/Select/Select'
 import { generateId } from '@/shared/lib/generateId'
 import { calcItemGross } from '@/features/estimates/lib/estimate.calculations'
 import type { EstimateItem } from '@/entities/estimate/model'
+import { ServiceCatalogPicker } from './ServiceCatalogPicker'
 
 const DEFAULT_UNIT = 'm²'
 const DEFAULT_VAT = 8
@@ -31,6 +32,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
   const [fastVat, setFastVat] = useState(DEFAULT_VAT)
   const [editId, setEditId] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<Partial<EstimateItem>>({})
+  const [catalogOpen, setCatalogOpen] = useState(false)
   function startEdit(item: EstimateItem) {
     setEditId(item.id)
     setEditValues({ ...item })
@@ -293,9 +295,17 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
         </div>
       )}
 
-      <div>
+      <div style={{ display: 'flex', gap: 8 }}>
         <Button variant="secondary" onClick={addRow}>+ Nowa pusta pozycja</Button>
+        <Button variant="secondary" onClick={() => setCatalogOpen(true)}>📚 Dodaj z biblioteki</Button>
       </div>
+
+      <ServiceCatalogPicker
+        open={catalogOpen}
+        onClose={() => setCatalogOpen(false)}
+        onAdd={(newItems) => onChange([...items, ...newItems])}
+        existingCount={items.length}
+      />
     </div>
   )
 }
