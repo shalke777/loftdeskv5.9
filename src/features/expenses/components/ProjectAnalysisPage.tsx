@@ -32,7 +32,7 @@ const ACCEPTED_EXTENSIONS = '.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif'
 
 const PROJECT_UPLOAD_RULES = {
   formats: ['PDF', 'JPG', 'PNG', 'WEBP', 'HEIC'],
-  maxSizeMb: 15,
+  maxSizeMb: 20,
   tips: [
     'Rzuty architektoniczne z wymiarami dają najlepszy wynik',
     'Możesz wgrać PDF projektu lub wizualizację jako obraz',
@@ -172,7 +172,7 @@ export function ProjectAnalysisPage() {
   function startAnalysis() {
     if (!file) return
     const preflight = aiPreflightValidate(file, {
-      maxSizeBytes: 15 * 1024 * 1024,
+      maxSizeBytes: 20 * 1024 * 1024,
       allowedTypes: ['application/pdf', 'image/*'],
     })
     if (!preflight.ok) {

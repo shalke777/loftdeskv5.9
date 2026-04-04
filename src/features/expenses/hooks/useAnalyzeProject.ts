@@ -20,7 +20,8 @@ async function getAuthHeader(): Promise<Record<string, string>> {
   return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
 }
 
-const MAX_FILE_SIZE = 15 * 1024 * 1024  // 15 MB — project PDFs can be large
+const MAX_FILE_SIZE   = 20 * 1024 * 1024 // 20 MB — large project PDFs use storage path
+const URL_THRESHOLD   = 4 * 1024 * 1024  // 4 MB — above this, upload to storage first (Lambda body ≤6 MB)
 
 const ACCEPTED_TYPES = new Set([
   'application/pdf',
@@ -43,7 +44,7 @@ function fileToBase64(file: File): Promise<string> {
 /** Validate the file before sending to the Netlify function */
 function validateProjectFile(file: File): string | null {
   if (file.size > MAX_FILE_SIZE) {
-    return `Plik jest za duży (max 15 MB). Skompresuj PDF lub zmniejsz rozdzielczość obrazu.`
+    return `Plik jest za duży (max 20 MB). Skompresuj PDF lub zmniejsz rozdzielczość obrazu.`
   }
 
   const mime = file.type.toLowerCase()
@@ -56,6 +57,21 @@ function validateProjectFile(file: File): string | null {
   }
 
   return null  // valid
+}
+
+/** Upload large file to Supabase Storage for server-side download */
+async function uploadToStorage(file: File): Promise<string> {
+  if (!supabase) throw new Error('Supabase nie jest skonfigurowane.')
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Sesja wygasła — zaloguj się ponownie.')
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const storagePath = `ai-analysis/${Date.now()}_${safeName}`
+  const contentType = file.type || 'application/octet-stream'
+  const { error } = await supabase.storage
+    .from('company-files')
+    .upload(storagePath, file, { upsert: false, contentType })
+  if (error) throw new Error(`Upload do storage nie powiódł się: ${error.message}`)
+  return storagePath
 }
 
 // ── Core async function ───────────────────────────────────────────────────────
@@ -86,22 +102,32 @@ export async function callAnalyzeProject(
     }
   }
 
-  const base64    = await fileToBase64(file)
-  const fileType  = file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg')
+  const fileType = file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg')
+  const useLargeFilePath = file.size > URL_THRESHOLD
+
+  const payload: Record<string, unknown> = {
+    file_type:         fileType,
+    file_name:         file.name,
+    context:           context ?? undefined,
+    project_type_hint: fileType === 'application/pdf' ? 'pdf' : 'visualization',
+    project_id:        projectId || undefined,
+  }
+
+  if (useLargeFilePath) {
+    // Large file: upload to Supabase Storage, send path to backend
+    const storagePath = await uploadToStorage(file)
+    payload.storage_path = storagePath
+  } else {
+    // Small file: send as base64 inline (existing path)
+    payload.file_base64 = await fileToBase64(file)
+  }
 
   let resp: Response
   try {
     resp = await fetch(netlifyFn('analyze-project'), {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
-      body:    JSON.stringify({
-        file_base64:       base64,
-        file_type:         fileType,
-        file_name:         file.name,
-        context:           context ?? undefined,
-        project_type_hint: fileType === 'application/pdf' ? 'pdf' : 'visualization',
-        project_id:        projectId || undefined,
-      }),
+      body:    JSON.stringify(payload),
     })
   } catch {
     throw new Error('Serwer analizy projektu niedostępny.')
@@ -110,6 +136,8 @@ export async function callAnalyzeProject(
   const data = await resp.json().catch(() => ({})) as Record<string, unknown>
 
   if (!resp.ok) {
+    // Surface backend message if available
+    const serverMsg = typeof data.message === 'string' ? data.message : null
     const errCode = String(data.error ?? '')
     if (resp.status === 401 || errCode === 'unauthorized')
       throw new Error('Sesja wygasła — zaloguj się ponownie.')
@@ -118,7 +146,7 @@ export async function callAnalyzeProject(
     if (resp.status === 429 || errCode === 'too_many_requests')
       throw new Error('Za dużo żądań. Spróbuj za chwilę.')
     if (errCode === 'daily_limit_exceeded')
-      throw new Error('Dzienny limit analiz AI został wyczerpany. Spróbuj ponownie jutro.')
+      throw new Error(serverMsg ?? 'Dzienny limit analiz AI został wyczerpany. Spróbuj ponownie jutro.')
     if (errCode === 'ai_disabled')
       throw new Error('Moduł AI nie jest włączony na tym środowisku.')
     if (errCode === 'auth_not_configured')
@@ -130,18 +158,18 @@ export async function callAnalyzeProject(
     if (errCode === 'missing_project_id')
       throw new Error('Nie wybrano projektu. Wróć i wybierz projekt.')
     if (resp.status === 413 || errCode === 'file_too_large')
-      throw new Error('Plik jest za duży. Skompresuj PDF lub zmniejsz rozdzielczość.')
+      throw new Error(serverMsg ?? 'Plik jest za duży. Skompresuj PDF lub zmniejsz rozdzielczość.')
     if (resp.status === 422 || errCode === 'invalid_input')
-      throw new Error(String(data.message ?? 'Dane wejściowe zostały odrzucone. Sprawdź format i rozmiar pliku.'))
+      throw new Error(serverMsg ?? 'Dane wejściowe zostały odrzucone. Sprawdź format i rozmiar pliku.')
     if (resp.status === 504 || resp.status === 524)
-      throw new Error('Analiza projektu trwa zbyt długo. Spróbuj z mniejszym plikiem lub podziel PDF na strony.')
-    if (resp.status === 502 || errCode === 'ai_call_failed' || errCode === 'provider_error')
-      throw new Error(String(data.message ?? 'Serwis AI tymczasowo niedostępny. Spróbuj ponownie za chwilę.'))
+      throw new Error(serverMsg ?? 'Analiza projektu trwa zbyt długo. Spróbuj z mniejszym plikiem lub podziel PDF na strony.')
+    if (resp.status === 502 || errCode === 'ai_call_failed' || errCode === 'provider_error' || errCode === 'storage_fetch_failed')
+      throw new Error(serverMsg ?? 'Serwis AI tymczasowo niedostępny. Spróbuj ponownie za chwilę.')
     if (errCode === 'ai_not_configured')
       throw new Error('AI nie jest skonfigurowane (brak OPENAI_API_KEY)')
     if (resp.status === 400)
-      throw new Error(String(data.message ?? 'Błąd wejścia — sprawdź format pliku.'))
-    throw new Error(String(data.message ?? `HTTP ${resp.status}`))
+      throw new Error(serverMsg ?? 'Błąd wejścia — sprawdź format pliku.')
+    throw new Error(serverMsg ?? `HTTP ${resp.status}`)
   }
 
   const result = data.result as ProjectAnalysisResult

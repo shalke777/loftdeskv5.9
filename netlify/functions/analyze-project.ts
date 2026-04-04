@@ -399,18 +399,22 @@ export const handler: Handler = async (event) => {
     return err(400, 'invalid_json', 'Request body is not valid JSON')
   }
 
-  const fileBase64 = typeof body.file_base64 === 'string' ? body.file_base64.trim() : ''
-  const fileType   = typeof body.file_type   === 'string' ? body.file_type.trim()   : ''
-  const fileName   = typeof body.file_name   === 'string' ? body.file_name.trim()   : 'project'
-  const context    = typeof body.context     === 'string' ? body.context.slice(0, 2000) : ''
-  const projectId  = typeof body.project_id  === 'string' && body.project_id.trim()
+  const fileBase64   = typeof body.file_base64   === 'string' ? body.file_base64.trim() : ''
+  const storagePath  = typeof body.storage_path  === 'string' ? body.storage_path.trim() : ''
+  const fileType     = typeof body.file_type     === 'string' ? body.file_type.trim()   : ''
+  const fileName     = typeof body.file_name     === 'string' ? body.file_name.trim()   : 'project'
+  const context      = typeof body.context       === 'string' ? body.context.slice(0, 2000) : ''
+  const projectId    = typeof body.project_id    === 'string' && body.project_id.trim()
     ? body.project_id.trim() : null
 
-  console.info('BODY_PARSED', JSON.stringify({ fileType, fileName, hasContext: !!context, projectId: projectId ?? null, elapsed_ms: Date.now() - t0 }))
+  console.info('BODY_PARSED', JSON.stringify({ fileType, fileName, hasContext: !!context, projectId: projectId ?? null, hasStoragePath: !!storagePath, hasBase64: !!fileBase64, elapsed_ms: Date.now() - t0 }))
 
-  if (!fileBase64) return err(400, 'missing_file', 'file_base64 is required')
+  if (!fileBase64 && !storagePath) return err(400, 'missing_file', 'Brak danych pliku — wymagany file_base64 lub storage_path.')
   if (!fileType)   return err(400, 'missing_type', 'file_type is required')
   if (!projectId)  return err(400, 'missing_project_id', 'project_id is required')
+
+  // ── Resolve file data: storage path (large files) or inline base64 ──────
+  let resolvedBase64 = fileBase64
 
   // ── Verify project access and resolve company_id ────────────────────────
   const sbUrl         = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? ''
@@ -452,6 +456,35 @@ export const handler: Handler = async (event) => {
     return err(403, 'project_access_denied', 'Project not found or access denied')
   }
 
+  // ── Fetch large file from storage if storage_path was provided ─────────
+  if (storagePath && !resolvedBase64) {
+    console.info('STORAGE_FETCH_START', JSON.stringify({ storagePath, elapsed_ms: Date.now() - t0 }))
+    try {
+      const { data: blob, error: dlErr } = await sbService.storage
+        .from('company-files')
+        .download(storagePath)
+      if (dlErr || !blob) {
+        console.error('[analyze-project] Storage download failed:', dlErr?.message ?? 'no data')
+        return err(502, 'storage_fetch_failed', 'Nie udało się pobrać pliku z storage. Spróbuj ponownie.')
+      }
+      const arrayBuf = await blob.arrayBuffer()
+      const sizeBytes = arrayBuf.byteLength
+      console.info('STORAGE_FETCH_OK', JSON.stringify({ sizeBytes, elapsed_ms: Date.now() - t0 }))
+      if (sizeBytes > 20 * 1024 * 1024) {
+        return err(413, 'file_too_large', `Plik jest za duży (${(sizeBytes / 1024 / 1024).toFixed(1)} MB, max 20 MB).`)
+      }
+      const bytes = new Uint8Array(arrayBuf)
+      let binary = ''
+      for (let i = 0; i < bytes.length; i += 8192) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
+      }
+      resolvedBase64 = btoa(binary)
+    } catch (fetchErr) {
+      console.error('[analyze-project] Storage fetch exception:', fetchErr)
+      return err(502, 'storage_fetch_failed', 'Nie udało się pobrać pliku z storage.')
+    }
+  }
+
   // ── Plan check: AI Engine requires Pro or Business tier ───────────────────
   const { data: company, error: planErr } = await sbService
     .from('companies')
@@ -480,12 +513,12 @@ export const handler: Handler = async (event) => {
     return err(429, 'daily_limit_exceeded', `Dzienny limit analiz AI (${dailyLimit}) został wyczerpany. Spróbuj ponownie jutro.`)
   }
 
-  // Size guard (~15 MB base64 ≈ 11 MB binary)
-  const base64Len = fileBase64.length
-  console.info('PAYLOAD_SIZE', JSON.stringify({ base64Len, approxBinaryKB: Math.round(base64Len * 0.75 / 1024), elapsed_ms: Date.now() - t0 }))
-  if (base64Len > 20 * 1024 * 1024) {
+  // Size guard
+  const base64Len = resolvedBase64.length
+  console.info('PAYLOAD_SIZE', JSON.stringify({ base64Len, source: storagePath ? 'storage' : 'inline', approxBinaryKB: Math.round(base64Len * 0.75 / 1024), elapsed_ms: Date.now() - t0 }))
+  if (base64Len > 28 * 1024 * 1024) {
     console.error('PAYLOAD_TOO_LARGE', JSON.stringify({ base64Len, elapsed_ms: Date.now() - t0 }))
-    return err(413, 'file_too_large', `Plik za duży (${(base64Len * 0.75 / 1024 / 1024).toFixed(1)} MB, max ~15 MB). Skompresuj PDF lub zmniejsz rozdzielczość.`)
+    return err(413, 'file_too_large', `Plik za duży (${(base64Len * 0.75 / 1024 / 1024).toFixed(1)} MB, max 20 MB). Skompresuj PDF lub zmniejsz rozdzielczość.`)
   }
 
   // ── Build content array ────────────────────────────────────────────────
@@ -524,14 +557,14 @@ export const handler: Handler = async (event) => {
     content.push({
       type:      'input_file',
       filename:  fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`,
-      file_data: `data:application/pdf;base64,${fileBase64}`,
+      file_data: `data:application/pdf;base64,${resolvedBase64}`,
     })
   } else {
     // Image (visualization, render, drawing photo)
     const mimeType = fileType.startsWith('image/') ? fileType : 'image/jpeg'
     content.push({
       type:      'input_image',
-      image_url: `data:${mimeType};base64,${fileBase64}`,
+      image_url: `data:${mimeType};base64,${resolvedBase64}`,
     })
   }
 
