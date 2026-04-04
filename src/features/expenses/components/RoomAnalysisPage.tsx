@@ -18,6 +18,7 @@ import { AiErrorState, AiReliabilityBanner, AiUploadRules, AiProgressSteps } fro
 import { computeRoomReliabilityFromAnalysis } from '@/services/ai/engines/reliability'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { useProjects } from '@/features/projects/hooks/useProjects'
+import { ProjectPickerCard } from '@/shared/ui/ProjectPickerCard/ProjectPickerCard'
 import { ExpenseCameraCapture } from './ExpenseCameraCapture'
 import { BathroomClarificationForm } from './BathroomClarificationForm'
 import {
@@ -125,65 +126,16 @@ export function RoomAnalysisPage() {
     return (
       <div>
         <PageHeader title="AI Analiza pomieszczenia" />
-        <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 16px' }}>
-          <div style={{ textAlign: 'right', marginBottom: 6 }}>
-            <button
-              type="button"
-              onClick={() => navigate({ to: '/ai' as any })}
-              style={{ fontSize: 13, color: '#6B7280', background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              ← Tryb projektu
-            </button>
-          </div>
-          <div style={{
-            background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 12,
-            padding: 24, marginBottom: 16,
-          }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Wybierz projekt</h3>
-            <p style={{ fontSize: 13, color: '#6B7280', marginBottom: 16 }}>
-              Analiza AI wymaga kontekstu projektu. Wyniki zostaną powiązane z wybranym projektem.
-            </p>
-            {projectsLoading ? (
-              <p style={{ color: '#9CA3AF', fontSize: 13 }}>Ładowanie projektów…</p>
-            ) : projects.length === 0 ? (
-              <p style={{ color: '#EF4444', fontSize: 13 }}>
-                Brak projektów. Utwórz projekt, aby korzystać z analizy AI.
-              </p>
-            ) : (
-              <>
-                <select
-                  value={selectedProjectId}
-                  onChange={e => setSelectedProjectId(e.target.value)}
-                  style={{
-                    width: '100%', padding: '10px 12px', borderRadius: 8,
-                    border: '1px solid #D1D5DB', fontSize: 14, marginBottom: 16,
-                    background: '#FFFFFF',
-                  }}
-                >
-                  <option value="">— Wybierz projekt —</option>
-                  {projects.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.number} · {p.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  disabled={!selectedProjectId}
-                  onClick={() => setStep('capture')}
-                  style={{
-                    width: '100%', padding: '12px 0', borderRadius: 10,
-                    background: selectedProjectId ? '#2563EB' : '#D1D5DB',
-                    color: '#fff', fontWeight: 600, fontSize: 15,
-                    border: 'none', cursor: selectedProjectId ? 'pointer' : 'default',
-                  }}
-                >
-                  Dalej — zrób zdjęcia
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+        <ProjectPickerCard
+          projects={projects}
+          loading={projectsLoading}
+          selectedId={selectedProjectId}
+          onSelect={setSelectedProjectId}
+          onNext={() => setStep('capture')}
+          nextLabel="Dalej — zrób zdjęcia"
+          onBack={() => navigate({ to: '/ai' as any })}
+          backLabel="← Tryb projektu"
+        />
       </div>
     )
   }

@@ -1,0 +1,246 @@
+import { useState, useMemo } from 'react'
+import type { CSSProperties } from 'react'
+
+interface Project {
+  id: string
+  number: string
+  name: string
+  status: string
+  address?: string
+  investment_address?: string | null
+}
+
+interface Props {
+  projects: Project[]
+  loading: boolean
+  selectedId: string
+  onSelect: (id: string) => void
+  onNext: () => void
+  nextLabel: string
+  onBack?: () => void
+  backLabel?: string
+}
+
+export function ProjectPickerCard({
+  projects, loading, selectedId, onSelect, onNext, onBack, backLabel, nextLabel,
+}: Props) {
+  const [search, setSearch] = useState('')
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return projects
+    const q = search.toLowerCase()
+    return projects.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      p.number.toLowerCase().includes(q) ||
+      (p.address ?? '').toLowerCase().includes(q) ||
+      (p.investment_address ?? '').toLowerCase().includes(q)
+    )
+  }, [projects, search])
+
+  const selected = projects.find(p => p.id === selectedId)
+
+  return (
+    <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 16px' }}>
+      {onBack && (
+        <div style={{ textAlign: 'right', marginBottom: 6 }}>
+          <button
+            type="button"
+            onClick={onBack}
+            style={{ fontSize: 13, color: 'var(--color-text-muted, #6B7280)', background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            {backLabel ?? '← Wróć'}
+          </button>
+        </div>
+      )}
+
+      <div style={cardStyle}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+          <span style={{ fontSize: 22 }}>📂</span>
+          <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--color-text-primary, #111)' }}>
+            Wybierz projekt
+          </h3>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted, #6B7280)', margin: '0 0 16px', lineHeight: 1.5 }}>
+          Wyniki analizy zostaną powiązane z wybranym projektem.
+        </p>
+
+        {/* States */}
+        {loading ? (
+          <div style={emptyStyle}>
+            <div style={spinnerStyle} />
+            <span style={{ color: 'var(--color-text-muted, #9CA3AF)', fontSize: 13 }}>Ładowanie projektów…</span>
+          </div>
+        ) : projects.length === 0 ? (
+          <div style={emptyStyle}>
+            <span style={{ fontSize: 28, opacity: 0.5 }}>📭</span>
+            <p style={{ color: 'var(--color-text-muted, #6B7280)', fontSize: 13, margin: '4px 0 0', textAlign: 'center' }}>
+              Brak projektów.<br />
+              <span style={{ fontSize: 12 }}>Utwórz projekt w zakładce <strong>Projekty</strong>, aby korzystać z analizy AI.</span>
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Search (show when >5 projects) */}
+            {projects.length > 5 && (
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Szukaj projektu…"
+                style={searchStyle}
+              />
+            )}
+
+            {/* Project list */}
+            <div style={listStyle}>
+              {filtered.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--color-text-muted, #9CA3AF)', padding: '16px 0', textAlign: 'center' }}>
+                  Brak wyników dla „{search}"
+                </p>
+              ) : filtered.map(p => {
+                const isSelected = p.id === selectedId
+                const addr = p.investment_address || p.address || ''
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => onSelect(p.id)}
+                    style={{
+                      ...itemStyle,
+                      borderColor: isSelected ? 'var(--color-primary, #2563EB)' : 'var(--color-border, #E5E7EB)',
+                      background: isSelected ? 'var(--color-primary-soft, rgba(37,99,235,0.06))' : 'var(--color-surface, #fff)',
+                      boxShadow: isSelected ? '0 0 0 2px var(--color-primary, #2563EB)' : 'none',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+                      <span style={{
+                        width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                        border: isSelected ? '5px solid var(--color-primary, #2563EB)' : '2px solid var(--color-border-dark, #D1D5DB)',
+                        background: isSelected ? '#fff' : 'transparent',
+                        boxSizing: 'border-box',
+                      }} />
+                      <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #6B7280)', fontVariantNumeric: 'tabular-nums' }}>
+                            {p.number}
+                          </span>
+                          <StatusDot status={p.status} />
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary, #111)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {p.name}
+                        </div>
+                        {addr && (
+                          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary, #9CA3AF)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            📍 {addr}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Selected project summary */}
+            {selected && (
+              <div style={selectedSummaryStyle}>
+                Wybrany: <strong>{selected.number} · {selected.name}</strong>
+              </div>
+            )}
+
+            {/* CTA */}
+            <button
+              type="button"
+              disabled={!selectedId}
+              onClick={onNext}
+              style={{
+                ...ctaStyle,
+                background: selectedId ? 'var(--color-primary, #2563EB)' : 'var(--color-border-dark, #D1D5DB)',
+                cursor: selectedId ? 'pointer' : 'default',
+              }}
+            >
+              {nextLabel}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Status dot ─────────────────────────────────────────────────────────────
+
+const STATUS_COLORS: Record<string, string> = {
+  active: '#16a34a',
+  in_progress: '#2563EB',
+  completed: '#6B7280',
+  on_hold: '#D97706',
+  draft: '#9CA3AF',
+}
+
+function StatusDot({ status }: { status: string }) {
+  const color = STATUS_COLORS[status] ?? '#9CA3AF'
+  return (
+    <span
+      title={status}
+      style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }}
+    />
+  )
+}
+
+// ── Styles ──────────────────────────────────────────────────────────────────
+
+const cardStyle: CSSProperties = {
+  background: 'var(--color-surface, #fff)',
+  border: '1px solid var(--color-border, #E5E7EB)',
+  borderRadius: 14,
+  padding: '24px 24px 20px',
+  marginBottom: 16,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+}
+
+const emptyStyle: CSSProperties = {
+  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+  padding: '32px 16px', gap: 10,
+}
+
+const searchStyle: CSSProperties = {
+  width: '100%', padding: '9px 12px', borderRadius: 8,
+  border: '1px solid var(--color-border, #D1D5DB)', fontSize: 13,
+  background: 'var(--color-surface-soft, #F9FAFB)', outline: 'none',
+  marginBottom: 10, boxSizing: 'border-box',
+}
+
+const listStyle: CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: 6,
+  maxHeight: 320, overflowY: 'auto', marginBottom: 14,
+  paddingRight: 2,
+}
+
+const itemStyle: CSSProperties = {
+  width: '100%', padding: '10px 14px', borderRadius: 10,
+  border: '1.5px solid', cursor: 'pointer',
+  transition: 'border-color 0.15s, background 0.15s, box-shadow 0.15s',
+  display: 'flex', alignItems: 'center',
+  fontFamily: 'inherit', outline: 'none',
+}
+
+const selectedSummaryStyle: CSSProperties = {
+  fontSize: 12, color: 'var(--color-text-muted, #6B7280)',
+  marginBottom: 10, paddingLeft: 2,
+}
+
+const ctaStyle: CSSProperties = {
+  width: '100%', padding: '13px 0', borderRadius: 10,
+  color: '#fff', fontWeight: 600, fontSize: 15,
+  border: 'none', letterSpacing: 0.2,
+  transition: 'background 0.15s',
+}
+
+const spinnerStyle: CSSProperties = {
+  width: 24, height: 24, borderRadius: '50%',
+  border: '2.5px solid var(--color-border, #E5E7EB)',
+  borderTopColor: 'var(--color-primary, #2563EB)',
+  animation: 'spin 0.8s linear infinite',
+}
