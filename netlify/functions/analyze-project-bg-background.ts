@@ -10,6 +10,7 @@
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
 import { detectBathroomTriggers, expandDependencies } from './shared/bathroom-triggers'
+import { CATALOG_REFERENCE } from './shared/catalog-reference'
 
 // ── Types (mirrors analyze-project.ts) ──────────────────────────────────────
 
@@ -155,7 +156,9 @@ TRANSPARENTNOŚĆ: Wypełnij assumptions[], missing_information[], project_notes
 CONFIDENCE: 90–100 kompletny, 70–89 dobry, 50–69 częściowy, 30–49 niekompletny, 0–29 nieczytelny.
 comparison_ready: true jeśli ≥1 pomieszczenie z area_m2 lub fixtures.
 
-Zwróć TYLKO poprawny JSON zgodny ze schematem. Żadnego tekstu poza JSON.`
+Zwróć TYLKO poprawny JSON zgodny ze schematem. Żadnego tekstu poza JSON.
+
+${CATALOG_REFERENCE}`
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

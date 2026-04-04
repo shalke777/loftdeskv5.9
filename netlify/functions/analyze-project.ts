@@ -29,6 +29,7 @@ import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 import { detectBathroomTriggers, expandDependencies } from './shared/bathroom-triggers'
 import type { ClarificationQuestion } from './shared/bathroom-triggers'
+import { CATALOG_REFERENCE } from './shared/catalog-reference'
 
 // ── Local type definitions (mirrors src/services/ai/engines/project.types.ts) ─
 // Netlify functions cannot import from src/. Keep in sync manually.
@@ -338,7 +339,9 @@ TRANSPARENTNOŚĆ: Wypełnij assumptions[], missing_information[], project_notes
 CONFIDENCE: 90–100 kompletny, 70–89 dobry, 50–69 częściowy, 30–49 niekompletny, 0–29 nieczytelny.
 comparison_ready: true jeśli ≥1 pomieszczenie z area_m2 lub fixtures.
 
-Zwróć TYLKO poprawny JSON zgodny ze schematem. Żadnego tekstu poza JSON.`
+Zwróć TYLKO poprawny JSON zgodny ze schematem. Żadnego tekstu poza JSON.
+
+${CATALOG_REFERENCE}`
 
 // ── OpenAI Responses API types ───────────────────────────────────────────────
 
