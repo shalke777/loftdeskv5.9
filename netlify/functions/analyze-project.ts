@@ -400,7 +400,7 @@ export const handler: Handler = async (event) => {
   const model =
     process.env.OPENAI_MODEL_VISION?.trim() ||
     process.env.OPENAI_MODEL?.trim()        ||
-    'gpt-4o'
+    'gpt-4o-mini'
 
   // ── Parse request ──────────────────────────────────────────────────────
 

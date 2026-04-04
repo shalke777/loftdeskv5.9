@@ -325,7 +325,7 @@ export const handler: Handler = async (event) => {
 
     // ── Call OpenAI ───────────────────────────────────────────────────────
     const apiKey = process.env.OPENAI_API_KEY ?? ''
-    const model = process.env.OPENAI_MODEL_VISION?.trim() || process.env.OPENAI_MODEL?.trim() || 'gpt-4o'
+    const model = process.env.OPENAI_MODEL_VISION?.trim() || process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 
     console.info('[bg] OPENAI_START', JSON.stringify({ model, isPdf, usedTextPath, contentItems: content.length, elapsed_ms: Date.now() - t0 }))
 
