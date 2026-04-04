@@ -31,8 +31,8 @@ const ACCEPTED_TYPES = new Set([
   'image/gif', 'image/heic', 'image/heif',
 ])
 
-const POLL_INTERVAL   = 3000  // 3s between polls
-const POLL_MAX_TIME   = 300_000  // 5 min max polling
+const POLL_INTERVAL   = 3000      // 3s between polls
+const POLL_MAX_TIME   = 600_000   // 10 min max polling (bg function has up to 15 min)
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {

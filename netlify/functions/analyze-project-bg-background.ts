@@ -179,8 +179,7 @@ export const handler: Handler = async (event) => {
     return { statusCode: 400, body: 'invalid json' }
   }
 
-  const jobId      = typeof body.job_id === 'string' ? body.job_id.trim() : ''
-  const serviceKey = typeof body._service_key === 'string' ? body._service_key.trim() : ''
+  const jobId = typeof body.job_id === 'string' ? body.job_id.trim() : ''
 
   if (!jobId) {
     console.error('[bg] Missing job_id')
@@ -189,7 +188,7 @@ export const handler: Handler = async (event) => {
 
   // Init Supabase service client
   const sbUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? ''
-  const sbKey = serviceKey || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
   if (!sbKey) {
     console.error('[bg] No service role key')
     return { statusCode: 500, body: 'config error' }

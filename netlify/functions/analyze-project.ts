@@ -496,14 +496,23 @@ export const handler: Handler = async (event) => {
 
     console.info('ASYNC_JOB_CREATED', JSON.stringify({ jobId, elapsed_ms: Date.now() - t0 }))
 
-    // Fire background function (fire-and-forget)
+    // Trigger background function — await to ensure request goes out before Lambda exits
+    // Background function returns 202 immediately (Netlify convention for *-background suffix)
     const siteUrl = process.env.URL || process.env.DEPLOY_PRIME_URL || ''
     if (siteUrl) {
-      fetch(`${siteUrl}/.netlify/functions/analyze-project-bg-background`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: jobId, _service_key: sbServiceRole }),
-      }).catch(e => console.warn('[analyze-project] Background trigger failed:', e))
+      try {
+        const bgResp = await fetch(`${siteUrl}/.netlify/functions/analyze-project-bg-background`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ job_id: jobId }),
+        })
+        console.info('BG_TRIGGER_RESPONSE', JSON.stringify({ status: bgResp.status, elapsed_ms: Date.now() - t0 }))
+      } catch (e) {
+        console.error('[analyze-project] Background trigger failed:', e)
+        // Job stays queued — user sees "processing" in poll
+      }
+    } else {
+      console.warn('[analyze-project] No URL env var — cannot trigger background function')
     }
 
     return {
