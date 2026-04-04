@@ -2,6 +2,7 @@ import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 export default defineConfig({
   plugins: [
@@ -31,13 +32,33 @@ export default defineConfig({
         ]
       },
       devOptions: { enabled: false }
-    })
+    }),
+    // Sentry source map upload — only when auth token + org + project are set (Netlify build)
+    ...(process.env.SENTRY_AUTH_TOKEN
+      ? [sentryVitePlugin({
+          org: process.env.SENTRY_ORG,
+          project: process.env.SENTRY_PROJECT,
+          authToken: process.env.SENTRY_AUTH_TOKEN,
+          release: {
+            name: process.env.COMMIT_REF
+              ? `loftdesk@${process.env.COMMIT_REF.slice(0, 8)}`
+              : undefined,
+          },
+          sourcemaps: {
+            filesToDeleteAfterUpload: ['./dist/**/*.map'],
+          },
+          telemetry: false,
+        })]
+      : []),
   ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@docs-legal': path.resolve(__dirname, './docs/legal'),
     },
+  },
+  define: {
+    'import.meta.env.VITE_COMMIT_REF': JSON.stringify(process.env.COMMIT_REF ?? ''),
   },
   // Proxy Netlify Functions so OCR works in dev mode (requires `netlify dev` on :8888)
   server: {

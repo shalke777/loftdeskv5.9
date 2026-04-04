@@ -54,6 +54,7 @@
     "@capacitor/ios": "^8.2.0",
     "@netlify/functions": "^2.8.2",
     "@playwright/test": "^1.58.2",
+    "@sentry/vite-plugin": "^5.1.1",
     "@tanstack/react-query-devtools": "^5.59.0",
     "@tanstack/router-devtools": "^1.77.0",
     "@types/react": "^18.3.12",

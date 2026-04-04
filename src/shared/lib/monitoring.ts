@@ -15,6 +15,7 @@ import * as Sentry from '@sentry/react'
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined
 const IS_PROD = import.meta.env.PROD
 const APP_VERSION = import.meta.env.VITE_APP_VERSION as string | undefined
+const COMMIT_REF = import.meta.env.VITE_COMMIT_REF as string | undefined
 
 /** True when Sentry is fully initialized and operational. */
 let sentryActive = false
@@ -64,7 +65,9 @@ export function initMonitoring() {
     Sentry.init({
       dsn: SENTRY_DSN,
       environment: IS_PROD ? 'production' : 'development',
-      release: APP_VERSION ? `loftdesk@${APP_VERSION}` : undefined,
+      release: COMMIT_REF
+        ? `loftdesk@${COMMIT_REF.slice(0, 8)}`
+        : APP_VERSION ? `loftdesk@${APP_VERSION}` : undefined,
 
       // Performance: sample 20% of transactions in prod, 100% in dev
       tracesSampleRate: IS_PROD ? 0.2 : 1.0,
