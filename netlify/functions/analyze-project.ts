@@ -564,9 +564,9 @@ export const handler: Handler = async (event) => {
   // Size guard
   const base64Len = resolvedBase64.length
   console.info('PAYLOAD_SIZE', JSON.stringify({ base64Len, source: storagePath ? 'storage' : 'inline', approxBinaryKB: Math.round(base64Len * 0.75 / 1024), elapsed_ms: Date.now() - t0 }))
-  if (base64Len > 28 * 1024 * 1024) {
+  if (base64Len > 56 * 1024 * 1024) {
     console.error('PAYLOAD_TOO_LARGE', JSON.stringify({ base64Len, elapsed_ms: Date.now() - t0 }))
-    return err(413, 'file_too_large', `Plik za duży (${(base64Len * 0.75 / 1024 / 1024).toFixed(1)} MB, max 20 MB). Skompresuj PDF lub zmniejsz rozdzielczość.`)
+    return err(413, 'file_too_large', `Plik za duży (${(base64Len * 0.75 / 1024 / 1024).toFixed(1)} MB, max 40 MB). Skompresuj PDF lub zmniejsz rozdzielczość.`)
   }
 
   // ── Build content array ────────────────────────────────────────────────

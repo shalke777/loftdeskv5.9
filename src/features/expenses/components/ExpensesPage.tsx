@@ -23,7 +23,7 @@ import {
 
 // Client-side preflight: large PDFs use URL path (server downloads from Supabase Storage)
 const PREFLIGHT_DOC_RULES = {
-  maxSizeBytes: 20 * 1024 * 1024,
+  maxSizeBytes: 40 * 1024 * 1024,
   allowedTypes: ['image/*', 'application/pdf'],
 }
 

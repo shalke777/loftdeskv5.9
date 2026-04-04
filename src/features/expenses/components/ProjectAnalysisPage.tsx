@@ -175,7 +175,7 @@ export function ProjectAnalysisPage() {
   function startAnalysis() {
     if (!file) return
     const preflight = aiPreflightValidate(file, {
-      maxSizeBytes: 20 * 1024 * 1024,
+      maxSizeBytes: 40 * 1024 * 1024,
       allowedTypes: ['application/pdf', 'image/*'],
     })
     if (!preflight.ok) {

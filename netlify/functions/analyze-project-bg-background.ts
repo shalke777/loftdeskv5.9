@@ -245,8 +245,8 @@ export const handler: Handler = async (event) => {
     const sizeBytes = arrayBuf.byteLength
     console.info('[bg] FILE_DOWNLOADED', JSON.stringify({ sizeBytes, elapsed_ms: Date.now() - t0 }))
 
-    if (sizeBytes > 20 * 1024 * 1024) {
-      await failJob(sb, jobId, 'file_too_large', `Plik za duży (${(sizeBytes / 1024 / 1024).toFixed(1)} MB, max 20 MB)`)
+    if (sizeBytes > 40 * 1024 * 1024) {
+      await failJob(sb, jobId, 'file_too_large', `Plik za duży (${(sizeBytes / 1024 / 1024).toFixed(1)} MB, max 40 MB)`)
       return { statusCode: 200, body: 'file too large' }
     }
 

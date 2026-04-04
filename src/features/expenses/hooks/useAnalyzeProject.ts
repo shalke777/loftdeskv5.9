@@ -22,7 +22,7 @@ async function getAuthHeader(): Promise<Record<string, string>> {
   return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
 }
 
-const MAX_FILE_SIZE   = 20 * 1024 * 1024 // 20 MB
+const MAX_FILE_SIZE   = 40 * 1024 * 1024 // 40 MB
 const URL_THRESHOLD   = 4 * 1024 * 1024  // 4 MB — above this, async job path
 
 const ACCEPTED_TYPES = new Set([
@@ -48,7 +48,7 @@ function fileToBase64(file: File): Promise<string> {
 
 function validateProjectFile(file: File): string | null {
   if (file.size > MAX_FILE_SIZE) {
-    return `Plik jest za duży (max 20 MB). Skompresuj PDF lub zmniejsz rozdzielczość obrazu.`
+    return `Plik jest za duży (max 40 MB). Skompresuj PDF lub zmniejsz rozdzielczość obrazu.`
   }
   const mime = file.type.toLowerCase()
   const name = file.name.toLowerCase()
