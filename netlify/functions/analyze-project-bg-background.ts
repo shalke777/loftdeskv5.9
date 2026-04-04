@@ -93,6 +93,41 @@ TEN DOKUMENT TO MATERIAŁ PROJEKTOWY:
 - Wizualizacja 3D / render: widok wnętrza po remoncie — styl, materiały, wyposażenie
 - Specyfikacja techniczna: zestawienie materiałów, opisy instalacji, karty techniczne
 
+KLASYFIKACJA TYPU PRAC (building_type) — KLUCZOWE:
+Najpierw ustal typ prac na podstawie dokumentu i kontekstu:
+
+A) "wykończenie ze stanu deweloperskiego" — stan deweloperski / nowe budownictwo:
+   - Ściany: surowe tynki gipsowe lub cementowo-wapienne, bez starych okładzin
+   - Podłogi: wylewka betonowa / anhydrytowa, bez starych płytek
+   - Instalacje: nowe piony, punkty przyłączeniowe gotowe (zaślepione)
+   - NIE MA demontaży starych elementów
+   - Zakres: przygotowanie podłoża, wykończenie, montaż armatury i osprzętu
+   - Typowe: nowe mieszkania, domy z rynku pierwotnego
+
+B) "remont ze stanu wtórnego" — mieszkanie/dom po użytkowaniu:
+   - Ściany: stare płytki, tapety, farby do usunięcia
+   - Podłogi: stare płytki, panele, parkiet do zdemontowania
+   - Instalacje: stare rury, kable — mogą wymagać wymiany
+   - WYMAGA demontaży, utylizacji, napraw po demontażu
+   - Zakres: demontaże + przygotowanie + wykończenie + montaż
+   - Typowe: mieszkania z rynku wtórnego, odnowienia
+
+C) "remont częściowy" — wymiana/modernizacja wybranych elementów:
+   - Zakres ograniczony do wskazanych pomieszczeń/instalacji
+   - Demontaże tylko w zakresie remontu
+
+Wskazówki detekcji:
+- Wizualizacja / projekt nowego wnętrza BEZ śladów starych elementów → prawdopodobnie "wykończenie ze stanu deweloperskiego"
+- Jeśli kontekst od użytkownika wspomina "deweloper", "nowe mieszkanie", "odbiór" → stan deweloperski
+- Jeśli kontekst wspomina "remont", "wymiana", "stare" → stan wtórny
+- Jeśli nie da się ustalić → przyjmij "remont ze stanu wtórnego" (bezpieczniejsze — obejmuje więcej prac)
+- Zapisz decyzję w building_type i uzasadnij w assumptions[]
+
+WPŁYW NA ZAKRES PRAC:
+- Stan deweloperski → POMIŃ demontaże starych elementów, skucia, utylizację
+- Stan wtórny → DODAJ demontaże, wywóz gruzu, naprawy po demontażu
+- Remont częściowy → demontaże tylko w zakresie wskazanym
+
 KLUCZOWE ZASADY:
 1. Wydobądź KAŻDE pomieszczenie z projektu z osobna (rooms_detected)
 2. Dla każdego pomieszczenia zapisz: nazwa, powierzchnia, wykończenia, armatura, instalacje
@@ -132,7 +167,9 @@ work_scope_from_project — KOMPLETNY zakres prac:
   quantity: ZAWSZE podaj ilość — oblicz lub oszacuj
 
   OBOWIĄZKOWE KATEGORIE DO SPRAWDZENIA dla każdego pomieszczenia:
-  □ DEMONTAŻE (demolition): demontaż starych płytek, starej armatury, starych instalacji, skucie tynku
+  □ DEMONTAŻE (demolition) — TYLKO dla stanu wtórnego/remontu:
+    demontaż starych płytek, starej armatury, starych instalacji, skucie tynku, wywóz gruzu
+    Dla stanu deweloperskiego — POMIŃ tę kategorię
   □ PRZYGOTOWANIE PODŁOŻA (substrate): wyrównanie, wylewki, tynki, gruntowanie
   □ HYDROIZOLACJA (waterproofing): strefa mokra przy prysznicu, wannie, umywalce — w łazience ZAWSZE
   □ INSTALACJA WOD-KAN (plumbing): policz KAŻDY punkt osobno:
