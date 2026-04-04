@@ -11,6 +11,7 @@ import type { Handler } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
 import { detectBathroomTriggers, expandDependencies } from './shared/bathroom-triggers'
 import { CATALOG_REFERENCE } from './shared/catalog-reference'
+import { extractProjectPdfText, isPdfProjectTextUsable } from './shared/pdf-text-extract'
 
 // ── Types (mirrors analyze-project.ts) ──────────────────────────────────────
 
@@ -250,19 +251,6 @@ export const handler: Handler = async (event) => {
       return { statusCode: 200, body: 'file too large' }
     }
 
-    // Convert to base64
-    const bytes = new Uint8Array(arrayBuf)
-    let binary = ''
-    for (let i = 0; i < bytes.length; i += 8192) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
-    }
-    const fileBase64 = btoa(binary)
-
-    console.info('[bg] BASE64_READY', JSON.stringify({ base64Len: fileBase64.length, elapsed_ms: Date.now() - t0 }))
-
-    // Cleanup temp file (fire-and-forget)
-    sb.storage.from('company-files').remove([job.storage_path]).catch(() => {})
-
     // ── Build OpenAI content ──────────────────────────────────────────────
     const fileType = job.file_type || 'application/pdf'
     const fileName = job.file_name || 'project'
@@ -274,17 +262,54 @@ export const handler: Handler = async (event) => {
 
     let instructionText = INSTRUCTIONS
     if (context) instructionText += `\n\nKONTEKST OD UŻYTKOWNIKA: ${context}`
-    if (isPdf) instructionText += '\n\n[Typ wejścia: projekt architektoniczny PDF — analizuj jako dokument projektowy, nie jako fakturę]'
-    else instructionText += '\n\n[Typ wejścia: wizualizacja / rysunek — analizuj jako materiał projektowy]'
-    content.push({ type: 'input_text', text: instructionText })
 
+    // ── TEXT-FIRST PATH: extract text from PDF to save tokens ────────────
+    let usedTextPath = false
     if (isPdf) {
-      content.push({
-        type: 'input_file',
-        filename: fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`,
-        file_data: `data:application/pdf;base64,${fileBase64}`,
-      })
+      const pdfBuffer = Buffer.from(arrayBuf)
+      const extractedText = await extractProjectPdfText(pdfBuffer)
+      const textUsable = extractedText.length > 0 && isPdfProjectTextUsable(extractedText)
+
+      console.info('[bg] PDF_TEXT_EXTRACT', JSON.stringify({
+        extractedLen: extractedText.length,
+        textUsable,
+        fileSizeMB: (sizeBytes / 1024 / 1024).toFixed(1),
+        elapsed_ms: Date.now() - t0,
+      }))
+
+      if (textUsable) {
+        // Text path: ~10x cheaper than vision/binary path
+        usedTextPath = true
+        instructionText += '\n\n[Typ wejścia: projekt architektoniczny PDF — tekst wyekstrahowany z dokumentu. Wizualizacje / obrazy zostały pominięte. Analizuj jako dokument projektowy, nie jako fakturę.]'
+        content.push({ type: 'input_text', text: instructionText })
+        content.push({ type: 'input_text', text: `--- TREŚĆ DOKUMENTU PDF ---\n\n${extractedText}` })
+      } else {
+        // Vision path: full binary PDF (expensive but handles image-only PDFs)
+        instructionText += '\n\n[Typ wejścia: projekt architektoniczny PDF — analizuj jako dokument projektowy, nie jako fakturę]'
+        content.push({ type: 'input_text', text: instructionText })
+
+        const bytes = new Uint8Array(arrayBuf)
+        let binary = ''
+        for (let i = 0; i < bytes.length; i += 8192) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
+        }
+        const fileBase64 = btoa(binary)
+        content.push({
+          type: 'input_file',
+          filename: fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`,
+          file_data: `data:application/pdf;base64,${fileBase64}`,
+        })
+      }
     } else if (isImage) {
+      instructionText += '\n\n[Typ wejścia: wizualizacja / rysunek — analizuj jako materiał projektowy]'
+      content.push({ type: 'input_text', text: instructionText })
+
+      const bytes = new Uint8Array(arrayBuf)
+      let binary = ''
+      for (let i = 0; i < bytes.length; i += 8192) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
+      }
+      const fileBase64 = btoa(binary)
       const mimeType = fileType.startsWith('image/') ? fileType : 'image/jpeg'
       content.push({
         type: 'input_image',
@@ -295,11 +320,14 @@ export const handler: Handler = async (event) => {
       return { statusCode: 200, body: 'unsupported type' }
     }
 
+    // Cleanup temp file (fire-and-forget)
+    sb.storage.from('company-files').remove([job.storage_path]).catch(() => {})
+
     // ── Call OpenAI ───────────────────────────────────────────────────────
     const apiKey = process.env.OPENAI_API_KEY ?? ''
     const model = process.env.OPENAI_MODEL_VISION?.trim() || process.env.OPENAI_MODEL?.trim() || 'gpt-4o'
 
-    console.info('[bg] OPENAI_START', JSON.stringify({ model, isPdf, elapsed_ms: Date.now() - t0 }))
+    console.info('[bg] OPENAI_START', JSON.stringify({ model, isPdf, usedTextPath, contentItems: content.length, elapsed_ms: Date.now() - t0 }))
 
     const resp = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',

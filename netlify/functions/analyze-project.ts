@@ -30,6 +30,7 @@ import crypto from 'crypto'
 import { detectBathroomTriggers, expandDependencies } from './shared/bathroom-triggers'
 import type { ClarificationQuestion } from './shared/bathroom-triggers'
 import { CATALOG_REFERENCE } from './shared/catalog-reference'
+import { extractProjectPdfText, isPdfProjectTextUsable } from './shared/pdf-text-extract'
 
 // ── Local type definitions (mirrors src/services/ai/engines/project.types.ts) ─
 // Netlify functions cannot import from src/. Keep in sync manually.
@@ -587,28 +588,42 @@ export const handler: Handler = async (event) => {
 
   const content: ContentItem[] = []
 
-  // Instruction text
+  // ── TEXT-FIRST PATH: extract text from PDF to save tokens ──────────────
+  let usedTextPath = false
   let instructionText = 'Zanalizuj ten materiał projektowy i wydobądź wszystkie dostępne dane projektowe.'
   if (context) {
     instructionText += `\n\nKontekst od użytkownika: ${context}`
   }
+
   if (isPdf) {
-    instructionText += '\n\n[Typ wejścia: projekt architektoniczny PDF — analizuj jako dokument projektowy, nie jako fakturę]'
+    const pdfBuffer = Buffer.from(resolvedBase64, 'base64')
+    const extractedText = await extractProjectPdfText(pdfBuffer)
+    const textUsable = extractedText.length > 0 && isPdfProjectTextUsable(extractedText)
+
+    console.info('PDF_TEXT_EXTRACT', JSON.stringify({
+      extractedLen: extractedText.length,
+      textUsable,
+      approxBinaryKB: Math.round(base64Len * 0.75 / 1024),
+      elapsed_ms: Date.now() - t0,
+    }))
+
+    if (textUsable) {
+      usedTextPath = true
+      instructionText += '\n\n[Typ wejścia: projekt architektoniczny PDF — tekst wyekstrahowany z dokumentu. Wizualizacje / obrazy zostały pominięte. Analizuj jako dokument projektowy, nie jako fakturę.]'
+      content.push({ type: 'input_text', text: instructionText })
+      content.push({ type: 'input_text', text: `--- TREŚĆ DOKUMENTU PDF ---\n\n${extractedText}` })
+    } else {
+      instructionText += '\n\n[Typ wejścia: projekt architektoniczny PDF — analizuj jako dokument projektowy, nie jako fakturę]'
+      content.push({ type: 'input_text', text: instructionText })
+      content.push({
+        type:      'input_file',
+        filename:  fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`,
+        file_data: `data:application/pdf;base64,${resolvedBase64}`,
+      })
+    }
   } else {
     instructionText += '\n\n[Typ wejścia: wizualizacja / rysunek — analizuj jako materiał projektowy]'
-  }
-  content.push({ type: 'input_text', text: instructionText })
-
-  // File content
-  if (isPdf) {
-    // OpenAI Responses API: send PDF as input_file
-    content.push({
-      type:      'input_file',
-      filename:  fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`,
-      file_data: `data:application/pdf;base64,${resolvedBase64}`,
-    })
-  } else {
-    // Image (visualization, render, drawing photo)
+    content.push({ type: 'input_text', text: instructionText })
     const mimeType = fileType.startsWith('image/') ? fileType : 'image/jpeg'
     content.push({
       type:      'input_image',
@@ -620,7 +635,7 @@ export const handler: Handler = async (event) => {
 
   let aiRaw: string
   try {
-    console.info('PROVIDER_REQUEST_START', JSON.stringify({ model, isPdf, contentItems: content.length, elapsed_ms: Date.now() - t0 }))
+    console.info('PROVIDER_REQUEST_START', JSON.stringify({ model, isPdf, usedTextPath, contentItems: content.length, elapsed_ms: Date.now() - t0 }))
     const resp = await fetch('https://api.openai.com/v1/responses', {
       method:  'POST',
       headers: {
