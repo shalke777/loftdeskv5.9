@@ -479,8 +479,17 @@ export const handler: Handler = async (event) => {
         binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
       }
       resolvedBase64 = btoa(binary)
+      // File downloaded — delete temp file from storage (fire-and-forget)
+      sbService.storage.from('company-files').remove([storagePath])
+        .then(({ error: rmErr }) => {
+          if (rmErr) console.warn('[analyze-project] Temp file cleanup failed:', rmErr.message)
+          else console.info('STORAGE_CLEANUP_OK', JSON.stringify({ storagePath }))
+        })
+        .catch((e: unknown) => console.warn('[analyze-project] Temp file cleanup exception:', e))
     } catch (fetchErr) {
       console.error('[analyze-project] Storage fetch exception:', fetchErr)
+      // Attempt cleanup even on fetch failure
+      sbService.storage.from('company-files').remove([storagePath]).catch(() => {})
       return err(502, 'storage_fetch_failed', 'Nie udało się pobrać pliku z storage.')
     }
   }
@@ -886,6 +895,10 @@ export const handler: Handler = async (event) => {
       category:    'internal',
       elapsed_ms:  typeof t0 !== 'undefined' ? Date.now() - t0 : -1,
     }))
+    // Best-effort cleanup of temp storage file on fatal error
+    if (typeof storagePath !== 'undefined' && storagePath && typeof sbService !== 'undefined') {
+      sbService.storage.from('company-files').remove([storagePath]).catch(() => {})
+    }
     captureAiError(fatal, {
       endpoint:   'analyze-project',
       requestId:  typeof requestId !== 'undefined' ? requestId : null,
