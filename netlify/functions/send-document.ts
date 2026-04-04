@@ -80,6 +80,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   // ── Parse body ────────────────────────────────────────────────────────────
   let toEmail: string, documentType: string, documentName: string, userMessage: string | null, documentUrl: string | null
+  let pdfBase64: string | null = null, pdfFilename: string | null = null
   try {
     const b = JSON.parse(event.body ?? '{}') as Record<string, unknown>
     toEmail       = ((b.to_email       ?? '') as string).trim().toLowerCase()
@@ -88,6 +89,11 @@ export const handler: Handler = async (event: HandlerEvent) => {
     userMessage   = typeof b.message === 'string' ? b.message.trim() : null
     const rawDocUrl = typeof b.document_url === 'string' ? b.document_url.trim() : ''
     documentUrl   = /^https?:\/\//i.test(rawDocUrl) ? rawDocUrl : null
+    // PDF attachment support (base64-encoded PDF from client-side generator)
+    if (typeof b.pdf_base64 === 'string' && b.pdf_base64.length > 0) {
+      pdfBase64 = b.pdf_base64 as string
+      pdfFilename = typeof b.pdf_filename === 'string' ? (b.pdf_filename as string).trim() : `${documentName}.pdf`
+    }
   } catch {
     return json(400, { ok: false, error: 'invalid_json' })
   }
@@ -151,12 +157,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
 </html>`
 
   const fromLabel = `${companyName} (przez LoftDesk)`
-  const payload = {
+  const payload: Record<string, unknown> = {
     from:     `${fromLabel} <${fromEmail}>`,
     to:       [toEmail],
     reply_to: operatorEmail ?? undefined,
     subject:  `${docLabel}: ${documentName}`,
     html,
+  }
+  // Attach PDF if provided (standalone invoices without portal access)
+  if (pdfBase64 && pdfFilename) {
+    payload.attachments = [{
+      filename: pdfFilename,
+      content:  pdfBase64,
+    }]
   }
 
   const resp = await fetch('https://api.resend.com/emails', {

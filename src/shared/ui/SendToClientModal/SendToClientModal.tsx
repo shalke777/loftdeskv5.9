@@ -33,11 +33,13 @@ interface Props {
   documentName:  string
   defaultEmail?: string
   portalUrl?:    string
+  /** HTML content for client-side PDF generation (attached when no portalUrl) */
+  pdfHtml?:      string
   /** For package sends: list of document numbers included (shown in modal + appended to message) */
   docSummary?:   string[]
 }
 
-export function SendToClientModal({ open, onClose, documentType, documentName, defaultEmail, portalUrl, docSummary }: Props) {
+export function SendToClientModal({ open, onClose, documentType, documentName, defaultEmail, portalUrl, pdfHtml, docSummary }: Props) {
   const toast = useToast()
   const [email,   setEmail]   = useState(defaultEmail ?? '')
   const [message, setMessage] = useState('')
@@ -74,13 +76,29 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
       }
       if (!jwt) throw new Error('Brak aktywnej sesji — zaloguj się ponownie')
 
-      const body: Record<string, string> = {
+      const body: Record<string, unknown> = {
         to_email:      email.trim().toLowerCase(),
         document_type: documentType,
         document_name: documentName,
       }
       if (message.trim()) body.message = message.trim()
       if (portalUrl)       body.document_url = portalUrl
+
+      // Generate PDF attachment when no portal URL and pdfHtml is provided
+      if (!portalUrl && pdfHtml) {
+        try {
+          const { generatePdfBlob } = await import('@/services/pdf/pdfGenerator')
+          const blob = await generatePdfBlob(pdfHtml)
+          const buffer = await blob.arrayBuffer()
+          const bytes = new Uint8Array(buffer)
+          let binary = ''
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+          body.pdf_base64 = btoa(binary)
+          body.pdf_filename = `${documentName.replace(/[/\\:*?"<>|]/g, '_')}.pdf`
+        } catch (pdfErr) {
+          console.warn('[SendToClientModal] PDF generation failed, sending without attachment:', pdfErr)
+        }
+      }
 
       const res = await fetch(SEND_ENDPOINT, {
         method:  'POST',
@@ -175,16 +193,17 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
         ) : (
           <div
             style={{
-              background: 'rgba(212,150,10,0.12)',
-              border: '1px solid rgba(212,150,10,0.30)',
+              background: pdfHtml ? 'rgba(96,165,250,0.12)' : 'rgba(212,150,10,0.12)',
+              border: `1px solid ${pdfHtml ? 'rgba(96,165,250,0.30)' : 'rgba(212,150,10,0.30)'}`,
               borderRadius: 8,
               padding: '10px 14px',
               fontSize: 13,
-              color: '#D4960A',
+              color: pdfHtml ? '#60A5FA' : '#D4960A',
             }}
           >
-            Brak linku do portalu — klient otrzyma tylko informacj\u0119 o dokumencie.
-            Wygeneruj link portalu (w sekcji &ldquo;Co dalej?&rdquo; na wycenie), aby do\u0142\u0105czy\u0107 bezpo\u015brednio do projektu.
+            {pdfHtml
+              ? 'PDF dokumentu zostanie dołączony do emaila jako załącznik.'
+              : 'Brak linku do portalu — klient otrzyma tylko informacj\u0119 o dokumencie. Wygeneruj link portalu (w sekcji \u201eCo dalej?\u201d na wycenie), aby do\u0142\u0105czy\u0107 bezpo\u015brednio do projektu.'}
           </div>
         )}
 

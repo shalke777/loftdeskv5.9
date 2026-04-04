@@ -50,6 +50,13 @@ export function useClientInvoices(projectId: string) {
   })
 }
 
+export function useClientStandaloneInvoices() {
+  return useQuery({
+    queryKey: ['client-standalone-invoices'] as const,
+    queryFn:  () => clientPortalApi.listStandaloneInvoices(),
+  })
+}
+
 export function useClientContracts(projectId: string) {
   return useQuery({
     queryKey: clientKeys.contracts(projectId),

@@ -170,6 +170,19 @@ export interface ClientTimelineEvent {
   created_at: string
 }
 
+/** Shared mapper: compute total_gross from items (not stored in DB) */
+function mapInvoiceRows(data: unknown[] | null): ClientInvoice[] {
+  return (data ?? []).map((row: any) => {
+    const items = (row.items ?? []) as ClientInvoiceItem[]
+    const gross = Math.round(
+      items.reduce((s, it) =>
+        s + Number(it.quantity) * Number(it.unit_price) * (1 + Number(it.vat_rate ?? 23) / 100), 0
+      ) * 100,
+    ) / 100
+    return { ...row, total_gross: gross > 0 ? gross : null } as ClientInvoice
+  })
+}
+
 export const clientPortalApi = {
   async listProjects(): Promise<ClientProject[]> {
     if (!supabase) return []
@@ -213,16 +226,19 @@ export const clientPortalApi = {
       .eq('project_id', projectId)
       .order('issue_date', { ascending: false })
     if (error) throw error
-    // total_gross is not stored on invoices — compute from items
-    return (data ?? []).map((row: any) => {
-      const items = (row.items ?? []) as ClientInvoiceItem[]
-      const gross = Math.round(
-        items.reduce((s, it) =>
-          s + Number(it.quantity) * Number(it.unit_price) * (1 + Number(it.vat_rate ?? 23) / 100), 0
-        ) * 100,
-      ) / 100
-      return { ...row, total_gross: gross > 0 ? gross : null } as ClientInvoice
-    })
+    return mapInvoiceRows(data)
+  },
+
+  /** Standalone invoices (no project) matched by client_id via RLS */
+  async listStandaloneInvoices(): Promise<ClientInvoice[]> {
+    if (!supabase) return []
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('id, number, invoice_type, status, issue_date, sale_date, issue_place, due_date, payment_method, bank_account, advance_total, ksef_status, ksef_ref, notes, items:invoice_items(id, description, unit, quantity, unit_price, vat_rate, sort_order, tranche_label)')
+      .is('project_id', null)
+      .order('issue_date', { ascending: false })
+    if (error) throw error
+    return mapInvoiceRows(data)
   },
 
   async listContracts(projectId: string): Promise<ClientContract[]> {
