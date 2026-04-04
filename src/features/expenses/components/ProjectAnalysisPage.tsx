@@ -8,6 +8,7 @@
 
 import { useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useAnalyzeProject } from '@/features/expenses/hooks/useAnalyzeProject'
 import { useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import { compareProjectToReality } from '@/services/ai/engines/comparison'
@@ -71,6 +72,7 @@ function inferRoomType(r: ProjectAnalysisResult): string {
 }
 
 export function ProjectAnalysisPage() {
+  const companyId   = useCompanyId()
   const analyze     = useAnalyzeProject()
   const analyzeRoom = useAnalyzeRoomPhotos()
   const navigate    = useNavigate()
@@ -181,7 +183,7 @@ export function ProjectAnalysisPage() {
       return
     }
     setStep('processing')
-    analyze.mutate({ file, context: context.trim() || undefined, projectId: selectedProjectId }, {
+    analyze.mutate({ file, context: context.trim() || undefined, projectId: selectedProjectId, companyId }, {
       onSuccess: (res) => {
         setResult(res)
         setError(null)

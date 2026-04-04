@@ -60,12 +60,12 @@ function validateProjectFile(file: File): string | null {
 }
 
 /** Upload large file to Supabase Storage for server-side download */
-async function uploadToStorage(file: File): Promise<string> {
+async function uploadToStorage(file: File, companyId: string): Promise<string> {
   if (!supabase) throw new Error('Supabase nie jest skonfigurowane.')
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('Sesja wygasła — zaloguj się ponownie.')
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const storagePath = `ai-analysis/${Date.now()}_${safeName}`
+  const storagePath = `${companyId}/ai-analysis/${Date.now()}_${safeName}`
   const contentType = file.type || 'application/octet-stream'
   const { error } = await supabase.storage
     .from('company-files')
@@ -80,6 +80,7 @@ export async function callAnalyzeProject(
   file: File,
   context?: string,
   projectId?: string,
+  companyId?: string,
 ): Promise<ProjectAnalysisResult> {
   const validationError = validateProjectFile(file)
   if (validationError) {
@@ -115,7 +116,8 @@ export async function callAnalyzeProject(
 
   if (useLargeFilePath) {
     // Large file: upload to Supabase Storage, send path to backend
-    const storagePath = await uploadToStorage(file)
+    if (!companyId) throw new Error('Brak identyfikatora firmy — nie można przesłać dużego pliku.')
+    const storagePath = await uploadToStorage(file, companyId)
     payload.storage_path = storagePath
   } else {
     // Small file: send as base64 inline (existing path)
@@ -184,8 +186,8 @@ export async function callAnalyzeProject(
 
 export function useAnalyzeProject() {
   return useMutation({
-    mutationFn: ({ file, context, projectId }: { file: File; context?: string; projectId?: string }) =>
-      callAnalyzeProject(file, context, projectId),
+    mutationFn: ({ file, context, projectId, companyId }: { file: File; context?: string; projectId?: string; companyId?: string }) =>
+      callAnalyzeProject(file, context, projectId, companyId),
     retry: (failureCount, error) => {
       if (failureCount >= 1) return false
       const msg = error instanceof Error ? error.message : ''
