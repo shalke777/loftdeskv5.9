@@ -456,41 +456,60 @@ export const handler: Handler = async (event) => {
     return err(403, 'project_access_denied', 'Project not found or access denied')
   }
 
-  // ── Fetch large file from storage if storage_path was provided ─────────
+  // ── ASYNC PATH: large files go through background job ─────────────────
   if (storagePath && !resolvedBase64) {
-    console.info('STORAGE_FETCH_START', JSON.stringify({ storagePath, elapsed_ms: Date.now() - t0 }))
-    try {
-      const { data: blob, error: dlErr } = await sbService.storage
-        .from('company-files')
-        .download(storagePath)
-      if (dlErr || !blob) {
-        console.error('[analyze-project] Storage download failed:', dlErr?.message ?? 'no data')
-        return err(502, 'storage_fetch_failed', 'Nie udało się pobrać pliku z storage. Spróbuj ponownie.')
-      }
-      const arrayBuf = await blob.arrayBuffer()
-      const sizeBytes = arrayBuf.byteLength
-      console.info('STORAGE_FETCH_OK', JSON.stringify({ sizeBytes, elapsed_ms: Date.now() - t0 }))
-      if (sizeBytes > 20 * 1024 * 1024) {
-        return err(413, 'file_too_large', `Plik jest za duży (${(sizeBytes / 1024 / 1024).toFixed(1)} MB, max 20 MB).`)
-      }
-      const bytes = new Uint8Array(arrayBuf)
-      let binary = ''
-      for (let i = 0; i < bytes.length; i += 8192) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
-      }
-      resolvedBase64 = btoa(binary)
-      // File downloaded — delete temp file from storage (fire-and-forget)
-      sbService.storage.from('company-files').remove([storagePath])
-        .then(({ error: rmErr }) => {
-          if (rmErr) console.warn('[analyze-project] Temp file cleanup failed:', rmErr.message)
-          else console.info('STORAGE_CLEANUP_OK', JSON.stringify({ storagePath }))
-        })
-        .catch((e: unknown) => console.warn('[analyze-project] Temp file cleanup exception:', e))
-    } catch (fetchErr) {
-      console.error('[analyze-project] Storage fetch exception:', fetchErr)
-      // Attempt cleanup even on fetch failure
-      sbService.storage.from('company-files').remove([storagePath]).catch(() => {})
-      return err(502, 'storage_fetch_failed', 'Nie udało się pobrać pliku z storage.')
+    console.info('ASYNC_JOB_CREATE', JSON.stringify({ storagePath, projectId, companyId, elapsed_ms: Date.now() - t0 }))
+
+    // Plan check before creating job
+    const { data: companyPlan, error: planErr2 } = await sbService
+      .from('companies').select('plan').eq('id', companyId).single()
+    if (planErr2 || !companyPlan) return err(500, 'plan_check_failed', 'Could not verify company plan')
+    if (!['pro', 'business', 'admin'].includes((companyPlan as { plan: string }).plan))
+      return err(403, 'plan_insufficient', 'AI Engine requires a Pro or Business plan')
+
+    // Daily limit check
+    const dailyLimit2 = parseInt(process.env.AI_DAILY_LIMIT ?? '50', 10)
+    const { count: cnt2, error: cntErr2 } = await sbService
+      .from('ai_analysis_runs').select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId)
+      .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
+    if (!cntErr2 && typeof cnt2 === 'number' && cnt2 >= dailyLimit2)
+      return err(429, 'daily_limit_exceeded', `Dzienny limit analiz AI (${dailyLimit2}) został wyczerpany.`)
+
+    // Create async job record
+    const jobId = crypto.randomUUID()
+    const { error: insertErr } = await sbService.from('project_analysis_jobs').insert({
+      id:           jobId,
+      company_id:   companyId,
+      project_id:   projectId,
+      created_by:   userId,
+      status:       'queued',
+      storage_path: storagePath,
+      file_type:    fileType,
+      file_name:    fileName,
+      context:      context || null,
+    })
+    if (insertErr) {
+      console.error('[analyze-project] Job insert failed:', insertErr.message)
+      return err(500, 'job_create_failed', 'Nie udało się utworzyć zadania analizy.')
+    }
+
+    console.info('ASYNC_JOB_CREATED', JSON.stringify({ jobId, elapsed_ms: Date.now() - t0 }))
+
+    // Fire background function (fire-and-forget)
+    const siteUrl = process.env.URL || process.env.DEPLOY_PRIME_URL || ''
+    if (siteUrl) {
+      fetch(`${siteUrl}/.netlify/functions/analyze-project-bg-background`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: jobId, _service_key: sbServiceRole }),
+      }).catch(e => console.warn('[analyze-project] Background trigger failed:', e))
+    }
+
+    return {
+      statusCode: 202,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ ok: true, async: true, job_id: jobId }),
     }
   }
 

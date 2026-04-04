@@ -4,10 +4,12 @@
 // Calls the analyze-project Netlify function and returns a ProjectAnalysisResult.
 // Supports: project PDFs, design visualizations, technical drawings.
 //
-// Deliberately SEPARATE from useAnalyzeRoomPhoto:
-//   - Different Netlify endpoint (analyze-project)
-//   - Returns ProjectAnalysisResult (not AnalysisResult envelope)
-//   - Handles both PDF and image inputs
+// Large files (>4 MB) trigger async processing:
+//   1. File uploaded to Supabase Storage
+//   2. Sync function creates job record, returns job_id
+//   3. Background function processes asynchronously (up to 15 min)
+//   4. Frontend polls project_analysis_jobs table for status
+//   5. Result returned from result_json column when done
 
 import { useMutation } from '@tanstack/react-query'
 import { netlifyFn } from '@/shared/lib/functions'
@@ -20,14 +22,17 @@ async function getAuthHeader(): Promise<Record<string, string>> {
   return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
 }
 
-const MAX_FILE_SIZE   = 20 * 1024 * 1024 // 20 MB — large project PDFs use storage path
-const URL_THRESHOLD   = 4 * 1024 * 1024  // 4 MB — above this, upload to storage first (Lambda body ≤6 MB)
+const MAX_FILE_SIZE   = 20 * 1024 * 1024 // 20 MB
+const URL_THRESHOLD   = 4 * 1024 * 1024  // 4 MB — above this, async job path
 
 const ACCEPTED_TYPES = new Set([
   'application/pdf',
   'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
   'image/gif', 'image/heic', 'image/heif',
 ])
+
+const POLL_INTERVAL   = 3000  // 3s between polls
+const POLL_MAX_TIME   = 300_000  // 5 min max polling
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -41,25 +46,20 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
-/** Validate the file before sending to the Netlify function */
 function validateProjectFile(file: File): string | null {
   if (file.size > MAX_FILE_SIZE) {
     return `Plik jest za duży (max 20 MB). Skompresuj PDF lub zmniejsz rozdzielczość obrazu.`
   }
-
   const mime = file.type.toLowerCase()
   const name = file.name.toLowerCase()
   const isPdf   = mime === 'application/pdf' || name.endsWith('.pdf')
   const isImage = mime.startsWith('image/')
-
   if (!isPdf && !isImage && !ACCEPTED_TYPES.has(mime)) {
     return `Nieobsługiwany typ pliku: ${file.type || 'nieznany'}. Użyj PDF lub obrazu (JPEG/PNG/WEBP).`
   }
-
-  return null  // valid
+  return null
 }
 
-/** Upload large file to Supabase Storage for server-side download */
 async function uploadToStorage(file: File, companyId: string): Promise<string> {
   if (!supabase) throw new Error('Supabase nie jest skonfigurowane.')
   const { data: { session } } = await supabase.auth.getSession()
@@ -74,7 +74,41 @@ async function uploadToStorage(file: File, companyId: string): Promise<string> {
   return storagePath
 }
 
-// ── Core async function ───────────────────────────────────────────────────────
+/** Poll job status until done/failed or timeout */
+async function pollJobResult(jobId: string): Promise<ProjectAnalysisResult> {
+  if (!supabase) throw new Error('Supabase nie jest skonfigurowane.')
+  const start = Date.now()
+
+  while (Date.now() - start < POLL_MAX_TIME) {
+    await new Promise(r => setTimeout(r, POLL_INTERVAL))
+
+    const { data: job, error: pollErr } = await supabase
+      .from('project_analysis_jobs')
+      .select('status, result_json, error_code, error_message')
+      .eq('id', jobId)
+      .single()
+
+    if (pollErr) {
+      console.warn('[useAnalyzeProject] Poll error:', pollErr.message)
+      continue // retry
+    }
+
+    if (job.status === 'done' && job.result_json) {
+      return job.result_json as ProjectAnalysisResult
+    }
+
+    if (job.status === 'failed') {
+      const msg = job.error_message || 'Analiza nie powiodła się.'
+      throw new Error(msg)
+    }
+
+    // Still queued or processing — keep polling
+  }
+
+  throw new Error('Analiza projektu trwa zbyt długo. Sprawdź wyniki później lub spróbuj z mniejszym plikiem.')
+}
+
+// ── Core function ─────────────────────────────────────────────────────────────
 
 export async function callAnalyzeProject(
   file: File,
@@ -115,12 +149,10 @@ export async function callAnalyzeProject(
   }
 
   if (useLargeFilePath) {
-    // Large file: upload to Supabase Storage, send path to backend
     if (!companyId) throw new Error('Brak identyfikatora firmy — nie można przesłać dużego pliku.')
     const storagePath = await uploadToStorage(file, companyId)
     payload.storage_path = storagePath
   } else {
-    // Small file: send as base64 inline (existing path)
     payload.file_base64 = await fileToBase64(file)
   }
 
@@ -137,8 +169,13 @@ export async function callAnalyzeProject(
 
   const data = await resp.json().catch(() => ({})) as Record<string, unknown>
 
+  // ── Async path: 202 with job_id → poll for result ─────────────────────
+  if (resp.status === 202 && data.async === true && typeof data.job_id === 'string') {
+    return pollJobResult(data.job_id)
+  }
+
+  // ── Error handling ────────────────────────────────────────────────────
   if (!resp.ok) {
-    // Surface backend message if available
     const serverMsg = typeof data.message === 'string' ? data.message : null
     const errCode = String(data.error ?? '')
     if (resp.status === 401 || errCode === 'unauthorized')
@@ -174,6 +211,7 @@ export async function callAnalyzeProject(
     throw new Error(serverMsg ?? `HTTP ${resp.status}`)
   }
 
+  // ── Sync path: result inline ──────────────────────────────────────────
   const result = data.result as ProjectAnalysisResult
   if (!result || typeof result !== 'object') {
     throw new Error('Nieprawidłowa odpowiedź serwera analizy projektu.')

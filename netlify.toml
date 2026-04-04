@@ -16,6 +16,9 @@
 [functions."analyze-project"]
   timeout = 26
 
+[functions."analyze-project-bg-background"]
+  timeout = 900
+
 [functions."analyze-room-photo"]
   timeout = 26
 
