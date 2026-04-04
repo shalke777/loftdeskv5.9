@@ -219,9 +219,12 @@ export function ExpensesPage() {
           }
         }
 
-        // Step B: AI fallback — try when OCR failed or confidence is low (PDFs included)
+        // Step B: AI fallback — try when OCR failed, confidence is low, or amounts are missing.
+        // The regex parser may extract metadata (vendor, date, NIP) successfully but miss
+        // amounts entirely when PDF text order doesn't match visual layout — force AI in that case.
         const ocrConf = ocrResult?.extraction_confidence ?? 0
-        const needsAI = ocrFailed || ocrConf < 65  // raised from 50 — trigger AI for partial results
+        const ocrMissingAmounts = ocrResult != null && ocrResult.gross_amount == null && ocrResult.net_amount == null
+        const needsAI = ocrFailed || ocrConf < 65 || ocrMissingAmounts
 
         if (needsAI) {
           setUploadStep('Analizuję przez AI...')

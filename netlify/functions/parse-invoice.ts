@@ -391,8 +391,14 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   }
 
   // Join streams with newlines so inter-stream structure reaches the AI engine.
+  // Normalize non-breaking spaces (U+00A0) and thin spaces (U+2009, U+202F) that
+  // many PDF generators use as thousands separators — they break downstream regex.
   // /[ \t]{2,}/ collapses runs of spaces/tabs but preserves the \n separators.
-  return chunks.join('\n').replace(/[ \t]{2,}/g, ' ').trim().slice(0, 50_000)
+  return chunks.join('\n')
+    .replace(/[\u00A0\u2009\u202F\u2007]/g, ' ')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
+    .slice(0, 50_000)
 }
 
 // ─── PDF text usability gate ──────────────────────────────────────────────────
@@ -598,8 +604,8 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
   else if (/\bUSD\b/i.test(t)) result.currency = 'USD'
   else if (/\bGBP\b/i.test(t)) result.currency = 'GBP'
 
-  // Gross amount
-  const grossMatch = t.match(/(?:do\s+zap[\u0142l]aty|razem\s+brutto|kwota\s+brutto|warto[\u015bs][\u0107c]\s+brutto|sum[ma]?\s+brutto|brutto)[:\s]+([0-9]+[\s]?[0-9]{0,3}[,.][0-9]{1,2})\s*(?:PLN|z[\u0142l]|EUR|USD)?/i)
+  // Gross amount — broadened to catch more Polish label variants
+  const grossMatch = t.match(/(?:do\s+zap[\u0142l]aty|razem\s+brutto|kwota\s+brutto|warto[\u015bs][\u0107c]\s+brutto|sum[ma]?\s+brutto|brutto|og[oó][\u0142l]em\s+(?:do\s+zap[\u0142l]aty|brutto)?|[\u0142l][aą]czna\s+kwota|warto[\u015bs][\u0107c]\s+faktury|kwota\s+og[oó][\u0142l]em)[:\s]+([0-9]+[\s]?[0-9]{0,3}[,.][0-9]{1,2})\s*(?:PLN|z[\u0142l]|EUR|USD)?/i)
   if (grossMatch) { const v = parsePolishAmount(grossMatch[1]); if (v > 0) result.gross_amount = v }
 
   // Gross fallback for receipts: SUMA: 45,00 / RAZEM: 45,00 (without "brutto")

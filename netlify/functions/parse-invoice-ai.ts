@@ -313,12 +313,18 @@ export const handler: Handler = async (event: HandlerEvent) => {
         if (extracted.trim().length >= 60) {
           console.warn('PDF_TEXT_UNUSABLE', JSON.stringify({ chars: extracted.length, reason: 'failed_usability_gate' }))
         }
-        // 2. Scanned PDF — extract embedded JPEG images and use first one for vision
+        // 2. Scanned PDF — extract embedded JPEG images.
+        //    Use first JPEG for vision input. For multi-page PDFs, note page count
+        //    so AI knows amounts may be on a different page than page 1.
         const jpegs = extractEmbeddedJpegsFromPdf(pdfBuffer)
         if (jpegs.length > 0) {
           imageBase64 = jpegs[0].toString('base64')
           imageType   = 'image/jpeg'
           console.info('PDF_JPEG_EXTRACTED', JSON.stringify({ total: jpegs.length, usedIndex: 0, sizeBytes: jpegs[0].length }))
+          if (jpegs.length > 1) {
+            const pageNote = `[Dokument PDF ma ${jpegs.length} stron(y). Obraz pokazuje stronę 1.]`
+            textContent = textContent ? pageNote + '\n' + textContent : pageNote
+          }
         } else {
           console.warn('PDF_NO_CONTENT', 'No text layer and no embedded JPEGs found in PDF')
         }

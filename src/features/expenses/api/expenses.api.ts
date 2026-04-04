@@ -165,7 +165,10 @@ export async function parseInvoiceFromText(text: string): Promise<ParsedExpenseD
   const result: ParsedExpenseData = {}
 
   // ── Normalize whitespace (PDF text is often token-per-space) ────────────
-  const t = text.replace(/\s+/g, ' ')
+  // Also normalize non-breaking spaces that PDF generators use as thousands separators.
+  const t = text
+    .replace(/[\u00A0\u2009\u202F\u2007]/g, ' ')
+    .replace(/\s+/g, ' ')
 
   // ── Document type detection ──────────────────────────────────────────────
   const RECEIPT_KEYWORDS = /paragon|kasa\s+fiskalna|nr\s*paragonu|fiskaln|kasowy|kasy\s+fiskal/i
@@ -297,8 +300,9 @@ export async function parseInvoiceFromText(text: string): Promise<ParsedExpenseD
   result.currency = currencyMatch ? currencyMatch[1].toUpperCase() : 'PLN'
 
   // ── Amounts (gross / net) — currency suffix is optional ──────────────────
+  // Broadened to catch more Polish label variants (ogółem, łączna kwota, wartość faktury)
   const grossMatch = t.match(
-    /(?:do\s+zap[łl]aty|razem\s+brutto|kwota\s+brutto|warto[śs][ćc]\s+brutto|sum[ma]?\s+brutto|brutto\s+p[łl]atno[śs][ćc]?|brutto)[:\s]+([0-9]+[,. ][0-9]{0,3}[,. ]?[0-9]{0,2})\s*(?:PLN|z[łl]|EUR)?/i
+    /(?:do\s+zap[łl]aty|razem\s+brutto|kwota\s+brutto|warto[śs][ćc]\s+brutto|sum[ma]?\s+brutto|brutto\s+p[łl]atno[śs][ćc]?|brutto|og[oó][łl]em\s+(?:do\s+zap[łl]aty|brutto)?|[łl][aą]czna\s+kwota|warto[śs][ćc]\s+faktury|kwota\s+og[oó][łl]em)[:\s]+([0-9]+[,. ][0-9]{0,3}[,. ]?[0-9]{0,2})\s*(?:PLN|z[łl]|EUR)?/i
   )
   if (grossMatch) {
     const v = parsePolishAmount(grossMatch[1])
