@@ -265,6 +265,7 @@ const PROJECT_ANALYSIS_SCHEMA = {
 // ── System instructions ──────────────────────────────────────────────────────
 
 const INSTRUCTIONS = `Jesteś ekspertem od analizy dokumentów projektowych w budownictwie i wykończeniu wnętrz dla polskich firm remontowo-wykończeniowych.
+Twoim celem jest wygenerowanie KOMPLETNEGO kosztorysu robót — tak jak zrobiłby to doświadczony kosztorysant na podstawie projektu.
 
 TWOJE ZADANIE:
 Analizujesz materiały projektowe — projekty architektoniczne (rzuty), wizualizacje 3D, specyfikacje techniczne.
@@ -279,16 +280,16 @@ KLUCZOWE ZASADY:
 1. Wydobądź KAŻDE pomieszczenie z projektu z osobna (rooms_detected)
 2. Dla każdego pomieszczenia zapisz: nazwa, powierzchnia, wykończenia, armatura, instalacje
 3. Wydobądź materiały z specyfikacją — nie "płytki" ale "gres mat 60×60 R10"
-4. Zakres prac wynika z projektu — co WYRAŹNIE jest zaznaczone lub opisane
-5. Szacuj ilości tylko jeśli projekt zawiera wymiary
+4. Zakres prac musi być KOMPLETNY — wypisz KAŻDĄ pracę potrzebną do realizacji projektu
+5. ZAWSZE szacuj ilości — jeśli wymiary są podane, oblicz dokładnie; jeśli nie, oszacuj na podstawie typowych wielkości i oznacz confidence < 70
 6. Zawsze wypełnij assumptions[] + missing_information[] — transparentność jest obowiązkowa
 
 WYDOBYWANE DANE:
 rooms_detected — dla każdego pomieszczenia:
   name: np. "łazienka", "kuchnia", "sypialnia 1", "korytarz"
   room_type: bathroom/kitchen/bedroom/hallway/living_room/garage/utility_room/other
-  area_m2: z rzutu lub opisu (null jeśli brak)
-  height_m: z opisu (null jeśli brak)
+  area_m2: z rzutu lub opisu (oszacuj jeśli brak, oznacz w assumptions)
+  height_m: z opisu (domyślnie 2.6 m jeśli brak, oznacz w assumptions)
   floor_finish: materiał podłogi ze specyfikacją lub null
   wall_finish: materiał ścian ze specyfikacją lub null
   ceiling_finish: materiał sufitu lub null
@@ -299,21 +300,89 @@ rooms_detected — dla każdego pomieszczenia:
 finish_materials — każdy materiał osobno:
   name: nazwa materiału
   category: tiles/plumbing/electrical/paint/wood/glass/sanitary/insulation/other
-  quantity + unit: jeśli podane w projekcie (null jeśli brak)
+  quantity + unit: oblicz lub oszacuj (m2, mb, szt, kpl)
   specification: dokładny opis np. "format 60×60, kolor szary mat, R10"
   room: pomieszczenie lub null
 
-work_scope_from_project — zakres prac wynikający z projektu:
-  Tylko prace wyraźnie wynikające z projektu (nie domysły)
+work_scope_from_project — KOMPLETNY zakres prac:
+  WAŻNE: Wypisz KAŻDĄ pracę potrzebną do realizacji projektu, nie tylko te wprost zaznaczone.
+  Dla każdego pomieszczenia uwzględnij WSZYSTKIE kategorie:
   room: pomieszczenie lub null dla ogólnych prac
   category: demolition/substrate/waterproofing/tiling/plumbing/electrical/drywall/painting/flooring/joinery/finishing/other
   priority: required (wyraźnie w projekcie) / likely (logicznie wynika) / optional (do decyzji)
   confidence: 100 = wprost z projektu, 70 = wynika z projektu, 40 = założenie
+  unit: m2, mb, szt, kpl — ZAWSZE podaj jednostkę
+  quantity: ZAWSZE podaj ilość — oblicz lub oszacuj
 
-suggested_estimate_items — pozycje do wyceny:
-  Każda pozycja z works_scope + główne materiały
+  OBOWIĄZKOWE KATEGORIE DO SPRAWDZENIA dla każdego pomieszczenia:
+  □ DEMONTAŻE (demolition): demontaż starych płytek, starej armatury, starych instalacji, skucie tynku
+  □ PRZYGOTOWANIE PODŁOŻA (substrate): wyrównanie, wylewki, tynki, gruntowanie
+  □ HYDROIZOLACJA (waterproofing): strefa mokra przy prysznicu, wannie, umywalce — w łazience ZAWSZE
+  □ INSTALACJA WOD-KAN (plumbing): policz KAŻDY punkt osobno:
+    - podejście wody zimnej (szt) — dla każdego odbiornika: WC, umywalka, wanna, prysznic, pralka, zmywarka
+    - podejście wody ciepłej (szt) — dla umywalki, wanny, prysznica
+    - podejście kanalizacyjne (szt) — dla każdego odbiornika
+    - bateria (szt/kpl) — wannowa, prysznicowa, umywalkowa, zlewozmywakowa
+    - podłączenie hydrauliczne (szt) — WC, wanna, prysznic, pralka, zmywarka
+    - zawór odcinający (szt) — pod każdą baterią
+    Typowa łazienka z WC + umywalką + prysznicem = min. 5 pkt wody zimnej, 3 pkt ciepłej, 3 pkt kanalizacji
+  □ INSTALACJA ELEKTRYCZNA (electrical): policz KAŻDY punkt osobno:
+    - punkt oświetleniowy (szt) — sufit, lustro, kinkiet, LED, wnęka
+    - gniazdo elektryczne (szt) — przy umywalce, kuchni, za meblami
+    - wyłącznik oświetlenia (szt)
+    - wypust pod wentylator łazienkowy (szt)
+    - podłączenie elektryczne urządzeń (szt) — kuchenka, piekarnik, pralka, zmywarka, okap
+    - instalacja 400V (szt) — kuchenka elektryczna
+    - osprzęt elektryczny (kpl) — ramy, klawisze, gniazda
+    Typowa łazienka = min. 2-3 pkt oświetleniowe, 1-2 gniazda, 1-2 wyłączniki, 1 wentylator
+    Typowa kuchnia = min. 3-5 gniazd, 2-3 pkt oświetleniowe, podłączenia AGD
+  □ PŁYTKI (tiling): ściany i podłoga osobno, z dokładną powierzchnią m2
+  □ ZABUDOWY G-K (drywall): stelaże, obudowy wanny, obudowy pionów, sufity podwieszane
+  □ MALOWANIE (painting): ściany i sufity z powierzchnią m2
+  □ PODŁOGI (flooring): panele, parkiet, winyl — z powierzchnią m2
+  □ STOLARKA (joinery): drzwi, parapety, listwy przypodłogowe — szt lub mb
+  □ WYKOŃCZENIE (finishing): silikonowanie, fugowanie, montaż armatury, montaż oświetlenia, listwy, progi
+  □ TRANSPORT I INNE: wnoszenie materiałów, wywóz gruzu
+
+suggested_estimate_items — SZCZEGÓŁOWE pozycje do wyceny:
+  WAŻNE: To jest KOSZTORYS — każda pozycja musi mieć nazwę, jednostkę i ilość.
+  Rozpisz prace GRANULARNIE — każda czynność to osobna pozycja.
   unit_price: zawsze null (nie sugeruj cen)
   source: 'project_derived' jeśli z projektu, 'ai_suggestion' jeśli szacunek AI
+
+  PRZYKŁADOWA GRANULARNOŚĆ dla łazienki 6m2:
+  - "Demontaż starych płytek ściennych" — m2 — 20
+  - "Demontaż starych płytek podłogowych" — m2 — 6
+  - "Demontaż starej armatury łazienkowej" — kpl — 1
+  - "Skucie starych tynków" — m2 — 20
+  - "Tynkowanie ścian" — m2 — 20
+  - "Wyrównanie podłogi (wylewka)" — m2 — 6
+  - "Gruntowanie podłoża" — m2 — 26
+  - "Hydroizolacja (strefa mokra)" — m2 — 8
+  - "Układanie płytek podłogowych" — m2 — 6
+  - "Układanie płytek ściennych" — m2 — 20
+  - "Fugowanie płytek" — m2 — 26
+  - "Podejście wody zimnej" — szt — 3
+  - "Podejście wody ciepłej" — szt — 2
+  - "Podejście kanalizacyjne" — szt — 3
+  - "Montaż baterii umywalkowej" — szt — 1
+  - "Montaż baterii prysznicowej podtynkowej" — kpl — 1
+  - "Montaż WC podtynkowego z stelażem" — kpl — 1
+  - "Podłączenie hydrauliczne WC" — szt — 1
+  - "Montaż umywalki z syfonem" — szt — 1
+  - "Montaż kabiny/odpływu prysznicowego" — kpl — 1
+  - "Punkt oświetleniowy sufitowy" — szt — 2
+  - "Punkt oświetleniowy przy lustrze" — szt — 1
+  - "Gniazdo elektryczne" — szt — 1
+  - "Wyłącznik oświetlenia" — szt — 1
+  - "Wypust pod wentylator" — szt — 1
+  - "Zabudowa stelaża WC (G-K)" — kpl — 1
+  - "Zabudowa pionów instalacyjnych (G-K)" — kpl — 1
+  - "Silikonowanie styków" — mb — 8
+  - "Montaż drzwi łazienkowych" — szt — 1
+  - "Montaż listew przypodłogowych" — mb — 6
+  - "Montaż akcesoriów łazienkowych" — kpl — 1
+  To jest MINIMUM dla typowej łazienki. Kuchnia, pokoje — analogicznie kompletne.
 
 TRANSPARENTNOŚĆ (obowiązkowe):
   assumptions[]: co przyjąłeś bez danych projektu np. "Brak podanej wysokości — przyjęto 2,6 m"
@@ -621,7 +690,7 @@ export const handler: Handler = async (event) => {
         instructions: INSTRUCTIONS,
         input:        [{ role: 'user', content }],
         text:         { format: PROJECT_ANALYSIS_SCHEMA },
-        max_output_tokens: 4_000,
+        max_output_tokens: 8_000,
       }),
     })
 
