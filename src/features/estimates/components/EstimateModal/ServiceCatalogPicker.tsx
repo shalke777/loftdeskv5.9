@@ -66,6 +66,7 @@ export function ServiceCatalogPicker({ open, onClose, onAdd, existingCount }: Pr
         unit_price: 0,
         vat_rate: DEFAULT_VAT,
         sort_order: existingCount + idx + 1,
+        catalog_item_id: item!.id,
       }))
 
     onAdd(items)

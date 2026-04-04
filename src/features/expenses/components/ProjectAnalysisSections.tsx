@@ -17,6 +17,7 @@ import type { EstimateItem } from '@/entities/estimate/model'
 import { AiReliabilityBanner } from '@/shared/ui/AiGuidance'
 import type { ReliabilityReport } from '@/services/ai/engines/reliability'
 import { AnalysisSectionCard } from './AnalysisSectionCard'
+import { useServiceCatalog, matchCatalogItem } from '@/features/service-catalog'
 
 const colStyle:   React.CSSProperties = { padding: '6px 4px' }
 const rightCol:   React.CSSProperties = { ...colStyle, textAlign: 'right' }
@@ -289,25 +290,30 @@ export function ProjectScopeSection({ items }: { items: ProjectScopeItem[] }) {
 
 const ESTIMATE_DRAFT_KEY = 'estimate_form_draft'
 
-function projectItemsToEstimate(items: ProjectEstimateItem[]): EstimateItem[] {
-  return items.map((e, i) => ({
-    id: crypto.randomUUID(),
-    name: e.name,
-    description: e.notes ?? '',
-    unit: e.unit,
-    quantity: e.quantity,
-    unit_price: 0,
-    vat_rate: 8,
-    sort_order: i + 1,
-  }))
+function projectItemsToEstimate(items: ProjectEstimateItem[], catalog?: import('@/entities/service_catalog/model').ServiceCatalogItem[]): EstimateItem[] {
+  return items.map((e, i) => {
+    const match = catalog?.length ? matchCatalogItem(e.name, catalog) : null
+    return {
+      id: crypto.randomUUID(),
+      name: match?.canonical_name ?? e.name,
+      description: e.notes ?? '',
+      unit: e.unit,
+      quantity: e.quantity,
+      unit_price: 0,
+      vat_rate: 8,
+      sort_order: i + 1,
+      catalog_item_id: match?.catalog_item_id ?? null,
+    }
+  })
 }
 
 export function ProjectEstimateSection({ items, projectName, reliabilityReport }: { items: ProjectEstimateItem[]; projectName: string | null; reliabilityReport?: ReliabilityReport }) {
-  if (items.length === 0) return null
-
   const navigate = useNavigate()
+  const { data: catalog } = useServiceCatalog()
   const [transferring, setTransferring] = useState(false)
   const [awaitingConfirm, setAwaitingConfirm] = useState(false)
+
+  if (items.length === 0) return null
 
   const isBlocked    = reliabilityReport?.state === 'blocked'
   const needsConfirm = reliabilityReport?.requires_confirmation ?? false
@@ -316,7 +322,7 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
     if (transferring) return
     setTransferring(true)
     setAwaitingConfirm(false)
-    const estimateItems = projectItemsToEstimate(items)
+    const estimateItems = projectItemsToEstimate(items, catalog)
     const draft = {
       name: projectName
         ? `Wycena — ${projectName}`

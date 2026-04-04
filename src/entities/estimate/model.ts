@@ -9,6 +9,7 @@ export const EstimateItemSchema = z.object({
   unit_price: z.number().nonnegative(),
   vat_rate: z.number().min(0).max(100).default(23),
   sort_order: z.number().int(),
+  catalog_item_id: z.string().nullable().optional(),
 })
 
 export const EstimateSchema = z.object({
