@@ -267,7 +267,14 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
                       onMouseLeave={e => (e.currentTarget.style.background = '')}
                     >
                       <td style={{ padding: '9px 10px', color: 'var(--color-text-tertiary)', fontSize: 12 }}>{item.sort_order}</td>
-                      <td style={{ padding: '9px 10px', fontWeight: 500 }}>{item.name}</td>
+                      <td style={{ padding: '9px 10px', fontWeight: 500 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          {item.name}
+                          {item.catalog_item_id && (
+                            <span title="Z katalogu usług" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 4, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', whiteSpace: 'nowrap' }}>📚</span>
+                          )}
+                        </span>
+                      </td>
                       <td style={{ padding: '9px 10px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{item.unit}</td>
                       <td style={{ padding: '9px 10px', textAlign: 'right', color: 'var(--color-text-primary)' }}>{item.quantity}</td>
                       <td style={{ padding: '9px 10px', textAlign: 'right', color: 'var(--color-text-primary)' }}>{item.unit_price.toFixed(2)}</td>

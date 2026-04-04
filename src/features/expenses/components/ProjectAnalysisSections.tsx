@@ -377,7 +377,14 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid var(--color-border)', opacity: lowConf ? 0.65 : 1 }}>
                       <td style={colStyle}>
-                        {item.name}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                          {item.name}
+                          {catalog?.length && matchCatalogItem(item.name, catalog) ? (
+                            <span title="Pasuje do katalogu usług" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
+                          ) : (
+                            <span title="Pozycja własna (bez dopasowania)" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, #f1f5f9)', color: 'var(--color-text-tertiary, #94a3b8)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️</span>
+                          )}
+                        </span>
                         {item.notes && (
                           <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 1 }}>{item.notes}</div>
                         )}
