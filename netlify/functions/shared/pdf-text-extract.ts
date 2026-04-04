@@ -28,17 +28,19 @@ export async function extractProjectPdfText(buffer: Buffer): Promise<string> {
 /**
  * Check if extracted PDF text is usable for project analysis.
  *
- * Two gates:
- *  1. Minimum length (200 chars — shorter means image-only or near-empty)
+ * Three gates (all must pass):
+ *  1. Minimum length: 500+ chars (rejects near-empty extractions)
  *  2. Readable character ratio ≥ 55% (rejects subsetted-font garbage)
+ *  3. Construction keyword density: ≥ 4 distinct domain keywords found
+ *     (rejects PDFs where text is only headers/legends from drawings)
  *
- * Unlike invoice gate, we do NOT require domain keywords — construction PDFs
- * may contain room names, dimensions, material lists in many formats.
- * Instead we rely on length + readability as the quality signal.
+ * Gate 3 is critical: a PDF with technical drawings may yield readable text
+ * (scale labels, page numbers, legend entries) but without enough project
+ * content for meaningful AI analysis.
  */
 export function isPdfProjectTextUsable(text: string): boolean {
   const trimmed = text.trim()
-  if (trimmed.length < 200) return false
+  if (trimmed.length < 500) return false
 
   // Readable character ratio: ASCII printable + Polish diacritics
   const POLISH = 'ąęółśźżćńĄĘÓŁŚŹŻĆŃ'
@@ -48,5 +50,43 @@ export function isPdfProjectTextUsable(text: string): boolean {
     if (cp >= 0x20 && cp <= 0x7E) { readable++; continue }
     if (POLISH.includes(ch)) readable++
   }
-  return (readable / trimmed.length) >= 0.55
+  if ((readable / trimmed.length) < 0.55) return false
+
+  // Construction/renovation keyword density gate
+  const lower = trimmed.toLowerCase()
+  const PROJECT_KEYWORDS = [
+    // rooms
+    'łazienk', 'kuchni', 'salon', 'pokój', 'pokoi', 'sypialn', 'korytarz',
+    'przedpokój', 'pomieszczen', 'garderob', 'piwnic', 'garaż', 'taras',
+    'balkon', 'wc', 'toalet',
+    // dimensions / units
+    'm²', 'm2', 'mb', 'metr', 'wymiar', 'powierzchni', 'wysokoś',
+    // materials
+    'płytk', 'gres', 'terakot', 'panel', 'parkiet', 'laminat',
+    'gładź', 'tynk', 'farba', 'malowa', 'tapeta', 'beton',
+    'gipskart', 'regips', 'styropian', 'wełna', 'izolac',
+    'cement', 'zaprawa', 'klej', 'fuga', 'silikon',
+    // finishes / elements
+    'podłog', 'ścian', 'sufit', 'okno', 'drzwi', 'futryn',
+    'parapet', 'schody', 'balustr', 'poręcz',
+    // installations
+    'instalac', 'elektr', 'hydraul', 'wodno', 'kanaliz', 'ocieplen',
+    'wentylac', 'klimatyz', 'ogrzewan', 'grzejnik', 'kaloryfer',
+    // scope
+    'wykończen', 'remont', 'renowac', 'przebudow', 'adaptac',
+    'demontaż', 'montaż', 'roboty', 'robocizn', 'usług',
+    'kosztorys', 'wycen', 'pozycj', 'zakres',
+    // project
+    'projekt', 'rzut', 'kondygnac', 'piętro', 'parter',
+    'inwestycj', 'budow', 'budynek', 'mieszkan', 'lokal',
+  ]
+
+  let keywordHits = 0
+  for (const kw of PROJECT_KEYWORDS) {
+    if (lower.includes(kw)) {
+      keywordHits++
+      if (keywordHits >= 4) return true
+    }
+  }
+  return false
 }
