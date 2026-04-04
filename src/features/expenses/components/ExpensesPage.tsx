@@ -21,9 +21,9 @@ import {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-// Client-side preflight: ~5 MB raw ≈ 7 MB base64 which is the server parse-invoice limit
+// Client-side preflight: large PDFs use URL path (server downloads from Supabase Storage)
 const PREFLIGHT_DOC_RULES = {
-  maxSizeBytes: 5 * 1024 * 1024,
+  maxSizeBytes: 20 * 1024 * 1024,
   allowedTypes: ['image/*', 'application/pdf'],
 }
 
@@ -207,7 +207,7 @@ export function ExpensesPage() {
         // Step A: OCR (Tesseract / PDF text extraction on server)
         try {
           const sourceType: ExpenseSourceType = isPDF ? 'pdf' : 'gallery'
-          ocrResult = await callParseInvoice(file, sourceType)
+          ocrResult = await callParseInvoice(file, sourceType, url)
         } catch (ocrErr: unknown) {
           const msg = ocrErr instanceof Error ? ocrErr.message : ''
           ocrFailed = true
@@ -234,7 +234,7 @@ export function ExpensesPage() {
             if (isPDF) {
               try { pdfHintText = await extractRawPdfText(file) } catch (hintErr) { console.warn('[expenses] PDF hint extraction failed:', hintErr) }
             }
-            const aiResult = await callParseInvoiceAI(file, pdfHintText)
+            const aiResult = await callParseInvoiceAI(file, pdfHintText, url)
             const aiConf   = aiResult.extraction_confidence ?? 0
             // Only take AI result if it actually extracted something useful
             if (aiConf > 0 && aiConf >= ocrConf) {

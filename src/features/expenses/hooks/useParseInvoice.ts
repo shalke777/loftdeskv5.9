@@ -11,7 +11,8 @@ async function getAuthHeader(): Promise<Record<string, string>> {
   return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
 }
 
-const MAX_FILE_SIZE  = 5 * 1024 * 1024 // 5 MB
+const MAX_FILE_SIZE  = 20 * 1024 * 1024 // 20 MB — large files use URL path (server downloads from storage)
+const URL_THRESHOLD  = 4 * 1024 * 1024  // 4 MB — above this, send URL instead of base64 (Lambda body ≤6 MB)
 const MAX_OCR_WIDTH  = 1800             // px — keeps detail, reduces payload
 
 const IMAGE_MIME_SET = new Set([
@@ -375,7 +376,7 @@ export async function screenImageForInvoice(
  *
  * Exported so that non-hook components (e.g. ExpensesPage) can call it directly.
  */
-export async function callParseInvoice(file: File, sourceType: ExpenseSourceType): Promise<ParseInvoiceResult> {
+export async function callParseInvoice(file: File, sourceType: ExpenseSourceType, fileUrl?: string): Promise<ParseInvoiceResult> {
   // Client-side file size guard
   if (file.size > MAX_FILE_SIZE) {
     return {
@@ -385,7 +386,7 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
       vat_amount: null, vat_rate: null, gross_amount: null, currency: 'PLN',
       payment_due_date: null, notes: null,
       extraction_confidence: 0,
-      extraction_warnings: ['Plik jest za duży (max 5 MB). Uzupełnij dane ręcznie.'],
+      extraction_warnings: [`Plik jest za duży (${(file.size / 1024 / 1024).toFixed(0)} MB — max 20 MB). Uzupełnij dane ręcznie.`],
       requires_user_confirmation: true,
       parser_source: 'manual',
     }
@@ -395,22 +396,30 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
   const isImage = IMAGE_MIME_SET.has(file.type) || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(file.name)
   const processedFile = isImage ? await preprocessForOCR(file) : file
 
-  const file_base64 = await fileToBase64(processedFile)
+  // For large files, use URL path (server downloads from Supabase Storage)
+  // to avoid exceeding the ~6 MB Lambda request body limit.
+  const useLargeFilePath = fileUrl && processedFile.size > URL_THRESHOLD
+
+  const payload: Record<string, string> = {
+    file_name:   processedFile.name,
+    file_type:   processedFile.type,
+    source_type: sourceType,
+  }
+
+  if (useLargeFilePath) {
+    payload.file_url = fileUrl
+  } else {
+    payload.file_base64 = await fileToBase64(processedFile)
+  }
 
   let resp: Response
   try {
     resp = await fetch(netlifyFn('parse-invoice'), {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
-      body: JSON.stringify({
-        file_base64,
-        file_name:   processedFile.name,
-        file_type:   processedFile.type,
-        source_type: sourceType,
-      }),
+      body: JSON.stringify(payload),
     })
   } catch {
-    // Network-level failure: proxy configured but backend not running, or no internet
     throw new Error('Serwer OCR niedostępny. W trybie dev uruchom: netlify dev (port 8888). W produkcji sprawdź logi Netlify.')
   }
 
@@ -429,7 +438,6 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
   try {
     return await resp.json() as ParseInvoiceResult
   } catch {
-    // Server returned non-JSON (e.g. HTML 404 page from SPA redirect in dev without `netlify dev`)
     throw new Error(
       'Serwer OCR niedostępny. W trybie dev uruchom: netlify dev (port 8888). W produkcji sprawdź logi Netlify.'
     )
@@ -444,7 +452,7 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
  * @param file          The invoice file (image or PDF)
  * @param extractedText Optional raw text already extracted (e.g. from PDF text layer)
  */
-export async function callParseInvoiceAI(file: File, extractedText?: string): Promise<ParseInvoiceResult> {
+export async function callParseInvoiceAI(file: File, extractedText?: string, fileUrl?: string): Promise<ParseInvoiceResult> {
   const isImage = IMAGE_MIME_SET.has(file.type) || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(file.name)
   const isPDF   = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
 
@@ -456,15 +464,19 @@ export async function callParseInvoiceAI(file: File, extractedText?: string): Pr
     body.image_base64 = await fileToBase64(processedFile)
     body.image_type   = 'image/jpeg'
   } else if (isPDF) {
-    // Send raw PDF bytes — server extracts text layer or embedded JPEGs
-    body.pdf_base64 = await fileToBase64(file)
+    // For large PDFs, send URL so server downloads from storage (avoids Lambda body limit)
+    if (fileUrl && file.size > URL_THRESHOLD) {
+      body.pdf_url = fileUrl
+    } else {
+      body.pdf_base64 = await fileToBase64(file)
+    }
   }
 
   if (extractedText?.trim()) {
     body.text_content = extractedText.slice(0, 12_000)
   }
 
-  if (!body.image_base64 && !body.text_content && !body.pdf_base64) {
+  if (!body.image_base64 && !body.text_content && !body.pdf_base64 && !body.pdf_url) {
     return {
       document_type: null,
       vendor_name: null, vendor_nip: null, invoice_number: null,

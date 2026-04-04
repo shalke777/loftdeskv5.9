@@ -12,7 +12,8 @@
 // Request:
 //   POST /.netlify/functions/parse-invoice
 //   Content-Type: application/json
-//   Body: { file_base64: string, file_name: string, file_type: string, source_type: string }
+//   Body: { file_base64?: string, file_url?: string, file_name: string, file_type: string, source_type: string }
+//   Use file_base64 for small files (≤4 MB). Use file_url for large files (server downloads from URL).
 //
 // Response 200:
 //   { vendor_name, vendor_nip, invoice_number, issue_date, sale_date,
@@ -70,7 +71,8 @@ export interface ParseInvoiceResult {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const MAX_BASE64_CHARS = 7_000_000 // ~5MB raw file
+const MAX_BASE64_CHARS = 7_000_000  // ~5MB raw file (for inline base64 path)
+const MAX_URL_FILE_BYTES = 20_000_000  // 20 MB — max file size when downloading via URL
 const IMAGE_TYPES      = ['image/jpeg', 'image/jpg', 'image/png', 'image/heic', 'image/heif', 'image/webp', 'image/gif']
 
 const CORS_HEADERS = {
@@ -119,6 +121,19 @@ function isRateLimited(userId: string): boolean {
 
 function json(statusCode: number, body: Record<string, unknown>) {
   return { statusCode, headers: CORS_HEADERS, body: JSON.stringify(body) }
+}
+
+// ─── URL download helper ─────────────────────────────────────────────────────
+// For large files that exceed the Lambda request body limit (~6 MB),
+// the frontend uploads to Supabase Storage first and passes the URL.
+async function fetchFileFromUrl(url: string): Promise<Buffer> {
+  const resp = await fetch(url)
+  if (!resp.ok) throw new Error(`Download failed: HTTP ${resp.status}`)
+  const ab = await resp.arrayBuffer()
+  if (ab.byteLength > MAX_URL_FILE_BYTES) {
+    throw new Error(`Downloaded file too large (${(ab.byteLength / 1024 / 1024).toFixed(1)} MB, max ${MAX_URL_FILE_BYTES / 1024 / 1024} MB)`)
+  }
+  return Buffer.from(ab)
 }
 
 // ─── Tesseract OCR extraction ────────────────────────────────────────────────
@@ -788,12 +803,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   const file_base64 = body.file_base64 as string | undefined
+  const file_url    = body.file_url as string | undefined
   const file_name   = String(body.file_name  ?? 'file')
   const file_type   = String(body.file_type  ?? 'application/octet-stream').toLowerCase()
   const source_type = String(body.source_type ?? 'manual')
 
   // ── Validate ──────────────────────────────────────────────────────────────
-  if (!file_base64) {
+  if (!file_base64 && !file_url) {
     // No file → manual entry mode → return empty result
     return json(200, {
       ...emptyResult(),
@@ -804,16 +820,23 @@ export const handler: Handler = async (event: HandlerEvent) => {
     })
   }
 
-  if (file_base64.length > MAX_BASE64_CHARS) {
-    return json(413, { error: 'file_too_large', message: 'Plik jest za duży (max ~5 MB). Skompresuj lub wybierz mniejszy plik.' })
+  if (file_base64 && file_base64.length > MAX_BASE64_CHARS) {
+    return json(413, { error: 'file_too_large', message: 'Plik jest za duży (max ~5 MB inline). Użyj ścieżki URL.' })
   }
 
-  // ── Decode ────────────────────────────────────────────────────────────────
+  // ── Decode — from base64 or download from URL ────────────────────────────
   let buffer: Buffer
   try {
-    buffer = Buffer.from(file_base64, 'base64')
-  } catch {
-    return json(400, { error: 'invalid_base64' })
+    if (file_url) {
+      buffer = await fetchFileFromUrl(file_url)
+      console.info('FILE_FROM_URL', JSON.stringify({ bytes: buffer.length, url: file_url.slice(0, 80) }))
+    } else {
+      buffer = Buffer.from(file_base64!, 'base64')
+    }
+  } catch (dlErr) {
+    const msg = dlErr instanceof Error ? dlErr.message : String(dlErr)
+    if (msg.includes('too large')) return json(413, { error: 'file_too_large', message: msg })
+    return json(400, { error: file_url ? 'download_failed' : 'invalid_base64', message: msg })
   }
 
   // ── Extract text ──────────────────────────────────────────────────────────
@@ -862,7 +885,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
       }
     }
   } else if (isImage) {
-    const ocrResult = await extractViaOCR(file_base64)
+    // For URL-downloaded files, convert buffer to base64 for Tesseract
+    const imgBase64 = file_base64 ?? buffer.toString('base64')
+    const ocrResult = await extractViaOCR(imgBase64)
     extractedText   = ocrResult.text
     baseWarnings.push(...ocrResult.warnings)
     parserSource    = 'regex'

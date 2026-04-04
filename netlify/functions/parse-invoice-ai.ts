@@ -14,6 +14,8 @@
 //     text_content?: string   // raw text from PDF text layer or Tesseract OCR
 //     image_base64?: string   // base64-encoded image JPEG/PNG/WEBP (NOT PDF)
 //     image_type?:  string    // MIME, e.g. "image/jpeg" — must be image/*
+//     pdf_base64?:  string    // base64-encoded PDF (small files ≤4 MB)
+//     pdf_url?:     string    // Supabase storage URL (large files — server downloads)
 //   }
 //
 // Response 200: { ok: true, result: ParseInvoiceResult }
@@ -30,6 +32,18 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json',
+}
+
+const MAX_URL_FILE_BYTES = 20_000_000 // 20 MB max for URL-downloaded files
+
+async function fetchFileFromUrl(url: string): Promise<Buffer> {
+  const resp = await fetch(url)
+  if (!resp.ok) throw new Error(`Download failed: HTTP ${resp.status}`)
+  const ab = await resp.arrayBuffer()
+  if (ab.byteLength > MAX_URL_FILE_BYTES) {
+    throw new Error(`Downloaded file too large (${(ab.byteLength / 1024 / 1024).toFixed(1)} MB)`)
+  }
+  return Buffer.from(ab)
 }
 
 // ─── JWT check ───────────────────────────────────────────────────────────────
@@ -294,11 +308,20 @@ export const handler: Handler = async (event: HandlerEvent) => {
   let imageType   = String(body.image_type ?? 'image/jpeg')
 
   // ── PDF input: extract text layer or embedded JPEGs server-side ──────────
-  // This enables the same AI quality for PDFs as for scanned images.
+  // Accepts either inline base64 (small files) or a URL (large files).
   const pdfBase64 = body.pdf_base64 as string | undefined
-  if (pdfBase64) {
+  const pdfUrl    = body.pdf_url as string | undefined
+  const hasPdf    = !!(pdfBase64 || pdfUrl)
+
+  if (hasPdf) {
     try {
-      const pdfBuffer = Buffer.from(pdfBase64, 'base64')
+      let pdfBuffer: Buffer
+      if (pdfUrl) {
+        pdfBuffer = await fetchFileFromUrl(pdfUrl)
+        console.info('PDF_FROM_URL', JSON.stringify({ bytes: pdfBuffer.length, url: pdfUrl.slice(0, 80) }))
+      } else {
+        pdfBuffer = Buffer.from(pdfBase64!, 'base64')
+      }
 
       // 1. Try to extract text layer (works for all digitally-generated PDFs).
       //    isPdfTextUsable rejects both empty layers and subsetted-font garbage.
