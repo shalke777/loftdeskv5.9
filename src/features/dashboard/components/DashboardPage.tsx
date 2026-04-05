@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, BookText, Camera, FileText, FolderKanban, MessageSquareText, Receipt, TrendingUp, Users, Wallet } from 'lucide-react'
+import { AlertTriangle, BookText, Camera, FileText, FolderKanban, MessageSquareText, Receipt, Send, TrendingUp, Users, Wallet } from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
@@ -24,11 +24,11 @@ const MOBILE_TILES = [
 ] as const
 
 const quickActions = [
-  { icon: FolderKanban, title: 'Nowy projekt',      text: 'Rozpocznij nową realizację.',                          href: '/projects'          },
-  { icon: FileText,     title: 'Nowa wycena',       text: 'Przygotuj ofertę dla klienta.',                        href: '/estimates'         },
-  { icon: Wallet,       title: 'Dodaj koszt',       text: 'Zarejestruj wydatek lub fakturę kosztową.',             href: '/expenses'          },
-  { icon: Camera,       title: 'AI analiza',        text: 'Skanuj fakturę, analizuj pomieszczenie lub projekt.',   href: '/ai'                },
-  { icon: FileText,     title: 'AI analiza projektu', text: 'Wgraj PDF → AI wyciągnie zakres i wycenę.',          href: '/project-analysis'  },
+  { icon: FolderKanban,      title: 'Nowy projekt',          text: 'Rozpocznij nową realizację.',           href: '/projects'  },
+  { icon: FileText,          title: 'Nowa wycena',           text: 'Przygotuj ofertę dla klienta.',         href: '/estimates' },
+  { icon: Wallet,            title: 'Dodaj koszt',           text: 'Zarejestruj wydatek lub fakturę.',      href: '/expenses'  },
+  { icon: Send,              title: 'Wyślij do akceptacji',  text: 'Przekaż dokument do klienta.',          href: '/estimates' },
+  { icon: MessageSquareText, title: 'Napisz do klienta',     text: 'Otwórz konwersację w portalu.',         href: '/chat'      },
 ]
 
 const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {

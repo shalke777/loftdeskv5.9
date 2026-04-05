@@ -412,8 +412,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 /* 1: Nowy projekt — Projekty                 */ .quick-actions-grid .quick-action:nth-child(1) { background-color: #6DC7E7 !important; }
 /* 2: Nowa wycena — Dokumenty                 */ .quick-actions-grid .quick-action:nth-child(2) { background-color: #F6A623 !important; }
 /* 3: Dodaj koszt — Koszty                    */ .quick-actions-grid .quick-action:nth-child(3) { background-color: #B4E5B0 !important; }
-/* 4: AI analiza — AI                         */ .quick-actions-grid .quick-action:nth-child(4) { background-color: #3DBA6C !important; }
-/* 5: AI analiza projektu — AI                */ .quick-actions-grid .quick-action:nth-child(5) { background-color: #3DBA6C !important; }
+/* 4: Wyślij do akceptacji — Dokumenty        */ .quick-actions-grid .quick-action:nth-child(4) { background-color: #F6A623 !important; }
+/* 5: Napisz do klienta — Chat                */ .quick-actions-grid .quick-action:nth-child(5) { background-color: #A5B8C6 !important; }
 /* Pipeline toggle */
 .pipeline-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0; margin-bottom: 4px; background: none; border: none; color: inherit; cursor: pointer; font: inherit; }
 .pipeline-toggle:hover { opacity: 0.85; }
