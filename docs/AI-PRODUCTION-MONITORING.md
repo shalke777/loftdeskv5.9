@@ -221,3 +221,48 @@ GROUP BY r.model_name;
 2. Model optimization (gpt-4o → gpt-4o-mini for room if quality acceptable)
 3. Rate limit tuning based on actual usage patterns
 4. Assistant feature adoption evaluation
+
+---
+
+## Sprint I / I0 — Observation Hold Checkpoint (2026-04-05)
+
+### Status: OBSERVATION HOLD — AWAITING PRODUCTION DATA
+
+#### Finding
+AI tables are currently empty (0 rows). Historical baseline data from Sprint H is no longer in the database.
+Core business data exists (2 companies, 6 profiles, 7 projects). Schema is intact with all Sprint H enhancements (migration 109 token columns confirmed).
+
+#### Deployed Enhancements (Ready for Validation on New Runs)
+| ID | Enhancement | Status |
+|----|------------|--------|
+| TA1 | 429 retry + 10s backoff | Deployed, awaiting first 429 event |
+| TA2 | Real token extraction | Deployed, awaiting first run |
+| TA3 | Project token persistence (mig 109) | Deployed, columns confirmed |
+
+#### Observation Plan
+| Check | Frequency | Trigger |
+|-------|-----------|---------|
+| Any new AI runs | Daily | Count > 0 → start monitoring |
+| Room/project success rate | After 5+ runs | Failure rate > 20% → investigate |
+| Token fields populated | After first run | NULL → check extractUsage path |
+| 429/quota recurrence | After 10+ runs | > 5% quota fails → capacity issue |
+| Assistant adoption | After 2 weeks | 0 queries → feature discovery UX |
+
+#### Early Intervention Triggers
+| Trigger | Threshold | Action |
+|---------|-----------|--------|
+| Project success rate | < 70% after 10 runs | Reliability hardening |
+| Quota failure rate | > 10% despite retry | OpenAI tier upgrade |
+| internal_error recurrence | > 2 on new runs | Targeted bug investigation |
+| Token fields NULL | Any new run | Fix extractUsage integration |
+| Heavy PDF timeout | Any new occurrence | Review 300s limit |
+
+#### Next Steps
+1. Wait for production AI usage to generate new data
+2. Run observation queries when runs appear (use queries from "Quick Baseline Query" section above)
+3. First checkpoint: after 10 new runs OR 2 weeks, whichever comes first
+4. No code changes unless a new repeatable problem surfaces
+
+#### Quality Gates
+- tsc --noEmit: ✅ clean
+- npm run build: ✅ green
