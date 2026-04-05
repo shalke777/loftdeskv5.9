@@ -9,13 +9,13 @@
 // ai_scope_items.review_status is denormalized and updated by insertReviewAction.
 // =============================================================================
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { useToast } from '@/shared/hooks/useToast'
-import { useServiceCatalog } from '@/features/service-catalog'
+import { useServiceCatalog, matchCatalogItem } from '@/features/service-catalog'
 import { computeConfidenceBand } from '@/shared/lib/confidence-model'
 import {
   useAiScopeItems,
@@ -73,12 +73,14 @@ const Q_SEVERITY_LABEL: Record<AiQuestion['severity'], string> = {
 function ScopeItemRow({
   item,
   runId, projectId, companyId, userId,
+  catalog,
 }: {
   item:      AiScopeItem
   runId:     string
   projectId: string
   companyId: string
   userId:    string
+  catalog?:  import('@/entities/service_catalog/model').ServiceCatalogItem[]
 }) {
   const [editing,     setEditing]     = useState(false)
   const [qtyFinal,    setQtyFinal]    = useState(String(item.quantity_suggested ?? ''))
@@ -151,6 +153,15 @@ function ScopeItemRow({
           <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)' }}>
             {item.description}
           </span>
+          {/* Catalog match badge */}
+          {(() => {
+            if (!catalog?.length) return null
+            const name = item.title ?? item.description ?? ''
+            const mr = matchCatalogItem(name, catalog)
+            if (mr.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name}`} style={{ marginLeft: 4, fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600 }}>📚</span>
+            if (mr.best?.tier === 'partial') return <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%)`} style={{ marginLeft: 4, fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#D4960A', fontWeight: 600 }}>📚?</span>
+            return <span title="Brak dopasowania do katalogu" style={{ marginLeft: 4, fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, #f1f5f9)', color: 'var(--color-text-tertiary, #94a3b8)', fontWeight: 500 }}>✍️</span>
+          })()}
           {item.scope_layer === 'HIDDEN_PROBABLE_SCOPE' && (
           <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-warning, #F59E0B)' }}>
             ukryty zakres
@@ -665,6 +676,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
             projectId={projectId}
             companyId={companyId}
             userId={userId}
+            catalog={catalog}
           />
         ))}
       </Section>

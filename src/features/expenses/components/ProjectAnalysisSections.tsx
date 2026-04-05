@@ -384,12 +384,20 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
                             if (!catalog?.length) return null
                             const matchResult = matchCatalogItem(item.name, catalog)
                             if (matchResult.best && matchResult.best.tier === 'strong') {
-                              return <span title={`Katalog: ${matchResult.best.canonical_name}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
+                              return <span title={`Katalog: ${matchResult.best.canonical_name} (${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
                             }
                             if (matchResult.best && matchResult.best.tier === 'partial') {
-                              return <span title={`Częściowe: ${matchResult.best.canonical_name} (${matchResult.best.confidence}%)`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#D4960A', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
+                              return (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                  <span title={`Częściowe: ${matchResult.best.canonical_name} (${matchResult.best.confidence}%, ${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#D4960A', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
+                                  {matchResult.alternatives.length > 0 && <span title={`Alternatywy: ${matchResult.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 8, padding: '0 3px', borderRadius: 3, background: 'rgba(212,150,10,0.06)', color: '#D4960A', cursor: 'help', whiteSpace: 'nowrap' }}>+{matchResult.alternatives.length}</span>}
+                                </span>
+                              )
                             }
-                            return <span title="Pozycja własna (bez dopasowania)" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, #f1f5f9)', color: 'var(--color-text-tertiary, #94a3b8)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️</span>
+                            if (matchResult.alternatives.length > 0) {
+                              return <span title={`Brak dopasowania. Sugestie: ${matchResult.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(229,115,115,0.08)', color: '#E57373', fontWeight: 600, whiteSpace: 'nowrap' }}>❌ uzupełnij</span>
+                            }
+                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, #f1f5f9)', color: 'var(--color-text-tertiary, #94a3b8)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️ własna</span>
                           })()}
                         </span>
                         {item.notes && (

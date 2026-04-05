@@ -22,6 +22,7 @@ export interface CatalogMatch {
   canonical_name: string
   confidence: number          // 0–100
   tier: MatchTier
+  match_reason: 'exact' | 'prefix' | 'synonym' | 'word_overlap' | 'compound_part'
 }
 
 export interface CatalogMatchResult {
@@ -43,6 +44,8 @@ const SYNONYMS: Record<string, string> = {
   'zerwanie':         'demontaz',
   'sciaganie':        'demontaz',
   'ściąganie':        'demontaz',
+  'wyburzenie':       'demontaz',
+  'rozbiórka ścian':  'demontaz scian',
   // Tiling
   'kafelki':          'plytki',
   'kafle':            'plytki',
@@ -53,10 +56,18 @@ const SYNONYMS: Record<string, string> = {
   'gres':             'plytki podlogowe',
   'mozaika':          'plytki mozaikowe',
   'fugi':             'fugowanie',
+  'spoinowanie':      'fugowanie',
+  'fugówka':          'fugowanie',
+  'plytkowanie':      'ukladanie plytek',
+  'plytkarstwo':      'ukladanie plytek',
+  'okladziny':        'ukladanie plytek',
+  'okladzina':        'ukladanie plytek',
   // Waterproofing
   'hydroizolacja':    'izolacja przeciwwilgociowa',
   'uszczelnienie':    'izolacja przeciwwilgociowa',
   'folia':            'izolacja',
+  'membrana':         'izolacja przeciwwilgociowa',
+  'impregnacja':      'izolacja',
   // Plumbing
   'rury':             'instalacja wodna',
   'kanalizacja':      'instalacja kanalizacyjna',
@@ -76,6 +87,10 @@ const SYNONYMS: Record<string, string> = {
   'odpływ':           'montaz odplywu',
   'odplyw':           'montaz odplywu',
   'syfon':            'montaz syfonu',
+  'kran':             'montaz armatury',
+  'spust':            'montaz odplywu',
+  'rura':             'instalacja wodna',
+  'instalacja':       'montaz',
   // Substrate / plastering
   'tynk':             'tynkowanie',
   'tynki':            'tynkowanie',
@@ -86,6 +101,12 @@ const SYNONYMS: Record<string, string> = {
   'wylewka':          'wylewki',
   'posadzka':         'wylewki',
   'jastrych':         'wylewki',
+  'przygotowanie':    'przygotowanie podloza',
+  'podloze':          'przygotowanie podloza',
+  'podłoże':          'przygotowanie podloza',
+  'preparacja':       'przygotowanie podloza',
+  'gruntowanie':      'przygotowanie podloza',
+  'grunt':            'gruntowanie',
   // Electrical
   'gniazdka':         'montaz gniazdek',
   'gniazdko':         'montaz gniazdek',
@@ -96,6 +117,9 @@ const SYNONYMS: Record<string, string> = {
   'oswietlenie':      'montaz oswietlenia',
   'lampa':            'montaz oswietlenia',
   'lampy':            'montaz oswietlenia',
+  'elektryka':        'instalacja elektryczna',
+  'okablowanie':      'instalacja elektryczna',
+  'przewody':         'instalacja elektryczna',
   // Drywall
   'karton-gips':      'zabudowa gipsowo-kartonowa',
   'gk':               'plyta gipsowo-kartonowa',
@@ -105,6 +129,8 @@ const SYNONYMS: Record<string, string> = {
   'farba':            'malowanie',
   'malowanie':        'malowanie scian',
   'lakierowanie':     'lakierowanie',
+  'finisz':           'lakierowanie',
+  'lakier':           'lakierowanie',
   // Finishing / white assembly
   'bialy montaz':     'bialy montaz',
   'lustro':           'montaz lustra',
@@ -112,11 +138,28 @@ const SYNONYMS: Record<string, string> = {
   'wieszak':          'montaz wieszaka',
   'grzejnik':         'montaz grzejnika',
   'kaloryfer':        'montaz grzejnika',
+  'kalorifer':        'montaz grzejnika',
   // Flooring
   'panele':           'ukladanie paneli',
   'deska':            'ukladanie desek podlogowych',
   'parkiet':          'ukladanie parkietu',
   'wykladzina':       'ukladanie wykladziny',
+  // HVAC
+  'klimatyzacja':     'montaz klimatyzacji',
+  'wentylacja':       'montaz wentylacji',
+  'ogrzewanie':       'instalacja grzewcza',
+  'podlogówka':       'ogrzewanie podlogowe',
+  'podlogowka':       'ogrzewanie podlogowe',
+  // Doors / windows
+  'drzwi':            'montaz drzwi',
+  'okna':             'montaz okien',
+  'okno':             'montaz okien',
+  'parapety':         'montaz parapetow',
+  'parapet':          'montaz parapetow',
+  // Transport / general
+  'utylizacja':       'wywoz gruzu',
+  'gruz':             'wywoz gruzu',
+  'transport':        'transport materialow',
 }
 
 // ── Normalization ────────────────────────────────────────────────────────────
@@ -177,13 +220,57 @@ function toTier(confidence: number): MatchTier {
   return 'none'
 }
 
+// ── Compound splitting ───────────────────────────────────────────────────────
+// AI often says "montaż płytek i fugowanie" = 2 distinct catalog items.
+
+const COMPOUND_SEP = /\s+(?:i|oraz|lub|,)\s+/
+
+/** Split compound AI names like "X i Y" into parts. Returns original if not compound. */
+function splitCompound(name: string): string[] {
+  const parts = name.split(COMPOUND_SEP).map(p => p.trim()).filter(p => p.length > 2)
+  return parts.length >= 2 ? parts : [name]
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
  * Match a single AI-generated item name against the full catalog.
+ * Handles compound names ("X i Y") by splitting and matching each part.
  * Returns best match + alternatives for operator review.
  */
 export function matchCatalogItem(
+  aiName: string,
+  catalog: ServiceCatalogItem[],
+): CatalogMatchResult {
+  if (!aiName.trim()) return { best: null, alternatives: [] }
+
+  // Compound splitting — if AI name has "i" / "oraz" / "lub" separator
+  const parts = splitCompound(aiName)
+  if (parts.length >= 2) {
+    // Match each part independently, merge results
+    const allMatches: CatalogMatch[] = []
+    for (const part of parts) {
+      const sub = matchSingle(part, catalog)
+      if (sub.best) {
+        allMatches.push({ ...sub.best, match_reason: 'compound_part' })
+      }
+      allMatches.push(...sub.alternatives.map(a => ({ ...a, match_reason: 'compound_part' as const })))
+    }
+    allMatches.sort((a, b) => b.confidence - a.confidence)
+    const seen = new Set<string>()
+    const unique = allMatches.filter(m => {
+      if (seen.has(m.catalog_item_id)) return false
+      seen.add(m.catalog_item_id)
+      return true
+    })
+    return { best: unique[0] ?? null, alternatives: unique.slice(1, 5) }
+  }
+
+  return matchSingle(aiName, catalog)
+}
+
+/** Core single-item matching logic */
+function matchSingle(
   aiName: string,
   catalog: ServiceCatalogItem[],
 ): CatalogMatchResult {
@@ -200,30 +287,35 @@ export function matchCatalogItem(
 
     // 1. Exact match (after normalization)
     if (normAi === normCat) {
-      const m: CatalogMatch = { catalog_item_id: item.id, canonical_name: item.name, confidence: 100, tier: 'strong' }
+      const m: CatalogMatch = {
+        catalog_item_id: item.id, canonical_name: item.name,
+        confidence: 100, tier: 'strong', match_reason: 'exact',
+      }
       return { best: m, alternatives: [] }
     }
 
     let score = 0
+    let reason: CatalogMatch['match_reason'] = 'word_overlap'
 
     // 2. Prefix match (one contains the other)
     if (normAi.startsWith(normCat) || normCat.startsWith(normAi)) {
       const ratio = Math.min(normAi.length, normCat.length) / Math.max(normAi.length, normCat.length)
       score = Math.round(70 + ratio * 25) // 70–95
+      reason = 'prefix'
     }
 
     // 3. Word overlap with synonym expansion
     if (score === 0) {
       const catWords = words(item.name)
-      // Try expanded words first
       const overlapExpanded = wordOverlap(expandedAiW, catWords)
       const overlapDirect = wordOverlap(aiW, catWords)
       const overlap = Math.max(overlapExpanded, overlapDirect)
 
       if (overlap >= 0.5) {
-        // Expanded match gets slight penalty vs direct match
-        const bonus = overlapDirect >= overlap ? 0 : -5
+        const isSynonym = overlapDirect < overlap
+        const bonus = isSynonym ? -5 : 0
         score = Math.round(50 + overlap * 45 + bonus) // 50–95
+        reason = isSynonym ? 'synonym' : 'word_overlap'
       }
     }
 
@@ -233,6 +325,7 @@ export function matchCatalogItem(
         canonical_name: item.name,
         confidence: score,
         tier: toTier(score),
+        match_reason: reason,
       })
     }
   }
@@ -241,14 +334,14 @@ export function matchCatalogItem(
   candidates.sort((a, b) => b.confidence - a.confidence)
 
   const best = candidates[0] ?? null
-  const alternatives = candidates.slice(1, 4) // top 3 alternatives
+  const alternatives = candidates.slice(1, 4)
 
   return { best, alternatives }
 }
 
 /**
  * Match all AI estimate items against catalog.
- * Returns a map of index → match result (best + alternatives).
+ * Returns a map of index → match result. Always stores a result (even if no match).
  */
 export function matchAllItems(
   names: string[],
@@ -256,8 +349,7 @@ export function matchAllItems(
 ): Map<number, CatalogMatchResult> {
   const results = new Map<number, CatalogMatchResult>()
   for (let i = 0; i < names.length; i++) {
-    const result = matchCatalogItem(names[i], catalog)
-    if (result.best) results.set(i, result)
+    results.set(i, matchCatalogItem(names[i], catalog))
   }
   return results
 }

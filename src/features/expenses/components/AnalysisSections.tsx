@@ -196,8 +196,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
     if (!catalog?.length) return new Map<number, CatalogMatchResult>()
     const m = new Map<number, CatalogMatchResult>()
     items.forEach((item, i) => {
-      const r = matchCatalogItem(item.name, catalog)
-      if (r.best) m.set(i, r)
+      m.set(i, matchCatalogItem(item.name, catalog))
     })
     return m
   }, [items, catalog])
@@ -308,9 +307,19 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                           {(() => {
                             const globalIdx = items.indexOf(item)
                             const mr = matchResults.get(globalIdx)
-                            if (mr?.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
-                            if (mr?.best?.tier === 'partial') return <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%)`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#D4960A', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
-                            return <span title="Pozycja własna" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, #f1f5f9)', color: 'var(--color-text-tertiary, #94a3b8)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️</span>
+                            if (mr?.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name} (${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
+                            if (mr?.best?.tier === 'partial') return (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%, ${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#D4960A', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
+                                {mr.alternatives.length > 0 && <span title={`Alternatywy: ${mr.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 8, padding: '0 3px', borderRadius: 3, background: 'rgba(212,150,10,0.06)', color: '#D4960A', cursor: 'help', whiteSpace: 'nowrap' }}>+{mr.alternatives.length}</span>}
+                              </span>
+                            )
+                            if (mr?.alternatives && mr.alternatives.length > 0) return (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                <span title={`Brak dopasowania. Sugestie: ${mr.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(229,115,115,0.08)', color: '#E57373', fontWeight: 600, whiteSpace: 'nowrap' }}>❌ uzupełnij</span>
+                              </span>
+                            )
+                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, #f1f5f9)', color: 'var(--color-text-tertiary, #94a3b8)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️ własna</span>
                           })()}
                         </span>
                         {catName && (

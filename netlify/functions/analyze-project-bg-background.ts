@@ -335,7 +335,7 @@ export const handler: Handler = async (event) => {
       input: [{ role: 'user', content }],
       text: { format: PROJECT_ANALYSIS_SCHEMA },
       max_output_tokens: 8_000,
-    }, 'analyze-project-bg')
+    }, 'analyze-project-bg', 300_000) // 5 min timeout for large PDFs
 
     if (resp.retried) console.info('[bg] OPENAI_RETRIED', JSON.stringify({ finalStatus: resp.status, elapsed_ms: Date.now() - t0 }))
 

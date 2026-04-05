@@ -40,10 +40,14 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
 /**
  * Call OpenAI Responses API with 1× automatic retry on transient errors.
  * Returns raw response body + metadata. Caller handles parsing.
+ *
+ * @param timeoutMs  Per-call timeout override (default: 120 000 ms).
+ *                   Heavy functions (project-analysis) can pass a higher value.
  */
 export async function callOpenAIWithRetry(
   opts: OpenAIRequestOptions,
   label: string = 'openai',
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
 ): Promise<OpenAIRetryResult> {
   const url = 'https://api.openai.com/v1/responses'
   const init: RequestInit = {
@@ -61,11 +65,13 @@ export async function callOpenAIWithRetry(
     }),
   }
 
+  console.info(`[${label}] timeout=${timeoutMs}ms`)
+
   // First attempt
   let resp: Response
   let body: string
   try {
-    resp = await fetchWithTimeout(url, init, REQUEST_TIMEOUT_MS)
+    resp = await fetchWithTimeout(url, init, timeoutMs)
     body = await resp.text()
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
@@ -81,7 +87,7 @@ export async function callOpenAIWithRetry(
     await sleep(RETRY_DELAY_MS)
     console.info(`[${label}] retrying after timeout...`)
     try {
-      resp = await fetchWithTimeout(url, init, REQUEST_TIMEOUT_MS)
+      resp = await fetchWithTimeout(url, init, timeoutMs)
       body = await resp.text()
       return { ok: resp.ok, status: resp.status, body, retried: true, headers: resp.headers }
     } catch (e2: unknown) {
@@ -99,7 +105,7 @@ export async function callOpenAIWithRetry(
   await sleep(RETRY_DELAY_MS)
 
   try {
-    resp = await fetchWithTimeout(url, init, REQUEST_TIMEOUT_MS)
+    resp = await fetchWithTimeout(url, init, timeoutMs)
     body = await resp.text()
   } catch (e: unknown) {
     throw new Error(`OpenAI retry failed: ${e instanceof Error ? e.message : String(e)}`)
