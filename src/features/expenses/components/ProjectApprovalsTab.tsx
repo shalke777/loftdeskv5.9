@@ -1,7 +1,9 @@
 import { useState }            from 'react'
+import { CheckCircle2 } from 'lucide-react'
 import { useCostApprovals }    from '@/features/expenses/hooks/useCostApprovals'
 import { useCreateCostApproval } from '@/features/expenses/hooks/useCreateCostApproval'
 import { ApprovalStatusBadge } from './ApprovalStatusBadge'
+import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import type { ApprovalStatus } from '@/features/expenses/api/cost-approvals.api'
 
 interface Props { projectId: string }
@@ -105,26 +107,19 @@ export function ProjectApprovalsTab({ projectId }: Props) {
 
       {/* Empty state */}
       {!isLoading && approvals.length === 0 && (
-        <div
-          style={{
-            textAlign: 'center', padding: '48px 24px',
-            border: '2px dashed var(--color-border)',
-            borderRadius: 10, color: 'var(--color-text-muted)',
-          }}
-        >
-          <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
-          <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Brak akceptacji kosztów</p>
-          <p style={{ margin: 0, fontSize: 13 }}>
-            Wyślij koszt do akceptacji klienta z zakładki <strong>💰 Koszty</strong>.
-          </p>
-        </div>
+        <EmptyState
+          icon={CheckCircle2}
+          title="Brak akceptacji kosztów"
+          description="Wyślij koszt do akceptacji klienta z zakładki Koszty."
+        />
       )}
 
       {/* Empty filter state */}
       {!isLoading && approvals.length > 0 && visible.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '32px 24px', color: 'var(--color-text-muted)', fontSize: 13 }}>
-          Brak akceptacji w tej kategorii.
-        </div>
+        <EmptyState
+          title="Brak akceptacji w tej kategorii"
+          description="Zmień filtr, aby zobaczyć inne akceptacje."
+        />
       )}
 
       {/* Approvals list */}

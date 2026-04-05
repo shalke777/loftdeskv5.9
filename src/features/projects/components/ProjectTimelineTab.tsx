@@ -1,7 +1,9 @@
 import { useState, useMemo }   from 'react'
+import { Clock } from 'lucide-react'
 import { useProjectTimeline }  from '@/features/projects/hooks/useProjectTimeline'
 import { TimelineEventItem }   from './TimelineEventItem'
 import { TimelineFilterBar }   from './TimelineFilterBar'
+import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import {
   matchesFilter,
   getEventCategory,
@@ -59,21 +61,11 @@ export function ProjectTimelineTab({ projectId }: Props) {
 
   if (events.length === 0) {
     return (
-      <div
-        style={{
-          textAlign:    'center',
-          padding:      '48px 24px',
-          border:       '2px dashed var(--color-border, rgba(30,29,24,0.15))',
-          borderRadius: 10,
-          color:        'var(--color-text-muted)',
-        }}
-      >
-        <div style={{ fontSize: 40, marginBottom: 12 }}>🕒</div>
-        <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: 15 }}>Brak zdarzeń dla tego projektu</p>
-        <p style={{ margin: 0, fontSize: 13 }}>
-          Historia pojawi się tutaj gdy projekt będzie aktywny — wiadomości, koszty, akceptacje, portale.
-        </p>
-      </div>
+      <EmptyState
+        icon={Clock}
+        title="Brak zdarzeń dla tego projektu"
+        description="Historia pojawi się tutaj gdy projekt będzie aktywny — wiadomości, koszty, akceptacje, portale."
+      />
     )
   }
 

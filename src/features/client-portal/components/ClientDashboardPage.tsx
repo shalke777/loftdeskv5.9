@@ -4,8 +4,10 @@
 
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
+import { FolderKanban } from 'lucide-react'
 import { useClientProjects, useClientStandaloneInvoices } from '@/features/client-portal/hooks/useClientPortal'
 import { Badge } from '@/shared/ui/Badge/Badge'
+import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
 import { buildInvoicePreview } from '@/services/pdf/documentPreview'
 import type { ClientProject, ClientInvoice } from '@/features/client-portal/api/client-portal.api'
@@ -158,10 +160,12 @@ export function ClientDashboardPage() {
     // No projects — but might have standalone invoices
     return (
       <div>
-        <div className="client-page-empty">
-          <div className="client-page-empty__icon">📁</div>
-          <h2>Brak projektów</h2>
-          <p>Nie masz jeszcze dostępu do żadnych projektów.<br />Skontaktuj się ze swoim wykonawcą.</p>
+        <div style={{ padding: '40px 20px' }}>
+          <EmptyState
+            icon={FolderKanban}
+            title="Brak projektów"
+            description="Otrzymasz dostęp do projektów, gdy firma je udostępni."
+          />
         </div>
         <StandaloneInvoicesSection />
       </div>

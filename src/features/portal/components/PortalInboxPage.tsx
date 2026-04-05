@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, MessageCircle, Users } from 'lucide-react'
+import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/shared/ui/Button/Button'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
@@ -123,13 +124,11 @@ export function PortalInboxPage() {
       </div>
 
       {displayed.length === 0 ? (
-        <div className="proj-list" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-          <Users size={36} style={{ margin: '0 auto 14px', opacity: 0.35, display: 'block' }} />
-          <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-muted)', margin: '0 0 6px' }}>
-            {filter === 'active' ? 'Brak klientów z aktywnym dostępem' : 'Brak klientów w portalu'}
-          </p>
-          <p style={{ fontSize: 13, margin: 0 }}>Zapraszaj klientów w widoku Projekt → Portal klienta.</p>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="Brak klientów z aktywnym portalem"
+          description="Klienci pojawią się tutaj po zaproszeniu do portalu."
+        />
       ) : (
         <div className="proj-list">
           {displayed.map((item) => {

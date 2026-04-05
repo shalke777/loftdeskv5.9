@@ -15,9 +15,10 @@ import { Modal } from '@/shared/ui/Modal/Modal'
 import { Input } from '@/shared/ui/Input/Input'
 import { Select } from '@/shared/ui/Select/Select'
 import { useProjects } from '@/features/projects/hooks/useProjects'
+import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 // useProjects takes no arguments — companyId is read internally
 import {
-  Upload, Camera, FileText, Trash2, Edit2, AlertTriangle, CheckCircle, Clock, Package,
+  Upload, Camera, FileText, Trash2, Edit2, AlertTriangle, CheckCircle, Clock, Package, Receipt,
 } from 'lucide-react'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -618,11 +619,11 @@ export function ExpensesPage() {
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><Spinner /></div>
       ) : expenses.length === 0 ? (
-        <div className="exp-empty">
-          <Package size={40} />
-          <p>Brak faktur kosztowych</p>
-          <span>Przeciągnij plik na stronę lub kliknij, aby dodać pierwszą fakturę kosztową.</span>
-        </div>
+        <EmptyState
+          icon={Receipt}
+          title="Brak faktur kosztowych"
+          description="Dodaj pierwszą fakturę kosztową — załaduj PDF lub skanuj aparatem."
+        />
       ) : (
         <div className="exp-table-wrap">
           <table className="exp-table">

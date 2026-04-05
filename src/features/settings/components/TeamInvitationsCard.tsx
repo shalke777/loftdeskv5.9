@@ -3,6 +3,7 @@ import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
 import { Input } from '@/shared/ui/Input/Input'
 import { Select } from '@/shared/ui/Select/Select'
+import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import { useInviteMember, useRevokeInvitation, useSettings } from '@/features/settings/hooks/useSettings'
 import { useCan } from '@/features/auth/hooks/usePermissions'
 import { AccessNotice } from '@/shared/ui/AccessNotice/AccessNotice'
@@ -50,7 +51,7 @@ export function TeamInvitationsCard() {
         </Button>
       </div>
       <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-        {invitations.length === 0 ? <p className="muted">Brak aktywnych zaproszeń.</p> : null}
+        {invitations.length === 0 ? <EmptyState title="Brak aktywnych zaproszeń" description="Wyślij zaproszenia zespołowi, aby rozpoczął pracę." /> : null}
         {invitations.map((item: any) => (
           <div key={item.id} className="list-row">
             <div>

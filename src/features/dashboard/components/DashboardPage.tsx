@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Camera, ChevronRight, FileText, FolderKanban, Receipt, TrendingUp, Users, Wallet, DollarSign } from 'lucide-react'
+import { Activity, Camera, ChevronRight, FileText, FolderKanban, Receipt, TrendingUp, Users, Wallet, DollarSign } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
@@ -9,6 +9,7 @@ import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { QueryError } from '@/shared/ui/QueryError/QueryError'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
+import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 
 const quickActions = [
   { icon: Users,        title: 'Nowy kontrahent',    sub: 'Dodaj klienta',  color: 'var(--color-brand)',   href: '/clients'   },
@@ -236,7 +237,7 @@ export function DashboardPage() {
             <h3>Ostatnia aktywność</h3>
             <div className="stack-sm" style={{ marginTop: 10 }}>
               {data.recentActivity.length === 0
-                ? <p className="muted">Brak aktywności.</p>
+                ? <EmptyState title="Brak aktywności" description="Historia zmian pojawi się tutaj." />
                 : data.recentActivity.map((item) => (
                     <div key={item} className="list-row"><span>{item}</span></div>
                   ))}
