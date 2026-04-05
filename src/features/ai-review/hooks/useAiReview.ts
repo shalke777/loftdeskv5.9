@@ -172,12 +172,16 @@ export function useCreateEstimateFromRun() {
         itemCount:      items.length,
       }
     },
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
       // Sprint F: mark draft_created on the run for governance tracking
-      void supabase?.from('ai_analysis_runs')
-        .update({ draft_created: true })
-        .eq('id', variables.run.id)
-        .then(({ error }) => { if (error) console.warn('[useCreateEstimateFromRun] draft_created update failed:', error.message) })
+      try {
+        const { error } = await supabase!.from('ai_analysis_runs')
+          .update({ draft_created: true })
+          .eq('id', variables.run.id)
+        if (error) console.warn('[useCreateEstimateFromRun] draft_created update failed:', error.message)
+      } catch (e) {
+        console.warn('[useCreateEstimateFromRun] draft_created update exception:', e)
+      }
 
       // Invalidate the DB guard query so the panel immediately shows the
       // "already exists" notice if reopened or if the same run is opened

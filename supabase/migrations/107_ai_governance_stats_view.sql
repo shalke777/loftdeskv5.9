@@ -10,7 +10,11 @@
 
 -- ── Extend v_ai_run_stats with governance columns ──────────────────────────
 
-CREATE OR REPLACE VIEW public.v_ai_run_stats AS
+-- Must DROP first: original 092 view has different column order; CREATE OR REPLACE
+-- cannot reorder/rename existing columns (SQLSTATE 42P16).
+DROP VIEW IF EXISTS public.v_ai_run_stats CASCADE;
+
+CREATE VIEW public.v_ai_run_stats AS
 SELECT
   r.id                                  AS run_id,
   r.company_id,

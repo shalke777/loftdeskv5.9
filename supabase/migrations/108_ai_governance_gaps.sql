@@ -18,7 +18,10 @@ COMMENT ON COLUMN public.project_analysis_jobs.input_file_size_bytes
 
 -- ── 2. Extend v_ai_run_stats with match counts + heavy PDF ────────────────
 
-CREATE OR REPLACE VIEW public.v_ai_run_stats AS
+-- DROP + CREATE because 107 already changed column order from original 092
+DROP VIEW IF EXISTS public.v_ai_run_stats;
+
+CREATE VIEW public.v_ai_run_stats AS
 SELECT
   r.id                                  AS run_id,
   r.company_id,
@@ -122,40 +125,52 @@ GROUP BY r.id, r.company_id, r.project_id, r.room_type,
 -- ── 3. Weekly company usage view ──────────────────────────────────────────
 
 CREATE OR REPLACE VIEW public.v_ai_company_usage_weekly AS
+WITH run_weeks AS (
+  SELECT
+    r.company_id,
+    DATE_TRUNC('week', r.created_at)::date                                         AS week_start,
+    COUNT(*)::int                                                                  AS total_runs,
+    COUNT(*) FILTER (WHERE r.status = 'completed')::int                            AS completed_runs,
+    COUNT(*) FILTER (WHERE r.status = 'failed')::int                               AS failed_runs,
+    COUNT(*) FILTER (WHERE COALESCE(r.timeout_occurred, false))::int               AS timeout_runs,
+    COUNT(*) FILTER (WHERE COALESCE(r.retry_count, 0) > 0)::int                   AS retried_runs,
+    COUNT(*) FILTER (WHERE COALESCE(r.draft_created, false))::int                  AS drafts_created,
+    COUNT(*) FILTER (WHERE COALESCE(r.input_file_size_bytes, 0) > 5242880)::int    AS heavy_pdf_runs,
+    AVG(r.request_duration_ms)::int                                                AS avg_duration_ms,
+    SUM(COALESCE(r.input_token_count, 0) + COALESCE(r.output_token_count, 0))::int AS total_tokens,
+    ROUND(
+      (SUM(COALESCE(r.input_token_count, 0))  * 0.00000015 +
+       SUM(COALESCE(r.output_token_count, 0)) * 0.0000006)::numeric,
+      4
+    )                                                                              AS estimated_cost_usd
+  FROM  public.ai_analysis_runs r
+  WHERE r.company_id = my_company_id()
+  GROUP BY r.company_id, DATE_TRUNC('week', r.created_at)::date
+),
+asst_weeks AS (
+  SELECT
+    aq.company_id,
+    DATE_TRUNC('week', aq.created_at)::date AS week_start,
+    COUNT(*)::int                            AS assistant_queries
+  FROM  public.ai_assistant_queries aq
+  WHERE aq.company_id = my_company_id()
+  GROUP BY aq.company_id, DATE_TRUNC('week', aq.created_at)::date
+)
 SELECT
-  r.company_id,
-  DATE_TRUNC('week', r.created_at)::date                                         AS week_start,
-  COUNT(*)::int                                                                  AS total_runs,
-  COUNT(*) FILTER (WHERE r.status = 'completed')::int                            AS completed_runs,
-  COUNT(*) FILTER (WHERE r.status = 'failed')::int                               AS failed_runs,
-  COUNT(*) FILTER (WHERE COALESCE(r.timeout_occurred, false))::int               AS timeout_runs,
-  COUNT(*) FILTER (WHERE COALESCE(r.retry_count, 0) > 0)::int                   AS retried_runs,
-  COUNT(*) FILTER (WHERE COALESCE(r.draft_created, false))::int                  AS drafts_created,
-  COUNT(*) FILTER (WHERE COALESCE(r.input_file_size_bytes, 0) > 5242880)::int    AS heavy_pdf_runs,
-  AVG(r.request_duration_ms)::int                                                AS avg_duration_ms,
-  SUM(COALESCE(r.input_token_count, 0) + COALESCE(r.output_token_count, 0))::int AS total_tokens,
-  -- Estimated cost: gpt-4o-mini ~ $0.15/1M input + $0.60/1M output
-  ROUND(
-    (SUM(COALESCE(r.input_token_count, 0))  * 0.00000015 +
-     SUM(COALESCE(r.output_token_count, 0)) * 0.0000006)::numeric,
-    4
-  )                                                                              AS estimated_cost_usd,
-  -- Assistant queries this week
-  (
-    SELECT COUNT(*)::int
-    FROM   public.ai_assistant_queries aq
-    WHERE  aq.company_id = r.company_id
-    AND    DATE_TRUNC('week', aq.created_at) = DATE_TRUNC('week', r.created_at)
-  )                                                                              AS assistant_queries
-FROM  public.ai_analysis_runs r
-WHERE r.company_id = my_company_id()
-GROUP BY r.company_id, DATE_TRUNC('week', r.created_at)::date;
+  rw.*,
+  COALESCE(aw.assistant_queries, 0) AS assistant_queries
+FROM  run_weeks rw
+LEFT  JOIN asst_weeks aw
+  ON  aw.company_id = rw.company_id
+  AND aw.week_start = rw.week_start;
 
 GRANT SELECT ON public.v_ai_company_usage_weekly TO authenticated;
 
 -- ── 4. Extend daily view with heavy_pdf_runs ──────────────────────────────
 
-CREATE OR REPLACE VIEW public.v_ai_company_usage AS
+DROP VIEW IF EXISTS public.v_ai_company_usage;
+
+CREATE VIEW public.v_ai_company_usage AS
 SELECT
   r.company_id,
   DATE_TRUNC('day', r.created_at)::date                                          AS day,
