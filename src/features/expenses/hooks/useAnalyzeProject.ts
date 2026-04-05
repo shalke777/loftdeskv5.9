@@ -98,8 +98,15 @@ async function pollJobResult(jobId: string): Promise<ProjectAnalysisResult> {
     }
 
     if (job.status === 'failed') {
-      const msg = job.error_message || 'Analiza nie powiodła się.'
-      throw new Error(msg)
+      const code = job.error_code ?? ''
+      const base = job.error_message || 'Analiza nie powiodła się.'
+      const hint =
+        code === 'openai_quota'     ? ' Spróbuj ponownie za kilka minut — limit OpenAI powinien się odnowić.' :
+        code === 'timeout'          ? ' Plik może być za duży. Spróbuj mniejszy PDF lub podziel na strony.' :
+        code === 'internal_error' && /timeout|abort/i.test(base)
+                                    ? ' Analiza trwała zbyt długo. Spróbuj z mniejszym plikiem.' :
+        ''
+      throw new Error(base + hint)
     }
 
     // Still queued or processing — keep polling

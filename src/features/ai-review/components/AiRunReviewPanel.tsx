@@ -566,10 +566,25 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
   }
 
   if (run.status === 'failed') {
+    const code = run.error_code ?? ''
+    const base = run.error_message ?? 'nieznany błąd'
+    const hint =
+      code === 'openai_quota'     ? 'Limit OpenAI wyczerpany — spróbuj za kilka minut.' :
+      code === 'timeout'          ? 'Analiza trwała zbyt długo. Spróbuj z mniejszym plikiem.' :
+      code === 'internal_error' && /timeout|abort/i.test(base)
+                                  ? 'Analiza przekroczyła limit czasu.' :
+      null
     return (
-      <p style={{ color: 'var(--color-danger, #EF4444)', fontSize: 13, padding: '16px 0' }}>
-        Analiza zakończyła się błędem: {run.error_message ?? 'nieznany błąd'}
-      </p>
+      <div style={{ padding: '16px 0' }}>
+        <p style={{ color: 'var(--color-danger, #EF4444)', fontSize: 13 }}>
+          Analiza zakończyła się błędem: {base}
+        </p>
+        {hint && (
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: 12, marginTop: 4 }}>
+            💡 {hint}
+          </p>
+        )}
+      </div>
     )
   }
 
