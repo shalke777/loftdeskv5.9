@@ -19,35 +19,46 @@
 // =============================================================================
 
 import type { EstimateItem } from '@/entities/estimate/model'
+import type { ServiceCatalogItem } from '@/entities/service_catalog/model'
 import type { AiScopeItem } from '../api/ai-review.api'
+import { matchCatalogItem } from '@/features/service-catalog/lib/catalog-matcher'
 
 const DEFAULT_VAT_RATE = 23
 
 /**
  * Map reviewed AI scope items to estimate line items.
  * Returns only accepted and modified items in their review order.
+ * Optionally matches against catalog for canonical naming + catalog_item_id.
  */
 export function mapAiScopeToEstimateItems(
   scopeItems: AiScopeItem[],
+  catalog?: ServiceCatalogItem[],
 ): EstimateItem[] {
   return scopeItems
     .filter(item =>
       item.review_status === 'accepted' || item.review_status === 'modified',
     )
-    .map((item, index) => ({
-      id:          item.id,   // reuse scope item id as a stable key (not saved to DB)
-      name:        (item.title ?? item.description ?? 'Pozycja').slice(0, 120),
-      description: item.description,
-      unit:        item.unit ?? 'szt.',
-      quantity:    item.quantity_final
-                     ?? item.quantity_suggested
-                     ?? 1,
-      unit_price:  item.price_confirmed_by_operator
-                     ?? item.price_suggested_by_ai
-                     ?? 0,
-      vat_rate:    DEFAULT_VAT_RATE,
-      sort_order:  item.sort_order ?? index,
-    } satisfies EstimateItem))
+    .map((item, index) => {
+      const name = (item.title ?? item.description ?? 'Pozycja').slice(0, 120)
+      const result = catalog?.length ? matchCatalogItem(name, catalog) : { best: null, alternatives: [] }
+      const match = result.best
+
+      return {
+        id:              item.id,
+        name:            match?.canonical_name ?? name,
+        description:     item.description,
+        unit:            item.unit ?? 'szt.',
+        quantity:        item.quantity_final
+                           ?? item.quantity_suggested
+                           ?? 1,
+        unit_price:      item.price_confirmed_by_operator
+                           ?? item.price_suggested_by_ai
+                           ?? 0,
+        vat_rate:        DEFAULT_VAT_RATE,
+        sort_order:      item.sort_order ?? index,
+        catalog_item_id: match?.catalog_item_id ?? null,
+      } satisfies EstimateItem
+    })
 }
 
 /**

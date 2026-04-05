@@ -15,6 +15,8 @@ import type { EstimateItem } from '@/entities/estimate/model'
 import { AiReliabilityBanner } from '@/shared/ui/AiGuidance'
 import type { ReliabilityReport } from '@/services/ai/engines/reliability'
 import { AnalysisSectionCard } from './AnalysisSectionCard'
+import { useServiceCatalog, matchCatalogItem } from '@/features/service-catalog'
+import type { CatalogMatchResult } from '@/features/service-catalog/lib/catalog-matcher'
 
 // ── Line Items (active today) ────────────────────────────────────────────────
 
@@ -135,17 +137,22 @@ import type { TaskPriority, CoverageResult } from '@/services/ai/bathroom-task-l
 
 const ESTIMATE_DRAFT_KEY = 'estimate_form_draft'
 
-function suggestedToEstimateItems(items: SuggestedEstimateItem[]): EstimateItem[] {
-  return items.map((s, i) => ({
-    id: crypto.randomUUID(),
-    name: s.name,
-    description: s.notes ?? '',
-    unit: s.unit,
-    quantity: s.quantity,
-    unit_price: s.unit_price ?? 0,
-    vat_rate: 8,
-    sort_order: i + 1,
-  }))
+function suggestedToEstimateItems(items: SuggestedEstimateItem[], catalog?: import('@/entities/service_catalog/model').ServiceCatalogItem[]): EstimateItem[] {
+  return items.map((s, i) => {
+    const result = catalog?.length ? matchCatalogItem(s.name, catalog) : { best: null, alternatives: [] }
+    const match = result.best
+    return {
+      id: crypto.randomUUID(),
+      name: match?.canonical_name ?? s.name,
+      description: s.notes ?? '',
+      unit: s.unit,
+      quantity: s.quantity,
+      unit_price: s.unit_price ?? 0,
+      vat_rate: 8,
+      sort_order: i + 1,
+      catalog_item_id: match?.catalog_item_id ?? null,
+    }
+  })
 }
 
 /** Extract library_id from notes field (AI puts it there) */
@@ -177,17 +184,29 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
   if (!items || items.length === 0) return null
 
   const navigate = useNavigate()
+  const { data: catalog } = useServiceCatalog()
   const [transferring, setTransferring] = useState(false)
   const [awaitingConfirm, setAwaitingConfirm] = useState(false)
 
   const isBlocked    = reliabilityReport?.state === 'blocked'
   const needsConfirm = reliabilityReport?.requires_confirmation ?? false
 
+  // Pre-compute match results for display
+  const matchResults = useMemo(() => {
+    if (!catalog?.length) return new Map<number, CatalogMatchResult>()
+    const m = new Map<number, CatalogMatchResult>()
+    items.forEach((item, i) => {
+      const r = matchCatalogItem(item.name, catalog)
+      if (r.best) m.set(i, r)
+    })
+    return m
+  }, [items, catalog])
+
   function doTransfer() {
     if (transferring) return
     setTransferring(true)
     setAwaitingConfirm(false)
-    const estimateItems = suggestedToEstimateItems(items)
+    const estimateItems = suggestedToEstimateItems(items, catalog)
     const draft = {
       name: `Wycena z analizy AI — ${new Date().toLocaleDateString('pl-PL')}`,
       notes: 'Pozycje wygenerowane z analizy AI. Sprawdź ilości i uzupełnij ceny.',
@@ -245,6 +264,21 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
       {/* Coverage bar */}
       <CoverageBar coverage={coverage} />
 
+      {/* Catalog match summary */}
+      {catalog && catalog.length > 0 && (() => {
+        const strong = Array.from(matchResults.values()).filter(r => r.best?.tier === 'strong').length
+        const partial = Array.from(matchResults.values()).filter(r => r.best?.tier === 'partial').length
+        const unmatched = items.length - strong - partial
+        return (
+          <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 8, flexWrap: 'wrap' }}>
+            <span>Dopasowanie do katalogu:</span>
+            {strong > 0 && <span style={{ color: 'var(--color-success, #16a34a)' }}>📚 {strong} pewnych</span>}
+            {partial > 0 && <span style={{ color: '#D4960A' }}>📚? {partial} częściowych</span>}
+            {unmatched > 0 && <span style={{ color: 'var(--color-text-muted)' }}>✍️ {unmatched} własnych</span>}
+          </div>
+        )
+      })()}
+
       {groups.filter(g => g.show).map(group => (
         <div key={group.label} style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--color-text-secondary)' }}>
@@ -269,7 +303,16 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid var(--color-border)', opacity: lowConf ? 0.6 : 1 }}>
                       <td style={colStyle}>
-                        {item.name}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          {item.name}
+                          {(() => {
+                            const globalIdx = items.indexOf(item)
+                            const mr = matchResults.get(globalIdx)
+                            if (mr?.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
+                            if (mr?.best?.tier === 'partial') return <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%)`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#D4960A', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
+                            return <span title="Pozycja własna" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, #f1f5f9)', color: 'var(--color-text-tertiary, #94a3b8)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️</span>
+                          })()}
+                        </span>
                         {catName && (
                           <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 1 }}>{catName}</div>
                         )}

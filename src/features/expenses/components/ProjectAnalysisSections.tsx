@@ -292,7 +292,8 @@ const ESTIMATE_DRAFT_KEY = 'estimate_form_draft'
 
 function projectItemsToEstimate(items: ProjectEstimateItem[], catalog?: import('@/entities/service_catalog/model').ServiceCatalogItem[]): EstimateItem[] {
   return items.map((e, i) => {
-    const match = catalog?.length ? matchCatalogItem(e.name, catalog) : null
+    const result = catalog?.length ? matchCatalogItem(e.name, catalog) : { best: null, alternatives: [] }
+    const match = result.best
     return {
       id: crypto.randomUUID(),
       name: match?.canonical_name ?? e.name,
@@ -379,11 +380,17 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
                       <td style={colStyle}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                           {item.name}
-                          {catalog?.length && matchCatalogItem(item.name, catalog) ? (
-                            <span title="Pasuje do katalogu usług" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
-                          ) : (
-                            <span title="Pozycja własna (bez dopasowania)" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, #f1f5f9)', color: 'var(--color-text-tertiary, #94a3b8)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️</span>
-                          )}
+                          {(() => {
+                            if (!catalog?.length) return null
+                            const matchResult = matchCatalogItem(item.name, catalog)
+                            if (matchResult.best && matchResult.best.tier === 'strong') {
+                              return <span title={`Katalog: ${matchResult.best.canonical_name}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
+                            }
+                            if (matchResult.best && matchResult.best.tier === 'partial') {
+                              return <span title={`Częściowe: ${matchResult.best.canonical_name} (${matchResult.best.confidence}%)`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#D4960A', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
+                            }
+                            return <span title="Pozycja własna (bez dopasowania)" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, #f1f5f9)', color: 'var(--color-text-tertiary, #94a3b8)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️</span>
+                          })()}
                         </span>
                         {item.notes && (
                           <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 1 }}>{item.notes}</div>

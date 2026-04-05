@@ -123,6 +123,7 @@ export interface CreateEstimateFromRunInput {
   scopeItems: AiScopeItem[]
   companyId:  string
   projectId:  string
+  catalog?:   import('@/entities/service_catalog/model').ServiceCatalogItem[]
 }
 
 export interface CreateEstimateFromRunResult {
@@ -144,8 +145,9 @@ export function useCreateEstimateFromRun() {
       scopeItems,
       companyId,
       projectId,
+      catalog,
     }: CreateEstimateFromRunInput): Promise<CreateEstimateFromRunResult> => {
-      const items = mapAiScopeToEstimateItems(scopeItems)
+      const items = mapAiScopeToEstimateItems(scopeItems, catalog)
       if (items.length === 0) {
         throw new Error('Brak zaakceptowanych pozycji. Zaakceptuj lub zmodyfikuj co najmniej jedną pozycję zakresu.')
       }

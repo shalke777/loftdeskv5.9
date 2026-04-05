@@ -15,6 +15,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { useToast } from '@/shared/hooks/useToast'
+import { useServiceCatalog } from '@/features/service-catalog'
 import { computeConfidenceBand } from '@/shared/lib/confidence-model'
 import {
   useAiScopeItems,
@@ -531,6 +532,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
   const userId      = user?.id ?? 'unknown'
   const toast       = useToast()
   const navigate    = useNavigate()
+  const { data: catalog } = useServiceCatalog()
 
   const { data: scope     = [], isLoading: lScope }  = useAiScopeItems(run.id)
   const { data: questions = [], isLoading: lQ }      = useAiQuestions(run.id)
@@ -855,7 +857,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
                     if (createMutexRef.current) return
                     createMutexRef.current = true
                     createEstimate.mutate(
-                      { run, scopeItems: scope, companyId, projectId },
+                      { run, scopeItems: scope, companyId, projectId, catalog: catalog ?? undefined },
                       {
                         onSuccess: result => {
                           setCreatedEstimate({
