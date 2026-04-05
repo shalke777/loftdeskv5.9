@@ -84,8 +84,8 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
       if (message.trim()) body.message = message.trim()
       if (portalUrl)       body.document_url = portalUrl
 
-      // Generate PDF attachment when no portal URL and pdfHtml is provided
-      if (!portalUrl && pdfHtml) {
+      // Generate PDF attachment when pdfHtml is provided
+      if (pdfHtml) {
         try {
           const { generatePdfBlob } = await import('@/services/pdf/pdfGenerator')
           const blob = await generatePdfBlob(pdfHtml)
@@ -186,26 +186,21 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
           />
         </div>
 
+        {pdfHtml && (
+          <div style={{ background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.30)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#60A5FA' }}>
+            📎 PDF dokumentu zostanie dołączony do emaila jako załącznik.
+          </div>
+        )}
+
         {portalUrl ? (
           <div style={{ background: 'rgba(119,186,138,0.12)', border: '1px solid rgba(119,186,138,0.30)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#77BA8A' }}>
             ✓ Email będzie zawierał przycisk &ldquo;{isPackage ? 'Otwórz projekt w portalu' : 'Otwórz dokument w portalu'}&rdquo;
           </div>
-        ) : (
-          <div
-            style={{
-              background: pdfHtml ? 'rgba(96,165,250,0.12)' : 'rgba(212,150,10,0.12)',
-              border: `1px solid ${pdfHtml ? 'rgba(96,165,250,0.30)' : 'rgba(212,150,10,0.30)'}`,
-              borderRadius: 8,
-              padding: '10px 14px',
-              fontSize: 13,
-              color: pdfHtml ? '#60A5FA' : '#D4960A',
-            }}
-          >
-            {pdfHtml
-              ? 'PDF dokumentu zostanie dołączony do emaila jako załącznik.'
-              : 'Brak linku do portalu — klient otrzyma tylko informacj\u0119 o dokumencie. Wygeneruj link portalu (w sekcji \u201eCo dalej?\u201d na wycenie), aby do\u0142\u0105czy\u0107 bezpo\u015brednio do projektu.'}
+        ) : !pdfHtml ? (
+          <div style={{ background: 'rgba(212,150,10,0.12)', border: '1px solid rgba(212,150,10,0.30)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#D4960A' }}>
+            Brak linku do portalu — klient otrzyma tylko informację o dokumencie.
           </div>
-        )}
+        ) : null}
 
         <div className="actions-row" style={{ marginTop: 4 }}>
           <Button variant="secondary" onClick={onClose} disabled={sending}>Anuluj</Button>

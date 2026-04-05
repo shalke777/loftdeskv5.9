@@ -284,6 +284,7 @@ export function InvoiceRow({
         documentName={invoice.number ?? 'Szkic'}
         defaultEmail={client?.email}
         portalUrl={invoice.project_id ? `${getAppOrigin()}/client/project/${invoice.project_id}` : undefined}
+        pdfHtml={tabs[0].content}
       />
     </div>
   )
