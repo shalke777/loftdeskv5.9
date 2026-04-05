@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Upload } from 'lucide-react'
 import { Button } from '@/shared/ui/Button/Button'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import { Modal } from '@/shared/ui/Modal/Modal'
@@ -9,6 +9,7 @@ import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useCreateInvoice, useDeleteInvoice, useFinalizeInvoice, useInvoices, useMarkInvoicePaid, useSendInvoiceToKsef, useUpdateInvoice } from '@/features/invoices/hooks/useInvoices'
 import { InvoiceRow } from '@/features/invoices/components/InvoiceRow'
 import { InvoiceForm } from '@/features/invoices/components/InvoiceModal/InvoiceForm'
+import { InvoiceImportModal } from '@/features/invoices/components/InvoiceImportModal'
 import { useCan } from '@/features/auth/hooks/usePermissions'
 import { PlanLimitGuard } from '@/features/billing/components/PlanLimitGuard'
 import { useClients } from '@/features/clients/hooks/useClients'
@@ -28,6 +29,7 @@ export function InvoicesPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Invoice | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   const companyId = useCompanyId()
   const { data, isLoading } = useInvoices()
@@ -81,6 +83,10 @@ export function InvoicesPage() {
         <div className="toolbar__actions">
           {canCreate && (
             <PlanLimitGuard resource="invoices">
+              <Button variant="secondary" onClick={() => setImportOpen(true)}>
+                <Upload size={16} style={{ marginRight: 4 }} />
+                Import
+              </Button>
               <Button onClick={() => { setEditing(null); setOpen(true) }}>
                 <Plus size={16} style={{ marginRight: 4 }} />
                 Nowa faktura
@@ -135,6 +141,19 @@ export function InvoicesPage() {
         <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edytuj fakturę' : 'Nowa faktura'}>
           <InvoiceForm companyId={companyId} initialInvoice={editing} onSubmit={submit} onSaveDraft={editing ? undefined : saveDraft} />
         </Modal>
+      )}
+
+      {canCreate && (
+        <InvoiceImportModal
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          companyId={companyId}
+          onImport={(imported) => {
+            setImportOpen(false)
+            setEditing(imported)
+            setOpen(true)
+          }}
+        />
       )}
     </div>
   )
