@@ -403,20 +403,18 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 /* usunięto granatowe tło, patrz wyżej */
 
 .highlight-card p, .highlight-card .field__label { color: rgba(255,255,255,.82); }
-.quick-actions-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
-.quick-action { padding: 20px 18px; border-radius: 18px; border: none; background: var(--color-surface); transition: transform .18s ease, box-shadow .18s ease; text-align: left; cursor: pointer; width: 100%; color: #fff; }
+.quick-actions-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.quick-action { padding: 16px; border-radius: 18px; border: none; background: var(--color-surface); transition: transform .18s ease, box-shadow .18s ease; text-align: left; cursor: pointer; width: 100%; color: #fff; }
 .quick-action:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 .quick-action strong, .quick-action .field__label { color: rgba(255,255,255,0.92); }
-.quick-action__icon { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: rgba(255,255,255,0.2); color: #fff; flex-shrink: 0; }
-/* Quick action tile colors — 5 hero actions */
-/* 1: Nowy projekt — Projekty                 */ .quick-actions-grid .quick-action:nth-child(1) { background-color: #6DC7E7 !important; }
+.quick-action__icon { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,0.2); color: #fff; flex-shrink: 0; }
+/* Quick action tile color groups — grouped by function */
+/* 1: Dodaj kontrahenta — Kontrahenci         */ .quick-actions-grid .quick-action:nth-child(1) { background-color: #B4E5B0 !important; }
 /* 2: Nowa wycena — Dokumenty                 */ .quick-actions-grid .quick-action:nth-child(2) { background-color: #F6A623 !important; }
-/* 3: Dodaj koszt — Koszty                    */ .quick-actions-grid .quick-action:nth-child(3) { background-color: #B4E5B0 !important; }
-/* 4: Wyślij do akceptacji — Dokumenty        */ .quick-actions-grid .quick-action:nth-child(4) { background-color: #F6A623 !important; }
-/* 5: Napisz do klienta — Chat                */ .quick-actions-grid .quick-action:nth-child(5) { background-color: #A5B8C6 !important; }
-/* Pipeline toggle */
-.pipeline-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0; margin-bottom: 4px; background: none; border: none; color: inherit; cursor: pointer; font: inherit; }
-.pipeline-toggle:hover { opacity: 0.85; }
+/* 3: Nowa faktura — Dokumenty                */ .quick-actions-grid .quick-action:nth-child(3) { background-color: #F6A623 !important; }
+/* 4: Otwórz projekty — Projekty              */ .quick-actions-grid .quick-action:nth-child(4) { background-color: #6DC7E7 !important; }
+/* 5: AI analiza — AI                         */ .quick-actions-grid .quick-action:nth-child(5) { background-color: #3DBA6C !important; }
+/* 6: AI analiza projektu — AI                */ .quick-actions-grid .quick-action:nth-child(6) { background-color: #3DBA6C !important; }
 
 .portal-page { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
 .portal-chat { display: grid; gap: 12px; }
@@ -480,8 +478,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .sidebar { display: none; }
   .shell-topbar { padding: 8px 16px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
   .shell-content { padding: 16px; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
-  .stats-grid, .grid-2, .grid-3, .grid-4, .hero-metrics { grid-template-columns: 1fr; }
-  .quick-actions-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stats-grid, .grid-2, .grid-3, .grid-4, .quick-actions-grid, .hero-metrics { grid-template-columns: 1fr; }
   .mobile-nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
     display: flex; flex-direction: row; overflow-x: auto; overflow-y: hidden;
@@ -3094,9 +3091,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
   /* AssignmentQueueBanner: stack buttons on very narrow screens */
   /* (handled via minWidth: 0 in JSX — text truncates, buttons remain tappable) */
-
-  /* Quick actions: 2-col on mobile */
-  .quick-actions-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -3155,8 +3149,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
   /* Quick actions grid */
   .quick-actions-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .quick-action { padding: 14px 12px; border-radius: 14px; }
-  .quick-action__icon { width: 36px; height: 36px; border-radius: 10px; }
+  .quick-action { padding: 12px; border-radius: 14px; }
 
   /* Project detail tabs — compact touch targets */
   .proj-detail-tab { padding: 8px 10px; font-size: 12px; }
