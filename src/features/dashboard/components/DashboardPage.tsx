@@ -20,7 +20,7 @@ const MOBILE_TILES = [
   { label: 'Chat',        sub: 'Wiadomości i portal klienta',    icon: MessageSquareText, href: '/chat'             },
   { label: 'Koszty',      sub: 'Wydatki i faktury kosztowe',     icon: Wallet,           href: '/expenses'         },
   { label: 'AI Analiza',  sub: 'Wybierz typ analizy',            icon: Camera,           href: '/ai'               },
-  { label: 'AI Projekt',  sub: 'PDF → zakres i wycena',          icon: FileText,         href: '/project-analysis' },
+  { label: 'AI Projekt',  sub: 'PDF → zakres i wycena',          icon: FileText,         href: '/ai'               },
 ] as const
 
 const quickActions = [
@@ -28,8 +28,8 @@ const quickActions = [
   { icon: FileText,     title: 'Nowa wycena',        text: 'Przygotuj ofertę w układzie gotowym do PDF.', href: '/estimates' },
   { icon: Receipt,      title: 'Nowa faktura',       text: 'Wystaw fakturę i wyślij ją do KSeF jednym kliknięciem.', href: '/invoices'  },
   { icon: FolderKanban, title: 'Otwórz projekty',    text: 'Przenieś wygraną ofertę do realizacji.',     href: '/projects'  },
-  { icon: Camera,       title: 'AI analiza',         text: 'Skanuj fakturę, analizuj pomieszczenie lub projekt. Wybierz typ, AI dobierze silnik.',     href: '/ai'              },
-  { icon: FileText,     title: 'AI analiza projektu', text: 'Wgraj PDF projektu lub wizualizację → AI wyciągnie zakres i wycenę.', href: '/project-analysis' },
+  { icon: Camera,       title: 'AI analiza',         text: 'Skanuj fakturę, analizuj pomieszczenie lub projekt. Wybierz typ, AI dobierze silnik.',     href: '/ai' },
+  { icon: FileText,     title: 'AI analiza projektu', text: 'Wgraj PDF projektu lub wizualizację → AI wyciągnie zakres i wycenę.', href: '/ai' },
 ]
 
 export function DashboardPage() {

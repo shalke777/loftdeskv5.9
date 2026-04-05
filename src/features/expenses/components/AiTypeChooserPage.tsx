@@ -1,12 +1,14 @@
 // =============================================================================
-// AiTypeChooserPage — Unified AI analysis type selector
+// AiTypeChooserPage — Project-first AI analysis type selector
 // =============================================================================
-// Entry from dashboard "AI Analiza" tile.
-// User picks between 3 AI engine types before uploading anything.
-// Replaces the ambiguous direct jump to /room-analysis.
+// Step 1: Select project (mandatory — AI runs in project context).
+// Step 2: Pick analysis type — navigates to sub-page with ?projectId=X.
 
+import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
+import { ProjectPickerCard } from '@/shared/ui/ProjectPickerCard/ProjectPickerCard'
+import { useProjects } from '@/features/projects/hooks/useProjects'
 
 interface AiMode {
   emoji: string
@@ -14,8 +16,6 @@ interface AiMode {
   title: string
   subtitle: string
   description: string
-  usedFor: string[]
-  notFor: string[]
   href: string
   cta: string
 }
@@ -27,13 +27,6 @@ const AI_MODES: AiMode[] = [
     title: 'Dokument kosztowy',
     subtitle: 'Faktura · Paragon · Nota',
     description: 'AI odczytuje dane z dokumentu finansowego — numer, sprzedawcę, kwoty, termin płatności.',
-    usedFor: [
-      'Faktura VAT od dostawcy',
-      'Paragon fiskalny',
-      'Nota kosztowa',
-      'Skan lub zdjęcie faktury',
-    ],
-    notFor: ['Zdjęcia pomieszczeń ani budowy', 'Projekty architektoniczne'],
     href: '/expenses',
     cta: 'Skanuj dokument',
   },
@@ -42,14 +35,7 @@ const AI_MODES: AiMode[] = [
     accent: '#77BA8A',
     title: 'Zdjęcia pomieszczenia',
     subtitle: 'Łazienka · Kuchnia · Salon · Budowa',
-    description:
-      'AI analizuje stan pomieszczenia lub etap remontu — rozpoznaje materiały, generuje zakres prac i draft wyceny.',
-    usedFor: [
-      'Zdjęcia z różnych kątów (1–10 sztuk)',
-      'Stan przed remontem, w trakcie lub po',
-      'Etap prac na budowie',
-    ],
-    notFor: ['Projekty architektoniczne PDF', 'Faktury i dokumenty finansowe'],
+    description: 'AI analizuje stan pomieszczenia — rozpoznaje materiały, generuje zakres prac i draft wyceny.',
     href: '/room-analysis',
     cta: 'Analizuj pomieszczenie',
   },
@@ -58,14 +44,7 @@ const AI_MODES: AiMode[] = [
     accent: '#C084FC',
     title: 'Projekt / wizualizacja',
     subtitle: 'PDF · Rzut · Render wnętrza',
-    description:
-      'AI czyta projekt lub wizualizację — wyodrębnia pomieszczenia, materiały wykończenia, zakres prac i draft wyceny.',
-    usedFor: [
-      'PDF rzutu architektonicznego',
-      'Wizualizacja lub render wnętrza',
-      'Specyfikacja techniczna materiałów',
-    ],
-    notFor: ['Zdjęcia pomieszczenia', 'Faktury i paragony'],
+    description: 'AI czyta projekt — wyodrębnia pomieszczenia, materiały wykończenia, zakres prac i draft wyceny.',
     href: '/project-analysis',
     cta: 'Analizuj projekt',
   },
@@ -73,6 +52,34 @@ const AI_MODES: AiMode[] = [
 
 export function AiTypeChooserPage() {
   const navigate = useNavigate()
+  const { data: projects = [], isLoading: projectsLoading } = useProjects()
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('')
+  const [step, setStep] = useState<'project' | 'type'>('project')
+
+  // ── Step 1: Project picker (mandatory) ────────────────────────────────────
+  if (step === 'project') {
+    return (
+      <div>
+        <PageHeader
+          title="AI — wybierz projekt"
+          subtitle="Analiza AI działa w kontekście projektu. Wybierz projekt, dla którego chcesz uruchomić AI."
+        />
+        <ProjectPickerCard
+          projects={projects}
+          loading={projectsLoading}
+          selectedId={selectedProjectId}
+          onSelect={setSelectedProjectId}
+          onNext={() => setStep('type')}
+          nextLabel="Dalej — wybierz typ analizy"
+          onBack={() => navigate({ to: '/dashboard' as any })}
+          backLabel="← Tablica"
+        />
+      </div>
+    )
+  }
+
+  // ── Step 2: Type selection (project already chosen) ───────────────────────
+  const selectedProject = projects.find(p => p.id === selectedProjectId)
 
   return (
     <div>
@@ -81,37 +88,51 @@ export function AiTypeChooserPage() {
         subtitle="Wskaż, co chcesz przetworzyć, a AI dobierze właściwy silnik."
       />
 
+      {/* Project context badge */}
+      {selectedProject && (
+        <div style={{ maxWidth: 860, margin: '0 auto 12px', padding: '0 16px' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 14px', borderRadius: 8,
+            background: 'var(--color-primary-soft, rgba(37,99,235,0.06))',
+            border: '1px solid var(--color-primary, #2563EB)',
+            fontSize: 13,
+          }}>
+            <span>📂</span>
+            <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              {selectedProject.number} · {selectedProject.name}
+            </span>
+            <button
+              type="button"
+              onClick={() => setStep('project')}
+              style={{
+                marginLeft: 'auto', fontSize: 12, color: 'var(--color-primary, #2563EB)',
+                background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline',
+              }}
+            >
+              Zmień projekt
+            </button>
+          </div>
+        </div>
+      )}
+
       <div
         style={{
-          maxWidth: 860,
-          margin: '0 auto',
-          padding: '4px 16px 48px',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: 16,
+          maxWidth: 860, margin: '0 auto', padding: '4px 16px 48px',
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16,
         }}
       >
         {AI_MODES.map((mode) => (
           <div
             key={mode.href}
             style={{
-              borderRadius: 10,
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
+              borderRadius: 10, background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)', overflow: 'hidden',
+              display: 'flex', flexDirection: 'column',
             }}
           >
-            {/* Accent header */}
-            <div
-              style={{
-                height: 4,
-                background: mode.accent,
-              }}
-            />
+            <div style={{ height: 4, background: mode.accent }} />
 
-            {/* Body */}
             <div style={{ padding: '18px 18px 14px', flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 28, lineHeight: 1 }}>{mode.emoji}</span>
@@ -124,55 +145,22 @@ export function AiTypeChooserPage() {
                   </p>
                 </div>
               </div>
-
               <p style={{ margin: 0, fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>
                 {mode.description}
               </p>
-
-              {/* Used for */}
-              <div>
-                <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Wrzucaj
-                </p>
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {mode.usedFor.map((item) => (
-                    <li key={item} style={{ fontSize: 12, color: 'var(--color-text-secondary)', display: 'flex', gap: 6 }}>
-                      <span style={{ color: '#77BA8A', flexShrink: 0, marginTop: 1 }}>✓</span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Not for */}
-              <div>
-                <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Nie wrzucaj
-                </p>
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {mode.notFor.map((item) => (
-                    <li key={item} style={{ fontSize: 12, color: 'var(--color-text-muted)', display: 'flex', gap: 6 }}>
-                      <span style={{ color: '#E57373', flexShrink: 0, marginTop: 1 }}>✗</span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
             </div>
 
-            {/* CTA */}
             <div style={{ padding: '0 18px 16px' }}>
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={() => navigate({ to: mode.href as any })}
+                onClick={() => navigate({
+                  to: mode.href as any,
+                  search: { projectId: selectedProjectId } as any,
+                })}
                 style={{
-                  width: '100%',
-                  padding: '9px 0',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: mode.accent,
-                  borderColor: mode.accent,
+                  width: '100%', padding: '9px 0', fontSize: 13, fontWeight: 600,
+                  background: mode.accent, borderColor: mode.accent,
                 }}
               >
                 {mode.cta} →

@@ -7,7 +7,7 @@
 // Results can be transferred to estimate via ProjectEstimateSection.
 
 import { useRef, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useAnalyzeProject } from '@/features/expenses/hooks/useAnalyzeProject'
 import { useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
@@ -78,9 +78,12 @@ export function ProjectAnalysisPage() {
   const analyzeRoom = useAnalyzeRoomPhotos()
   const navigate    = useNavigate()
   const { data: projects = [], isLoading: projectsLoading } = useProjects()
+  const { projectId: urlProjectId } = useSearch({ strict: false }) as { projectId?: string }
 
-  const [step, setStep]       = useState<Step>('project')
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('')
+  // If projectId comes from URL (via type chooser), skip picker step
+  const initialStep: Step = urlProjectId ? 'upload' : 'project'
+  const [step, setStep]       = useState<Step>(initialStep)
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(urlProjectId ?? '')
   const [file, setFile]       = useState<File | null>(null)
   const [context, setContext] = useState('')
   const [result, setResult]   = useState<ProjectAnalysisResult | null>(null)
@@ -394,11 +397,23 @@ export function ProjectAnalysisPage() {
     <div>
       <PageHeader title="AI Analiza projektu" />
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 16px 40px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
           {reliabilityReport && <AiReliabilityBanner report={reliabilityReport} compact />}
-          <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 13, marginLeft: 'auto' }}>
-            ← Nowa analiza
-          </button>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 13 }}>
+              ← Nowa analiza
+            </button>
+            {selectedProjectId && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => navigate({ to: '/projects' as any })}
+                style={{ fontSize: 13 }}
+              >
+                Wróć do projektu →
+              </button>
+            )}
+          </div>
         </div>
 
         {error && !result && (

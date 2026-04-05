@@ -6,7 +6,7 @@
 // Every analysis is tied to a project (company_id + project_id).
 
 import { useState, useMemo, useEffect } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import type { BathroomClarification } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import type { RoomTypeId } from '@/services/ai/room-types'
@@ -48,9 +48,12 @@ export function RoomAnalysisPage() {
   const navigate = useNavigate()
   const analyzeRooms = useAnalyzeRoomPhotos()
   const { data: projects = [], isLoading: projectsLoading } = useProjects()
+  const { projectId: urlProjectId } = useSearch({ strict: false }) as { projectId?: string }
 
-  const [step, setStep] = useState<Step>('project')
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('')
+  // If projectId comes from URL (via type chooser), skip picker step
+  const initialStep: Step = urlProjectId ? 'capture' : 'project'
+  const [step, setStep] = useState<Step>(initialStep)
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(urlProjectId ?? '')
   const [roomFiles, setRoomFiles] = useState<File[]>([])
   const [roomType, setRoomType] = useState<RoomTypeId>('bathroom')
   const [result, setResult] = useState<AnalysisResult | null>(null)
@@ -233,6 +236,16 @@ export function RoomAnalysisPage() {
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
             Wyniki — {getRoomTypeName(roomType)}
           </h3>
+          {selectedProjectId && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => navigate({ to: '/projects' as any })}
+              style={{ marginLeft: 'auto', fontSize: 13 }}
+            >
+              Wróć do projektu →
+            </button>
+          )}
         </div>
 
         {error && (

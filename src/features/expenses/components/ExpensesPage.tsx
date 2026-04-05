@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
+import { useSearch } from '@tanstack/react-router'
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks/useExpenses'
 import { expensesApi, ExpenseInvoice, ParsedExpenseData, parseInvoiceFromText } from '../api/expenses.api'
 import type { ParseInvoiceResult, ExpenseSourceType, DocumentLineItem, FlowBParseRaw } from '../api/expenses.api'
@@ -111,6 +112,7 @@ function formFromExpense(e: ExpenseInvoice): FormState {
 export function ExpensesPage() {
   const companyId = useCompanyId()
   const { user } = useAuth()
+  const { projectId: urlProjectId } = useSearch({ strict: false }) as { projectId?: string }
   const { data: expenses = [], isLoading } = useExpenses(companyId)
   const createExpense = useCreateExpense(companyId)
   const updateExpense = useUpdateExpense(companyId)
@@ -342,7 +344,10 @@ export function ExpensesPage() {
 
       // ── Step 3: open modal with pre-filled form ───────────────
       setUploadStep('Uzupełniam formularz...')
-      setForm({ ...emptyForm(), ...parsedToForm(parsed) })
+      const baseForm = { ...emptyForm(), ...parsedToForm(parsed) }
+      // Pre-select project from URL (AI type chooser passes projectId)
+      if (urlProjectId && !baseForm.project_id) baseForm.project_id = urlProjectId
+      setForm(baseForm)
       // Use local blob URL for image preview — reliably available immediately,
       // works in demo mode and in production regardless of Supabase bucket visibility.
       const isImgFile = file.type.startsWith('image/') || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(file.name)

@@ -37,10 +37,31 @@ const projectsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path:
 const reportsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'reports', component: lazyRouteComponent(() => import('@/app/routes/reports'), 'ReportsRoutePage') })
 const ksefRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'ksef', component: lazyRouteComponent(() => import('@/app/routes/ksef'), 'KsefRoutePage') })
 const settingsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'settings', component: lazyRouteComponent(() => import('@/app/routes/settings'), 'SettingsRoutePage') })
-const expensesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'expenses', component: lazyRouteComponent(() => import('@/app/routes/expenses'), 'ExpensesRoutePage') })
-const roomAnalysisRoute    = createRoute({ getParentRoute: () => authLayoutRoute, path: 'room-analysis',    component: lazyRouteComponent(() => import('@/app/routes/room-analysis'),    'RoomAnalysisRoutePage')    })
-const projectAnalysisRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'project-analysis', component: lazyRouteComponent(() => import('@/app/routes/project-analysis'), 'ProjectAnalysisRoutePage') })
-const aiRoute              = createRoute({ getParentRoute: () => authLayoutRoute, path: 'ai',              component: lazyRouteComponent(() => import('@/app/routes/ai'),              'AiRoutePage')              })
+const expensesRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: 'expenses',
+  component: lazyRouteComponent(() => import('@/app/routes/expenses'), 'ExpensesRoutePage'),
+  validateSearch: (search: Record<string, unknown>) => ({
+    projectId: typeof search.projectId === 'string' ? search.projectId : undefined,
+  }),
+})
+const roomAnalysisRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: 'room-analysis',
+  component: lazyRouteComponent(() => import('@/app/routes/room-analysis'), 'RoomAnalysisRoutePage'),
+  validateSearch: (search: Record<string, unknown>) => ({
+    projectId: typeof search.projectId === 'string' ? search.projectId : undefined,
+  }),
+})
+const projectAnalysisRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: 'project-analysis',
+  component: lazyRouteComponent(() => import('@/app/routes/project-analysis'), 'ProjectAnalysisRoutePage'),
+  validateSearch: (search: Record<string, unknown>) => ({
+    projectId: typeof search.projectId === 'string' ? search.projectId : undefined,
+  }),
+})
+const aiRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'ai', component: lazyRouteComponent(() => import('@/app/routes/ai'), 'AiRoutePage') })
 const chatRoute = createRoute({
   getParentRoute: () => authLayoutRoute,
   path: 'chat',
