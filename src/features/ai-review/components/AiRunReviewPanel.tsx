@@ -875,19 +875,20 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
                     )
                   }}
                   style={{
-                    padding:      '8px 20px',
-                    borderRadius:  6,
+                    padding:      '12px 20px',
+                    borderRadius:  8,
                     border:       '1px solid var(--color-brand)',
                     background:   'var(--color-brand)',
                     color:        '#fff',
-                    fontSize:      13,
-                    fontWeight:    600,
+                    fontSize:      14,
+                    fontWeight:    700,
                     cursor:        createEstimate.isPending ? 'not-allowed' : 'pointer',
                     opacity:       createEstimate.isPending ? 0.7 : 1,
                     display:      'flex',
                     alignItems:   'center',
+                    justifyContent: 'center',
                     gap:           6,
-                    width:        'fit-content',
+                    width:        '100%',
                   }}
                 >
                   {createEstimate.isPending ? <><Spinner /> Tworzę wycenę…</> : 'Utwórz wycenę roboczą'}
@@ -933,6 +934,25 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
           </div>
         )
       })()}
+
+      {/* Review-complete encouragement — shown when all scope items reviewed */}
+      {scope.length > 0 && scope.every(s => s.review_status !== 'pending') && pendingQuestions === 0 && openRisks === 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '12px 16px', borderRadius: 8,
+          background: 'rgba(16,185,129,0.06)',
+          border: '1px solid rgba(16,185,129,0.2)',
+          fontSize: 13, color: 'var(--color-success, #10B981)',
+        }}>
+          <span style={{ fontSize: 20 }}>✅</span>
+          <span>
+            <strong>Przegląd zakończony</strong> — wszystkie pozycje zostały sprawdzone.
+            {scope.some(s => s.review_status === 'accepted' || s.review_status === 'modified')
+              ? ' Utwórz wycenę roboczą powyżej.'
+              : ''}
+          </span>
+        </div>
+      )}
     </div>
   )
 }

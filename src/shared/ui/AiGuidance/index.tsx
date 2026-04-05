@@ -231,9 +231,9 @@ interface AiQualityBadgeProps {
 }
 
 export function AiQualityBadge({ confidence }: AiQualityBadgeProps) {
-  const label = confidence >= 70 ? 'Dobry wynik' : confidence >= 40 ? 'Częściowy wynik' : 'Słaby materiał'
-  const color = confidence >= 70 ? '#77BA8A' : confidence >= 40 ? '#D4960A' : '#E57373'
-  const bg    = confidence >= 70 ? 'rgba(119,186,138,0.12)' : confidence >= 40 ? 'rgba(212,150,10,0.1)' : 'rgba(229,115,115,0.1)'
+  const label = confidence >= 70 ? 'Dobry wynik' : confidence >= 55 ? 'Częściowy wynik' : 'Słaby materiał'
+  const color = confidence >= 70 ? '#77BA8A' : confidence >= 55 ? '#D4960A' : '#E57373'
+  const bg    = confidence >= 70 ? 'rgba(119,186,138,0.12)' : confidence >= 55 ? 'rgba(212,150,10,0.1)' : 'rgba(229,115,115,0.1)'
 
   return (
     <span style={{

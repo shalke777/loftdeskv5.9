@@ -444,25 +444,26 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
         </div>
       )}
 
-      <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginTop: 14 }}>
         <button
           type="button"
           onClick={handleTransfer}
           disabled={transferring || isBlocked}
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '7px 14px', fontSize: 12, fontWeight: 600,
-            color: isBlocked ? 'var(--color-text-muted)' : transferring ? 'var(--color-text-muted)' : 'var(--color-primary)',
-            background: isBlocked ? 'var(--color-surface-soft)' : 'var(--color-primary-soft)',
-            border: `1px solid ${isBlocked || transferring ? 'var(--color-border)' : 'var(--color-primary)'}`,
-            borderRadius: 8, cursor: (transferring || isBlocked) ? 'not-allowed' : 'pointer',
-            opacity: (transferring || isBlocked) ? 0.55 : 1, transition: 'background 0.15s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            width: '100%', padding: '12px 20px', fontSize: 14, fontWeight: 700,
+            color: isBlocked ? 'var(--color-text-muted)' : transferring ? 'var(--color-text-muted)' : '#fff',
+            background: isBlocked ? 'var(--color-surface-soft)' : transferring ? 'var(--color-surface-soft)' : 'var(--color-primary, #2563EB)',
+            border: `1px solid ${isBlocked || transferring ? 'var(--color-border)' : 'var(--color-primary, #2563EB)'}`,
+            borderRadius: 10,
+            cursor: (transferring || isBlocked) ? 'not-allowed' : 'pointer', transition: 'background 0.15s',
+            opacity: (transferring || isBlocked) ? 0.55 : 1,
           }}
           title={isBlocked ? 'Analiza zablokowana — popraw błędy przed przeniesieniem' : undefined}
-          onMouseEnter={e => { if (!transferring && !isBlocked) { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = '#fff' } }}
-          onMouseLeave={e => { if (!transferring && !isBlocked) { e.currentTarget.style.background = 'var(--color-primary-soft)'; e.currentTarget.style.color = 'var(--color-primary)' } }}
+          onMouseEnter={e => { if (!transferring && !isBlocked) e.currentTarget.style.opacity = '0.9' }}
+          onMouseLeave={e => { if (!transferring && !isBlocked) e.currentTarget.style.opacity = '1' }}
         >
-          {isBlocked ? '⛔ Analiza zablokowana' : transferring ? '⏳ Przenoszenie…' : '📋 Przenieś do wyceny'}
+          {isBlocked ? '⛔ Analiza zablokowana' : transferring ? '⏳ Przenoszenie…' : '📋 Przenieś do wyceny →'}
         </button>
       </div>
     </AnalysisSectionCard>

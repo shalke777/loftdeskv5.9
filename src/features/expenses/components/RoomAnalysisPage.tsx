@@ -145,10 +145,18 @@ export function RoomAnalysisPage() {
 
   // ── Capture ──
   if (step === 'capture') {
+    const captureProject = projects.find(p => p.id === selectedProjectId)
     return (
       <div>
         <PageHeader title="AI Analiza pomieszczenia" />
         <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 16px' }}>
+          {captureProject && (
+            <AiProjectContextBadge
+              projectNumber={captureProject.number}
+              projectName={captureProject.name}
+              onChangeProject={() => navigate({ to: '/ai' as any })}
+            />
+          )}
           {/* Engine switcher — subtle, top-right */}
           <div style={{ textAlign: 'right', marginBottom: 6 }}>
             <button
@@ -177,10 +185,17 @@ export function RoomAnalysisPage() {
 
   // ── Clarification ──
   if (step === 'clarification') {
+    const clarProject = projects.find(p => p.id === selectedProjectId)
     return (
       <div>
         <PageHeader title="AI Analiza pomieszczenia" />
         <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 16px' }}>
+          {clarProject && (
+            <AiProjectContextBadge
+              projectNumber={clarProject.number}
+              projectName={clarProject.name}
+            />
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 13 }}>
               ← Wróć

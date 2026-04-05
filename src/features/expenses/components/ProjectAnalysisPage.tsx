@@ -224,10 +224,19 @@ export function ProjectAnalysisPage() {
 
   // ── Upload step ──────────────────────────────────────────────────────────
   if (step === 'upload') {
+    const uploadProject = projects.find(p => p.id === selectedProjectId)
     return (
       <div>
         <PageHeader title="AI Analiza projektu" />
         <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 16px 40px' }}>
+
+          {uploadProject && (
+            <AiProjectContextBadge
+              projectNumber={uploadProject.number}
+              projectName={uploadProject.name}
+              onChangeProject={() => navigate({ to: '/ai' as any })}
+            />
+          )}
 
           {/* Engine switcher — subtle, top-right */}
           <div style={{ textAlign: 'right', marginBottom: 4 }}>
