@@ -146,7 +146,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
       {/* ── AI draft provenance banner ── */}
       {isAiDraft && (
         <div style={{
-          background: 'rgba(234,179,8,0.10)', border: '1px solid rgba(234,179,8,0.35)',
+          background: 'var(--color-warning-soft)', border: '1px solid var(--color-warning)',
           borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.6,
           color: 'var(--color-text-primary)',
         }}>
@@ -161,7 +161,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
         </div>
       )}
 
-      {/* ── Pola nagłówkowe ── */}
+      {/* ── 1. Nagłówek: nazwa + klient + projekt ── */}
       <div className="form-grid">
         <div className="form-grid--full">
           <Input label="Nazwa wyceny *" value={name} onChange={(e) => setName(e.target.value)} placeholder="np. Remont łazienki – oferta wstępna" />
@@ -182,6 +182,32 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
             if (proj?.client_id) setClientId(proj.client_id)
           }
         }} options={projectOptions} placeholder="Bez projektu" />
+      </div>
+
+      {/* ── 2. Pozycje ── */}
+      <ItemsEditor items={items} onChange={setItems} />
+
+      {/* ── 3. Podsumowanie ── */}
+      {items.length > 0 && (
+        <div style={{ background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 18px' }}>
+          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)', marginBottom: 10 }}>Podsumowanie</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '5px 24px', fontSize: 13 }}>
+            <span style={{ color: 'var(--color-text-secondary)' }}>Netto</span>
+            <span style={{ fontWeight: 500, textAlign: 'right' }}>{totals.net.toFixed(2)} zł</span>
+            {vatBreakdown.map(({ rate, amount }) => (
+              <Fragment key={rate}>
+                <span style={{ color: 'var(--color-text-secondary)' }}>VAT {rate}%</span>
+                <span style={{ fontWeight: 500, textAlign: 'right' }}>{amount.toFixed(2)} zł</span>
+              </Fragment>
+            ))}
+            <span style={{ color: 'var(--color-text-primary)', fontWeight: 700, borderTop: '1px solid var(--color-border)', paddingTop: 8, marginTop: 2 }}>Brutto</span>
+            <span style={{ fontWeight: 700, textAlign: 'right', borderTop: '1px solid var(--color-border)', paddingTop: 8, marginTop: 2 }}>{totals.gross.toFixed(2)} zł</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── 4. Szczegóły: ważność, status, notatki ── */}
+      <div className="form-grid">
         <Input label="Ważny do" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
         <Select
           label="Status"
@@ -200,28 +226,6 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
           />
         </div>
       </div>
-
-      {/* ── Pozycje ── */}
-      <ItemsEditor items={items} onChange={setItems} />
-
-      {/* ── Podsumowanie ── */}
-      {items.length > 0 && (
-        <div style={{ background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 18px' }}>
-          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)', marginBottom: 10 }}>Podsumowanie</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '5px 24px', fontSize: 13 }}>
-            <span style={{ color: 'var(--color-text-secondary)' }}>Netto</span>
-            <span style={{ fontWeight: 500, textAlign: 'right' }}>{totals.net.toFixed(2)} zł</span>
-            {vatBreakdown.map(({ rate, amount }) => (
-              <Fragment key={rate}>
-                <span style={{ color: 'var(--color-text-secondary)' }}>VAT {rate}%</span>
-                <span style={{ fontWeight: 500, textAlign: 'right' }}>{amount.toFixed(2)} zł</span>
-              </Fragment>
-            ))}
-            <span style={{ color: 'var(--color-text-primary)', fontWeight: 700, borderTop: '1px solid var(--color-border)', paddingTop: 8, marginTop: 2 }}>Brutto</span>
-            <span style={{ fontWeight: 700, textAlign: 'right', borderTop: '1px solid var(--color-border)', paddingTop: 8, marginTop: 2 }}>{totals.gross.toFixed(2)} zł</span>
-          </div>
-        </div>
-      )}
 
       <div className="actions-row">
         <Button loading={submitting} onClick={handleSubmit}>

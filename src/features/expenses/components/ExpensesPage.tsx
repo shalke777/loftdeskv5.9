@@ -582,9 +582,12 @@ export function ExpensesPage() {
         />
 
         {uploading ? (
-          <div className="exp-upload-zone__inner">
+          <div className="exp-upload-zone__inner" style={{ padding: '32px 16px' }}>
             <Spinner />
-            <span>{uploadStep}</span>
+            <strong style={{ fontSize: 15, marginTop: 8 }}>{uploadStep}</strong>
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
+              To może zająć kilka sekund — nie zamykaj okna.
+            </span>
           </div>
         ) : (
           <div className="exp-upload-zone__inner">

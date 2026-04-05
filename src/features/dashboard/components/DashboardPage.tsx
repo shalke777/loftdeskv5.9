@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Activity, Camera, ChevronRight, FileText, FolderKanban, Receipt, TrendingUp, Users, Wallet, DollarSign } from 'lucide-react'
+import { Activity, Camera, ChevronRight, FileText, FolderKanban, Receipt, Sparkles, TrendingUp, Users, Wallet, DollarSign } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
@@ -16,10 +16,10 @@ import { useOnboardingProgress } from '@/features/onboarding/hooks/useOnboarding
 import { useLocalStorage } from '@/shared/hooks/useLocalStorage'
 
 const quickActions = [
-  { icon: Users,        title: 'Nowy kontrahent',    sub: 'Dodaj klienta',  color: 'var(--color-brand)',   href: '/clients'   },
   { icon: FileText,     title: 'Nowa wycena',        sub: 'Wygeneruj ofertę', color: 'var(--color-accent)',  href: '/estimates' },
   { icon: Receipt,      title: 'Nowa faktura',       sub: 'Wystaw dokument', color: 'var(--color-info)',    href: '/invoices'  },
   { icon: FolderKanban, title: 'Nowy projekt',       sub: 'Stwórz realizację', color: 'var(--color-brand)',   href: '/projects'  },
+  { icon: Sparkles,     title: 'AI / Import',        sub: 'OCR, analiza, koszty', color: 'var(--color-warning)', href: '/ai'       },
 ]
 
 export function DashboardPage() {

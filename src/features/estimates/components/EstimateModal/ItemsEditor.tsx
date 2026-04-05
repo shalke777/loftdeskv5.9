@@ -28,7 +28,6 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
   const [fastUnit, setFastUnit] = useState(DEFAULT_UNIT)
   const [fastQty, setFastQty] = useState(1)
   const [fastNet, setFastNet] = useState('')
-  const [fastLabor, setFastLabor] = useState('')
   const [fastVat, setFastVat] = useState(DEFAULT_VAT)
   const [editId, setEditId] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<Partial<EstimateItem>>({})
@@ -62,7 +61,6 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
   function fastAdd() {
     if (!fastName.trim()) return
     const net = parseFloat(fastNet) || 0
-    const labor = parseFloat(fastLabor) || 0
     onChange([
       ...items,
       {
@@ -71,7 +69,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
         description: fastDescription,
         unit: fastUnit,
         quantity: fastQty,
-        unit_price: net + labor,
+        unit_price: net,
         vat_rate: fastVat,
         sort_order: items.length + 1,
       },
@@ -81,19 +79,18 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
     setFastUnit(DEFAULT_UNIT)
     setFastQty(1)
     setFastNet('')
-    setFastLabor('')
     setFastVat(DEFAULT_VAT)
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* ── Fast-add form ── */}
-      <div style={{ background: 'rgba(26,92,50,0.12)', border: '1px solid rgba(26,92,50,0.30)', borderRadius: 10, padding: '14px 16px' }}>
+      <div style={{ background: 'var(--color-brand-soft)', border: '1px solid var(--color-brand)', borderRadius: 10, padding: '14px 16px' }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-brand)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Dodaj pozycję
         </div>
-        {/* Row 1: Nazwa + j.m. + Ilość + VAT + Dodaj */}
-        <div className="items-fast-add-row" style={{ display: 'grid', gridTemplateColumns: '1fr 70px 74px 74px auto', gap: 8, alignItems: 'flex-end' }}>
+        {/* Row 1: Nazwa + Cena netto + j.m. + Ilość + VAT + Dodaj */}
+        <div className="items-fast-add-row" style={{ display: 'grid', gridTemplateColumns: '1fr 100px 60px 60px 64px auto', gap: 8, alignItems: 'flex-end' }}>
           <div>
             <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>
               Nazwa <span style={{ color: 'var(--color-error)' }}>*</span>
@@ -108,6 +105,22 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
             />
           </div>
           <div>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>
+              Cena netto
+            </label>
+            <input
+              className="input"
+              type="number"
+              min={0}
+              step="any"
+              placeholder="0.00 zł"
+              value={fastNet}
+              onChange={e => setFastNet(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && fastAdd()}
+              style={{ ...baseInput, textAlign: 'right' }}
+            />
+          </div>
+          <div>
             <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>j.m.</label>
             <input
               className="input"
@@ -118,9 +131,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>
-              Ilość <span style={{ color: 'var(--color-error)' }}>*</span>
-            </label>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>Ilość</label>
             <input
               className="input"
               type="number"
@@ -155,44 +166,15 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
             </button>
           </div>
         </div>
-        {/* Row 2: Materiał + Robocizna */}
-        <div className="items-fast-add-row--wide" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>Materiał netto / j.m.</label>
-            <input
-              className="input"
-              type="number"
-              min={0}
-              step="any"
-              placeholder="0.00 zł"
-              value={fastNet}
-              onChange={e => setFastNet(e.target.value)}
-              style={{ ...baseInput, textAlign: 'right' }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>Robocizna netto / j.m.</label>
-            <input
-              className="input"
-              type="number"
-              min={0}
-              step="any"
-              placeholder="0.00 zł"
-              value={fastLabor}
-              onChange={e => setFastLabor(e.target.value)}
-              style={{ ...baseInput, textAlign: 'right' }}
-            />
-          </div>
-        </div>
-        {/* Row 3: Opis */}
+        {/* Row 2: Opis (optional, collapsed) */}
         <div style={{ marginTop: 8 }}>
-          <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>Opis / uwagi</label>
+          <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 3, fontWeight: 500 }}>Opis / uwagi (opcjonalnie)</label>
           <textarea
             className="input"
-            placeholder="Opis, szczegóły, uwagi... (opcjonalnie)"
+            placeholder="Szczegóły, materiał, robocizna..."
             value={fastDescription}
             onChange={e => setFastDescription(e.target.value)}
-            style={{ width: '100%', fontSize: 12, padding: '6px 8px', resize: 'vertical', minHeight: 40, border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-surface)', boxSizing: 'border-box' }}
+            style={{ width: '100%', fontSize: 12, padding: '6px 8px', resize: 'vertical', minHeight: 36, border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-surface)', boxSizing: 'border-box' }}
           />
         </div>
       </div>
@@ -217,7 +199,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
               {items.map((item) =>
                 editId === item.id ? (
                   <Fragment key={item.id}>
-                    <tr style={{ background: 'rgba(212,150,10,0.12)', borderBottom: '1px solid rgba(212,150,10,0.30)' }}>
+                    <tr style={{ background: 'var(--color-warning-soft)', borderBottom: '1px solid var(--color-warning)' }}>
                       <td style={{ padding: '7px 10px', color: 'var(--color-text-tertiary)', fontSize: 12 }}>{item.sort_order}</td>
                       <td style={{ padding: '7px 10px' }}>
                         <input className="input" value={editValues.name ?? ''} onChange={e => setEditValues(v => ({ ...v, name: e.target.value }))} style={{ width: '100%', height: 28, fontSize: 13, padding: '3px 7px', border: '1px solid var(--color-border)', borderRadius: 5 }} />
@@ -247,7 +229,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
                         </div>
                       </td>
                     </tr>
-                    <tr style={{ background: 'rgba(212,150,10,0.12)', borderBottom: '1px solid rgba(212,150,10,0.30)' }}>
+                    <tr style={{ background: 'var(--color-warning-soft)', borderBottom: '1px solid var(--color-warning)' }}>
                       <td colSpan={8} style={{ padding: '2px 10px 8px 44px' }}>
                         <textarea
                           className="input"
