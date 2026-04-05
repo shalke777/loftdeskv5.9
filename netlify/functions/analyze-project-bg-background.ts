@@ -478,6 +478,7 @@ export const handler: Handler = async (event) => {
       timeout_occurred: govTimeoutOccurred,
       request_duration_ms: govDurationMs,
       parse_path: govParsePath,
+      input_file_size_bytes: sizeBytes,
     }).eq('id', jobId)
 
     console.info('[bg] JOB_DONE', JSON.stringify({

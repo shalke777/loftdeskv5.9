@@ -703,11 +703,27 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
           {(run.input_token_count || run.output_token_count) && (
             <span>🔢 ~{((run.input_token_count ?? 0) + (run.output_token_count ?? 0)).toLocaleString()} tok</span>
           )}
+          {run.input_file_size_bytes != null && run.input_file_size_bytes > 0 && (
+            <span style={run.input_file_size_bytes > 5242880 ? { color: 'var(--color-warning, #F59E0B)', fontWeight: 600 } : undefined}>
+              📦 {(run.input_file_size_bytes / 1024 / 1024).toFixed(1)} MB{run.input_file_size_bytes > 5242880 ? ' (heavy)' : ''}
+            </span>
+          )}
         </div>
       )}
 
       {/* Scope items */}
       <Section title="Zakres prac" count={scope.length}>
+        {/* Catalog match summary */}
+        {scope.length > 0 && (() => {
+          const matched = scope.filter(s => s.library_id != null).length
+          const rate = Math.round((matched / scope.length) * 100)
+          return (
+            <div style={{ fontSize: 11, color: 'var(--color-text-muted, #94A3B8)', marginBottom: 6, display: 'flex', gap: 10 }}>
+              <span>📚 Katalog: {matched}/{scope.length} ({rate}%)</span>
+              {rate < 50 && <span style={{ color: 'var(--color-warning, #F59E0B)' }}>⚠ niska pokrywalność</span>}
+            </div>
+          )
+        })()}
         {scope.map(item => (
           <ScopeItemRow
             key={item.id}

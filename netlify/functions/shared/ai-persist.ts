@@ -77,12 +77,13 @@ export interface PersistBundleInput {
   imageRefs?:     Array<{ storage_path: string; original_filename: string; mime_type: string; file_size: number }>
   /** Sprint F: governance metadata from OpenAI retry wrapper */
   governance?: {
-    retry_count?:         number
-    timeout_occurred?:    boolean
-    request_duration_ms?: number
-    parse_path?:          string
-    input_token_count?:   number
-    output_token_count?:  number
+    retry_count?:           number
+    timeout_occurred?:      boolean
+    request_duration_ms?:   number
+    parse_path?:            string
+    input_token_count?:     number
+    output_token_count?:    number
+    input_file_size_bytes?: number
   }
   result:         RoomAnalysisResult
 }
@@ -191,8 +192,9 @@ export async function persistAnalysisBundle(input: PersistBundleInput): Promise<
       timeout_occurred:    governance?.timeout_occurred ?? false,
       request_duration_ms: governance?.request_duration_ms ?? null,
       parse_path:          governance?.parse_path ?? null,
-      input_token_count:   governance?.input_token_count ?? null,
-      output_token_count:  governance?.output_token_count ?? null,
+      input_token_count:      governance?.input_token_count ?? null,
+      output_token_count:     governance?.output_token_count ?? null,
+      input_file_size_bytes:  governance?.input_file_size_bytes ?? null,
     })
     .select('id')
     .single()

@@ -35,13 +35,14 @@ export interface AiAnalysisRun {
   created_at:          string
   updated_at:          string
   // Sprint F governance fields (nullable — populated after migration 106)
-  retry_count?:         number | null
-  timeout_occurred?:    boolean | null
-  request_duration_ms?: number | null
-  parse_path?:          string | null
-  input_token_count?:   number | null
-  output_token_count?:  number | null
-  draft_created?:       boolean | null
+  retry_count?:           number | null
+  timeout_occurred?:      boolean | null
+  request_duration_ms?:   number | null
+  parse_path?:            string | null
+  input_token_count?:     number | null
+  output_token_count?:    number | null
+  draft_created?:         boolean | null
+  input_file_size_bytes?: number | null
 }
 
 export interface AiScopeItem {
