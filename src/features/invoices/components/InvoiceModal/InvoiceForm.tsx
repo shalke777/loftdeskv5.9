@@ -11,6 +11,7 @@ import { useProjects } from '@/features/projects/hooks/useProjects'
 import { calcInvoiceTotals } from '@/features/invoices/lib/invoice.calculations'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { useSettings } from '@/features/settings/hooks/useSettings'
+import { ClientModal } from '@/features/clients/components/ClientModal'
 
 const INVOICE_TYPE_OPTIONS = [
   { value: 'standard', label: 'Faktura VAT (standardowa)' },
@@ -65,6 +66,7 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
   const [paymentMethod, setPaymentMethod] = useState('transfer')
   const [bankAccount, setBankAccount] = useState('')
   const [clientId, setClientId] = useState('')
+  const [newClientOpen, setNewClientOpen] = useState(false)
   const [contractId, setContractId] = useState('')
   const [selectedTrancheId, setSelectedTrancheId] = useState('')
   const [advanceTotal, setAdvanceTotal] = useState('0')
@@ -76,6 +78,16 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
   const { data: contracts = [] } = useContracts()
   const { data: projects = [] } = useProjects()
   const clientOptions = useMemo(() => clients.map((c) => ({ value: c.id, label: c.name })), [clients])
+
+  // Auto-select newly created client
+  const prevClientCount = useRef(clients.length)
+  useEffect(() => {
+    if (clients.length > prevClientCount.current && newClientOpen === false) {
+      const newest = clients[clients.length - 1]
+      if (newest) setClientId(newest.id)
+    }
+    prevClientCount.current = clients.length
+  }, [clients.length, newClientOpen])
   const contractOptions = useMemo(() => contracts.map((c) => ({ value: c.id, label: `${c.number} · ${formatCurrency(c.value)}` })), [contracts])
   const projectOptions = useMemo(() => projects.map((p) => ({ value: p.id, label: `${p.number} · ${p.name}` })), [projects])
   const selectedContract = useMemo(() => contracts.find((c) => c.id === contractId) ?? null, [contracts, contractId])
@@ -238,9 +250,17 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
           <Select label="Transza / płatność z umowy" value={selectedTrancheId} onChange={(e) => applyTranche(e.target.value)} options={trancheOptions} placeholder="Wybierz transzę" />
         ) : null}
         <Select label="Projekt" value={projectId} onChange={(e) => setProjectId(e.target.value)} options={projectOptions} placeholder="Bez projektu" />
-        <Select label="Klient (nabywca)" value={clientId} onChange={(e) => setClientId(e.target.value)} options={clientOptions} placeholder="Bez przypisania" />
+        <div>
+          <div style={{ display: 'flex', alignItems: 'end', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <Select label="Klient (nabywca)" value={clientId} onChange={(e) => setClientId(e.target.value)} options={clientOptions} placeholder="Bez przypisania" />
+            </div>
+            <Button type="button" variant="secondary" onClick={() => setNewClientOpen(true)} style={{ whiteSpace: 'nowrap', marginBottom: 1 }}>+ Nowy</Button>
+          </div>
+        </div>
         <Input label="Miejsce wystawienia" value={issuePlace} onChange={(e) => setIssuePlace(e.target.value)} placeholder="np. Warszawa" />
       </div>
+      <ClientModal open={newClientOpen} onClose={() => setNewClientOpen(false)} />
 
       {/* ── Daty ── */}
       <div style={{ background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px' }}>

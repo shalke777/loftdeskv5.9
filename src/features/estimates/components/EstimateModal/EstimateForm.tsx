@@ -8,6 +8,7 @@ import { useProjects } from '@/features/projects/hooks/useProjects'
 import { ItemsEditor } from '@/features/estimates/components/EstimateModal/ItemsEditor'
 import type { Estimate, EstimateItem } from '@/entities/estimate/model'
 import { calcTotals } from '@/features/estimates/lib/estimate.calculations'
+import { ClientModal } from '@/features/clients/components/ClientModal'
 
 const DRAFT_KEY = 'estimate_form_draft'
 
@@ -43,6 +44,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
   const [name, setName] = useState('')
   const [notes, setNotes] = useState('')
   const [clientId, setClientId] = useState('')
+  const [newClientOpen, setNewClientOpen] = useState(false)
   const [status, setStatus] = useState<Estimate['status']>('draft')
   const [validUntil, setValidUntil] = useState('')
   const [projectId, setProjectId] = useState('')
@@ -53,6 +55,16 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
   const { data: clients = [] } = useClients()
   const { data: projects = [] } = useProjects()
   const clientOptions = useMemo(() => clients.map((c) => ({ value: c.id, label: c.name })), [clients])
+
+  // Auto-select newly created client
+  const prevClientCount = useRef(clients.length)
+  useEffect(() => {
+    if (clients.length > prevClientCount.current && newClientOpen === false) {
+      const newest = clients[clients.length - 1]
+      if (newest) setClientId(newest.id)
+    }
+    prevClientCount.current = clients.length
+  }, [clients.length, newClientOpen])
   const projectOptions = useMemo(() => projects.map((p) => ({ value: p.id, label: `${p.number} · ${p.name}` })), [projects])
   const totals = useMemo(() => calcTotals(items), [items])
 
@@ -154,7 +166,14 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
         <div className="form-grid--full">
           <Input label="Nazwa wyceny *" value={name} onChange={(e) => setName(e.target.value)} placeholder="np. Remont łazienki – oferta wstępna" />
         </div>
-        <Select label="Klient" value={clientId} onChange={(e) => setClientId(e.target.value)} options={clientOptions} placeholder="Bez przypisania" />
+        <div>
+          <div style={{ display: 'flex', alignItems: 'end', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <Select label="Klient" value={clientId} onChange={(e) => setClientId(e.target.value)} options={clientOptions} placeholder="Bez przypisania" />
+            </div>
+            <Button type="button" variant="secondary" onClick={() => setNewClientOpen(true)} style={{ whiteSpace: 'nowrap', marginBottom: 1 }}>+ Nowy</Button>
+          </div>
+        </div>
         <Select label="Projekt" value={projectId} onChange={(e) => {
           const pid = e.target.value
           setProjectId(pid)
@@ -209,6 +228,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
           {initialEstimate ? 'Zapisz zmiany' : 'Zapisz wycenę'}
         </Button>
       </div>
+      <ClientModal open={newClientOpen} onClose={() => setNewClientOpen(false)} />
     </div>
   )
 }
