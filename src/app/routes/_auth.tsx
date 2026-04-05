@@ -213,37 +213,37 @@ export function AuthLayout() {
               {showNotifications && dropdownPos && (
                 <div style={{
                   position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, zIndex: 9999,
-                  background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.32)',
+                  background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 10px)',
+                  boxShadow: 'var(--shadow-lg)',
                   width: Math.min(340, window.innerWidth - 16), maxHeight: 400, overflow: 'auto',
                 }}>
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border-light)', fontWeight: 600, fontSize: 14 }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 14 }}>
                     Powiadomienia
                   </div>
                   {notifications.length === 0 ? (
-                    <div style={{ padding: '20px 16px', color: '#8A8F98', fontSize: 13, textAlign: 'center' }}>
+                    <div style={{ padding: '20px 16px', color: 'var(--color-text-secondary)', fontSize: 13, textAlign: 'center' }}>
                       Brak powiadomień
                     </div>
                   ) : (
                     notifications.slice(0, 20).map((n) => (
                       <div key={n.id} style={{
-                        padding: '10px 16px', borderBottom: '1px solid var(--color-border-light)',
-                        background: n.read_at ? 'var(--color-surface)' : 'rgba(96,165,250,0.08)',
+                        padding: '10px 16px', borderBottom: '1px solid var(--color-border)',
+                        background: n.read_at ? 'var(--color-card)' : 'var(--color-sidebar-active)',
                         fontSize: 13,
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 600, fontSize: 12, color: n.type === 'client_approval_response' ? '#77BA8A' : '#60A5FA' }}>
+                          <span style={{ fontWeight: 600, fontSize: 12, color: n.type === 'client_approval_response' ? 'var(--color-success)' : 'var(--color-brand)' }}>
                             {n.type === 'client_approval_response' ? '✅ Odpowiedź klienta' : '💬 Wiadomość od klienta'}
                           </span>
-                          <span style={{ fontSize: 11, color: '#8A8F98' }}>
+                          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
                             {new Date(n.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                         {n.project_name && (
-                          <div style={{ marginTop: 3, fontWeight: 500, fontSize: 12, color: '#D0D4DA' }}>{n.project_name}</div>
+                          <div style={{ marginTop: 3, fontWeight: 500, fontSize: 12, color: 'var(--color-text-primary)' }}>{n.project_name}</div>
                         )}
                         {n.body && (
-                          <div style={{ marginTop: 2, fontSize: 12, color: '#A7ABB3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ marginTop: 2, fontSize: 12, color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {n.body}
                           </div>
                         )}

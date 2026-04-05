@@ -145,15 +145,15 @@ export function DashboardPage() {
                     <td style={{ padding: '10px 12px' }}><strong>{proj.name}</strong><div className="field__label">{proj.number}</div></td>
                     <td style={{ padding: '10px 12px' }}>{proj.clientName || '—'}</td>
                     <td style={{ padding: '10px 12px' }}>
-                      <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: proj.status === 'active' ? 'rgba(119,186,138,0.15)' : proj.status === 'done' ? 'rgba(160,170,180,0.12)' : proj.status === 'offer' ? 'rgba(212,150,10,0.15)' : 'rgba(239,68,68,0.15)', color: proj.status === 'active' ? '#77BA8A' : proj.status === 'done' ? '#A7ABB3' : proj.status === 'offer' ? '#D4960A' : '#EF6B6B' }}>
+                      <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: proj.status === 'active' ? 'var(--color-success-soft)' : proj.status === 'done' ? 'var(--color-muted)' : proj.status === 'offer' ? 'var(--color-warning-soft)' : 'var(--color-error-soft)', color: proj.status === 'active' ? 'var(--color-success)' : proj.status === 'done' ? 'var(--color-text-secondary)' : proj.status === 'offer' ? 'var(--color-warning)' : 'var(--color-error)' }}>
                         {proj.status === 'active' ? 'W realizacji' : proj.status === 'done' ? 'Zakończony' : proj.status === 'offer' ? 'Oferta' : proj.status === 'cancelled' ? 'Anulowany' : proj.status}
                       </span>
                       {proj.completeness_score != null && (() => {
                         const sc = proj.completeness_score
-                        const clr = sc >= 80 ? '#77BA8A' : sc >= 50 ? '#D4960A' : '#EF6B6B'
+                        const clr = sc >= 80 ? 'var(--color-success)' : sc >= 50 ? 'var(--color-warning)' : 'var(--color-error)'
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                            <div style={{ width: 44, height: 4, background: '#3A3D42', borderRadius: 2, overflow: 'hidden' }}>
+                            <div style={{ width: 44, height: 4, background: 'var(--color-muted)', borderRadius: 2, overflow: 'hidden' }}>
                               <div style={{ width: `${sc}%`, height: '100%', background: clr, borderRadius: 2 }} />
                             </div>
                             <span style={{ fontSize: 10, fontWeight: 600, color: clr }}>{sc}%</span>
@@ -163,7 +163,7 @@ export function DashboardPage() {
                     </td>
                     <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(proj.contractValue || proj.estimateValue)}</td>
                     <td style={{ padding: '10px 12px', textAlign: 'right' }}>{formatCurrency(proj.invoicedTotal)}</td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right', color: proj.paidTotal > 0 ? '#77BA8A' : '#8A8F98' }}>{formatCurrency(proj.paidTotal)}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right', color: proj.paidTotal > 0 ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{formatCurrency(proj.paidTotal)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -180,16 +180,16 @@ export function DashboardPage() {
                     <strong style={{ fontSize: 14, display: 'block', lineHeight: 1.3 }}>{proj.name}</strong>
                     <span className="field__label" style={{ fontSize: 12 }}>{proj.number}{proj.clientName ? ` · ${proj.clientName}` : ''}</span>
                   </div>
-                  <span style={{ flexShrink: 0, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: proj.status === 'active' ? 'rgba(119,186,138,0.15)' : proj.status === 'done' ? 'rgba(160,170,180,0.12)' : proj.status === 'offer' ? 'rgba(212,150,10,0.15)' : 'rgba(239,68,68,0.15)', color: proj.status === 'active' ? '#77BA8A' : proj.status === 'done' ? '#A7ABB3' : proj.status === 'offer' ? '#D4960A' : '#EF6B6B' }}>
+                  <span style={{ flexShrink: 0, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: proj.status === 'active' ? 'var(--color-success-soft)' : proj.status === 'done' ? 'var(--color-muted)' : proj.status === 'offer' ? 'var(--color-warning-soft)' : 'var(--color-error-soft)', color: proj.status === 'active' ? 'var(--color-success)' : proj.status === 'done' ? 'var(--color-text-secondary)' : proj.status === 'offer' ? 'var(--color-warning)' : 'var(--color-error)' }}>
                     {proj.status === 'active' ? 'Realizacja' : proj.status === 'done' ? 'Zakończony' : proj.status === 'offer' ? 'Oferta' : proj.status === 'cancelled' ? 'Anulowany' : proj.status}
                   </span>
                 </div>
                 {proj.completeness_score != null && (() => {
                   const sc = proj.completeness_score
-                  const clr = sc >= 80 ? '#77BA8A' : sc >= 50 ? '#D4960A' : '#EF6B6B'
+                  const clr = sc >= 80 ? 'var(--color-success)' : sc >= 50 ? 'var(--color-warning)' : 'var(--color-error)'
                   return (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6 }}>
-                      <div style={{ flex: 1, maxWidth: 80, height: 4, background: '#3A3D42', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ flex: 1, maxWidth: 80, height: 4, background: 'var(--color-muted)', borderRadius: 2, overflow: 'hidden' }}>
                         <div style={{ width: `${sc}%`, height: '100%', background: clr, borderRadius: 2 }} />
                       </div>
                       <span style={{ fontSize: 10, fontWeight: 600, color: clr }}>{sc}%</span>
@@ -199,7 +199,7 @@ export function DashboardPage() {
                 <div className="pipeline-card__values">
                   <div><span className="field__label">Wartość</span><strong>{formatCurrency(proj.contractValue || proj.estimateValue)}</strong></div>
                   <div><span className="field__label">Zafakturowano</span><span>{formatCurrency(proj.invoicedTotal)}</span></div>
-                  <div><span className="field__label">Opłacono</span><span style={{ color: proj.paidTotal > 0 ? '#77BA8A' : '#8A8F98' }}>{formatCurrency(proj.paidTotal)}</span></div>
+                  <div><span className="field__label">Opłacono</span><span style={{ color: proj.paidTotal > 0 ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{formatCurrency(proj.paidTotal)}</span></div>
                 </div>
               </div>
             ))}
@@ -222,7 +222,7 @@ export function DashboardPage() {
             <div className="list-row"><span>Kosztorysy</span><strong>{data.estimatesCount}</strong></div>
             <div className="list-row"><span>Umowy</span><strong>{data.contractsCount}</strong></div>
             <div className="list-row"><span>Przychód opłacony</span><strong>{formatCurrency(data.paidRevenue)}</strong></div>
-            <div className="list-row"><span>KSeF</span><strong style={{ color: data.ksefReady ? undefined : '#D4960A' }}>{data.ksefReady ? 'Skonfigurowany' : 'Wymaga konfiguracji'}</strong></div>
+            <div className="list-row"><span>KSeF</span><strong style={{ color: data.ksefReady ? undefined : 'var(--color-warning)' }}>{data.ksefReady ? 'Skonfigurowany' : 'Wymaga konfiguracji'}</strong></div>
           </div>
         </Card>
         <Card>
