@@ -31,9 +31,9 @@ export function UpgradeBanner({ onDismiss }: Props) {
   // Demo mode: thin informational pill only
   if (isDemoMode) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: 'rgba(212,150,10,0.15)', borderBottom: '1px solid rgba(212,150,10,0.30)', fontSize: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: 'var(--color-warning-soft)', borderBottom: '1px solid var(--color-warning)', fontSize: 12 }}>
         <Zap size={13} color="var(--color-accent)" />
-        <span style={{ color: 'var(--color-accent)', flex: 1 }}>
+        <span style={{ color: 'var(--color-text-primary)', flex: 1 }}>
           <strong>Tryb demo</strong> React dane sa przykladowe i nie sa zapisywane na serwerze.
         </span>
         {onDismiss && (
@@ -56,9 +56,9 @@ export function UpgradeBanner({ onDismiss }: Props) {
     if (daysLeft > TRIAL_WARN_DAYS) return null  // plenty of time, stay quiet
 
     const isUrgent = daysLeft <= 2
-    const bg     = isUrgent ? 'rgba(239,68,68,0.12)' : 'rgba(212,150,10,0.12)'
-    const border = isUrgent ? 'rgba(239,68,68,0.30)' : 'rgba(212,150,10,0.30)'
-    const color  = isUrgent ? 'var(--color-error)' : 'var(--color-accent)'
+    const bg     = isUrgent ? 'var(--color-error-soft)' : 'var(--color-warning-soft)'
+    const border = isUrgent ? 'var(--color-error)' : 'var(--color-warning)'
+    const color  = isUrgent ? 'var(--color-error)' : 'var(--color-text-primary)'
     const btnBg  = isUrgent ? 'var(--color-error)' : 'var(--color-accent)'
 
     return (
@@ -88,9 +88,9 @@ export function UpgradeBanner({ onDismiss }: Props) {
   // Payment failed / unpaid
   if (status === 'past_due' || status === 'unpaid') {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: 'rgba(239,68,68,0.12)', borderBottom: '1px solid rgba(239,68,68,0.30)', fontSize: 13, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: 'var(--color-error-soft)', borderBottom: '1px solid var(--color-error)', fontSize: 13, flexWrap: 'wrap' }}>
         <AlertTriangle size={15} color="var(--color-error)" style={{ flexShrink: 0 }} />
-        <span style={{ color: 'var(--color-error)', flex: 1 }}>
+        <span style={{ color: 'var(--color-text-primary)', flex: 1 }}>
           <strong>Platnosc nie powiodla sie.</strong> Zaktualizuj metode platnosci, aby uniknac przerwy w dostepie.
         </span>
         <button
@@ -111,9 +111,9 @@ export function UpgradeBanner({ onDismiss }: Props) {
   // Free plan (canceled, none, or expired trial) — generic upgrade CTA
   if (plan === 'free') {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: 'linear-gradient(90deg, rgba(212,150,10,0.12) 0%, rgba(212,150,10,0.12) 100%)', borderBottom: '1px solid rgba(212,150,10,0.30)', fontSize: 13, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: 'var(--color-warning-soft)', borderBottom: '1px solid var(--color-warning)', fontSize: 13, flexWrap: 'wrap' }}>
         <Zap size={15} color="var(--color-accent)" style={{ flexShrink: 0 }} />
-        <span style={{ color: 'var(--color-accent)', flex: 1 }}>
+        <span style={{ color: 'var(--color-text-primary)', flex: 1 }}>
           Korzystasz z planu <strong>Free</strong> React niektore funkcje sa ograniczone.
         </span>
         <button
