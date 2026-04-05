@@ -2,8 +2,9 @@
 // netlify/functions/shared/openai-retry.ts
 // =============================================================================
 // Retry wrapper for OpenAI Responses API calls.
-// Single retry with 2s delay on transient errors (502, 503, 500, timeout).
-// No retry on 429 (quota) or 4xx (client errors).
+// - 1× retry with 2s delay on transient errors (500, 502, 503, timeout)
+// - 1× retry with 10s delay on 429 (rate limit / quota)
+// - Extracts real token usage from OpenAI response when available
 // =============================================================================
 
 interface OpenAIRequestOptions {
@@ -15,6 +16,12 @@ interface OpenAIRequestOptions {
   max_output_tokens: number
 }
 
+/** Token usage extracted from OpenAI Responses API */
+export interface OpenAIUsage {
+  input_tokens: number
+  output_tokens: number
+}
+
 interface OpenAIRetryResult {
   ok: boolean
   status: number
@@ -23,10 +30,12 @@ interface OpenAIRetryResult {
   headers: Headers
   duration_ms: number
   timeout_occurred: boolean
+  usage: OpenAIUsage | null
 }
 
 const RETRY_STATUSES = new Set([500, 502, 503])
 const RETRY_DELAY_MS = 2_000
+const RATE_LIMIT_DELAY_MS = 10_000
 const REQUEST_TIMEOUT_MS = 120_000
 
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
@@ -40,8 +49,10 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
 }
 
 /**
- * Call OpenAI Responses API with 1× automatic retry on transient errors.
- * Returns raw response body + metadata. Caller handles parsing.
+ * Call OpenAI Responses API with automatic retry on transient errors.
+ * - 1× retry on 500/502/503 (2s delay)
+ * - 1× retry on 429 rate limit (10s delay)
+ * - Extracts real token usage from response body when available
  *
  * @param timeoutMs  Per-call timeout override (default: 120 000 ms).
  *                   Heavy functions (project-analysis) can pass a higher value.
@@ -95,15 +106,29 @@ export async function callOpenAIWithRetry(
     try {
       resp = await fetchWithTimeout(url, init, timeoutMs)
       body = await resp.text()
-      return { ok: resp.ok, status: resp.status, body, retried: true, headers: resp.headers, duration_ms: Date.now() - t0, timeout_occurred: true }
+      return { ok: resp.ok, status: resp.status, body, retried: true, headers: resp.headers, duration_ms: Date.now() - t0, timeout_occurred: true, usage: extractUsage(body) }
     } catch (e2: unknown) {
       throw new Error(`OpenAI timeout after retry: ${e2 instanceof Error ? e2.message : String(e2)}`)
     }
   }
 
   // First attempt succeeded (even if not 2xx)
+  // Retry on 429 (rate limit) with longer backoff
+  if (resp.status === 429) {
+    console.warn(`[${label}] attempt 1 got 429 (rate limit), retrying in ${RATE_LIMIT_DELAY_MS}ms...`)
+    await sleep(RATE_LIMIT_DELAY_MS)
+
+    try {
+      resp = await fetchWithTimeout(url, init, timeoutMs)
+      body = await resp.text()
+    } catch (e: unknown) {
+      throw new Error(`OpenAI 429 retry failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    return { ok: resp.ok, status: resp.status, body, retried: true, headers: resp.headers, duration_ms: Date.now() - t0, timeout_occurred: timeoutOccurred, usage: extractUsage(body) }
+  }
+
   if (resp.ok || !RETRY_STATUSES.has(resp.status)) {
-    return { ok: resp.ok, status: resp.status, body, retried: false, headers: resp.headers, duration_ms: Date.now() - t0, timeout_occurred: timeoutOccurred }
+    return { ok: resp.ok, status: resp.status, body, retried: false, headers: resp.headers, duration_ms: Date.now() - t0, timeout_occurred: timeoutOccurred, usage: extractUsage(body) }
   }
 
   // Transient error → retry once
@@ -117,7 +142,19 @@ export async function callOpenAIWithRetry(
     throw new Error(`OpenAI retry failed: ${e instanceof Error ? e.message : String(e)}`)
   }
 
-  return { ok: resp.ok, status: resp.status, body, retried: true, headers: resp.headers, duration_ms: Date.now() - t0, timeout_occurred: timeoutOccurred }
+  return { ok: resp.ok, status: resp.status, body, retried: true, headers: resp.headers, duration_ms: Date.now() - t0, timeout_occurred: timeoutOccurred, usage: extractUsage(body) }
+}
+
+/** Extract token usage from OpenAI Responses API body (best-effort) */
+function extractUsage(body: string): OpenAIUsage | null {
+  try {
+    const parsed = JSON.parse(body)
+    const u = parsed?.usage
+    if (u && typeof u.input_tokens === 'number' && typeof u.output_tokens === 'number') {
+      return { input_tokens: u.input_tokens, output_tokens: u.output_tokens }
+    }
+  } catch { /* non-JSON or malformed — ignore */ }
+  return null
 }
 
 function sleep(ms: number): Promise<void> {

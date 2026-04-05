@@ -341,6 +341,8 @@ export const handler: Handler = async (event) => {
     const govTimeoutOccurred = resp.timeout_occurred
     const govDurationMs = resp.duration_ms
     const govParsePath = usedTextPath ? 'text' : 'vision'
+    const govInputTokens = resp.usage?.input_tokens ?? null
+    const govOutputTokens = resp.usage?.output_tokens ?? null
 
     if (resp.retried) console.info('[bg] OPENAI_RETRIED', JSON.stringify({ finalStatus: resp.status, elapsed_ms: Date.now() - t0 }))
 
@@ -479,6 +481,8 @@ export const handler: Handler = async (event) => {
       request_duration_ms: govDurationMs,
       parse_path: govParsePath,
       input_file_size_bytes: sizeBytes,
+      input_token_count: govInputTokens,
+      output_token_count: govOutputTokens,
     }).eq('id', jobId)
 
     console.info('[bg] JOB_DONE', JSON.stringify({

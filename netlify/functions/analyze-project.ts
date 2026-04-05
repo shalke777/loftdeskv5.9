@@ -645,6 +645,7 @@ export const handler: Handler = async (event) => {
     }, 'analyze-project', 300_000) // 5 min timeout for large PDFs
 
     if (resp.retried) console.info('PROVIDER_RETRIED', JSON.stringify({ finalStatus: resp.status, elapsed_ms: Date.now() - t0 }))
+    if (resp.usage) console.info('PROVIDER_USAGE', JSON.stringify({ input_tokens: resp.usage.input_tokens, output_tokens: resp.usage.output_tokens }))
 
     if (!resp.ok) {
       console.error('PROVIDER_RESPONSE_ERROR', JSON.stringify({ status: resp.status, body: resp.body.slice(0, 400), elapsed_ms: Date.now() - t0 }))

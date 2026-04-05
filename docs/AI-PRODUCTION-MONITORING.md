@@ -153,8 +153,28 @@ GROUP BY r.model_name;
 | acceptance_rate < 50% | 50 runs min | 3 runs | ⏳ WAIT — insufficient data |
 | catalog_match_rate < 40% | 40% | 100% | ✅ NO ACTION |
 | avg room duration > 60s | 60s | 9.4s | ✅ NO ACTION |
-| avg cost/run > $0.10 | $0.10 | ~$0.33 (inflated) | ⏳ INVESTIGATE heuristic |
-| rate limits > 5% | 5% | 27% quota fails | 🔴 INVESTIGATE |
+| avg cost/run > $0.10 | $0.10 | ~$0.33 (inflated) | ✅ FIXED — real token extraction |
+| rate limits > 5% | 5% | 27% quota fails | ✅ FIXED — 429 retry with 10s backoff |
+
+## Sprint H Tuning Actions (Data-Driven)
+
+### TA1: 429 Rate Limit Retry (P0) ✅
+- **Problem**: 27% project analysis failures from `openai_quota` — 429 was never retried
+- **Data**: 3/11 project jobs failed permanently on first 429
+- **Fix**: Added 429 to retry logic in `openai-retry.ts` with 10s backoff delay
+- **Impact**: Expected to recover most transient rate limit errors
+
+### TA2: Real Token Count Extraction (P1) ✅
+- **Problem**: chars/4 heuristic inflated cost estimates ~3-5x for vision runs
+- **Data**: Room run showed 129,309 input tokens (heuristic) vs likely ~2,000 real tokens
+- **Fix**: Extract `usage.input_tokens` / `usage.output_tokens` from OpenAI Responses API
+- **Fallback**: chars/4 heuristic used when API doesn't return usage data
+
+### TA3: Project Analysis Token Persistence (P2) ✅
+- **Problem**: project_analysis_jobs had no token columns — cost analysis impossible
+- **Data**: 0/11 project jobs had token data
+- **Fix**: Migration 109 adds `input_token_count` + `output_token_count` to table
+- **Backend**: `analyze-project-bg-background.ts` now saves real token counts
 
 ## Identified Issues
 
@@ -185,12 +205,16 @@ GROUP BY r.model_name;
 
 ### Phase 1: Quick Wins (Sprint H) ✅
 1. ~~Error UX: code-aware messages for quota/timeout failures~~
-2. Production monitoring queries documented
+2. ~~Production monitoring queries documented~~
+3. ~~429 retry with 10s backoff in openai-retry.ts~~
+4. ~~Real token extraction from OpenAI Responses API~~
+5. ~~Token columns + persistence for project_analysis_jobs~~
+6. ~~Migration 109 deployed~~
 
 ### Phase 2: After 50+ Room Runs
 1. Evaluate acceptance_rate → prompt tuning if < 50%
 2. Evaluate draft_created ratio → UX investigation if < 20%
-3. Fix token heuristic → extract real OpenAI usage
+3. Verify real token counts vs heuristic → update cost model
 
 ### Phase 3: After 100+ Combined Runs
 1. Full cost analysis with real tokens

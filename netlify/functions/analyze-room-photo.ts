@@ -766,6 +766,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
   let govRetryCount = 0
   let govTimeoutOccurred = false
   let govDurationMs = 0
+  let govInputTokens: number | null = null
+  let govOutputTokens: number | null = null
   try {
     const { callOpenAIWithRetry } = await import('./shared/openai-retry')
     const resp = await callOpenAIWithRetry({
@@ -778,6 +780,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     govRetryCount = resp.retried ? 1 : 0
     govTimeoutOccurred = resp.timeout_occurred
     govDurationMs = resp.duration_ms
+    if (resp.usage) {
+      govInputTokens = resp.usage.input_tokens
+      govOutputTokens = resp.usage.output_tokens
+    }
 
     if (resp.retried) console.info('PROVIDER_RETRIED', JSON.stringify({ finalStatus: resp.status, elapsed_ms: Date.now() - t0 }))
 
@@ -1088,8 +1094,8 @@ export const handler: Handler = async (event: HandlerEvent) => {
       timeout_occurred:      govTimeoutOccurred,
       request_duration_ms:   govDurationMs,
       parse_path:            'vision',
-      input_token_count:     Math.round(JSON.stringify(content).length / 4),
-      output_token_count:    Math.round((aiRaw?.length ?? 0) / 4),
+      input_token_count:     govInputTokens ?? Math.round(JSON.stringify(content).length / 4),
+      output_token_count:    govOutputTokens ?? Math.round((aiRaw?.length ?? 0) / 4),
       input_file_size_bytes: imageRefs.reduce((sum, r) => sum + (r.file_size || 0), 0),
     },
     result,
