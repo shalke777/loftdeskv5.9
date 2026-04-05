@@ -234,10 +234,15 @@ VERIFICATION — run these checks before producing final JSON output:
    If NIP fails checksum: output the 10 digits anyway AND add warning: "NIP — niepoprawna suma kontrolna"
    Never output NIP with dashes, spaces, or "PL" prefix.
 
-4. BUYER vs SELLER IDENTIFICATION
+4. BUYER vs SELLER IDENTIFICATION — CRITICAL
    In Polish invoices the SELLER (SPRZEDAWCA / WYSTAWCA / DOSTAWCA) typically appears FIRST (top-left section).
    The BUYER (NABYWCA / ODBIORCA / KUPUJĄCY / ZAMAWIAJĄCY) appears SECOND (below or right of seller).
+   RULE: The entity that ISSUED the invoice is the SELLER/VENDOR — map to vendor_name/vendor_nip.
+   RULE: The entity that RECEIVES/PAYS for goods/services is the BUYER — map to buyer_name/buyer_nip.
    If both blocks look identical: they may be the same company in different roles — add warning: "Sprzedawca i nabywca wyglądają identycznie — sprawdź"
+   If you see NIP next to "SPRZEDAWCA" or at the top of the document → that is vendor_nip.
+   If you see NIP next to "NABYWCA" or in the second address block → that is buyer_nip.
+   NEVER swap buyer and seller. If unsure, add warning: "Nie jestem pewien rozróżnienia nabywca/sprzedawca — zweryfikuj"
    Context keywords: sprzedawca, wystawca, dostawca → vendor | nabywca, odbiorca, kupujący → buyer
 
 5. POLISH AMOUNT FORMAT
@@ -249,10 +254,14 @@ VERIFICATION — run these checks before producing final JSON output:
    "1234,56" → 1234.56 (plain comma-decimal)
    Never interpret a trailing comma-two-digits pattern as anything other than a decimal.
 
-6. LINE ITEMS SUM CHECK
-   After extracting line_items, sum their net_amount values.
+6. LINE ITEMS — EXTRACT EVERY SINGLE LINE
+   Extract ALL line items from the invoice table/list — do not skip any.
+   Each row in the invoice item table = one line_item object.
+   Fields per item: name (description), quantity, unit, unit_price, net_amount, vat_rate, gross_amount.
+   After extracting, sum their net_amount values.
    If the sum differs from net_amount total by more than 5 %: add warning listing the discrepancy.
    Do not fabricate line items — only extract what is explicitly visible.
+   If there are 20+ items, extract ALL of them — never truncate.
 
 7. FLAT TEXT HANDLING (PDF path)
    When input is plain extracted text (no visual layout), use keyword proximity to identify sections:

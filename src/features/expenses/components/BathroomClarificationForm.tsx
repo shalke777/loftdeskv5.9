@@ -1,11 +1,12 @@
 // =============================================================================
-// BathroomClarificationForm v2 — guided inputs before AI analysis
+// RoomClarificationForm — guided inputs before AI analysis
 // =============================================================================
-// Extended form: area, height, tile, bathtub/shower, WC type, sinks, linear drain,
-// floor heating, plumbing/electrical changes, boiler casing, standard, notes.
+// Universal fields: area, height, standard, electrical scope, notes.
+// Bathroom-only fields: tile, bathtub/shower, WC, sinks, plumbing, drain, boiler.
 // All fields optional, quick to fill, skippable.
 
 import { useState } from 'react'
+import { Search } from 'lucide-react'
 import type { BathroomClarification } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import type { RoomTypeId } from '@/services/ai/room-types'
 import { getRoomTypeName } from '@/services/ai/room-types'
@@ -19,6 +20,8 @@ interface Props {
 }
 
 export function BathroomClarificationForm({ photoCount, roomType, onSubmit, onSkip, disabled }: Props) {
+  const isBathroom = !roomType || roomType === 'bathroom'
+
   const [area, setArea]                 = useState('')
   const [height, setHeight]             = useState('')
   const [tileCoverage, setTileCoverage] = useState<'full' | 'partial' | 'none' | ''>('')
@@ -41,16 +44,18 @@ export function BathroomClarificationForm({ photoCount, roomType, onSubmit, onSk
     if (!isNaN(numArea) && numArea > 0 && numArea < 200) data.area_m2 = numArea
     const numHeight = parseFloat(height)
     if (!isNaN(numHeight) && numHeight > 0 && numHeight < 10) data.ceiling_height_m = numHeight
-    if (tileCoverage) data.tile_coverage = tileCoverage
-    if (hasBathtub) data.has_bathtub = true
-    if (hasShower) data.has_shower = true
-    if (hasFloorHeating) data.has_underfloor_heating = true
-    if (wcType) data.wc_type = wcType
-    if (sinkCount) data.sink_count = sinkCount
-    if (hasLinearDrain) data.has_linear_drain = true
-    if (plumbingScope) data.plumbing_scope = plumbingScope
+    if (isBathroom) {
+      if (tileCoverage) data.tile_coverage = tileCoverage
+      if (hasBathtub) data.has_bathtub = true
+      if (hasShower) data.has_shower = true
+      if (hasFloorHeating) data.has_underfloor_heating = true
+      if (wcType) data.wc_type = wcType
+      if (sinkCount) data.sink_count = sinkCount
+      if (hasLinearDrain) data.has_linear_drain = true
+      if (plumbingScope) data.plumbing_scope = plumbingScope
+      if (hasBoilerCasing) data.has_boiler_casing = true
+    }
     if (electricalScope) data.electrical_scope = electricalScope
-    if (hasBoilerCasing) data.has_boiler_casing = true
     if (standard) data.fixtures_standard = standard
     if (notes.trim()) data.notes = notes.trim().slice(0, 500)
     onSubmit(data)
@@ -76,18 +81,18 @@ export function BathroomClarificationForm({ photoCount, roomType, onSubmit, onSk
     border: `1px solid ${active ? 'var(--color-primary)' : 'var(--color-border, rgba(30,29,24,0.15))'}`,
   })
 
-  const roomLabel = roomType ? getRoomTypeName(roomType) : 'łazienki'
+  const roomLabel = roomType ? getRoomTypeName(roomType) : 'pomieszczenia'
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 24, maxWidth: 440, margin: '0 auto' }}>
       <div style={{ textAlign: 'center', marginBottom: 4 }}>
-        <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>🔍 Szczegóły {roomLabel}</p>
+        <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Szczegóły — {roomLabel}</p>
         <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
           Opcjonalne — pomaga AI lepiej dopasować zakres prac. {photoCount} {photoCount === 1 ? 'zdjęcie' : 'zdjęć'} gotowe.
         </p>
       </div>
 
-      {/* Row: area + height */}
+      {/* Universal: area + height */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div>
           <label style={labelStyle}>Powierzchnia (m²)</label>
@@ -101,101 +106,106 @@ export function BathroomClarificationForm({ photoCount, roomType, onSubmit, onSk
         </div>
       </div>
 
-      {/* Tile coverage */}
+      {/* Bathroom-only sections */}
+      {isBathroom && (
+        <>
+          {/* Tile coverage */}
+          <div>
+            <label style={labelStyle}>Płytki na ścianach</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {([['full', 'Do sufitu'], ['partial', 'Częściowo'], ['none', 'Brak']] as const).map(([val, lbl]) => (
+                <button key={val} type="button" disabled={disabled}
+                  style={chipStyle(tileCoverage === val)}
+                  onClick={() => setTileCoverage(tileCoverage === val ? '' : val)}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Fixtures */}
+          <div>
+            <label style={labelStyle}>Wyposażenie</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button type="button" style={chipStyle(hasBathtub)} disabled={disabled}
+                onClick={() => setHasBathtub(!hasBathtub)}>Wanna</button>
+              <button type="button" style={chipStyle(hasShower)} disabled={disabled}
+                onClick={() => setHasShower(!hasShower)}>Prysznic</button>
+              <button type="button" style={chipStyle(hasFloorHeating)} disabled={disabled}
+                onClick={() => setHasFloorHeating(!hasFloorHeating)}>Podłogówka</button>
+              <button type="button" style={chipStyle(hasLinearDrain)} disabled={disabled}
+                onClick={() => setHasLinearDrain(!hasLinearDrain)}>Odpływ liniowy</button>
+            </div>
+          </div>
+
+          {/* WC type */}
+          <div>
+            <label style={labelStyle}>Typ WC</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {([['standing', 'Stojące (kompakt)'], ['concealed', 'Podtynkowe']] as const).map(([val, lbl]) => (
+                <button key={val} type="button" disabled={disabled}
+                  style={chipStyle(wcType === val)}
+                  onClick={() => setWcType(wcType === val ? '' : val)}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Sinks + boiler */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={labelStyle}>Umywalki</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {([1, 2] as const).map(n => (
+                  <button key={n} type="button" disabled={disabled}
+                    style={chipStyle(sinkCount === n)}
+                    onClick={() => setSinkCount(sinkCount === n ? '' : n)}>
+                    {n === 1 ? '1 umywalka' : '2 umywalki'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Kocioł / bojler</label>
+              <button type="button" style={chipStyle(hasBoilerCasing)} disabled={disabled}
+                onClick={() => setHasBoilerCasing(!hasBoilerCasing)}>
+                Zabudowa
+              </button>
+            </div>
+          </div>
+
+          {/* Plumbing scope */}
+          <div>
+            <label style={labelStyle}>Przeróbki hydrauliczne</label>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              {([['none', 'Brak'], ['limited', 'Częściowe'], ['full', 'Całość']] as const).map(([val, lbl]) => (
+                <button key={val} type="button" disabled={disabled}
+                  style={chipStyle(plumbingScope === val)}
+                  onClick={() => setPlumbingScope(plumbingScope === val ? '' : val)}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Universal: electrical scope */}
       <div>
-        <label style={labelStyle}>Płytki na ścianach</label>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {([['full', 'Do sufitu'], ['partial', 'Częściowo'], ['none', 'Brak']] as const).map(([val, lbl]) => (
+        <label style={labelStyle}>Przeróbki elektryczne</label>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {([['none', 'Brak'], ['limited', 'Częściowe'], ['full', 'Całość']] as const).map(([val, lbl]) => (
             <button key={val} type="button" disabled={disabled}
-              style={chipStyle(tileCoverage === val)}
-              onClick={() => setTileCoverage(tileCoverage === val ? '' : val)}>
+              style={chipStyle(electricalScope === val)}
+              onClick={() => setElectricalScope(electricalScope === val ? '' : val)}>
               {lbl}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Fixtures */}
-      <div>
-        <label style={labelStyle}>Wyposażenie</label>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <button type="button" style={chipStyle(hasBathtub)} disabled={disabled}
-            onClick={() => setHasBathtub(!hasBathtub)}>🛁 Wanna</button>
-          <button type="button" style={chipStyle(hasShower)} disabled={disabled}
-            onClick={() => setHasShower(!hasShower)}>🚿 Prysznic</button>
-          <button type="button" style={chipStyle(hasFloorHeating)} disabled={disabled}
-            onClick={() => setHasFloorHeating(!hasFloorHeating)}>♨️ Podłogówka</button>
-          <button type="button" style={chipStyle(hasLinearDrain)} disabled={disabled}
-            onClick={() => setHasLinearDrain(!hasLinearDrain)}>〰️ Odpływ liniowy</button>
-        </div>
-      </div>
-
-      {/* WC type */}
-      <div>
-        <label style={labelStyle}>Typ WC</label>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {([['standing', 'Stojące (kompakt)'], ['concealed', 'Podtynkowe']] as const).map(([val, lbl]) => (
-            <button key={val} type="button" disabled={disabled}
-              style={chipStyle(wcType === val)}
-              onClick={() => setWcType(wcType === val ? '' : val)}>
-              {lbl}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Row: sinks + boiler */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div>
-          <label style={labelStyle}>Umywalki</label>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {([1, 2] as const).map(n => (
-              <button key={n} type="button" disabled={disabled}
-                style={chipStyle(sinkCount === n)}
-                onClick={() => setSinkCount(sinkCount === n ? '' : n)}>
-                {n === 1 ? '1 umywalka' : '2 umywalki'}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <label style={labelStyle}>Kocioł / bojler</label>
-          <button type="button" style={chipStyle(hasBoilerCasing)} disabled={disabled}
-            onClick={() => setHasBoilerCasing(!hasBoilerCasing)}>
-            🔥 Zabudowa
-          </button>
-        </div>
-      </div>
-
-      {/* Plumbing + electrical scope */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div>
-          <label style={labelStyle}>Przeróbki hydraul.</label>
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {([['none', 'Brak'], ['limited', 'Częściowe'], ['full', 'Całość']] as const).map(([val, lbl]) => (
-              <button key={val} type="button" disabled={disabled}
-                style={chipStyle(plumbingScope === val)}
-                onClick={() => setPlumbingScope(plumbingScope === val ? '' : val)}>
-                {lbl}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <label style={labelStyle}>Przeróbki elektr.</label>
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {([['none', 'Brak'], ['limited', 'Częściowe'], ['full', 'Całość']] as const).map(([val, lbl]) => (
-              <button key={val} type="button" disabled={disabled}
-                style={chipStyle(electricalScope === val)}
-                onClick={() => setElectricalScope(electricalScope === val ? '' : val)}>
-                {lbl}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Standard */}
+      {/* Universal: standard */}
       <div>
         <label style={labelStyle}>Standard wykończenia</label>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -209,11 +219,11 @@ export function BathroomClarificationForm({ photoCount, roomType, onSubmit, onSk
         </div>
       </div>
 
-      {/* Notes */}
+      {/* Universal: notes */}
       <div>
         <label style={labelStyle}>Dodatkowe uwagi (opcjonalne)</label>
         <textarea
-          rows={2} maxLength={500} placeholder="np. Pion kanalizacyjny do zabudowy, lustro na całą ścianę…"
+          rows={2} maxLength={500} placeholder="np. Zakres prac, specjalne wymagania…"
           value={notes} onChange={e => setNotes(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} disabled={disabled}
         />
       </div>
@@ -225,8 +235,8 @@ export function BathroomClarificationForm({ photoCount, roomType, onSubmit, onSk
           Pomiń →
         </button>
         <button type="submit" className="btn" disabled={disabled}
-          style={{ flex: 2, fontSize: 14, padding: '12px 16px', fontWeight: 600 }}>
-          🔍 Analizuj ze szczegółami
+          style={{ flex: 2, fontSize: 14, padding: '12px 16px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <Search size={14} /> Analizuj ze szczegółami
         </button>
       </div>
     </form>

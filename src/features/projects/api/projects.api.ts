@@ -4,6 +4,30 @@ import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { applyScope, getDataScope, withScope } from '@/shared/lib/dataScope'
 import { createTimelineEvent } from '@/features/projects/lib/timeline'
 
+/** Generate next sequential project number: PRJ-001, PRJ-002, etc. */
+async function nextProjectNumber(scope: any): Promise<string> {
+  if (!supabase) return `PRJ-${String(Date.now()).slice(-3)}`
+  const query = applyScope(
+    supabase.from('projects').select('number').is('deleted_at', null).order('created_at', { ascending: false }).limit(200),
+    scope,
+  )
+  const { data } = await query
+  let maxSeq = 0
+  for (const row of data ?? []) {
+    const num = row.number as string
+    // Match PRJ-NNN (new format)
+    const newMatch = num?.match(/^PRJ-(\d+)$/)
+    if (newMatch) { maxSeq = Math.max(maxSeq, parseInt(newMatch[1], 10)); continue }
+    // Match PRJ/YYYY/NNNN (old format) — count them too
+    const oldMatch = num?.match(/^PRJ\/\d{4}\/\d+$/)
+    if (oldMatch) { maxSeq = Math.max(maxSeq, maxSeq + 0) }
+  }
+  // Also count total projects as fallback to never go below existing count
+  const total = (data ?? []).length
+  const next = Math.max(maxSeq + 1, total + 1 > maxSeq + 1 ? total + 1 : maxSeq + 1)
+  return `PRJ-${String(next).padStart(3, '0')}`
+}
+
 export const projectsApi = {
   async list(companyId: string): Promise<Project[]> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.projects.list(companyId))
@@ -16,7 +40,8 @@ export const projectsApi = {
   async create(input: CreateProjectInput): Promise<Project> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.projects.create(input))
     const scope = await getDataScope(input.company_id)
-    const payload = withScope(scope, { number: `PRJ/${new Date().getFullYear()}/${Date.now().toString().slice(-4)}`, client_id: input.client_id, name: input.name, status: input.status, start_date: input.start_date, end_date: input.end_date, address: input.address ?? null, investment_address: input.investment_address ?? null, notes: input.notes ?? null, completeness_score: 0, completeness_flags: {} })
+    const number = await nextProjectNumber(scope)
+    const payload = withScope(scope, { number, client_id: input.client_id, name: input.name, status: input.status, start_date: input.start_date, end_date: input.end_date, address: input.address ?? null, investment_address: input.investment_address ?? null, notes: input.notes ?? null, completeness_score: 0, completeness_flags: {} })
     const { data, error } = await supabase.from('projects').insert(payload).select('*').single()
     if (error) throw error
     const project: Project = { id: data.id, company_id: data.company_id ?? input.company_id, client_id: data.client_id, number: data.number, name: data.name, status: data.status, start_date: data.start_date, end_date: data.end_date, address: data.address ?? '', investment_address: data.investment_address ?? null, notes: data.notes ?? '', completeness_score: Number(data.completeness_score ?? 0), completeness_flags: data.completeness_flags ?? null, archived_at: data.archived_at ?? null, created_at: data.created_at }
@@ -66,9 +91,9 @@ export const projectsApi = {
       if (existingProj) return existingProj
     }
     // Utwórz nowy projekt
-    const year = new Date().getFullYear()
+    const number = await nextProjectNumber(scope)
     const payload = withScope(scope, {
-      number: `PRJ/${year}/${Date.now().toString().slice(-4)}`,
+      number,
       client_id: est.client_id,
       name: est.name || 'Projekt z kosztorysu',
       status: 'offer',
