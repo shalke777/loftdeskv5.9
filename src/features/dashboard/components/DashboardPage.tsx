@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { BookText, Camera, FileText, FolderKanban, MessageSquareText, Receipt, TrendingUp, Users, Wallet } from 'lucide-react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Camera, FileText, FolderKanban, Receipt, TrendingUp, Users } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
@@ -10,18 +10,6 @@ import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { QueryError } from '@/shared/ui/QueryError/QueryError'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
-
-const MOBILE_TILES = [
-  { label: 'Kontrahenci', sub: 'Klienci i kontrahenci',          icon: Users,            href: '/clients'          },
-  { label: 'Wyceny',      sub: 'Oferty i kosztorysy',            icon: FileText,         href: '/estimates'        },
-  { label: 'Umowy',       sub: 'Podpisane zlecenia',             icon: BookText,         href: '/contracts'        },
-  { label: 'Faktury',     sub: 'Rozliczenia i KSeF',             icon: Receipt,          href: '/invoices'         },
-  { label: 'Projekty',    sub: 'Realizacje i dokumenty',         icon: FolderKanban,     href: '/projects'         },
-  { label: 'Chat',        sub: 'Wiadomości i portal klienta',    icon: MessageSquareText, href: '/chat'             },
-  { label: 'Koszty',      sub: 'Wydatki i faktury kosztowe',     icon: Wallet,           href: '/expenses'         },
-  { label: 'AI Analiza',  sub: 'Wybierz typ analizy',            icon: Camera,           href: '/ai'               },
-  { label: 'AI Projekt',  sub: 'PDF → zakres i wycena',          icon: FileText,         href: '/ai'               },
-] as const
 
 const quickActions = [
   { icon: Users,        title: 'Dodaj kontrahenta', text: 'Dodaj klientów, inwestorów i podwykonawców.',       href: '/clients'   },
@@ -100,19 +88,6 @@ export function DashboardPage() {
           </Card>
         ))}
       </div>
-
-      {/* ── Mobile home — kafli (tylko mobile) ─────────────────────────── */}
-      <nav className="mobile-home-grid" aria-label="Główne moduły">
-        {MOBILE_TILES.map(({ label, sub, icon: Icon, href }, i) => (
-          <Link key={href} to={href as any} className={`mobile-tile mobile-tile--${i + 1}`}>
-            <div className="mobile-tile__icon"><Icon size={20} /></div>
-            <div>
-              <div className="mobile-tile__label">{label}</div>
-              <div className="mobile-tile__sub">{sub}</div>
-            </div>
-          </Link>
-        ))}
-      </nav>
 
       {/* ── Pipeline — widoczny na mobile i desktop ──────────────────── */}
       {pipelineProjects.length > 0 && (

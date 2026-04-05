@@ -257,7 +257,6 @@ export function AuthLayout() {
           </div>
         </header>
         <main className="shell-content"><Outlet /></main>
-        {pathname !== '/dashboard' && (
         <nav className="mobile-nav">
           {visibleMobileNav.map((item) => {
             const Icon = item.icon
@@ -276,7 +275,6 @@ export function AuthLayout() {
             </Link>
           ) : null}
         </nav>
-        )}
       </section>
     </div>
     </>
