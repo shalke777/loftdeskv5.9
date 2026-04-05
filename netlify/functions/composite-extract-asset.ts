@@ -458,25 +458,18 @@ export const handler: Handler = async (event) => {
       elapsed_ms: Date.now() - t0,
     }))
 
-    // ── Call OpenAI ─────────────────────────────────────────────────────────
+    // ── Call OpenAI (with retry) ─────────────────────────────────────────────
     let aiRaw: string
     try {
-      const resp = await fetch('https://api.openai.com/v1/responses', {
-        method:  'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          instructions:      EVIDENCE_SYSTEM_PROMPT,
-          input:             [{ role: 'user', content }],
-          text:              { format: EVIDENCE_SCHEMA },
-          max_output_tokens: 10_000,
-        }),
-      })
+      const { callOpenAIWithRetry } = await import('./shared/openai-retry')
+      const resp = await callOpenAIWithRetry({
+        apiKey, model, instructions: EVIDENCE_SYSTEM_PROMPT,
+        input: [{ role: 'user', content }],
+        text: { format: EVIDENCE_SCHEMA },
+        max_output_tokens: 10_000,
+      }, 'composite-extract-asset')
 
-      const rawBody = await resp.text()
+      if (resp.retried) console.info('OPENAI_RETRIED', JSON.stringify({ requestId, finalStatus: resp.status, elapsed_ms: Date.now() - t0 }))
 
       if (!resp.ok) {
         console.error('OPENAI_ERROR', JSON.stringify({
@@ -486,18 +479,18 @@ export const handler: Handler = async (event) => {
           assetId:    assetId.slice(0, 8),
           status:     resp.status,
           category:   resp.status === 429 ? 'quota' : 'provider_error',
-          body:       rawBody.slice(0, 300),
+          body:       resp.body.slice(0, 300),
           elapsed_ms: Date.now() - t0,
         }))
         await sbAdmin.from('ai_bundle_assets').update({
           extraction_status: 'failed',
-          processing_error:  `OpenAI ${resp.status}: ${rawBody.slice(0, 200)}`,
+          processing_error:  `OpenAI ${resp.status}: ${resp.body.slice(0, 200)}`,
         }).eq('id', assetId)
         if (resp.status === 429) return err(429, 'openai_quota', 'Quota OpenAI wyczerpana')
         return err(502, 'provider_error', `OpenAI ${resp.status}`)
       }
 
-      const data = JSON.parse(rawBody) as ResponsesAPIResult
+      const data = JSON.parse(resp.body) as ResponsesAPIResult
       aiRaw = data.output?.[0]?.content?.find(c => c.type === 'output_text')?.text ?? '{}'
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)

@@ -631,41 +631,34 @@ export const handler: Handler = async (event) => {
     })
   }
 
-  // ── Call OpenAI ────────────────────────────────────────────────────────
+  // ── Call OpenAI (with retry) ─────────────────────────────────────────────
 
   let aiRaw: string
   try {
     console.info('PROVIDER_REQUEST_START', JSON.stringify({ model, isPdf, usedTextPath, contentItems: content.length, elapsed_ms: Date.now() - t0 }))
-    const resp = await fetch('https://api.openai.com/v1/responses', {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        instructions: INSTRUCTIONS,
-        input:        [{ role: 'user', content }],
-        text:         { format: PROJECT_ANALYSIS_SCHEMA },
-        max_output_tokens: 8_000,
-      }),
-    })
+    const { callOpenAIWithRetry } = await import('./shared/openai-retry')
+    const resp = await callOpenAIWithRetry({
+      apiKey, model, instructions: INSTRUCTIONS,
+      input: [{ role: 'user', content }],
+      text: { format: PROJECT_ANALYSIS_SCHEMA },
+      max_output_tokens: 8_000,
+    }, 'analyze-project')
 
-    const rawBody = await resp.text()
+    if (resp.retried) console.info('PROVIDER_RETRIED', JSON.stringify({ finalStatus: resp.status, elapsed_ms: Date.now() - t0 }))
 
     if (!resp.ok) {
-      console.error('PROVIDER_RESPONSE_ERROR', JSON.stringify({ status: resp.status, body: rawBody.slice(0, 400), elapsed_ms: Date.now() - t0 }))
+      console.error('PROVIDER_RESPONSE_ERROR', JSON.stringify({ status: resp.status, body: resp.body.slice(0, 400), elapsed_ms: Date.now() - t0 }))
       if (resp.status === 429) return err(429, 'openai_quota_exceeded', 'Quota OpenAI wyczerpana — sprawdź billing lub spróbuj za chwilę.')
       if (resp.status === 413) return err(413, 'file_too_large', 'Plik jest za duży dla modelu AI. Skompresuj PDF lub zmniejsz rozmiar.')
-      if (resp.status === 400) return err(422, 'invalid_input', `OpenAI odrzucił dane wejściowe: ${rawBody.slice(0, 200)}`)
-      return err(502, 'provider_error', `OpenAI ${resp.status}: ${rawBody.slice(0, 200)}`)
+      if (resp.status === 400) return err(422, 'invalid_input', `OpenAI odrzucił dane wejściowe: ${resp.body.slice(0, 200)}`)
+      return err(502, 'provider_error', `OpenAI ${resp.status}: ${resp.body.slice(0, 200)}`)
     }
 
-    console.info('PROVIDER_RESPONSE_OK', JSON.stringify({ status: resp.status, rawLen: rawBody.length, elapsed_ms: Date.now() - t0 }))
-    const data = JSON.parse(rawBody) as ResponsesAPIResult
+    console.info('PROVIDER_RESPONSE_OK', JSON.stringify({ status: resp.status, rawLen: resp.body.length, elapsed_ms: Date.now() - t0 }))
+    const data = JSON.parse(resp.body) as ResponsesAPIResult
     aiRaw = data.output?.[0]?.content?.find(c => c.type === 'output_text')?.text ?? '{}'
     if (!aiRaw || aiRaw === '{}') {
-      console.warn('PROVIDER_EMPTY_RESPONSE', JSON.stringify({ rawLen: rawBody.length, preview: rawBody.slice(0, 200), elapsed_ms: Date.now() - t0 }))
+      console.warn('PROVIDER_EMPTY_RESPONSE', JSON.stringify({ rawLen: resp.body.length, preview: resp.body.slice(0, 200), elapsed_ms: Date.now() - t0 }))
     }
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)

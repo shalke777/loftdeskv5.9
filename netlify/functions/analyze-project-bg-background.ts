@@ -323,39 +323,35 @@ export const handler: Handler = async (event) => {
     // Cleanup temp file (fire-and-forget)
     sb.storage.from('company-files').remove([job.storage_path]).catch(() => {})
 
-    // ── Call OpenAI ───────────────────────────────────────────────────────
+    // ── Call OpenAI (with retry) ───────────────────────────────────────────
     const apiKey = process.env.OPENAI_API_KEY ?? ''
     const model = process.env.OPENAI_MODEL_VISION?.trim() || process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 
     console.info('[bg] OPENAI_START', JSON.stringify({ model, isPdf, usedTextPath, contentItems: content.length, elapsed_ms: Date.now() - t0 }))
 
-    const resp = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        instructions: INSTRUCTIONS,
-        input: [{ role: 'user', content }],
-        text: { format: PROJECT_ANALYSIS_SCHEMA },
-        max_output_tokens: 8_000,
-      }),
-    })
+    const { callOpenAIWithRetry } = await import('./shared/openai-retry')
+    const resp = await callOpenAIWithRetry({
+      apiKey, model, instructions: INSTRUCTIONS,
+      input: [{ role: 'user', content }],
+      text: { format: PROJECT_ANALYSIS_SCHEMA },
+      max_output_tokens: 8_000,
+    }, 'analyze-project-bg')
 
-    const rawBody = await resp.text()
+    if (resp.retried) console.info('[bg] OPENAI_RETRIED', JSON.stringify({ finalStatus: resp.status, elapsed_ms: Date.now() - t0 }))
 
     if (!resp.ok) {
-      console.error('[bg] OPENAI_ERROR', JSON.stringify({ status: resp.status, body: rawBody.slice(0, 300) }))
+      console.error('[bg] OPENAI_ERROR', JSON.stringify({ status: resp.status, body: resp.body.slice(0, 300) }))
       if (resp.status === 429) {
         await failJob(sb, jobId, 'openai_quota', 'Quota OpenAI wyczerpana.')
       } else {
-        await failJob(sb, jobId, 'provider_error', `OpenAI ${resp.status}: ${rawBody.slice(0, 200)}`)
+        await failJob(sb, jobId, 'provider_error', `OpenAI ${resp.status}: ${resp.body.slice(0, 200)}`)
       }
       return { statusCode: 200, body: 'openai error' }
     }
 
-    console.info('[bg] OPENAI_OK', JSON.stringify({ rawLen: rawBody.length, elapsed_ms: Date.now() - t0 }))
+    console.info('[bg] OPENAI_OK', JSON.stringify({ rawLen: resp.body.length, elapsed_ms: Date.now() - t0 }))
 
-    const data = JSON.parse(rawBody) as ResponsesAPIResult
+    const data = JSON.parse(resp.body) as ResponsesAPIResult
     const aiRaw = data.output?.[0]?.content?.find(c => c.type === 'output_text')?.text ?? '{}'
 
     // ── Parse & normalize ─────────────────────────────────────────────────

@@ -760,33 +760,26 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
   content.push({ type: 'input_text', text: contextText })
 
-  // ── Call OpenAI ─────────────────────────────────────────────────────────
+  // ── Call OpenAI (with retry) ─────────────────────────────────────────────
 
   let aiRaw: string
   try {
-    const resp = await fetch('https://api.openai.com/v1/responses', {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        instructions: INSTRUCTIONS,
-        input: [{ role: 'user', content }],
-        text:  { format: ROOM_ANALYSIS_SCHEMA_FORMAT },
-        max_output_tokens: 6_000,
-      }),
-    })
+    const { callOpenAIWithRetry } = await import('./shared/openai-retry')
+    const resp = await callOpenAIWithRetry({
+      apiKey, model, instructions: INSTRUCTIONS,
+      input: [{ role: 'user', content }],
+      text: { format: ROOM_ANALYSIS_SCHEMA_FORMAT },
+      max_output_tokens: 6_000,
+    }, 'analyze-room-photo')
 
-    const rawBody = await resp.text()
+    if (resp.retried) console.info('PROVIDER_RETRIED', JSON.stringify({ finalStatus: resp.status, elapsed_ms: Date.now() - t0 }))
 
     if (!resp.ok) {
       if (resp.status === 429) return err(429, 'openai_quota_exceeded', 'OpenAI quota exceeded')
-      throw new Error(`OpenAI ${resp.status}: ${rawBody.slice(0, 300)}`)
+      throw new Error(`OpenAI ${resp.status}: ${resp.body.slice(0, 300)}`)
     }
 
-    const data = JSON.parse(rawBody) as ResponsesAPIResult
+    const data = JSON.parse(resp.body) as ResponsesAPIResult
     aiRaw = data.output?.[0]?.content?.find(c => c.type === 'output_text')?.text ?? '{}'
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)

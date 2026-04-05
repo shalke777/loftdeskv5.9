@@ -473,28 +473,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
     })
   }
 
-  // ── Call OpenAI Responses API ─────────────────────────────────────────────
+  // ── Call OpenAI Responses API (with retry) ──────────────────────────────────
 
   let aiRaw: string
   try {
-    const resp = await fetch('https://api.openai.com/v1/responses', {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        instructions: INSTRUCTIONS,
-        input: [{ role: 'user', content }],
-        // FIX 1: text.format must include type:'json_schema' as a top-level property
-        // FIX 4: name/strict/schema must be nested under json_schema key
-        text:  { format: INVOICE_SCHEMA_FORMAT },
-        max_output_tokens: 4_000,
-      }),
-    })
+    const { callOpenAIWithRetry } = await import('./shared/openai-retry')
+    const resp = await callOpenAIWithRetry({
+      apiKey, model, instructions: INSTRUCTIONS,
+      input: [{ role: 'user', content }],
+      text: { format: INVOICE_SCHEMA_FORMAT },
+      max_output_tokens: 4_000,
+    }, 'parse-invoice-ai')
 
-    const rawBody = await resp.text()
+    if (resp.retried) console.info('OPENAI_RETRIED', JSON.stringify({ model, docKind, elapsed_ms: Date.now() - t0 }))
 
     // ── DIAGNOSTIC LOG ──────────────────────────────────────────────────────
     if (resp.ok) {
@@ -502,7 +493,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
         model,
         status:     resp.status,
         ok:         true,
-        bodyLength: rawBody.length,
+        bodyLength: resp.body.length,
         docKind,
       }))
     } else {
@@ -511,15 +502,15 @@ export const handler: Handler = async (event: HandlerEvent) => {
         status:       resp.status,
         ok:           false,
         docKind,
-        bodyPreview:  rawBody.slice(0, 300),
+        bodyPreview:  resp.body.slice(0, 300),
       }))
     }
 
     if (!resp.ok) {
       let oaiErr: Record<string, unknown> = {}
-      try { oaiErr = JSON.parse(rawBody) as Record<string, unknown> } catch { /* noop */ }
+      try { oaiErr = JSON.parse(resp.body) as Record<string, unknown> } catch { /* noop */ }
       const errObj    = oaiErr.error as Record<string, unknown> | undefined
-      const errDetail = errObj?.message ?? errObj?.code ?? rawBody.slice(0, 200)
+      const errDetail = errObj?.message ?? errObj?.code ?? resp.body.slice(0, 200)
 
       // Propagate quota/billing errors with a meaningful status (not 502)
       if (resp.status === 429) {
@@ -531,7 +522,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
       throw new Error(`OpenAI ${resp.status}: ${String(errDetail)}`)
     }
 
-    const data = JSON.parse(rawBody) as ResponsesAPIResult
+    const data = JSON.parse(resp.body) as ResponsesAPIResult
     const requestId = resp.headers.get('x-request-id') ?? resp.headers.get('cf-ray') ?? null
     console.info('OPENAI_PROVIDER_CONFIRM', JSON.stringify({
       requestedModel: model,
