@@ -95,7 +95,7 @@ export function AiTypeChooserPage() {
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '8px 14px', borderRadius: 8,
             background: 'var(--color-primary-soft, rgba(37,99,235,0.06))',
-            border: '1px solid var(--color-primary, var(--color-info))',
+            border: '1px solid var(--color-primary)',
             fontSize: 13,
           }}>
             <span>📂</span>
@@ -106,7 +106,7 @@ export function AiTypeChooserPage() {
               type="button"
               onClick={() => setStep('project')}
               style={{
-                marginLeft: 'auto', fontSize: 12, color: 'var(--color-primary, var(--color-info))',
+                marginLeft: 'auto', fontSize: 12, color: 'var(--color-primary)',
                 background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline',
               }}
             >

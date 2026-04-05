@@ -257,14 +257,14 @@ export function KsefPage() {
     padding: '10px 20px',
     fontSize: 13,
     fontWeight: activeTab === tab ? 700 : 400,
-    borderBottom: activeTab === tab ? '2px solid var(--color-primary, var(--color-brand))' : '2px solid transparent',
+    borderBottom: activeTab === tab ? '2px solid var(--color-primary)' : '2px solid transparent',
     background: 'none',
     border: 'none',
     borderBottomWidth: 2,
     borderBottomStyle: 'solid' as const,
-    borderBottomColor: activeTab === tab ? 'var(--color-primary, var(--color-brand))' : 'transparent',
+    borderBottomColor: activeTab === tab ? 'var(--color-primary)' : 'transparent',
     cursor: 'pointer' as const,
-    color: activeTab === tab ? 'var(--color-primary, var(--color-brand))' : 'var(--color-text-muted)',
+    color: activeTab === tab ? 'var(--color-primary)' : 'var(--color-text-muted)',
   })
 
   return (

@@ -185,7 +185,7 @@ export function AiErrorState({
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>⚠️</span>
         <div style={{ flex: 1 }}>
-          <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: 'var(--color-danger, var(--color-error))' }}>
+          <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: 'var(--color-danger)' }}>
             {cat.title}
           </p>
           <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>
@@ -507,7 +507,7 @@ export function AiProjectContextBadge({ projectNumber, projectName, onChangeProj
           type="button"
           onClick={onChangeProject}
           style={{
-            marginLeft: 'auto', fontSize: 11, color: 'var(--color-primary, var(--color-info))',
+            marginLeft: 'auto', fontSize: 11, color: 'var(--color-primary)',
             background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline',
           }}
         >

@@ -58,22 +58,22 @@ export function BathroomClarificationForm({ photoCount, roomType, onSubmit, onSk
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '8px 10px', fontSize: 14,
-    background: 'var(--color-bg-input, var(--color-text-primary))', color: 'var(--color-text-primary, var(--color-border))',
+    background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
     border: '1px solid var(--color-border, rgba(30,29,24,0.15))', borderRadius: 8,
   }
 
   const labelStyle: React.CSSProperties = {
     display: 'block', fontSize: 12, fontWeight: 600,
-    color: 'var(--color-text-secondary, var(--color-text-muted))', marginBottom: 4,
+    color: 'var(--color-text-secondary)', marginBottom: 4,
   }
 
   const chipStyle = (active: boolean): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: 4,
     padding: '6px 12px', fontSize: 12, fontWeight: 500, borderRadius: 8,
     cursor: disabled ? 'default' : 'pointer', transition: 'all .15s',
-    background: active ? 'var(--color-primary-soft, rgba(59,130,246,.15))' : 'var(--color-bg-input, var(--color-text-primary))',
-    color: active ? 'var(--color-primary, var(--color-info))' : 'var(--color-text-secondary, var(--color-text-muted))',
-    border: `1px solid ${active ? 'var(--color-primary, var(--color-info))' : 'var(--color-border, rgba(30,29,24,0.15))'}`,
+    background: active ? 'var(--color-primary-soft, rgba(59,130,246,.15))' : 'var(--color-bg-input)',
+    color: active ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+    border: `1px solid ${active ? 'var(--color-primary)' : 'var(--color-border, rgba(30,29,24,0.15))'}`,
   })
 
   const roomLabel = roomType ? getRoomTypeName(roomType) : 'łazienki'
@@ -82,7 +82,7 @@ export function BathroomClarificationForm({ photoCount, roomType, onSubmit, onSk
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 24, maxWidth: 440, margin: '0 auto' }}>
       <div style={{ textAlign: 'center', marginBottom: 4 }}>
         <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>🔍 Szczegóły {roomLabel}</p>
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted, var(--color-text-muted))' }}>
+        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
           Opcjonalne — pomaga AI lepiej dopasować zakres prac. {photoCount} {photoCount === 1 ? 'zdjęcie' : 'zdjęć'} gotowe.
         </p>
       </div>

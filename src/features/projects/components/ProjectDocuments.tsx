@@ -198,8 +198,8 @@ export function ProjectDocuments({
               onClick={onCreateEstimate}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '7px 14px', borderRadius: 8, border: '1px dashed var(--color-brand, var(--color-brand))',
-                background: 'rgba(26,92,50,0.07)', color: 'var(--color-brand, var(--color-brand))',
+                padding: '7px 14px', borderRadius: 8, border: '1px dashed var(--color-brand)',
+                background: 'rgba(26,92,50,0.07)', color: 'var(--color-brand)',
                 fontSize: 13, fontWeight: 600, cursor: 'pointer', width: 'fit-content',
               }}
             >
@@ -335,7 +335,7 @@ export function ProjectDocuments({
                   <Button
                     variant="ghost"
                     size="sm"
-                    style={confirmDeleteId === doc.id ? { color: 'var(--color-danger, var(--color-error))' } : {}}
+                    style={confirmDeleteId === doc.id ? { color: 'var(--color-danger)' } : {}}
                     disabled={isDeleting}
                     onClick={() => {
                       if (confirmDeleteId === doc.id) {
@@ -361,7 +361,7 @@ export function ProjectDocuments({
         if (flags.has_estimate && !flags.has_contract && onCreateContract) {
           return (
             <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--color-surface-soft)' }}>
-              <p style={{ fontSize: 12, color: 'var(--color-text-secondary, var(--color-text-muted))', margin: '0 0 6px' }}>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 6px' }}>
                 Następny krok: utwórz umowę na podstawie wyceny
               </p>
               <button
@@ -369,8 +369,8 @@ export function ProjectDocuments({
                 onClick={onCreateContract}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '7px 14px', borderRadius: 8, border: '1px dashed var(--color-brand, var(--color-brand))',
-                  background: 'rgba(26,92,50,0.07)', color: 'var(--color-brand, var(--color-brand))',
+                  padding: '7px 14px', borderRadius: 8, border: '1px dashed var(--color-brand)',
+                  background: 'rgba(26,92,50,0.07)', color: 'var(--color-brand)',
                   fontSize: 13, fontWeight: 600, cursor: 'pointer',
                 }}
               >
@@ -382,7 +382,7 @@ export function ProjectDocuments({
         if (flags.has_contract && !flags.has_invoice && onCreateInvoice) {
           return (
             <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--color-surface-soft)' }}>
-              <p style={{ fontSize: 12, color: 'var(--color-text-secondary, var(--color-text-muted))', margin: '0 0 6px' }}>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 6px' }}>
                 Następny krok: wygeneruj fakturę do umowy
               </p>
               <button
@@ -390,8 +390,8 @@ export function ProjectDocuments({
                 onClick={onCreateInvoice}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '7px 14px', borderRadius: 8, border: '1px dashed var(--color-brand, var(--color-brand))',
-                  background: 'rgba(26,92,50,0.07)', color: 'var(--color-brand, var(--color-brand))',
+                  padding: '7px 14px', borderRadius: 8, border: '1px dashed var(--color-brand)',
+                  background: 'rgba(26,92,50,0.07)', color: 'var(--color-brand)',
                   fontSize: 13, fontWeight: 600, cursor: 'pointer',
                 }}
               >

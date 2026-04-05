@@ -271,7 +271,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
         return (
           <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 8, flexWrap: 'wrap' }}>
             <span>Dopasowanie do katalogu:</span>
-            {strong > 0 && <span style={{ color: 'var(--color-success, var(--color-brand))' }}>📚 {strong} pewnych</span>}
+            {strong > 0 && <span style={{ color: 'var(--color-success)' }}>📚 {strong} pewnych</span>}
             {partial > 0 && <span style={{ color: 'var(--color-accent)' }}>📚? {partial} częściowych</span>}
             {unmatched > 0 && <span style={{ color: 'var(--color-text-muted)' }}>✍️ {unmatched} własnych</span>}
           </div>
@@ -307,7 +307,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                           {(() => {
                             const globalIdx = items.indexOf(item)
                             const mr = matchResults.get(globalIdx)
-                            if (mr?.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name} (${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, var(--color-success-soft))', color: 'var(--color-success, var(--color-brand))', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
+                            if (mr?.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name} (${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft)', color: 'var(--color-success)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
                             if (mr?.best?.tier === 'partial') return (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                                 <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%, ${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: 'var(--color-accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
@@ -319,7 +319,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                                 <span title={`Brak dopasowania. Sugestie: ${mr.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(229,115,115,0.08)', color: 'var(--color-error)', fontWeight: 600, whiteSpace: 'nowrap' }}>❌ uzupełnij</span>
                               </span>
                             )
-                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, var(--color-surface-soft))', color: 'var(--color-text-tertiary, var(--color-text-muted))', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️ własna</span>
+                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft)', color: 'var(--color-text-tertiary)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️ własna</span>
                           })()}
                         </span>
                         {catName && (
@@ -412,8 +412,8 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             width: '100%', padding: '12px 20px', fontSize: 14, fontWeight: 700,
             color: isBlocked ? 'var(--color-text-muted)' : transferring ? 'var(--color-text-muted)' : '#fff',
-            background: isBlocked ? 'var(--color-surface-soft)' : transferring ? 'var(--color-surface-soft)' : 'var(--color-primary, var(--color-info))',
-            border: `1px solid ${isBlocked || transferring ? 'var(--color-border)' : 'var(--color-primary, var(--color-info))'}`,
+            background: isBlocked ? 'var(--color-surface-soft)' : transferring ? 'var(--color-surface-soft)' : 'var(--color-primary)',
+            border: `1px solid ${isBlocked || transferring ? 'var(--color-border)' : 'var(--color-primary)'}`,
             borderRadius: 10,
             cursor: (transferring || isBlocked) ? 'not-allowed' : 'pointer', transition: 'background 0.15s, transform 0.1s',
             opacity: (transferring || isBlocked) ? 0.55 : 1,
@@ -437,7 +437,7 @@ function CoverageBar({ coverage }: { coverage: CoverageResult }) {
   const label = pct >= 80 ? 'Dobra' : pct >= 50 ? 'Częściowa' : 'Niska'
 
   return (
-    <div style={{ marginBottom: 10, padding: '6px 10px', borderRadius: 6, background: 'var(--color-surface-soft, var(--color-text-primary))', border: '1px solid var(--color-border)' }}>
+    <div style={{ marginBottom: 10, padding: '6px 10px', borderRadius: 6, background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, marginBottom: 4 }}>
         <span style={{ color: 'var(--color-text-secondary)' }}>
           Pokrycie obowiązkowych pozycji
@@ -615,7 +615,7 @@ function QuestionAnswerRow({
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {question.options!.map(opt => (
                 <button key={opt} type="button" onClick={() => submit(opt)}
-                  style={makeBtn('var(--color-primary, var(--color-info))', 'rgba(45,125,210,0.08)')}>
+                  style={makeBtn('var(--color-primary)', 'rgba(45,125,210,0.08)')}>
                   {opt}
                 </button>
               ))}
@@ -627,7 +627,7 @@ function QuestionAnswerRow({
                 onKeyDown={e => e.key === 'Enter' && draft.trim() && submit(Number(draft))}
                 style={{ ...inputCss, width: 80 }} placeholder="np. 12" />
               <button type="button" onClick={() => draft.trim() && submit(Number(draft))}
-                style={makeBtn('var(--color-primary, var(--color-info))', 'rgba(45,125,210,0.08)')}>OK</button>
+                style={makeBtn('var(--color-primary)', 'rgba(45,125,210,0.08)')}>OK</button>
             </div>
           )}
           {question.answerType === 'text' && (
@@ -635,7 +635,7 @@ function QuestionAnswerRow({
               <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={2}
                 style={{ ...inputCss, flex: 1, resize: 'vertical', minHeight: 44 }} placeholder="Opisz…" />
               <button type="button" onClick={() => draft.trim() && submit(draft.trim())}
-                style={makeBtn('var(--color-primary, var(--color-info))', 'rgba(45,125,210,0.08)')}>OK</button>
+                style={makeBtn('var(--color-primary)', 'rgba(45,125,210,0.08)')}>OK</button>
             </div>
           )}
         </div>

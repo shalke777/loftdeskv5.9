@@ -359,7 +359,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .empty-state { text-align: center; padding: 36px; color: var(--color-text-secondary); }
 .spinner { width: 32px; height: 32px; border-radius: 999px; border: 3px solid var(--color-border); border-top-color: var(--color-brand); animation: spin .8s linear infinite; }
 
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: grid; place-items: center; padding: 20px; padding-top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px)); z-index: 40; backdrop-filter: blur(6px); overscroll-behavior: contain; overflow: auto; }
+.modal-backdrop { position: fixed; inset: 0; background: var(--overlay-medium); display: grid; place-items: center; padding: 20px; padding-top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px)); z-index: 40; backdrop-filter: blur(6px); overscroll-behavior: contain; overflow: auto; }
 .modal { width: min(780px, 100%); background: var(--color-card); border-radius: var(--radius-xl, 14px); overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--color-border); margin-block: auto; }
 .modal--md { width: min(640px, 100%); background: var(--color-card); border: 1px solid var(--color-border); }
 .modal--lg { width: min(880px, 100%); background: var(--color-card); border: 1px solid var(--color-border); }
@@ -541,7 +541,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .legal-gate__backdrop {
   position: fixed; inset: 0; z-index: 9000;
-  background: rgba(0, 0, 0, 0.72);
+  background: var(--overlay-heavy);
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
   backdrop-filter: blur(4px);

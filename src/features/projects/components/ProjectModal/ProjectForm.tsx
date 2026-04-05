@@ -61,12 +61,12 @@ export function ProjectForm({ companyId, onSubmit, initialProject }: { companyId
         <button
           type="button"
           onClick={() => setShowNewClient(v => !v)}
-          style={{ fontSize: 12, color: 'var(--color-brand, var(--color-brand))', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: '2px 0', marginTop: 2, width: 'fit-content' }}
+          style={{ fontSize: 12, color: 'var(--color-brand)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: '2px 0', marginTop: 2, width: 'fit-content' }}
         >
           {showNewClient ? '↑ Zamknij' : '+ Dodaj nowego klienta'}
         </button>
         {showNewClient && (
-          <div style={{ display: 'grid', gap: 8, marginTop: 8, padding: 12, background: 'var(--color-surface-raised, var(--color-surface))', border: '1px solid var(--color-border)', borderRadius: 8 }}>
+          <div style={{ display: 'grid', gap: 8, marginTop: 8, padding: 12, background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', borderRadius: 8 }}>
             <Input label="Nazwa klienta *" value={ncName} onChange={(e) => setNcName(e.target.value)} />
             <Input label="E-mail" value={ncEmail} onChange={(e) => setNcEmail(e.target.value)} />
             <Input label="Telefon" value={ncPhone} onChange={(e) => setNcPhone(e.target.value)} />

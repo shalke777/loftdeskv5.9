@@ -16,9 +16,9 @@ const STATUS_LABEL: Record<AiAnalysisRun['status'], string> = {
 
 const STATUS_COLOR: Record<AiAnalysisRun['status'], string> = {
   draft:      'var(--color-text-secondary)',
-  processing: 'var(--color-warning, var(--color-accent))',
-  completed:  'var(--color-success, var(--color-brand))',
-  failed:     'var(--color-danger, var(--color-error))',
+  processing: 'var(--color-warning)',
+  completed:  'var(--color-success)',
+  failed:     'var(--color-danger)',
 }
 
 const ROOM_LABEL: Record<AiAnalysisRun['room_type'], string> = {
@@ -64,7 +64,7 @@ export function AiRunsList({ runs, selectedRunId, onSelect, statsMap = {} }: Pro
               padding:      '8px 12px',
               borderRadius:  8,
               border:       `1px solid ${isSelected ? 'var(--color-brand)' : 'var(--color-border)'}`,
-              background:    isSelected ? 'var(--color-brand-subtle, var(--color-info-soft))' : 'transparent',
+              background:    isSelected ? 'var(--color-brand-subtle)' : 'transparent',
               cursor:       'pointer',
               display:      'flex',
               justifyContent: 'space-between',
@@ -85,8 +85,8 @@ export function AiRunsList({ runs, selectedRunId, onSelect, statsMap = {} }: Pro
                   <span
                     style={{
                       fontSize:     11,
-                      color:        'var(--color-success, var(--color-brand))',
-                      background:   'var(--color-success-subtle, var(--color-success-soft))',
+                      color:        'var(--color-success)',
+                      background:   'var(--color-success-subtle)',
                       borderRadius:  4,
                       padding:      '1px 6px',
                       whiteSpace:   'nowrap',
@@ -99,7 +99,7 @@ export function AiRunsList({ runs, selectedRunId, onSelect, statsMap = {} }: Pro
                       style={{
                         fontSize:     11,
                         color:        'var(--color-brand)',
-                        background:   'var(--color-brand-subtle, var(--color-info-soft))',
+                        background:   'var(--color-brand-subtle)',
                         borderRadius:  4,
                         padding:      '1px 6px',
                         whiteSpace:   'nowrap',

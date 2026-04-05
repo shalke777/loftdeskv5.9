@@ -271,7 +271,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           {item.name}
                           {item.catalog_item_id && (
-                            <span title="Z katalogu usług" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 4, background: 'var(--color-success-soft, var(--color-success-soft))', color: 'var(--color-success, var(--color-brand))', whiteSpace: 'nowrap' }}>📚</span>
+                            <span title="Z katalogu usług" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 4, background: 'var(--color-success-soft)', color: 'var(--color-success)', whiteSpace: 'nowrap' }}>📚</span>
                           )}
                         </span>
                       </td>

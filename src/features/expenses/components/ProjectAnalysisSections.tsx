@@ -384,7 +384,7 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
                             if (!catalog?.length) return null
                             const matchResult = matchCatalogItem(item.name, catalog)
                             if (matchResult.best && matchResult.best.tier === 'strong') {
-                              return <span title={`Katalog: ${matchResult.best.canonical_name} (${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, var(--color-success-soft))', color: 'var(--color-success, var(--color-brand))', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
+                              return <span title={`Katalog: ${matchResult.best.canonical_name} (${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft)', color: 'var(--color-success)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
                             }
                             if (matchResult.best && matchResult.best.tier === 'partial') {
                               return (
@@ -397,7 +397,7 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
                             if (matchResult.alternatives.length > 0) {
                               return <span title={`Brak dopasowania. Sugestie: ${matchResult.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(229,115,115,0.08)', color: 'var(--color-error)', fontWeight: 600, whiteSpace: 'nowrap' }}>❌ uzupełnij</span>
                             }
-                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, var(--color-surface-soft))', color: 'var(--color-text-tertiary, var(--color-text-muted))', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️ własna</span>
+                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft)', color: 'var(--color-text-tertiary)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️ własna</span>
                           })()}
                         </span>
                         {item.notes && (
@@ -468,8 +468,8 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             width: '100%', padding: '12px 20px', fontSize: 14, fontWeight: 700,
             color: isBlocked ? 'var(--color-text-muted)' : transferring ? 'var(--color-text-muted)' : '#fff',
-            background: isBlocked ? 'var(--color-surface-soft)' : transferring ? 'var(--color-surface-soft)' : 'var(--color-primary, var(--color-info))',
-            border: `1px solid ${isBlocked || transferring ? 'var(--color-border)' : 'var(--color-primary, var(--color-info))'}`,
+            background: isBlocked ? 'var(--color-surface-soft)' : transferring ? 'var(--color-surface-soft)' : 'var(--color-primary)',
+            border: `1px solid ${isBlocked || transferring ? 'var(--color-border)' : 'var(--color-primary)'}`,
             borderRadius: 10,
             cursor: (transferring || isBlocked) ? 'not-allowed' : 'pointer', transition: 'background 0.15s',
             opacity: (transferring || isBlocked) ? 0.55 : 1,
@@ -507,7 +507,7 @@ export function ProjectTransparencySection({
         <div style={{
           marginBottom: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12,
           background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-          color: 'var(--color-danger, var(--color-error))',
+          color: 'var(--color-danger)',
         }}>
           {warnings.map((w, i) => <div key={i}>⚠️ {w}</div>)}
         </div>

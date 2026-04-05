@@ -98,7 +98,7 @@ export function WelcomeBanner({ companyName, onDismiss }: Props) {
           <Button
             onClick={() => navigate({ to: '/onboarding' })}
             icon={<ArrowRight size={15} />}
-            style={{ background: 'white', color: 'var(--color-brand)', fontWeight: 700 }}
+            style={{ background: 'var(--color-card)', color: 'var(--color-brand)', fontWeight: 700 }}
           >
             Otwórz przewodnik uruchomienia
           </Button>

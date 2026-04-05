@@ -128,7 +128,7 @@ export function BillingPage() {
 
       {/* Past-due or unpaid — high-urgency alert */}
       {isPastDue && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '12px 16px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 10, fontSize: 13 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '12px 16px', background: 'var(--color-error-soft)', border: '1px solid var(--color-error)', borderRadius: 10, fontSize: 13 }}>
           <AlertTriangle size={16} color="var(--color-error)" style={{ flexShrink: 0 }} />
           <span style={{ flex: 1, color: 'var(--color-error)' }}>
             <strong>Płatność nie powiodła się.</strong> Zaktualizuj metodę płatności, aby uniknąć przerwy w dostępie.
@@ -143,7 +143,7 @@ export function BillingPage() {
 
       {/* Canceled — softer info */}
       {isCanceled && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '12px 16px', background: 'rgba(212,150,10,0.12)', border: '1px solid rgba(212,150,10,0.30)', borderRadius: 10, fontSize: 13 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '12px 16px', background: 'var(--color-warning-soft)', border: '1px solid var(--color-warning)', borderRadius: 10, fontSize: 13 }}>
           <Clock size={16} color="var(--color-error)" style={{ flexShrink: 0 }} />
           <span style={{ flex: 1, color: 'var(--color-accent)' }}>
             Subskrypcja została anulowana. Dostęp do funkcji premium wygasł.
@@ -218,12 +218,12 @@ export function BillingPage() {
                     {renderLimit(limit, used)}
                   </span>
                 </div>
-                <div style={{ height: 6, borderRadius: 999, background: 'rgba(30,29,24,0.15)', overflow: 'hidden' }}>
+                <div style={{ height: 6, borderRadius: 999, background: 'var(--color-muted)', overflow: 'hidden' }}>
                   <div
                     style={{
                       width: pct === null ? '4%' : `${Math.min(pct, 100)}%`,
                       height: '100%',
-                      background: pct !== null && pct >= 100 ? 'var(--color-error)' : warn ? 'var(--color-accent)' : 'var(--color-brand, var(--color-brand))',
+                      background: pct !== null && pct >= 100 ? 'var(--color-error)' : warn ? 'var(--color-accent)' : 'var(--color-brand)',
                       transition: 'width 0.4s ease',
                     }}
                   />
@@ -296,7 +296,7 @@ export function BillingPage() {
               <Card
                 key={plan.id}
                 style={{
-                  border: isActive ? '2px solid var(--color-brand, var(--color-brand))' : undefined,
+                  border: isActive ? '2px solid var(--color-brand)' : undefined,
                   position: 'relative',
                 }}
               >
@@ -329,7 +329,7 @@ export function BillingPage() {
                 <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', display: 'grid', gap: 6 }}>
                   {plan.features.map((feature) => (
                     <li key={feature} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                      <CheckCircle2 size={14} color="var(--color-success, var(--color-brand))" style={{ flexShrink: 0 }} />
+                      <CheckCircle2 size={14} color="var(--color-success)" style={{ flexShrink: 0 }} />
                       {feature}
                     </li>
                   ))}

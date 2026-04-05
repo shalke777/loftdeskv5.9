@@ -341,7 +341,7 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
               <Button
                 variant="ghost"
                 size="sm"
-                style={{ color: 'var(--color-danger, var(--color-error))' }}
+                style={{ color: 'var(--color-danger)' }}
                 loading={revoke.isPending}
                 onClick={() => void handleRevoke()}
               >
@@ -430,7 +430,7 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
           disabled={mode === 'sending'}
         />
         {mode === 'failed' && errorMsg && (
-          <div style={{ fontSize: 12, color: 'var(--color-error, var(--color-error))', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 6, padding: '8px 12px' }}>
+          <div style={{ fontSize: 12, color: 'var(--color-error)', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 6, padding: '8px 12px' }}>
             ⚠️ {errorMsg}{' '}
             <button
               style={{ background: 'none', border: 'none', color: 'var(--color-error)', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: 12 }}

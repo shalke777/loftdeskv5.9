@@ -744,7 +744,7 @@ export function ExpensesPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {displayLineItems.slice(0, 10).map((item, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '5px 8px', background: 'var(--color-surface-2, var(--color-surface))', borderRadius: 5, border: '1px solid var(--color-border)' }}>
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '5px 8px', background: 'var(--color-surface-2)', borderRadius: 5, border: '1px solid var(--color-border)' }}>
                       <span style={{ color: 'var(--color-text)', flex: 1, marginRight: 8 }}>{item.name ?? '—'}</span>
                       <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>
                         {item.gross_amount != null ? item.gross_amount.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' zł' : '—'}
@@ -879,7 +879,7 @@ export function ExpensesPage() {
 
             {/* Currency notice — shown only when a non-PLN currency was extracted from document */}
             {modal.type === 'add' && form.currency && form.currency !== 'PLN' && (
-              <div style={{ fontSize: 12, color: 'var(--color-warning, var(--color-accent))', background: 'var(--color-warning-bg, var(--color-warning-soft))', border: '1px solid var(--color-warning-border, var(--color-warning-soft))', borderRadius: 6, padding: '6px 10px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 12, color: 'var(--color-warning)', background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-border)', borderRadius: 6, padding: '6px 10px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <AlertTriangle size={12} style={{ flexShrink: 0 }} />
                 Waluta faktury: <strong>{form.currency}</strong> — kwoty mogą nie być w PLN
               </div>
@@ -892,12 +892,12 @@ export function ExpensesPage() {
                   Nabywca (z dokumentu)
                 </div>
                 {displayBuyerName && (
-                  <div style={{ fontSize: 13, color: 'var(--color-text)', padding: '6px 10px', background: 'var(--color-surface-2, var(--color-surface))', borderRadius: 6, border: '1px solid var(--color-border)', marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, color: 'var(--color-text)', padding: '6px 10px', background: 'var(--color-surface-2)', borderRadius: 6, border: '1px solid var(--color-border)', marginBottom: 4 }}>
                     {displayBuyerName}
                   </div>
                 )}
                 {displayBuyerNip && (
-                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', padding: '4px 10px', background: 'var(--color-surface-2, var(--color-surface))', borderRadius: 6, border: '1px solid var(--color-border)' }}>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', padding: '4px 10px', background: 'var(--color-surface-2)', borderRadius: 6, border: '1px solid var(--color-border)' }}>
                     NIP: {displayBuyerNip}
                   </div>
                 )}

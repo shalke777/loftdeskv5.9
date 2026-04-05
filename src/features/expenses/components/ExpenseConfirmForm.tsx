@@ -182,7 +182,7 @@ export function ExpenseConfirmForm({
   // Returns extra style for autofilled inputs (subtle left-border tint)
   function autoStyle(field: keyof FormState): React.CSSProperties {
     return autofilled.has(field)
-      ? { ...inputStyle, borderLeftColor: 'var(--color-success, var(--color-brand))', borderLeftWidth: 3 }
+      ? { ...inputStyle, borderLeftColor: 'var(--color-success)', borderLeftWidth: 3 }
       : inputStyle
   }
 
@@ -259,12 +259,12 @@ export function ExpenseConfirmForm({
           Nabywca (z dokumentu)
         </legend>
         {parseResult.document_fields?.buyer_name && (
-          <div style={{ fontSize: 13, color: 'var(--color-text)', padding: '6px 10px', background: 'var(--color-surface-2, var(--color-surface))', borderRadius: 6, border: '1px solid var(--color-border)' }}>
+          <div style={{ fontSize: 13, color: 'var(--color-text)', padding: '6px 10px', background: 'var(--color-surface-2)', borderRadius: 6, border: '1px solid var(--color-border)' }}>
             {parseResult.document_fields.buyer_name}
           </div>
         )}
         {parseResult.document_fields?.buyer_nip && (
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', padding: '4px 10px', background: 'var(--color-surface-2, var(--color-surface))', borderRadius: 6, border: '1px solid var(--color-border)' }}>
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', padding: '4px 10px', background: 'var(--color-surface-2)', borderRadius: 6, border: '1px solid var(--color-border)' }}>
             NIP: {parseResult.document_fields.buyer_nip}
           </div>
         )}

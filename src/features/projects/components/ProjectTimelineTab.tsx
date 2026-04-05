@@ -33,7 +33,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '32px 0', color: 'var(--color-text-muted, var(--color-text-muted))', fontSize: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>
         <span className="spinner" style={{ width: 16, height: 16 }} />
         Ładowanie osi czasu…
       </div>
@@ -45,7 +45,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
   if (isError) {
     return (
       <div style={{ padding: '24px 0', textAlign: 'center' }}>
-        <p style={{ color: 'var(--color-danger, var(--color-error))', fontSize: 14 }}>
+        <p style={{ color: 'var(--color-danger)', fontSize: 14 }}>
           Nie udało się pobrać osi czasu.
         </p>
         <button type="button" className="btn btn-ghost" style={{ fontSize: 13, marginTop: 8 }} onClick={() => refetch()}>
@@ -65,7 +65,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
           padding:      '48px 24px',
           border:       '2px dashed var(--color-border, rgba(30,29,24,0.15))',
           borderRadius: 10,
-          color:        'var(--color-text-muted, var(--color-text-muted))',
+          color:        'var(--color-text-muted)',
         }}
       >
         <div style={{ fontSize: 40, marginBottom: 12 }}>🕒</div>
@@ -85,7 +85,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
           Oś czasu projektu
           {events.length > 0 && (
-            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: 'var(--color-text-muted, var(--color-text-muted))' }}>
+            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: 'var(--color-text-muted)' }}>
               ({events.length} zdarzeń)
             </span>
           )}
@@ -111,7 +111,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
           style={{
             textAlign:    'center',
             padding:      '32px 16px',
-            color:        'var(--color-text-muted, var(--color-text-muted))',
+            color:        'var(--color-text-muted)',
             fontSize:     13,
           }}
         >

@@ -604,7 +604,7 @@ export function ProjectAnalysisPage() {
                 <div style={{
                   padding: '12px 14px', borderRadius: 7, marginBottom: 8,
                   background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.3)',
-                  fontSize: 13, color: 'var(--color-danger, var(--color-error))',
+                  fontSize: 13, color: 'var(--color-danger)',
                 }}>
                   <strong>Błąd porównania:</strong> {comparisonError}
                   <div style={{ marginTop: 8 }}>

@@ -812,7 +812,7 @@ export function ClientProjectPage({ projectId }: Props) {
           style={{
             display: 'inline-block', marginTop: 16,
             padding: '10px 20px', borderRadius: 8,
-            background: 'var(--color-primary, var(--color-brand))', color: '#fff',
+            background: 'var(--color-primary)', color: '#fff',
             fontWeight: 600, fontSize: 14, textDecoration: 'none',
           }}
         >
