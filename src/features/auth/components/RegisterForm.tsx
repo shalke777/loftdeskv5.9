@@ -35,7 +35,7 @@ export function RegisterForm() {
 
   const finalizeInviteIfNeeded = async () => {
     const token = getPendingInviteToken()
-    if (!token) return '/dashboard'
+    if (!token) return '/onboarding'
     await settingsApi.acceptInvitation(token, email)
     clearPendingInviteToken()
     toast.success('Zaproszenie zaakceptowane', 'Nowe konto zostało przypięte do zaproszonej firmy.')

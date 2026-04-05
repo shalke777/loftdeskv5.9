@@ -10,6 +10,10 @@ import { QueryError } from '@/shared/ui/QueryError/QueryError'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
+import { WelcomeBanner } from '@/features/onboarding/components/WelcomeBanner'
+import { OnboardingChecklist } from '@/features/onboarding/components/OnboardingChecklist'
+import { useOnboardingProgress } from '@/features/onboarding/hooks/useOnboardingProgress'
+import { useLocalStorage } from '@/shared/hooks/useLocalStorage'
 
 const quickActions = [
   { icon: Users,        title: 'Nowy kontrahent',    sub: 'Dodaj klienta',  color: 'var(--color-brand)',   href: '/clients'   },
@@ -23,9 +27,14 @@ export function DashboardPage() {
   const companyId = useCompanyId()
   const canUsePortal = useFeatureAccess('portal')
   const { data, isLoading, isError, refetch } = useDashboardStats()
+  const { data: onboarding } = useOnboardingProgress()
+  const [bannerDismissed, setBannerDismissed] = useLocalStorage('loftdesk-welcome-dismissed', false)
 
   if (isLoading) return <Spinner />
   if (isError || !data) return <QueryError onRetry={() => refetch()} />
+
+  const showWelcome = !bannerDismissed && onboarding && (onboarding.isEmpty || !onboarding.isComplete)
+  const showChecklist = onboarding && !onboarding.isEmpty && !onboarding.isComplete
 
   const pipelineProjects: { id: string; name: string; number: string; status: string; clientName: string; contractValue: number; estimateValue: number; invoicedTotal: number; paidTotal: number; completeness_score?: number | null }[] = (data as any).pipelineProjects ?? []
 
@@ -38,6 +47,15 @@ export function DashboardPage() {
           {data.companyName || 'Twój LoftDesk'}
         </h1>
       </div>
+
+      {/* ── Onboarding: welcome banner + checklist ──────────────── */}
+      {showWelcome && (
+        <WelcomeBanner
+          companyName={data.companyName}
+          onDismiss={() => setBannerDismissed(true)}
+        />
+      )}
+      {showChecklist && <OnboardingChecklist />}
 
       {/* ── Hero money card ──────────────────────────────────────── */}
       <div className="hero-card" style={{
