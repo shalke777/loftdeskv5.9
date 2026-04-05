@@ -1,3 +1,4 @@
+import { CheckCircle2, Search, AlertTriangle, PenLine } from 'lucide-react'
 import type { ParseInvoiceResult } from '@/features/expenses/api/expenses.api'
 
 interface Props {
@@ -6,10 +7,10 @@ interface Props {
 }
 
 const CONFIG = {
-  high:    { icon: '✅', cls: 'exp-ocr-badge exp-ocr-badge--high',    label: 'Dane odczytane — sprawdź i zapisz' },
-  partial: { icon: '🔍', cls: 'exp-ocr-badge exp-ocr-badge--partial', label: 'Częściowe rozpoznanie — uzupełnij brakujące pola' },
-  weak:    { icon: '⚠️', cls: 'exp-ocr-badge exp-ocr-badge--partial', label: 'Słaby odczyt — sprawdź każde pole przed zapisem' },
-  empty:   { icon: '✏️', cls: 'exp-ocr-badge exp-ocr-badge--empty',   label: 'Wpisz dane ręcznie — brak wystarczającego odczytu' },
+  high:    { icon: <CheckCircle2 size={15} />,  cls: 'exp-ocr-badge exp-ocr-badge--high',    label: 'Dane odczytane — sprawdź i zapisz' },
+  partial: { icon: <Search size={15} />,        cls: 'exp-ocr-badge exp-ocr-badge--partial', label: 'Częściowe rozpoznanie — uzupełnij brakujące pola' },
+  weak:    { icon: <AlertTriangle size={15} />, cls: 'exp-ocr-badge exp-ocr-badge--partial', label: 'Słaby odczyt — sprawdź każde pole przed zapisem' },
+  empty:   { icon: <PenLine size={15} />,       cls: 'exp-ocr-badge exp-ocr-badge--empty',   label: 'Wpisz dane ręcznie — brak wystarczającego odczytu' },
 }
 
 export function ExpenseConfidenceBadge({ confidence, warnings }: Props) {

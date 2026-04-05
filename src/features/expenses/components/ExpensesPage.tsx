@@ -685,6 +685,7 @@ export function ExpensesPage() {
         <Modal
           open={true}
           title={modal.type === 'add' ? 'Dodaj fakturę kosztową' : 'Edytuj fakturę'}
+          size={modal.type === 'add' && modal.fileUrl ? 'xl' : 'lg'}
           onClose={() => {
             if (modal?.type === 'add' && modal.previewBlobUrl) URL.revokeObjectURL(modal.previewBlobUrl)
             setModal(null); setDuplicateWarning(null); setParseStatus(null); setOcrConfidence(null); setOcrParserSource(null); setOcrExtractionWarnings([])
@@ -697,7 +698,7 @@ export function ExpensesPage() {
                 {/\.pdf$/i.test(modal.fileName) ? (
                   // No iframe — Supabase URLs set X-Frame-Options/CSP
                   <div className="exp-pdf-preview-card">
-                    <span className="exp-pdf-preview-card__icon">&var(--color-info);</span>
+                    <span className="exp-pdf-preview-card__icon"><FileText size={28} /></span>
                     <div className="exp-pdf-preview-card__info">
                       <span className="exp-pdf-preview-card__name">{modal.fileName}</span>
                       <span className="exp-pdf-preview-card__meta">PDF</span>

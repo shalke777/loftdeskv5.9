@@ -2572,7 +2572,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   display: flex;
   gap: 20px;
   align-items: flex-start;
-  min-width: min(880px, 90vw);
+  width: 100%;
+  max-width: min(880px, calc(100vw - 48px));
 }
 
 .exp-modal-split__preview {

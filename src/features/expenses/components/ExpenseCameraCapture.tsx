@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { FileText, Home, Image, PenLine, Search } from 'lucide-react'
 import type { ExpenseSourceType } from '@/features/expenses/api/expenses.api'
 import { ROOM_TYPES } from '@/services/ai/room-types'
 import type { RoomTypeId } from '@/services/ai/room-types'
@@ -219,7 +220,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
             onClick={confirmRoomPhotos}
             style={{ flex: 2, fontSize: 14, padding: '12px 16px', fontWeight: 600 }}
           >
-            🔍 Analizuj {roomPhotos.length > 1 ? `(${roomPhotos.length} zdjęć)` : ''}
+            <Search size={14} /> Analizuj {roomPhotos.length > 1 ? `(${roomPhotos.length} zdjęć)` : ''}
           </button>
         </div>
 
@@ -315,7 +316,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
         onClick={() => galleryRef.current?.click()}
         style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', fontSize: 15, padding: '14px 20px' }}
       >
-        <span>🖼️</span> Wybierz z galerii
+        <span><Image size={16} /></span> Wybierz z galerii
       </button>
 
       {/* PDF */}
@@ -326,7 +327,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
         onClick={() => pdfRef.current?.click()}
         style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', fontSize: 15, padding: '14px 20px' }}
       >
-        <span>📄</span> Dodaj PDF
+        <span><FileText size={16} /></span> Dodaj PDF
       </button>
 
       <div style={{ margin: '4px 0', textAlign: 'center', fontSize: 12, color: 'var(--color-text-muted)' }}>
@@ -346,7 +347,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
         }}
         style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', fontSize: 15, padding: '14px 20px' }}
       >
-        <span>🏠</span> Analiza pomieszczenia (1–{MAX_ROOM_PHOTOS} zdjęć)
+        <span><Home size={16} /></span> Analiza pomieszczenia (1–{MAX_ROOM_PHOTOS} zdjęć)
       </button>
 
       {/* Manual entry — no file */}
@@ -357,7 +358,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
         onClick={() => onManual()}
         style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', fontSize: 14, padding: '12px 20px' }}
       >
-        <span>✏️</span> Wpisz ręcznie
+        <span><PenLine size={14} /></span> Wpisz ręcznie
       </button>
 
       {/* Hidden inputs */}

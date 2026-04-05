@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Building2, CalendarDays, FileText, Hash, Paperclip, Wallet } from 'lucide-react'
 import type { AnalysisResult } from '@/services/ai/analysis.types'
 
 const OCR_STEPS = [
@@ -74,7 +75,7 @@ export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
           padding: '14px 16px', background: 'var(--color-surface)', borderRadius: 6,
           border: '1px solid var(--color-border)',
         }}>
-          <span style={{ fontSize: 40, flexShrink: 0, lineHeight: 1 }}>📄</span>
+          <FileText size={28} style={{ flexShrink: 0, color: 'var(--color-text-muted)' }} />
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {file.name}
@@ -88,7 +89,7 @@ export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
 
       {file && !isImage && !isPDF && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 12, background: 'var(--color-surface)', borderRadius: 6 }}>
-          <span style={{ fontSize: 28 }}>📎</span>
+          <Paperclip size={18} style={{ color: 'var(--color-text-muted)' }} />
           <span style={{ fontSize: 13 }}>{file.name}</span>
         </div>
       )}
@@ -103,11 +104,11 @@ export function ExpensePreviewPane({ file, parseResult, parsing }: Props) {
 
       {parseResult && !parsing && (
         <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-          {parseResult.document_fields?.vendor_name && <div>🏢 <strong>{parseResult.document_fields.vendor_name}</strong></div>}
-          {parseResult.document_fields?.document_number && <div>🔢 {parseResult.document_fields.document_number}</div>}
-          {parseResult.document_fields?.issue_date && <div>📅 {parseResult.document_fields.issue_date}</div>}
+          {parseResult.document_fields?.vendor_name && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Building2 size={13} /> <strong>{parseResult.document_fields.vendor_name}</strong></div>}
+          {parseResult.document_fields?.document_number && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Hash size={13} /> {parseResult.document_fields.document_number}</div>}
+          {parseResult.document_fields?.issue_date && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><CalendarDays size={13} /> {parseResult.document_fields.issue_date}</div>}
           {parseResult.document_fields?.gross_amount != null && (
-            <div>💰 {parseResult.document_fields.gross_amount.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} {parseResult.document_fields.currency ?? 'PLN'}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Wallet size={13} /> {parseResult.document_fields.gross_amount.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} {parseResult.document_fields.currency ?? 'PLN'}</div>
           )}
         </div>
       )}
