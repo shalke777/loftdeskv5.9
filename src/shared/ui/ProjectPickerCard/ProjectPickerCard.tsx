@@ -46,7 +46,7 @@ export function ProjectPickerCard({
           <button
             type="button"
             onClick={onBack}
-            style={{ fontSize: 13, color: 'var(--color-text-muted, #6B7280)', background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ fontSize: 13, color: 'var(--color-text-muted, var(--color-text-muted))', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             {backLabel ?? '← Wróć'}
           </button>
@@ -61,7 +61,7 @@ export function ProjectPickerCard({
             Wybierz projekt
           </h3>
         </div>
-        <p style={{ fontSize: 13, color: 'var(--color-text-muted, #6B7280)', margin: '0 0 16px', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted, var(--color-text-muted))', margin: '0 0 16px', lineHeight: 1.5 }}>
           Wyniki analizy zostaną powiązane z wybranym projektem.
         </p>
 
@@ -69,12 +69,12 @@ export function ProjectPickerCard({
         {loading ? (
           <div style={emptyStyle}>
             <div style={spinnerStyle} />
-            <span style={{ color: 'var(--color-text-muted, #9CA3AF)', fontSize: 13 }}>Ładowanie projektów…</span>
+            <span style={{ color: 'var(--color-text-muted, var(--color-text-muted))', fontSize: 13 }}>Ładowanie projektów…</span>
           </div>
         ) : projects.length === 0 ? (
           <div style={emptyStyle}>
             <span style={{ fontSize: 28, opacity: 0.5 }}>📭</span>
-            <p style={{ color: 'var(--color-text-muted, #6B7280)', fontSize: 13, margin: '4px 0 0', textAlign: 'center' }}>
+            <p style={{ color: 'var(--color-text-muted, var(--color-text-muted))', fontSize: 13, margin: '4px 0 0', textAlign: 'center' }}>
               Brak projektów.<br />
               <span style={{ fontSize: 12 }}>Utwórz projekt w zakładce <strong>Projekty</strong>, aby korzystać z analizy AI.</span>
             </p>
@@ -95,7 +95,7 @@ export function ProjectPickerCard({
             {/* Project list */}
             <div style={listStyle}>
               {filtered.length === 0 ? (
-                <p style={{ fontSize: 13, color: 'var(--color-text-muted, #9CA3AF)', padding: '16px 0', textAlign: 'center' }}>
+                <p style={{ fontSize: 13, color: 'var(--color-text-muted, var(--color-text-muted))', padding: '16px 0', textAlign: 'center' }}>
                   Brak wyników dla „{search}"
                 </p>
               ) : filtered.map(p => {
@@ -108,21 +108,21 @@ export function ProjectPickerCard({
                     onClick={() => onSelect(p.id)}
                     style={{
                       ...itemStyle,
-                      borderColor: isSelected ? 'var(--color-primary, #2563EB)' : 'var(--color-border, #E5E7EB)',
+                      borderColor: isSelected ? 'var(--color-primary, var(--color-info))' : 'var(--color-border, var(--color-border))',
                       background: isSelected ? 'var(--color-primary-soft, rgba(37,99,235,0.06))' : 'var(--color-surface, #fff)',
-                      boxShadow: isSelected ? '0 0 0 2px var(--color-primary, #2563EB)' : 'none',
+                      boxShadow: isSelected ? '0 0 0 2px var(--color-primary, var(--color-info))' : 'none',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
                       <span style={{
                         width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                        border: isSelected ? '5px solid var(--color-primary, #2563EB)' : '2px solid var(--color-border-dark, #D1D5DB)',
+                        border: isSelected ? '5px solid var(--color-primary, var(--color-info))' : '2px solid var(--color-border-dark, var(--color-border))',
                         background: isSelected ? '#fff' : 'transparent',
                         boxSizing: 'border-box',
                       }} />
                       <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #6B7280)', fontVariantNumeric: 'tabular-nums' }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, var(--color-text-muted))', fontVariantNumeric: 'tabular-nums' }}>
                             {p.number}
                           </span>
                           <StatusDot status={p.status} />
@@ -131,7 +131,7 @@ export function ProjectPickerCard({
                           {p.name}
                         </div>
                         {addr && (
-                          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary, #9CA3AF)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary, var(--color-text-muted))', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             📍 {addr}
                           </div>
                         )}
@@ -156,7 +156,7 @@ export function ProjectPickerCard({
               onClick={onNext}
               style={{
                 ...ctaStyle,
-                background: selectedId ? 'var(--color-primary, #2563EB)' : 'var(--color-border-dark, #D1D5DB)',
+                background: selectedId ? 'var(--color-primary, var(--color-info))' : 'var(--color-border-dark, var(--color-border))',
                 cursor: selectedId ? 'pointer' : 'default',
               }}
             >
@@ -172,15 +172,15 @@ export function ProjectPickerCard({
 // ── Status dot ─────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
-  active: '#16a34a',
-  in_progress: '#2563EB',
-  completed: '#6B7280',
-  on_hold: '#B8742A',
-  draft: '#9CA3AF',
+  active: 'var(--color-brand)',
+  in_progress: 'var(--color-info)',
+  completed: 'var(--color-text-muted)',
+  on_hold: 'var(--color-accent)',
+  draft: 'var(--color-text-muted)',
 }
 
 function StatusDot({ status }: { status: string }) {
-  const color = STATUS_COLORS[status] ?? '#9CA3AF'
+  const color = STATUS_COLORS[status] ?? 'var(--color-text-muted)'
   return (
     <span
       title={status}
@@ -193,7 +193,7 @@ function StatusDot({ status }: { status: string }) {
 
 const cardStyle: CSSProperties = {
   background: 'var(--color-surface, #fff)',
-  border: '1px solid var(--color-border, #E5E7EB)',
+  border: '1px solid var(--color-border, var(--color-border))',
   borderRadius: 14,
   padding: '24px 24px 20px',
   marginBottom: 16,
@@ -207,8 +207,8 @@ const emptyStyle: CSSProperties = {
 
 const searchStyle: CSSProperties = {
   width: '100%', padding: '9px 12px', borderRadius: 8,
-  border: '1px solid var(--color-border, #D1D5DB)', fontSize: 13,
-  background: 'var(--color-surface-soft, #F9FAFB)', outline: 'none',
+  border: '1px solid var(--color-border, var(--color-border))', fontSize: 13,
+  background: 'var(--color-surface-soft, var(--color-surface-soft))', outline: 'none',
   marginBottom: 10, boxSizing: 'border-box',
 }
 
@@ -227,7 +227,7 @@ const itemStyle: CSSProperties = {
 }
 
 const selectedSummaryStyle: CSSProperties = {
-  fontSize: 12, color: 'var(--color-text-muted, #6B7280)',
+  fontSize: 12, color: 'var(--color-text-muted, var(--color-text-muted))',
   marginBottom: 10, paddingLeft: 2,
 }
 
@@ -240,7 +240,7 @@ const ctaStyle: CSSProperties = {
 
 const spinnerStyle: CSSProperties = {
   width: 24, height: 24, borderRadius: '50%',
-  border: '2.5px solid var(--color-border, #E5E7EB)',
-  borderTopColor: 'var(--color-primary, #2563EB)',
+  border: '2.5px solid var(--color-border, var(--color-border))',
+  borderTopColor: 'var(--color-primary, var(--color-info))',
   animation: 'spin 0.8s linear infinite',
 }

@@ -257,24 +257,24 @@ export function buildUpoHtml(upo: UpoData): string {
     : new Date().toLocaleString('pl-PL')
   const hash = upo.hashSHA || '—'
   const demoNote = upo.isDemo
-    ? `<div style="margin-bottom:18px;padding:10px 16px;background:#fff3cd;border-radius:8px;font-size:13px;border:1px solid #ffc107;">
+    ? `<div style="margin-bottom:18px;padding:10px 16px;background:var(--color-warning-soft);border-radius:8px;font-size:13px;border:1px solid var(--color-accent);">
          ⚠️ Dokument wygenerowany w trybie DEMO — nie pochodzi z systemu KSeF MF.
        </div>` : ''
   return `<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8">
 <style>
-body { margin:0; font-family: Inter, Arial, sans-serif; background:#eef2f7; color:#1a202c; }
+body { margin:0; font-family: Inter, Arial, sans-serif; background:var(--color-surface-soft); color:var(--color-text-primary); }
 .page { max-width:680px; margin:32px auto; background:#fff; border-radius:16px; padding:40px 48px; box-shadow:0 2px 16px rgba(0,0,0,.08); }
 .header { text-align:center; margin-bottom:32px; }
-.seal { width:72px; height:72px; margin:0 auto 16px; display:flex; align-items:center; justify-content:center; background:#1a56db; border-radius:50%; }
+.seal { width:72px; height:72px; margin:0 auto 16px; display:flex; align-items:center; justify-content:center; background:var(--color-info); border-radius:50%; }
 .seal svg { width:40px; height:40px; fill:#fff; }
-h1 { font-size:22px; font-weight:700; color:#1a202c; margin:0 0 4px; }
-.subtitle { font-size:13px; color:#718096; margin:0; }
-.field { display:flex; gap:16px; padding:12px 0; border-bottom:1px solid #f0f4f8; font-size:14px; }
+h1 { font-size:22px; font-weight:700; color:var(--color-text-primary); margin:0 0 4px; }
+.subtitle { font-size:13px; color:var(--color-text-muted); margin:0; }
+.field { display:flex; gap:16px; padding:12px 0; border-bottom:1px solid var(--color-surface-soft); font-size:14px; }
 .field:last-child { border-bottom:none; }
-.field label { width:200px; flex-shrink:0; color:#718096; font-weight:500; }
-.field value { color:#1a202c; word-break:break-all; }
-.footer { margin-top:24px; padding-top:20px; border-top:2px solid #e2e8f0; text-align:center; font-size:12px; color:#a0aec0; }
-.badge-ok { display:inline-block; padding:4px 12px; background:#d1fae5; color:#065f46; border-radius:20px; font-size:13px; font-weight:600; }
+.field label { width:200px; flex-shrink:0; color:var(--color-text-muted); font-weight:500; }
+.field value { color:var(--color-text-primary); word-break:break-all; }
+.footer { margin-top:24px; padding-top:20px; border-top:2px solid var(--color-border); text-align:center; font-size:12px; color:var(--color-text-muted); }
+.badge-ok { display:inline-block; padding:4px 12px; background:var(--color-success-soft); color:var(--color-brand); border-radius:20px; font-size:13px; font-weight:600; }
 </style></head><body><div class="page">
 ${demoNote}
 <div class="header">

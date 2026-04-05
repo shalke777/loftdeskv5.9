@@ -260,7 +260,7 @@ export function ProjectAnalysisPage() {
               display: 'flex', alignItems: 'flex-start', gap: 8,
               padding: '8px 12px', borderRadius: 7, marginBottom: 12,
               background: 'rgba(212,150,10,0.08)', border: '1px solid rgba(212,150,10,0.25)',
-              fontSize: 12, color: '#B5830A',
+              fontSize: 12, color: 'var(--color-accent)',
             }}>
               <span style={{ flex: 1, lineHeight: 1.5 }}>
                 💡 Nazwa pliku sugeruje fakturę lub paragon — to może być dokument kosztowy.
@@ -268,7 +268,7 @@ export function ProjectAnalysisPage() {
                 <button
                   type="button"
                   onClick={() => navigate({ to: '/expenses' as any })}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#B5830A', fontWeight: 700, fontSize: 12, padding: 0, textDecoration: 'underline' }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-accent)', fontWeight: 700, fontSize: 12, padding: 0, textDecoration: 'underline' }}
                 >
                   modułu Koszty
                 </button>
@@ -452,7 +452,7 @@ export function ProjectAnalysisPage() {
               <div style={{
                 padding: '10px 14px', borderRadius: 6, marginBottom: 12,
                 background: 'rgba(212,150,10,0.08)', border: '1px solid rgba(212,150,10,0.3)',
-                fontSize: 12, color: '#B5830A',
+                fontSize: 12, color: 'var(--color-accent)',
               }}>
                 {result.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
               </div>
@@ -604,7 +604,7 @@ export function ProjectAnalysisPage() {
                 <div style={{
                   padding: '12px 14px', borderRadius: 7, marginBottom: 8,
                   background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.3)',
-                  fontSize: 13, color: 'var(--color-danger, #E57373)',
+                  fontSize: 13, color: 'var(--color-danger, var(--color-error))',
                 }}>
                   <strong>Błąd porównania:</strong> {comparisonError}
                   <div style={{ marginTop: 8 }}>

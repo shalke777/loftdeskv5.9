@@ -48,10 +48,10 @@ export function TimelineFilterBar({ active, counts, onChange }: Props) {
               fontWeight:   isActive ? 700 : 400,
               fontSize:     13,
               color:        isActive
-                ? 'var(--color-brand, #4f46e5)'
-                : 'var(--color-text-secondary, #6E6A60)',
+                ? 'var(--color-brand, var(--color-info))'
+                : 'var(--color-text-secondary, var(--color-text-muted))',
               borderBottom: isActive
-                ? '2px solid var(--color-brand, #4f46e5)'
+                ? '2px solid var(--color-brand, var(--color-info))'
                 : '2px solid transparent',
               cursor:       'pointer',
               marginBottom: -1,

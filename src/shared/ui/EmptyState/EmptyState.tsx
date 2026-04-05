@@ -14,7 +14,7 @@ export function EmptyState({ title, description, icon: Icon, action, style }: Em
     <div className="empty-state" style={style}>
       {Icon && (
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-          <Icon size={36} strokeWidth={1.25} color="var(--color-text-tertiary, #6E6A60)" />
+          <Icon size={36} strokeWidth={1.25} color="var(--color-text-tertiary, var(--color-text-muted))" />
         </div>
       )}
       <h3>{title}</h3>

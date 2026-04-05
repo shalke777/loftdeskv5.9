@@ -60,15 +60,15 @@ export function AiProgressSteps({ variant = 'room' }: { variant?: 'room' | 'proj
               width: 20, height: 20, borderRadius: '50%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 11, fontWeight: 600, flexShrink: 0,
-              background: isDone ? '#10B981' : isActive ? '#2563EB' : '#E5E7EB',
-              color: isDone || isActive ? '#fff' : '#9CA3AF',
+              background: isDone ? 'var(--color-brand)' : isActive ? 'var(--color-info)' : 'var(--color-border)',
+              color: isDone || isActive ? '#fff' : 'var(--color-text-muted)',
             }}>
               {isDone ? '✓' : i + 1}
             </div>
             <span style={{
               fontSize: 13,
               fontWeight: isActive ? 600 : 400,
-              color: isActive ? '#111827' : '#6B7280',
+              color: isActive ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
             }}>
               {stage.label}
             </span>

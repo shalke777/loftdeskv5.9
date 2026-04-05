@@ -55,7 +55,7 @@ export function ProjectApprovalsTab({ projectId }: Props) {
           <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--color-text-muted)' }}>
             {pendingCount > 0 && <span>⏳ {pendingCount} oczekują</span>}
             {acceptedCount > 0 && (
-              <span style={{ fontWeight: 600, color: 'var(--color-success, #1A5C32)' }}>
+              <span style={{ fontWeight: 600, color: 'var(--color-success, var(--color-brand))' }}>
                 ✅ {totalGross.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN zaakceptowane
               </span>
             )}
@@ -194,7 +194,7 @@ export function ProjectApprovalsTab({ projectId }: Props) {
                       <button
                         type="button"
                         className="btn"
-                        style={{ fontSize: 11, padding: '4px 10px', background: 'var(--color-danger, #A83228)', borderColor: 'var(--color-danger, #A83228)', color: '#fff' }}
+                        style={{ fontSize: 11, padding: '4px 10px', background: 'var(--color-danger, var(--color-error))', borderColor: 'var(--color-danger, var(--color-error))', color: '#fff' }}
                         disabled={cancel.isPending}
                         onClick={() => cancel.mutate({ approval_id: approval.id }, { onSuccess: () => setCancelId(null) })}
                       >

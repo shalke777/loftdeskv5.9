@@ -115,7 +115,7 @@ export function ProjectAiTab({ projectId, companyId, planEnabled = true }: Props
       {/* History or access error */}
       {runsError
         ? (
-          <p style={{ fontSize: 13, color: 'var(--color-danger, #A83228)', padding: '8px 0' }}>
+          <p style={{ fontSize: 13, color: 'var(--color-danger, var(--color-error))', padding: '8px 0' }}>
             Brak dostępu do danych AI dla tego projektu. Sprawdź swoje uprawnienia lub odśwież stronę.
           </p>
         )

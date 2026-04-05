@@ -42,9 +42,9 @@ function badge(
 
 function priorityBadge(priority: 'required' | 'likely' | 'optional') {
   switch (priority) {
-    case 'required': return badge('Obowiązkowa', '#1A5C32', 'rgba(26,92,50,0.12)')
-    case 'likely':   return badge('Prawdopodobna', '#3E8C58', 'rgba(96,165,250,0.12)')
-    case 'optional': return badge('Opcjonalna', '#6E6A60', 'rgba(138,143,152,0.12)')
+    case 'required': return badge('Obowiązkowa', 'var(--color-brand)', 'rgba(26,92,50,0.12)')
+    case 'likely':   return badge('Prawdopodobna', 'var(--color-info)', 'rgba(96,165,250,0.12)')
+    case 'optional': return badge('Opcjonalna', 'var(--color-text-muted)', 'rgba(138,143,152,0.12)')
   }
 }
 
@@ -52,7 +52,7 @@ function priorityBadge(priority: 'required' | 'likely' | 'optional') {
 
 export function ProjectSummaryBar({ result }: { result: ProjectAnalysisResult }) {
   const conf = result.confidence
-  const confColor = conf >= 70 ? '#1A5C32' : conf >= 40 ? '#B8742A' : '#E57373'
+  const confColor = conf >= 70 ? 'var(--color-brand)' : conf >= 40 ? 'var(--color-accent)' : 'var(--color-error)'
 
   const typeLabel: Record<string, string> = {
     architectural_drawing: '📐 Rzut architektoniczny',
@@ -268,10 +268,10 @@ export function ProjectScopeSection({ items }: { items: ProjectScopeItem[] }) {
                     </span>
                   )}
                   {item.provenance === 'dependency_inferred' && (
-                    <div style={{ fontSize: 9, color: '#3E8C58', marginTop: 2, fontStyle: 'italic' }}>⚙ wynika z zależności</div>
+                    <div style={{ fontSize: 9, color: 'var(--color-info)', marginTop: 2, fontStyle: 'italic' }}>⚙ wynika z zależności</div>
                   )}
                   {item.provenance === 'confirmation_needed' && (
-                    <div style={{ fontSize: 9, color: '#B8742A', marginTop: 2, fontStyle: 'italic' }}>? wymaga potwierdzenia</div>
+                    <div style={{ fontSize: 9, color: 'var(--color-accent)', marginTop: 2, fontStyle: 'italic' }}>? wymaga potwierdzenia</div>
                   )}
                 </div>
                 <div style={{ flexShrink: 0 }}>
@@ -384,20 +384,20 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
                             if (!catalog?.length) return null
                             const matchResult = matchCatalogItem(item.name, catalog)
                             if (matchResult.best && matchResult.best.tier === 'strong') {
-                              return <span title={`Katalog: ${matchResult.best.canonical_name} (${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
+                              return <span title={`Katalog: ${matchResult.best.canonical_name} (${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, var(--color-success-soft))', color: 'var(--color-success, var(--color-brand))', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
                             }
                             if (matchResult.best && matchResult.best.tier === 'partial') {
                               return (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                  <span title={`Częściowe: ${matchResult.best.canonical_name} (${matchResult.best.confidence}%, ${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#B8742A', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
-                                  {matchResult.alternatives.length > 0 && <span title={`Alternatywy: ${matchResult.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 8, padding: '0 3px', borderRadius: 3, background: 'rgba(212,150,10,0.06)', color: '#B8742A', cursor: 'help', whiteSpace: 'nowrap' }}>+{matchResult.alternatives.length}</span>}
+                                  <span title={`Częściowe: ${matchResult.best.canonical_name} (${matchResult.best.confidence}%, ${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: 'var(--color-accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
+                                  {matchResult.alternatives.length > 0 && <span title={`Alternatywy: ${matchResult.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 8, padding: '0 3px', borderRadius: 3, background: 'rgba(212,150,10,0.06)', color: 'var(--color-accent)', cursor: 'help', whiteSpace: 'nowrap' }}>+{matchResult.alternatives.length}</span>}
                                 </span>
                               )
                             }
                             if (matchResult.alternatives.length > 0) {
-                              return <span title={`Brak dopasowania. Sugestie: ${matchResult.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(229,115,115,0.08)', color: '#E57373', fontWeight: 600, whiteSpace: 'nowrap' }}>❌ uzupełnij</span>
+                              return <span title={`Brak dopasowania. Sugestie: ${matchResult.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(229,115,115,0.08)', color: 'var(--color-error)', fontWeight: 600, whiteSpace: 'nowrap' }}>❌ uzupełnij</span>
                             }
-                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, #f1f5f9)', color: 'var(--color-text-tertiary, #94a3b8)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️ własna</span>
+                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, var(--color-surface-soft))', color: 'var(--color-text-tertiary, var(--color-text-muted))', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️ własna</span>
                           })()}
                         </span>
                         {item.notes && (
@@ -409,7 +409,7 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
                         {item.quantity > 0 ? item.quantity : '—'}
                       </td>
                       <td style={rightCol}>
-                        <span style={{ color: item.confidence >= 70 ? '#1A5C32' : item.confidence >= 40 ? '#B8742A' : '#E57373' }}>
+                        <span style={{ color: item.confidence >= 70 ? 'var(--color-brand)' : item.confidence >= 40 ? 'var(--color-accent)' : 'var(--color-error)' }}>
                           {item.confidence}%
                         </span>
                       </td>
@@ -434,7 +434,7 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
           background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.3)',
           fontSize: 12,
         }}>
-          <p style={{ margin: '0 0 8px', fontWeight: 600, color: '#C62828' }}>
+          <p style={{ margin: '0 0 8px', fontWeight: 600, color: 'var(--color-error)' }}>
             ⚠ Pewność analizy jest niska — pozycje wymagają ręcznej weryfikacji.
           </p>
           <p style={{ margin: '0 0 10px', color: 'var(--color-text-secondary)' }}>
@@ -444,7 +444,7 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
             <button
               type="button"
               onClick={doTransfer}
-              style={{ padding: '5px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', color: '#C62828', background: 'rgba(229,115,115,0.12)', border: '1px solid rgba(229,115,115,0.4)' }}
+              style={{ padding: '5px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', color: 'var(--color-error)', background: 'rgba(229,115,115,0.12)', border: '1px solid rgba(229,115,115,0.4)' }}
             >
               Tak, przenieś mimo to
             </button>
@@ -468,8 +468,8 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             width: '100%', padding: '12px 20px', fontSize: 14, fontWeight: 700,
             color: isBlocked ? 'var(--color-text-muted)' : transferring ? 'var(--color-text-muted)' : '#fff',
-            background: isBlocked ? 'var(--color-surface-soft)' : transferring ? 'var(--color-surface-soft)' : 'var(--color-primary, #2563EB)',
-            border: `1px solid ${isBlocked || transferring ? 'var(--color-border)' : 'var(--color-primary, #2563EB)'}`,
+            background: isBlocked ? 'var(--color-surface-soft)' : transferring ? 'var(--color-surface-soft)' : 'var(--color-primary, var(--color-info))',
+            border: `1px solid ${isBlocked || transferring ? 'var(--color-border)' : 'var(--color-primary, var(--color-info))'}`,
             borderRadius: 10,
             cursor: (transferring || isBlocked) ? 'not-allowed' : 'pointer', transition: 'background 0.15s',
             opacity: (transferring || isBlocked) ? 0.55 : 1,
@@ -507,7 +507,7 @@ export function ProjectTransparencySection({
         <div style={{
           marginBottom: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12,
           background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-          color: 'var(--color-danger, #A83228)',
+          color: 'var(--color-danger, var(--color-error))',
         }}>
           {warnings.map((w, i) => <div key={i}>⚠️ {w}</div>)}
         </div>
@@ -515,7 +515,7 @@ export function ProjectTransparencySection({
 
       {missingInfo.length > 0 && (
         <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#B8742A', marginBottom: 4 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-accent)', marginBottom: 4 }}>
             Brakujące dane do pełnej wyceny:
           </div>
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, lineHeight: 1.8, color: 'var(--color-text-secondary)' }}>
@@ -526,7 +526,7 @@ export function ProjectTransparencySection({
 
       {assumptions.length > 0 && (
         <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#3E8C58', marginBottom: 4 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-info)', marginBottom: 4 }}>
             Przyjęte założenia:
           </div>
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, lineHeight: 1.8, color: 'var(--color-text-muted)' }}>

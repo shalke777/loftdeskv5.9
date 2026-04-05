@@ -15,7 +15,7 @@ export function ClientIdentifyCTA({ portalToken: _portalToken }: Props) {
         padding:       '14px 18px',
         marginBottom:  20,
         fontSize:      13,
-        color:         '#1A5C32',
+        color:         'var(--color-brand)',
         lineHeight:    1.6,
       }}
     >

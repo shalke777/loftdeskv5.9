@@ -53,12 +53,12 @@ export function OnboardingPage() {
               {progress.progress}%
             </Badge>
           </div>
-          <div style={{ background: 'var(--color-border-light, #f1f5f9)', borderRadius: 999, height: 10, overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ background: 'var(--color-border-light, var(--color-surface-soft))', borderRadius: 999, height: 10, overflow: 'hidden', marginBottom: 12 }}>
             <div
               style={{
                 width: `${progress.progress}%`,
                 height: '100%',
-                background: progress.progress >= 80 ? 'var(--color-success, #1A5C32)' : 'var(--color-brand, #1A5C32)',
+                background: progress.progress >= 80 ? 'var(--color-success, var(--color-brand))' : 'var(--color-brand, var(--color-brand))',
                 transition: 'width 0.4s ease',
               }}
             />
@@ -70,7 +70,7 @@ export function OnboardingPage() {
             Plan: <strong style={{ color: planDef.color }}>{planDef.name}</strong>
           </p>
           {progress.isComplete && (
-            <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(26,92,50,0.15)', border: '1px solid rgba(26,92,50,0.30)', borderRadius: 8, fontSize: 13, color: '#1A5C32', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(26,92,50,0.15)', border: '1px solid rgba(26,92,50,0.30)', borderRadius: 8, fontSize: 13, color: 'var(--color-brand)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <CheckCircle2 size={15} />
               <strong>Workspace gotowy!</strong>&nbsp;Masz skonfigurowane wszystkie podstawowe funkcje.
             </div>
@@ -93,7 +93,7 @@ export function OnboardingPage() {
                       fontSize: 13, fontWeight: 500, color: 'var(--color-text)',
                     }}
                   >
-                    <Icon size={15} color="var(--color-brand, #1A5C32)" />
+                    <Icon size={15} color="var(--color-brand, var(--color-brand))" />
                     {item.label}
                     <ArrowRight size={13} color="var(--color-text-tertiary)" style={{ marginLeft: 'auto' }} />
                   </button>
@@ -118,20 +118,20 @@ export function OnboardingPage() {
                 style={{
                   display: 'flex', alignItems: 'flex-start', gap: 12,
                   padding: '12px 0',
-                  borderBottom: '1px solid var(--color-border-light, #f1f5f9)',
+                  borderBottom: '1px solid var(--color-border-light, var(--color-surface-soft))',
                   opacity: step.done ? 0.6 : 1,
                 }}
               >
                 {step.done ? (
-                  <CheckCircle2 size={20} color="var(--color-success, #1A5C32)" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <CheckCircle2 size={20} color="var(--color-success, var(--color-brand))" style={{ flexShrink: 0, marginTop: 1 }} />
                 ) : (
-                  <Circle size={20} color="var(--color-text-tertiary, #6E6A60)" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <Circle size={20} color="var(--color-text-tertiary, var(--color-text-muted))" style={{ flexShrink: 0, marginTop: 1 }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, fontWeight: 600, fontSize: 14, textDecoration: step.done ? 'line-through' : 'none', color: step.done ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
                     {step.label}
                   </p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted, #6E6A60)' }}>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted, var(--color-text-muted))' }}>
                     {step.description}
                   </p>
                 </div>

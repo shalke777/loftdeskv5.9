@@ -34,7 +34,7 @@ function NoProjectNotice() {
         background: 'var(--color-warning-bg, rgba(212,150,10,0.12))',
         border: '1px solid var(--color-warning-border, rgba(212,150,10,0.35))',
         fontSize: 13,
-        color: 'var(--color-warning-text, #B8742A)',
+        color: 'var(--color-warning-text, var(--color-accent))',
       }}
     >
       <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2 }} />

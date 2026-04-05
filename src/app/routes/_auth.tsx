@@ -141,7 +141,7 @@ export function AuthLayout() {
 				{item.to === '/chat' && chatUnreadCount > 0 ? (
 				  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
 					{item.label}
-					<span style={{ background: '#A83228', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 20, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
+					<span style={{ background: 'var(--color-error)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 20, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
 					  {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
 					</span>
 				  </span>
@@ -157,7 +157,7 @@ export function AuthLayout() {
 			  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
 				Portal
 				{unreadCount > 0 && (
-				  <span style={{ background: '#A83228', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 20, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
+				  <span style={{ background: 'var(--color-error)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 20, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
 					{unreadCount > 99 ? '99+' : unreadCount}
 				  </span>
 				)}
@@ -202,7 +202,7 @@ export function AuthLayout() {
               {unreadCount > 0 && (
                 <span style={{
                   position: 'absolute', top: -4, right: -4,
-                  background: '#A83228', color: '#fff', fontSize: 11, fontWeight: 700,
+                  background: 'var(--color-error)', color: '#fff', fontSize: 11, fontWeight: 700,
                   borderRadius: '50%', minWidth: 18, height: 18,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   padding: '0 4px', lineHeight: 1, pointerEvents: 'none',

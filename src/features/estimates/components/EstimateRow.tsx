@@ -159,7 +159,7 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                       {item.name}
                       {item.catalog_item_id && (
-                        <span title="Z katalogu usług" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600 }}>📚</span>
+                        <span title="Z katalogu usług" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, var(--color-success-soft))', color: 'var(--color-success, var(--color-brand))', fontWeight: 600 }}>📚</span>
                       )}
                     </span>
                     <span style={{ color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>

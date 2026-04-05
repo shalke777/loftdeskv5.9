@@ -61,7 +61,7 @@ export function ProjectForm({ companyId, onSubmit, initialProject }: { companyId
         <button
           type="button"
           onClick={() => setShowNewClient(v => !v)}
-          style={{ fontSize: 12, color: 'var(--color-brand, #1A5C32)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: '2px 0', marginTop: 2, width: 'fit-content' }}
+          style={{ fontSize: 12, color: 'var(--color-brand, var(--color-brand))', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: '2px 0', marginTop: 2, width: 'fit-content' }}
         >
           {showNewClient ? '↑ Zamknij' : '+ Dodaj nowego klienta'}
         </button>

@@ -693,7 +693,7 @@ export function ExpensesPage() {
                 {/\.pdf$/i.test(modal.fileName) ? (
                   // No iframe — Supabase URLs set X-Frame-Options/CSP
                   <div className="exp-pdf-preview-card">
-                    <span className="exp-pdf-preview-card__icon">&#128196;</span>
+                    <span className="exp-pdf-preview-card__icon">&var(--color-info);</span>
                     <div className="exp-pdf-preview-card__info">
                       <span className="exp-pdf-preview-card__name">{modal.fileName}</span>
                       <span className="exp-pdf-preview-card__meta">PDF</span>
@@ -879,7 +879,7 @@ export function ExpensesPage() {
 
             {/* Currency notice — shown only when a non-PLN currency was extracted from document */}
             {modal.type === 'add' && form.currency && form.currency !== 'PLN' && (
-              <div style={{ fontSize: 12, color: 'var(--color-warning, #b45309)', background: 'var(--color-warning-bg, #fef9c3)', border: '1px solid var(--color-warning-border, #fde68a)', borderRadius: 6, padding: '6px 10px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 12, color: 'var(--color-warning, var(--color-accent))', background: 'var(--color-warning-bg, var(--color-warning-soft))', border: '1px solid var(--color-warning-border, var(--color-warning-soft))', borderRadius: 6, padding: '6px 10px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <AlertTriangle size={12} style={{ flexShrink: 0 }} />
                 Waluta faktury: <strong>{form.currency}</strong> — kwoty mogą nie być w PLN
               </div>

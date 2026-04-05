@@ -185,7 +185,7 @@ export function AiErrorState({
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>⚠️</span>
         <div style={{ flex: 1 }}>
-          <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: 'var(--color-danger, #E57373)' }}>
+          <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: 'var(--color-danger, var(--color-error))' }}>
             {cat.title}
           </p>
           <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>
@@ -232,7 +232,7 @@ interface AiQualityBadgeProps {
 
 export function AiQualityBadge({ confidence }: AiQualityBadgeProps) {
   const label = confidence >= 70 ? 'Dobry wynik' : confidence >= 55 ? 'Częściowy wynik' : 'Słaby materiał'
-  const color = confidence >= 70 ? '#1A5C32' : confidence >= 55 ? '#B8742A' : '#E57373'
+  const color = confidence >= 70 ? 'var(--color-brand)' : confidence >= 55 ? 'var(--color-accent)' : 'var(--color-error)'
   const bg    = confidence >= 70 ? 'rgba(26,92,50,0.12)' : confidence >= 55 ? 'rgba(212,150,10,0.1)' : 'rgba(229,115,115,0.1)'
 
   return (
@@ -318,7 +318,7 @@ export function AiUploadRules({ config }: AiUploadRulesProps) {
         }}>
           {config.tips.map((t, i) => (
             <div key={i} style={{ color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>
-              <span style={{ color: '#1A5C32', marginRight: 5 }}>✓</span>{t}
+              <span style={{ color: 'var(--color-brand)', marginRight: 5 }}>✓</span>{t}
             </div>
           ))}
         </div>
@@ -342,10 +342,10 @@ interface StateConfig {
 }
 
 const RELIABILITY_STATE_CONFIG: Record<ReliabilityState, StateConfig> = {
-  strong:  { label: 'Wysoka pewność',    color: '#1A5C32', bg: 'rgba(26,92,50,0.08)', icon: '✓' },
-  partial: { label: 'Częściowa pewność', color: '#B8742A', bg: 'rgba(212,150,10,0.07)',  icon: '≈' },
-  weak:    { label: 'Niska pewność',     color: '#E57373', bg: 'rgba(229,115,115,0.07)', icon: '⚠' },
-  blocked: { label: 'Zablokowany',       color: '#D32F2F', bg: 'rgba(211,47,47,0.08)',   icon: '✕' },
+  strong:  { label: 'Wysoka pewność',    color: 'var(--color-brand)', bg: 'rgba(26,92,50,0.08)', icon: '✓' },
+  partial: { label: 'Częściowa pewność', color: 'var(--color-accent)', bg: 'rgba(212,150,10,0.07)',  icon: '≈' },
+  weak:    { label: 'Niska pewność',     color: 'var(--color-error)', bg: 'rgba(229,115,115,0.07)', icon: '⚠' },
+  blocked: { label: 'Zablokowany',       color: 'var(--color-error)', bg: 'rgba(211,47,47,0.08)',   icon: '✕' },
 }
 
 interface AiReliabilityBannerProps {
@@ -404,7 +404,7 @@ export function AiReliabilityBanner({ report, compact = false }: AiReliabilityBa
           padding: '6px 10px', borderRadius: 5,
           marginBottom: visibleIssues.length > 0 ? 8 : 0,
           background: 'rgba(229,115,115,0.1)', border: '1px solid rgba(229,115,115,0.25)',
-          fontSize: 12, color: '#C62828', fontWeight: 500,
+          fontSize: 12, color: 'var(--color-error)', fontWeight: 500,
         }}>
           ⚠ Wymagane potwierdzenie przed przekazaniem do kosztorysu
         </div>
@@ -417,7 +417,7 @@ export function AiReliabilityBanner({ report, compact = false }: AiReliabilityBa
             <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 11, lineHeight: 1.5 }}>
               <span style={{
                 flexShrink: 0, marginTop: 1, fontSize: 12,
-                color: issue.severity === 'critical' ? '#D32F2F' : '#B5830A',
+                color: issue.severity === 'critical' ? 'var(--color-error)' : 'var(--color-accent)',
               }}>
                 {issue.severity === 'critical' ? '✕' : '△'}
               </span>
@@ -507,7 +507,7 @@ export function AiProjectContextBadge({ projectNumber, projectName, onChangeProj
           type="button"
           onClick={onChangeProject}
           style={{
-            marginLeft: 'auto', fontSize: 11, color: 'var(--color-primary, #2563EB)',
+            marginLeft: 'auto', fontSize: 11, color: 'var(--color-primary, var(--color-info))',
             background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline',
           }}
         >

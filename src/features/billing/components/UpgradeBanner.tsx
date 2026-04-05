@@ -32,13 +32,13 @@ export function UpgradeBanner({ onDismiss }: Props) {
   if (isDemoMode) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: 'rgba(212,150,10,0.15)', borderBottom: '1px solid rgba(212,150,10,0.30)', fontSize: 12 }}>
-        <Zap size={13} color="#B8742A" />
-        <span style={{ color: '#B8742A', flex: 1 }}>
+        <Zap size={13} color="var(--color-accent)" />
+        <span style={{ color: 'var(--color-accent)', flex: 1 }}>
           <strong>Tryb demo</strong> React dane sa przykladowe i nie sa zapisywane na serwerze.
         </span>
         {onDismiss && (
           <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px' }}>
-            <X size={13} color="#B8742A" />
+            <X size={13} color="var(--color-accent)" />
           </button>
         )}
       </div>
@@ -58,8 +58,8 @@ export function UpgradeBanner({ onDismiss }: Props) {
     const isUrgent = daysLeft <= 2
     const bg     = isUrgent ? 'rgba(239,68,68,0.12)' : 'rgba(212,150,10,0.12)'
     const border = isUrgent ? 'rgba(239,68,68,0.30)' : 'rgba(212,150,10,0.30)'
-    const color  = isUrgent ? '#A83228' : '#B8742A'
-    const btnBg  = isUrgent ? '#A83228' : '#B8742A'
+    const color  = isUrgent ? 'var(--color-error)' : 'var(--color-accent)'
+    const btnBg  = isUrgent ? 'var(--color-error)' : 'var(--color-accent)'
 
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: bg, borderBottom: `1px solid ${border}`, fontSize: 13, flexWrap: 'wrap' }}>
@@ -89,19 +89,19 @@ export function UpgradeBanner({ onDismiss }: Props) {
   if (status === 'past_due' || status === 'unpaid') {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: 'rgba(239,68,68,0.12)', borderBottom: '1px solid rgba(239,68,68,0.30)', fontSize: 13, flexWrap: 'wrap' }}>
-        <AlertTriangle size={15} color="#A83228" style={{ flexShrink: 0 }} />
-        <span style={{ color: '#A83228', flex: 1 }}>
+        <AlertTriangle size={15} color="var(--color-error)" style={{ flexShrink: 0 }} />
+        <span style={{ color: 'var(--color-error)', flex: 1 }}>
           <strong>Platnosc nie powiodla sie.</strong> Zaktualizuj metode platnosci, aby uniknac przerwy w dostepie.
         </span>
         <button
           onClick={() => navigate({ to: '/billing' })}
-          style={{ background: '#A83228', color: 'white', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+          style={{ background: 'var(--color-error)', color: 'white', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
         >
           Napraw platnosc
         </button>
         {onDismiss && (
           <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>
-            <X size={14} color="#A83228" />
+            <X size={14} color="var(--color-error)" />
           </button>
         )}
       </div>
@@ -112,19 +112,19 @@ export function UpgradeBanner({ onDismiss }: Props) {
   if (plan === 'free') {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', background: 'linear-gradient(90deg, rgba(212,150,10,0.12) 0%, rgba(212,150,10,0.12) 100%)', borderBottom: '1px solid rgba(212,150,10,0.30)', fontSize: 13, flexWrap: 'wrap' }}>
-        <Zap size={15} color="#B8742A" style={{ flexShrink: 0 }} />
-        <span style={{ color: '#B8742A', flex: 1 }}>
+        <Zap size={15} color="var(--color-accent)" style={{ flexShrink: 0 }} />
+        <span style={{ color: 'var(--color-accent)', flex: 1 }}>
           Korzystasz z planu <strong>Free</strong> React niektore funkcje sa ograniczone.
         </span>
         <button
           onClick={() => navigate({ to: '/billing' })}
-          style={{ background: '#B8742A', color: 'white', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+          style={{ background: 'var(--color-accent)', color: 'white', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
         >
           Ulepsz plan
         </button>
         {onDismiss && (
           <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>
-            <X size={14} color="#B8742A" />
+            <X size={14} color="var(--color-accent)" />
           </button>
         )}
       </div>

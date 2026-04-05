@@ -73,7 +73,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
         <p>Adres: {project.address || 'brak'}</p>
         <p>Start: {project.start_date || 'nie ustawiono'} · Koniec: {project.end_date || 'nie ustawiono'}</p>
         <div style={{ margin: '12px 0' }}>
-          <p style={{ fontSize: 12, color: '#6E6A60', marginBottom: 6 }}>Kompletność dokumentacji</p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 6 }}>Kompletność dokumentacji</p>
           <ProjectCompleteness
             score={project.completeness_score ?? 0}
             flags={project.completeness_flags as any}

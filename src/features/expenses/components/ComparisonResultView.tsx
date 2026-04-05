@@ -31,7 +31,7 @@ interface Props {
 const colStyle: React.CSSProperties = { padding: '6px 4px', fontSize: 12 }
 
 function confColor(c: number): string {
-  return c >= 70 ? '#1A5C32' : c >= 40 ? '#B8742A' : '#E57373'
+  return c >= 70 ? 'var(--color-brand)' : c >= 40 ? 'var(--color-accent)' : 'var(--color-error)'
 }
 
 interface DiffRowProps {
@@ -88,7 +88,7 @@ function DiffRow({ diff }: DiffRowProps) {
           {diff.impact_on_scope && (
             <div style={{
               marginTop: 4, padding: '4px 8px', borderRadius: 4, fontSize: 11,
-              background: 'rgba(212,150,10,0.08)', color: '#B5830A',
+              background: 'rgba(212,150,10,0.08)', color: 'var(--color-accent)',
             }}>
               ℹ {diff.impact_on_scope}
             </div>
@@ -223,7 +223,7 @@ function ScopeAdditionsSection({ items, projectName, reliabilityReport }: ScopeA
           background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.3)',
           fontSize: 12,
         }}>
-          <p style={{ margin: '0 0 8px', fontWeight: 600, color: '#C62828' }}>
+          <p style={{ margin: '0 0 8px', fontWeight: 600, color: 'var(--color-error)' }}>
             ⚠ Pewność analizy jest niska — przekazanie może wymagać poprawek.
           </p>
           <p style={{ margin: '0 0 10px', color: 'var(--color-text-secondary)' }}>
@@ -236,7 +236,7 @@ function ScopeAdditionsSection({ items, projectName, reliabilityReport }: ScopeA
               style={{
                 padding: '5px 12px', fontSize: 11, fontWeight: 600,
                 borderRadius: 6, cursor: 'pointer',
-                color: '#C62828', background: 'rgba(229,115,115,0.12)',
+                color: 'var(--color-error)', background: 'rgba(229,115,115,0.12)',
                 border: '1px solid rgba(229,115,115,0.4)',
               }}
             >
@@ -330,7 +330,7 @@ export function ComparisonResultView({ result, projectName }: Props) {
         <div style={{
           padding: '10px 14px', borderRadius: 6, fontSize: 11,
           background: 'rgba(212,150,10,0.08)', border: '1px solid rgba(212,150,10,0.25)',
-          color: '#B5830A', lineHeight: 1.7,
+          color: 'var(--color-accent)', lineHeight: 1.7,
         }}>
           {result.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
         </div>

@@ -65,103 +65,103 @@ const METADATA: Record<string, TimelineEventMeta> = {
   // ── Koszty ──────────────────────────────────────────────────────────────
   cost_added: {
     icon: Receipt, label: 'Dodano koszt',
-    dotColor: '#d97706', bgColor: '#fef3c7', category: 'costs',
+    dotColor: 'var(--color-accent)', bgColor: 'var(--color-warning-soft)', category: 'costs',
   },
   cost_updated: {
     icon: PenLine, label: 'Zaktualizowano koszt',
-    dotColor: '#d97706', bgColor: '#fef3c7', category: 'costs',
+    dotColor: 'var(--color-accent)', bgColor: 'var(--color-warning-soft)', category: 'costs',
   },
   cost_deleted: {
     icon: FileX, label: 'Usunięto koszt',
-    dotColor: '#e11d48', bgColor: '#ffe4e6', category: 'costs',
+    dotColor: 'var(--color-error)', bgColor: 'var(--color-error-soft)', category: 'costs',
   },
 
   // ── Akceptacje ───────────────────────────────────────────────────────────
   cost_approval_sent: {
     icon: Send, label: 'Wysłano do akceptacji klienta',
-    dotColor: '#7c3aed', bgColor: '#ede9fe', category: 'approvals',
+    dotColor: 'var(--color-accent)', bgColor: 'var(--color-accent-soft)', category: 'approvals',
   },
   cost_approved: {
     icon: CheckCircle2, label: 'Klient zaakceptował koszt',
-    dotColor: '#1A5C32', bgColor: '#d1fae5', category: 'approvals',
+    dotColor: 'var(--color-brand)', bgColor: 'var(--color-success-soft)', category: 'approvals',
   },
   cost_rejected: {
     icon: XCircle, label: 'Klient odrzucił koszt',
-    dotColor: '#e11d48', bgColor: '#ffe4e6', category: 'approvals',
+    dotColor: 'var(--color-error)', bgColor: 'var(--color-error-soft)', category: 'approvals',
   },
   cost_questioned: {
     icon: CircleHelp, label: 'Klient zadał pytanie do kosztu',
-    dotColor: '#0284c7', bgColor: '#e0f2fe', category: 'approvals',
+    dotColor: 'var(--color-info)', bgColor: 'var(--color-info-soft)', category: 'approvals',
   },
   cost_approval_status_changed: {
     icon: RefreshCw, label: 'Zmiana statusu akceptacji',
-    dotColor: '#52525b', bgColor: '#f4f4f5', category: 'approvals',
+    dotColor: 'var(--color-text-muted)', bgColor: 'var(--color-surface-soft)', category: 'approvals',
   },
 
   // ── Akceptacje dokumentów ─────────────────────────────────────────────────
   doc_approval_sent: {
     icon: Send, label: 'Wysłano dokument do akceptacji',
-    dotColor: '#7c3aed', bgColor: '#ede9fe', category: 'approvals',
+    dotColor: 'var(--color-accent)', bgColor: 'var(--color-accent-soft)', category: 'approvals',
   },
   doc_approved: {
     icon: CheckCircle2, label: 'Klient zaakceptował dokument',
-    dotColor: '#1A5C32', bgColor: '#d1fae5', category: 'approvals',
+    dotColor: 'var(--color-brand)', bgColor: 'var(--color-success-soft)', category: 'approvals',
   },
   doc_rejected: {
     icon: XCircle, label: 'Klient odrzucił dokument',
-    dotColor: '#e11d48', bgColor: '#ffe4e6', category: 'approvals',
+    dotColor: 'var(--color-error)', bgColor: 'var(--color-error-soft)', category: 'approvals',
   },
   doc_questioned: {
     icon: CircleHelp, label: 'Klient zadał pytanie o dokument',
-    dotColor: '#0284c7', bgColor: '#e0f2fe', category: 'approvals',
+    dotColor: 'var(--color-info)', bgColor: 'var(--color-info-soft)', category: 'approvals',
   },
 
   // ── Komunikacja ──────────────────────────────────────────────────────────
   message_sent: {
     icon: MessageSquare, label: 'Wiadomość wysłana do klienta',
-    dotColor: '#475569', bgColor: '#f1f5f9', category: 'communication',
+    dotColor: 'var(--color-text-muted)', bgColor: 'var(--color-surface-soft)', category: 'communication',
   },
   client_replied: {
     icon: Reply, label: 'Klient odpowiedział',
-    dotColor: '#475569', bgColor: '#f1f5f9', category: 'communication',
+    dotColor: 'var(--color-text-muted)', bgColor: 'var(--color-surface-soft)', category: 'communication',
   },
 
   // ── Portal ───────────────────────────────────────────────────────────────
   portal_activated: {
     icon: Globe, label: 'Portal klienta aktywowany',
-    dotColor: '#1A5C32', bgColor: '#d1fae5', category: 'portal',
+    dotColor: 'var(--color-brand)', bgColor: 'var(--color-success-soft)', category: 'portal',
   },
   portal_revoked: {
     icon: Link2Off, label: 'Dostęp do portalu cofnięty',
-    dotColor: '#e11d48', bgColor: '#ffe4e6', category: 'portal',
+    dotColor: 'var(--color-error)', bgColor: 'var(--color-error-soft)', category: 'portal',
   },
 
   // ── Projekt / system ─────────────────────────────────────────────────────
   project_created: {
     icon: FolderPlus, label: 'Projekt utworzony',
-    dotColor: '#52525b', bgColor: '#f4f4f5', category: 'all',
+    dotColor: 'var(--color-text-muted)', bgColor: 'var(--color-surface-soft)', category: 'all',
   },
   project_status_changed: {
     icon: RefreshCw, label: 'Zmiana statusu projektu',
-    dotColor: '#52525b', bgColor: '#f4f4f5', category: 'all',
+    dotColor: 'var(--color-text-muted)', bgColor: 'var(--color-surface-soft)', category: 'all',
   },
   document_added: {
     icon: FileText, label: 'Dodano dokument',
-    dotColor: '#52525b', bgColor: '#f4f4f5', category: 'all',
+    dotColor: 'var(--color-text-muted)', bgColor: 'var(--color-surface-soft)', category: 'all',
   },
   document_removed: {
     icon: Trash2, label: 'Usunięto dokument',
-    dotColor: '#e11d48', bgColor: '#ffe4e6', category: 'all',
+    dotColor: 'var(--color-error)', bgColor: 'var(--color-error-soft)', category: 'all',
   },
   note_added: {
     icon: PenLine, label: 'Dodano notatkę',
-    dotColor: '#52525b', bgColor: '#f4f4f5', category: 'all',
+    dotColor: 'var(--color-text-muted)', bgColor: 'var(--color-surface-soft)', category: 'all',
   },
 }
 
 const FALLBACK: TimelineEventMeta = {
   icon: FileText, label: 'Zdarzenie',
-  dotColor: '#a1a1aa', bgColor: '#f4f4f5', category: 'all',
+  dotColor: 'var(--color-text-muted)', bgColor: 'var(--color-surface-soft)', category: 'all',
 }
 
 export function getTimelineEventMeta(eventType: TimelineEventType | string): TimelineEventMeta {

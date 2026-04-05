@@ -23,7 +23,7 @@ interface AiMode {
 const AI_MODES: AiMode[] = [
   {
     emoji: '🧾',
-    accent: '#3E8C58',
+    accent: 'var(--color-info)',
     title: 'Dokument kosztowy',
     subtitle: 'Faktura · Paragon · Nota',
     description: 'AI odczytuje dane z dokumentu finansowego — numer, sprzedawcę, kwoty, termin płatności.',
@@ -32,7 +32,7 @@ const AI_MODES: AiMode[] = [
   },
   {
     emoji: '📸',
-    accent: '#1A5C32',
+    accent: 'var(--color-brand)',
     title: 'Zdjęcia pomieszczenia',
     subtitle: 'Łazienka · Kuchnia · Salon · Budowa',
     description: 'AI analizuje stan pomieszczenia — rozpoznaje materiały, generuje zakres prac i draft wyceny.',
@@ -41,7 +41,7 @@ const AI_MODES: AiMode[] = [
   },
   {
     emoji: '📐',
-    accent: '#C084FC',
+    accent: 'var(--color-accent)',
     title: 'Projekt / wizualizacja',
     subtitle: 'PDF · Rzut · Render wnętrza',
     description: 'AI czyta projekt — wyodrębnia pomieszczenia, materiały wykończenia, zakres prac i draft wyceny.',
@@ -95,7 +95,7 @@ export function AiTypeChooserPage() {
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '8px 14px', borderRadius: 8,
             background: 'var(--color-primary-soft, rgba(37,99,235,0.06))',
-            border: '1px solid var(--color-primary, #2563EB)',
+            border: '1px solid var(--color-primary, var(--color-info))',
             fontSize: 13,
           }}>
             <span>📂</span>
@@ -106,7 +106,7 @@ export function AiTypeChooserPage() {
               type="button"
               onClick={() => setStep('project')}
               style={{
-                marginLeft: 'auto', fontSize: 12, color: 'var(--color-primary, #2563EB)',
+                marginLeft: 'auto', fontSize: 12, color: 'var(--color-primary, var(--color-info))',
                 background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline',
               }}
             >

@@ -33,7 +33,7 @@ function KsefStatusBadge({ status, isMock }: { status: string | null; isMock?: b
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
       <Badge variant={cfg.variant}>{`${cfg.icon} ${cfg.label}`}</Badge>
-      {isMock && <span style={{ fontSize: 10, color: '#B8742A', fontWeight: 700 }}>[MOCK]</span>}
+      {isMock && <span style={{ fontSize: 10, color: 'var(--color-accent)', fontWeight: 700 }}>[MOCK]</span>}
     </span>
   )
 }
@@ -109,7 +109,7 @@ function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend
       {step === 'sending' && (
         <div style={{ textAlign: 'center', padding: '40px 20px' }}>
           <Spinner />
-          <p style={{ marginTop: 16, fontSize: 14, color: '#6E6A60' }}>
+          <p style={{ marginTop: 16, fontSize: 14, color: 'var(--color-text-muted)' }}>
             Wysyłam faktury do KSeF…<br />
             <span style={{ fontSize: 12 }}>Nie zamykaj okna.</span>
           </p>
@@ -121,7 +121,7 @@ function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <span style={{ fontSize: 48 }}>✅</span>
             <h3 style={{ marginTop: 8 }}>Wysyłka zakończona</h3>
-            <p style={{ fontSize: 14, color: '#6E6A60' }}>
+            <p style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
               {result.sent} wysłanych, {result.errors} błędów z {result.total}
             </p>
           </div>
@@ -133,7 +133,7 @@ function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend
                 <div key={i.invoice.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, padding: '8px 12px', background: 'rgba(26,92,50,0.12)', borderRadius: 8 }}>
                   <KsefStatusBadge status="ksef_sent" isMock={i.ksefRef?.startsWith('MOCK-') || i.ksefRef?.startsWith('DEMO-')} />
                   <span style={{ flex: 1, fontSize: 13 }}>{i.invoice.number}</span>
-                  <code style={{ fontSize: 10, color: '#6E6A60' }}>{i.ksefRef?.slice(0, 22)}…</code>
+                  <code style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{i.ksefRef?.slice(0, 22)}…</code>
                   {i.ksefRef && (
                     <Button variant="ghost" onClick={() => onShowUpo(i.ksefRef!, i.invoice.number ?? '')}>UPO</Button>
                   )}
@@ -144,11 +144,11 @@ function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend
 
           {result.items.filter((i) => i.status === 'error').length > 0 && (
             <div style={{ marginBottom: 16 }}>
-              <h4 style={{ fontSize: 13, marginBottom: 8, color: '#A83228' }}>Błędy:</h4>
+              <h4 style={{ fontSize: 13, marginBottom: 8, color: 'var(--color-error)' }}>Błędy:</h4>
               {result.items.filter((i) => i.status === 'error').map((i) => (
                 <div key={i.invoice.id} style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.12)', borderRadius: 8, marginBottom: 6 }}>
                   <strong style={{ fontSize: 13 }}>{i.invoice.number}</strong>
-                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#A83228' }}>{i.error}</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-error)' }}>{i.error}</p>
                 </div>
               ))}
             </div>
@@ -167,7 +167,7 @@ function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend
           {result.items.filter((i) => i.status === 'error').map((i) => (
             <div key={i.invoice.id} style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.12)', borderRadius: 8, marginBottom: 8 }}>
               <strong>{i.invoice.number}</strong>
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#A83228' }}>{i.error}</p>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-error)' }}>{i.error}</p>
             </div>
           ))}
           <div style={{ marginTop: 16 }}>
@@ -257,14 +257,14 @@ export function KsefPage() {
     padding: '10px 20px',
     fontSize: 13,
     fontWeight: activeTab === tab ? 700 : 400,
-    borderBottom: activeTab === tab ? '2px solid var(--color-primary, #1A5C32)' : '2px solid transparent',
+    borderBottom: activeTab === tab ? '2px solid var(--color-primary, var(--color-brand))' : '2px solid transparent',
     background: 'none',
     border: 'none',
     borderBottomWidth: 2,
     borderBottomStyle: 'solid' as const,
-    borderBottomColor: activeTab === tab ? 'var(--color-primary, #1A5C32)' : 'transparent',
+    borderBottomColor: activeTab === tab ? 'var(--color-primary, var(--color-brand))' : 'transparent',
     cursor: 'pointer' as const,
-    color: activeTab === tab ? 'var(--color-primary, #1A5C32)' : '#6E6A60',
+    color: activeTab === tab ? 'var(--color-primary, var(--color-brand))' : 'var(--color-text-muted)',
   })
 
   return (
@@ -283,7 +283,7 @@ export function KsefPage() {
                   <div style={{ fontWeight: 600, fontSize: 14 }}>
                     {session.isDemo ? 'Tryb demo — dane nie są wysyłane do MF' : 'Sesja aktywna'}
                   </div>
-                  <div style={{ fontSize: 12, color: '#6E6A60', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
                     Uruchomiona: {new Date(session.startedAt).toLocaleString('pl-PL')}
                   </div>
                 </div>
@@ -296,10 +296,10 @@ export function KsefPage() {
                 {[
                   { label: 'NIP', value: <strong>{session.nip}</strong> },
                   { label: 'Serwer', value: session.env === 'prod' ? 'api.ksef.mf.gov.pl' : session.env === 'test' ? 'api-test.ksef.mf.gov.pl' : 'api-demo.ksef.mf.gov.pl' },
-                  { label: 'Ref. sesji', value: <code style={{ fontSize: 11, color: '#6E6A60', background: 'var(--color-border)', padding: '2px 6px', borderRadius: 4 }}>{session.referenceNumber || session.sessionRef}</code> },
+                  { label: 'Ref. sesji', value: <code style={{ fontSize: 11, color: 'var(--color-text-muted)', background: 'var(--color-border)', padding: '2px 6px', borderRadius: 4 }}>{session.referenceNumber || session.sessionRef}</code> },
                 ].map((row, i, arr) => (
                   <div key={row.label} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: i < arr.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
-                    <div style={{ padding: '10px 14px', fontSize: 12, color: '#6E6A60', fontWeight: 500, background: 'var(--color-surface-soft)' }}>{row.label}</div>
+                    <div style={{ padding: '10px 14px', fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 500, background: 'var(--color-surface-soft)' }}>{row.label}</div>
                     <div style={{ padding: '10px 14px', fontSize: 13 }}>{row.value}</div>
                   </div>
                 ))}
@@ -324,7 +324,7 @@ export function KsefPage() {
                 />
               </div>
               {sessionError && (
-                <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 8, fontSize: 13, color: '#A83228' }}>
+                <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 8, fontSize: 13, color: 'var(--color-error)' }}>
                   <strong>Błąd:</strong> {sessionError}
                 </div>
               )}
@@ -332,7 +332,7 @@ export function KsefPage() {
                 <Button type="submit" loading={sessionLoading} disabled={!nipInput || !tokenInput}>Inicjuj sesję</Button>
                 <Button type="button" variant="ghost" onClick={handleInitDemoSession}>Tryb demo</Button>
               </div>
-              <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--color-surface-soft)', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 12, color: '#6E6A60', lineHeight: 1.6 }}>
+              <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--color-surface-soft)', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
                 💡 NIP i token uzupełnisz w <strong>Ustawienia → Dane wykonawcy → KSeF</strong>.<br />
                 Tryb demo działa bez połączenia z MF.
               </div>
@@ -362,7 +362,7 @@ export function KsefPage() {
             </Button>
           </div>
 
-          <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--color-surface-soft)', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 12, color: '#6E6A60', lineHeight: 1.7 }}>
+          <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--color-surface-soft)', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.7 }}>
             W razie braku połączenia z KSeF system pracuje w trybie lokalnym.
           </div>
         </Card>
@@ -386,9 +386,9 @@ export function KsefPage() {
           {/* ── QUEUE TAB ──────────────────────────────── */}
           {activeTab === 'queue' && (
             <div>
-              {!session && <p style={{ color: '#6E6A60', fontSize: 14 }}>Zaloguj się do KSeF powyżej, aby zarządzać kolejką wysyłki.</p>}
+              {!session && <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Zaloguj się do KSeF powyżej, aby zarządzać kolejką wysyłki.</p>}
               {pending.length === 0 ? (
-                <p style={{ color: '#6E6A60', fontSize: 14 }}>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>
                   Kolejka jest pusta.<br />
                   <span style={{ fontSize: 12 }}>Otwórz dowolną fakturę i użyj akcji „Wyślij do KSeF”, aby dodać ją do kolejki.</span>
                 </p>
@@ -423,12 +423,12 @@ export function KsefPage() {
                     <div key={i.invoice.id} style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
                       <KsefStatusBadge status="ksef_sent" isMock={i.ksefRef?.startsWith('MOCK-') || i.ksefRef?.startsWith('DEMO-')} />
                       <span style={{ flex: 1, fontSize: 12 }}>{i.invoice.number}</span>
-                      <code style={{ fontSize: 10, color: '#6E6A60' }}>{i.ksefRef?.slice(0, 22)}…</code>
+                      <code style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{i.ksefRef?.slice(0, 22)}…</code>
                       <Button variant="ghost" onClick={() => handleShowUpo(i.ksefRef!, i.invoice.number ?? '')} loading={upo.loading}>UPO</Button>
                     </div>
                   ))}
                   {lastResult.items.filter((i) => i.status === 'error').map((i) => (
-                    <div key={i.invoice.id} style={{ color: '#A83228', marginTop: 4, fontSize: 12 }}>
+                    <div key={i.invoice.id} style={{ color: 'var(--color-error)', marginTop: 4, fontSize: 12 }}>
                       ❌ {i.invoice.number}: {i.error}
                     </div>
                   ))}
@@ -440,17 +440,17 @@ export function KsefPage() {
           {/* ── RECEIVED TAB ───────────────────────────── */}
           {activeTab === 'received' && (
             <div>
-              {!session && <p style={{ color: '#6E6A60', fontSize: 14 }}>Zaloguj się do KSeF powyżej, aby odbierać dokumenty.</p>}
+              {!session && <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Zaloguj się do KSeF powyżej, aby odbierać dokumenty.</p>}
               {receiveError && (
-                <div style={{ marginBottom: 12, padding: '10px 14px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 8, fontSize: 13, color: '#A83228' }}>
+                <div style={{ marginBottom: 12, padding: '10px 14px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 8, fontSize: 13, color: 'var(--color-error)' }}>
                   <strong>Błąd odbioru:</strong> {receiveError}
                 </div>
               )}
               {newCount !== null && newCount >= 0 && (
-                <p style={{ fontSize: 13, color: '#1A5C32', marginBottom: 8 }}>Pobrano {newCount} nowych dokumentów.</p>
+                <p style={{ fontSize: 13, color: 'var(--color-brand)', marginBottom: 8 }}>Pobrano {newCount} nowych dokumentów.</p>
               )}
               {docs.length === 0 ? (
-                <p style={{ color: '#6E6A60', fontSize: 14 }}>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>
                   Nie odebrano jeszcze żadnych dokumentów. Kliknij „Odbierz” powyżej, aby pobrać faktury z KSeF.
                 </p>
               ) : (
@@ -463,7 +463,7 @@ export function KsefPage() {
                       <tr key={doc.ksefRef}>
                         <td>
                           <code style={{ fontSize: 11 }}>{doc.ksefRef.slice(0, 22)}…</code>
-                          {doc.ksefRef.startsWith('MOCK-') && <span style={{ fontSize: 10, color: '#B8742A', marginLeft: 4 }}>[MOCK]</span>}
+                          {doc.ksefRef.startsWith('MOCK-') && <span style={{ fontSize: 10, color: 'var(--color-accent)', marginLeft: 4 }}>[MOCK]</span>}
                         </td>
                         <td>{doc.invoiceNumber}</td>
                         <td>{doc.issuerNip}</td>
@@ -472,7 +472,7 @@ export function KsefPage() {
                       </tr>
                     ))}
                     {docs.length > 30 && (
-                      <tr><td colSpan={5} style={{ color: '#6E6A60', textAlign: 'center', fontSize: 12 }}>… i {docs.length - 30} więcej</td></tr>
+                      <tr><td colSpan={5} style={{ color: 'var(--color-text-muted)', textAlign: 'center', fontSize: 12 }}>… i {docs.length - 30} więcej</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -484,36 +484,36 @@ export function KsefPage() {
           {activeTab === 'history' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: 13, color: '#6E6A60' }}>{history.length} operacji</span>
+                <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{history.length} operacji</span>
                 {history.length > 0 && <Button variant="ghost" onClick={clearHistory}>Wyczyść</Button>}
               </div>
               {history.length === 0 ? (
-                <p style={{ color: '#6E6A60', fontSize: 14 }}>Historia jest pusta — pojawi się tutaj po pierwszej wysyłce lub odbiorze.</p>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Historia jest pusta — pojawi się tutaj po pierwszej wysyłce lub odbiorze.</p>
               ) : (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {history.slice(0, 60).map((entry) => (
-                    <li key={entry.id} style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span style={{ color: '#6E6A60', fontSize: 11, minWidth: 130 }}>
+                    <li key={entry.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--color-surface-soft)', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: 11, minWidth: 130 }}>
                         {new Date(entry.timestamp).toLocaleString('pl-PL')}
                       </span>
                       <Badge variant={entry.status === 'success' ? 'success' : 'danger'}>{entry.action}</Badge>
                       <span style={{ flex: 1 }}>{entry.invoiceNumber}</span>
                       {entry.ksefRef && (
-                        <code style={{ fontSize: 11, color: '#6E6A60' }}>
+                        <code style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
                           {entry.ksefRef.slice(0, 18)}…
                           {(entry.ksefRef.startsWith('MOCK-') || entry.ksefRef.startsWith('DEMO-')) && (
-                            <span style={{ color: '#B8742A', marginLeft: 4 }}>[MOCK]</span>
+                            <span style={{ color: 'var(--color-accent)', marginLeft: 4 }}>[MOCK]</span>
                           )}
                         </code>
                       )}
                       {entry.ksefRef && entry.status === 'success' && session && (
                         <Button variant="ghost" onClick={() => handleShowUpo(entry.ksefRef!, entry.invoiceNumber)} loading={upo.loading}>UPO</Button>
                       )}
-                      {entry.error && <span style={{ color: '#A83228', fontSize: 12 }}>{entry.error}</span>}
+                      {entry.error && <span style={{ color: 'var(--color-error)', fontSize: 12 }}>{entry.error}</span>}
                     </li>
                   ))}
                   {history.length > 60 && (
-                    <li style={{ color: '#6E6A60', fontSize: 12, padding: '4px 0' }}>… i {history.length - 60} więcej</li>
+                    <li style={{ color: 'var(--color-text-muted)', fontSize: 12, padding: '4px 0' }}>… i {history.length - 60} więcej</li>
                   )}
                 </ul>
               )}

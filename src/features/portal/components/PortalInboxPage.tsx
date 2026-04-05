@@ -107,7 +107,7 @@ export function PortalInboxPage() {
           ))}
         </div>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#6E6A60' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)' }}>
           Sortuj:&nbsp;
           <select
             value={sortBy}
@@ -123,9 +123,9 @@ export function PortalInboxPage() {
       </div>
 
       {displayed.length === 0 ? (
-        <div className="proj-list" style={{ padding: '40px 20px', textAlign: 'center', color: '#6E6A60' }}>
+        <div className="proj-list" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
           <Users size={36} style={{ margin: '0 auto 14px', opacity: 0.35, display: 'block' }} />
-          <p style={{ fontSize: 15, fontWeight: 500, color: '#6E6A60', margin: '0 0 6px' }}>
+          <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-muted)', margin: '0 0 6px' }}>
             {filter === 'active' ? 'Brak klientów z aktywnym dostępem' : 'Brak klientów w portalu'}
           </p>
           <p style={{ fontSize: 13, margin: 0 }}>Zapraszaj klientów w widoku Projekt → Portal klienta.</p>
@@ -156,7 +156,7 @@ export function PortalInboxPage() {
                       width: 32, height: 32, borderRadius: 20,
                       background: 'var(--color-border-light, rgba(30,29,24,0.15))',
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 13, fontWeight: 600, color: '#9ca3af',
+                      fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)',
                     }}>
                       {(item.fullName ?? item.email).charAt(0).toUpperCase()}
                     </span>
@@ -171,7 +171,7 @@ export function PortalInboxPage() {
                       )}
                       <span className="proj-row__number">{item.projectNumber}</span>
                       <span className="proj-row__client">{item.projectName}</span>
-                      <span style={{ fontSize: 12, color: '#6E6A60' }}>zaproszony {grantedLabel}</span>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>zaproszony {grantedLabel}</span>
                     </div>
                   </div>
 
@@ -181,22 +181,22 @@ export function PortalInboxPage() {
                       {PROJECT_STATUS_LABEL[item.projectStatus] ?? item.projectStatus}
                     </span>
                     {item.hasLoggedIn ? (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#1A5C32', background: 'rgba(26,92,50,0.10)', borderRadius: 6, padding: '2px 7px' }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-brand)', background: 'rgba(26,92,50,0.10)', borderRadius: 6, padding: '2px 7px' }}>
                         zalogowany
                       </span>
                     ) : (
-                      <span style={{ fontSize: 11, color: '#B8742A', background: 'rgba(212,150,10,0.10)', borderRadius: 6, padding: '2px 7px' }}>
+                      <span style={{ fontSize: 11, color: 'var(--color-accent)', background: 'rgba(212,150,10,0.10)', borderRadius: 6, padding: '2px 7px' }}>
                         wysłano
                       </span>
                     )}
                     {hasUnread && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: '#1A5C32', background: 'rgba(26,92,50,0.12)', borderRadius: 6, padding: '2px 7px' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: 'var(--color-brand)', background: 'rgba(26,92,50,0.12)', borderRadius: 6, padding: '2px 7px' }}>
                         <MessageCircle size={11} />
                         {summary!.unreadOperator}
                       </span>
                     )}
                     {hasPending && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: '#E8A838', background: 'rgba(232,168,56,0.12)', borderRadius: 6, padding: '2px 7px' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: 'var(--color-accent)', background: 'rgba(232,168,56,0.12)', borderRadius: 6, padding: '2px 7px' }}>
                         {summary!.pendingApprovals} do zatw.
                       </span>
                     )}
@@ -211,28 +211,28 @@ export function PortalInboxPage() {
 
                 {isOpen && (
                   <div className="proj-row__detail">
-                    <div style={{ fontSize: 13, color: '#6E6A60', marginBottom: 14, display: 'grid', gap: 6 }}>
+                    <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 14, display: 'grid', gap: 6 }}>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <span style={{ color: '#6E6A60', minWidth: 70 }}>Email:</span>
+                        <span style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>Email:</span>
                         <span>{item.email}</span>
                       </div>
                       {item.phone && (
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <span style={{ color: '#6E6A60', minWidth: 70 }}>Telefon:</span>
+                          <span style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>Telefon:</span>
                           <span>{item.phone}</span>
                         </div>
                       )}
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <span style={{ color: '#6E6A60', minWidth: 70 }}>Projekt:</span>
+                        <span style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>Projekt:</span>
                         <span>{item.projectNumber} — {item.projectName}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <span style={{ color: '#6E6A60', minWidth: 70 }}>Dodano:</span>
+                        <span style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>Dodano:</span>
                         <span>{grantedLabel}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <span style={{ color: '#6E6A60', minWidth: 70 }}>Status:</span>
-                        <span style={{ color: item.hasLoggedIn ? '#1A5C32' : '#B8742A' }}>
+                        <span style={{ color: 'var(--color-text-muted)', minWidth: 70 }}>Status:</span>
+                        <span style={{ color: item.hasLoggedIn ? 'var(--color-brand)' : 'var(--color-accent)' }}>
                           {item.hasLoggedIn ? 'Klient zalogował się do portalu' : 'Dostęp wysłany — klient jeszcze nie otworzył portalu'}
                         </span>
                       </div>
@@ -260,7 +260,7 @@ export function PortalInboxPage() {
                         </Button>
                       ) : (
                         <>
-                          <span style={{ fontSize: 13, color: '#6E6A60', alignSelf: 'center' }}>
+                          <span style={{ fontSize: 13, color: 'var(--color-text-muted)', alignSelf: 'center' }}>
                             Na pewno cofnąć dostęp?
                           </span>
                           <Button

@@ -142,7 +142,7 @@ export function ServiceCatalogPicker({ open, onClose, onAdd, existingCount }: Pr
             {search || category ? ' (filtrowane)' : ''}
           </span>
           {selected.size > 0 && (
-            <span style={{ color: '#1A5C32', fontWeight: 600 }}>
+            <span style={{ color: 'var(--color-brand)', fontWeight: 600 }}>
               Zaznaczono: {selected.size}
             </span>
           )}
@@ -215,7 +215,7 @@ export function ServiceCatalogPicker({ open, onClose, onAdd, existingCount }: Pr
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggle(item.id)}
-                        style={{ accentColor: '#1A5C32', width: 16, height: 16, flexShrink: 0 }}
+                        style={{ accentColor: 'var(--color-brand)', width: 16, height: 16, flexShrink: 0 }}
                       />
                       <span style={{ flex: 1, fontSize: 13, color: 'var(--color-text-primary)' }}>
                         {item.name}

@@ -441,7 +441,7 @@ export function AiAssistantPanel({ run, scope, questions, risks, catalog, projec
                 style={{
                   padding: '5px 10px', fontSize: 11, fontWeight: 500,
                   borderRadius: 16, cursor: loading ? 'not-allowed' : 'pointer',
-                  color: 'var(--color-primary, #2563EB)',
+                  color: 'var(--color-primary, var(--color-info))',
                   background: 'var(--color-primary-soft, rgba(37,99,235,0.06))',
                   border: '1px solid rgba(37,99,235,0.2)',
                   transition: 'background 0.15s',
@@ -465,7 +465,7 @@ export function AiAssistantPanel({ run, scope, questions, risks, catalog, projec
               style={{
                 flex: 1, padding: '7px 10px', fontSize: 12,
                 borderRadius: 8, border: '1px solid var(--color-border)',
-                background: 'var(--color-surface-soft, #f8fafc)',
+                background: 'var(--color-surface-soft, var(--color-surface-soft))',
                 color: 'var(--color-text)',
                 outline: 'none',
               }}
@@ -478,7 +478,7 @@ export function AiAssistantPanel({ run, scope, questions, risks, catalog, projec
                 padding: '7px 14px', fontSize: 12, fontWeight: 600,
                 borderRadius: 8, cursor: loading || !customQ.trim() ? 'not-allowed' : 'pointer',
                 color: '#fff',
-                background: loading || !customQ.trim() ? 'var(--color-text-muted)' : 'var(--color-primary, #2563EB)',
+                background: loading || !customQ.trim() ? 'var(--color-text-muted)' : 'var(--color-primary, var(--color-info))',
                 border: 'none', transition: 'background 0.15s',
               }}
             >
@@ -496,11 +496,11 @@ export function AiAssistantPanel({ run, scope, questions, risks, catalog, projec
                     padding: '10px 12px', borderRadius: 8,
                     background: a.source === 'ai'
                       ? 'rgba(37,99,235,0.04)'
-                      : 'var(--color-surface-soft, #f8fafc)',
+                      : 'var(--color-surface-soft, var(--color-surface-soft))',
                     border: '1px solid var(--color-border)',
                   }}
                 >
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-primary, #2563EB)', marginBottom: 4 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-primary, var(--color-info))', marginBottom: 4 }}>
                     {a.question}
                     {a.source === 'ai' && (
                       <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--color-text-muted)', fontWeight: 400 }}>

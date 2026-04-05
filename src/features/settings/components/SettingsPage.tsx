@@ -63,13 +63,13 @@ export function SettingsPage() {
         <Card>
           <h3>Konto i firma</h3>
           <div style={{ display: 'grid', gap: 6, fontSize: 14, marginBottom: 12 }}>
-            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6E6A60', minWidth: 80 }}>Użytkownik</span><strong>{user?.fullName || '—'}</strong></div>
-            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6E6A60', minWidth: 80 }}>E-mail</span><span>{user?.email || '—'}</span></div>
-            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6E6A60', minWidth: 80 }}>Rola</span><span>{user?.role || '—'}</span></div>
-            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6E6A60', minWidth: 80 }}>Firma</span><span>{user?.companyName || '—'}</span></div>
-            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6E6A60', minWidth: 80 }}>Plan</span><span>{user?.plan ? PLAN_DEFS[user.plan].name : '—'}</span></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--color-text-muted)', minWidth: 80 }}>Użytkownik</span><strong>{user?.fullName || '—'}</strong></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--color-text-muted)', minWidth: 80 }}>E-mail</span><span>{user?.email || '—'}</span></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--color-text-muted)', minWidth: 80 }}>Rola</span><span>{user?.role || '—'}</span></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--color-text-muted)', minWidth: 80 }}>Firma</span><span>{user?.companyName || '—'}</span></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--color-text-muted)', minWidth: 80 }}>Plan</span><span>{user?.plan ? PLAN_DEFS[user.plan].name : '—'}</span></div>
           </div>
-          <p style={{ fontSize: 13, color: '#6E6A60', marginBottom: 12 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>
             Dane wykonawcy (NIP, adres, IBAN) uzupełnij w karcie poniżej — będą automatycznie wciągane do dokumentów PDF i KSeF.
           </p>
           <div className="actions-row">
@@ -80,11 +80,11 @@ export function SettingsPage() {
         <Card>
           <h3>KSeF</h3>
           <div style={{ display: 'grid', gap: 6, fontSize: 14, marginBottom: 12 }}>
-            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6E6A60', minWidth: 120 }}>Środowisko</span><span>{(profile as any)?.ksef_env ?? 'test'}</span></div>
-            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6E6A60', minWidth: 120 }}>NIP do KSeF</span><span>{(profile as any)?.ksef_nip ?? 'brak — ustaw w danych wykonawcy'}</span></div>
-            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#6E6A60', minWidth: 120 }}>Token</span><span>{(profile as any)?.ksef_token ? '✅ ustawiony' : '❌ brak — ustaw poniżej'}</span></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--color-text-muted)', minWidth: 120 }}>Środowisko</span><span>{(profile as any)?.ksef_env ?? 'test'}</span></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--color-text-muted)', minWidth: 120 }}>NIP do KSeF</span><span>{(profile as any)?.ksef_nip ?? 'brak — ustaw w danych wykonawcy'}</span></div>
+            <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--color-text-muted)', minWidth: 120 }}>Token</span><span>{(profile as any)?.ksef_token ? '✅ ustawiony' : '❌ brak — ustaw poniżej'}</span></div>
           </div>
-          <p style={{ fontSize: 13, color: '#6E6A60', marginBottom: 12 }}>{canUseKsef ? 'Integracja z KSeF aktywna w Twoim planie.' : 'Integracja z KSeF dostępna od planu Business. Przejdź na wyższy plan, aby wysyłać faktury elektronicznie.'}</p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>{canUseKsef ? 'Integracja z KSeF aktywna w Twoim planie.' : 'Integracja z KSeF dostępna od planu Business. Przejdź na wyższy plan, aby wysyłać faktury elektronicznie.'}</p>
           <div className="actions-row">
             {canUseKsef
               ? <Button variant="secondary" onClick={() => navigate({ to: '/ksef' })}>Przejdź do KSeF</Button>

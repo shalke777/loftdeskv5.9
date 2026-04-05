@@ -89,7 +89,7 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
         return {
           bg:    'rgba(96,165,250,0.12)',
           border: 'rgba(96,165,250,0.30)',
-          color:  '#3E8C58',
+          color:  'var(--color-info)',
           icon:   '🔒',
           text:   'Notatka wewnętrzna — widoczna tylko dla Twojego zespołu',
         }
@@ -97,7 +97,7 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
         return {
           bg:    'rgba(26,92,50,0.12)',
           border: 'rgba(26,92,50,0.30)',
-          color:  '#1A5C32',
+          color:  'var(--color-brand)',
           icon:   '💬',
           text:   'Wiadomość do klienta — klient zobaczy ją w portalu',
         }
@@ -105,7 +105,7 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
         return {
           bg:    'rgba(212,150,10,0.12)',
           border: 'rgba(212,150,10,0.30)',
-          color:  '#B8742A',
+          color:  'var(--color-accent)',
           icon:   '✅',
           text:   'Wiadomość w kontekście akceptacji — widoczna dla klienta',
         }

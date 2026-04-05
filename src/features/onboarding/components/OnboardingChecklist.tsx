@@ -17,7 +17,7 @@ export function OnboardingChecklist() {
   const nextStep = progress.steps.find((s) => !s.done)
 
   return (
-    <Card style={{ marginBottom: 16, borderLeft: '4px solid var(--color-brand, #1A5C32)' }}>
+    <Card style={{ marginBottom: 16, borderLeft: '4px solid var(--color-brand, var(--color-brand))' }}>
       <div
         style={{
           display: 'flex',
@@ -30,14 +30,14 @@ export function OnboardingChecklist() {
         {/* Left: progress */}
         <div style={{ flex: '1 1 280px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <Rocket size={16} color="var(--color-brand, #1A5C32)" />
+            <Rocket size={16} color="var(--color-brand, var(--color-brand))" />
             <strong style={{ fontSize: 14 }}>Pierwsze kroki</strong>
             <span
               style={{
                 marginLeft: 'auto',
                 fontSize: 12,
                 fontWeight: 600,
-                color: 'var(--color-brand, #1A5C32)',
+                color: 'var(--color-brand, var(--color-brand))',
               }}
             >
               {progress.done}/{progress.total}
@@ -49,7 +49,7 @@ export function OnboardingChecklist() {
             style={{
               height: 6,
               borderRadius: 999,
-              background: 'var(--color-border-light, #f1f5f9)',
+              background: 'var(--color-border-light, var(--color-surface-soft))',
               overflow: 'hidden',
               marginBottom: 12,
             }}
@@ -58,7 +58,7 @@ export function OnboardingChecklist() {
               style={{
                 width: `${progress.progress}%`,
                 height: '100%',
-                background: 'var(--color-brand, #1A5C32)',
+                background: 'var(--color-brand, var(--color-brand))',
                 transition: 'width 0.4s ease',
               }}
             />
@@ -85,16 +85,16 @@ export function OnboardingChecklist() {
                 }}
               >
                 {step.done ? (
-                  <CheckCircle2 size={16} color="var(--color-success, #1A5C32)" style={{ flexShrink: 0 }} />
+                  <CheckCircle2 size={16} color="var(--color-success, var(--color-brand))" style={{ flexShrink: 0 }} />
                 ) : (
-                  <Circle size={16} color="var(--color-text-tertiary, #6E6A60)" style={{ flexShrink: 0 }} />
+                  <Circle size={16} color="var(--color-text-tertiary, var(--color-text-muted))" style={{ flexShrink: 0 }} />
                 )}
                 <span
                   style={{
                     fontSize: 13,
                     color: step.done
-                      ? 'var(--color-text-muted, #6b7280)'
-                      : 'var(--color-text, #111827)',
+                      ? 'var(--color-text-muted, var(--color-text-muted))'
+                      : 'var(--color-text, var(--color-text-primary))',
                     textDecoration: step.done ? 'line-through' : 'none',
                     flex: 1,
                     minWidth: 0,
@@ -105,7 +105,7 @@ export function OnboardingChecklist() {
                 {!step.done && (
                   <ChevronRight
                     size={14}
-                    color="var(--color-text-tertiary, #94a3b8)"
+                    color="var(--color-text-tertiary, var(--color-text-muted))"
                     style={{ flexShrink: 0 }}
                   />
                 )}
@@ -129,7 +129,7 @@ export function OnboardingChecklist() {
             <p
               style={{
                 fontSize: 12,
-                color: 'var(--color-text-muted, #6b7280)',
+                color: 'var(--color-text-muted, var(--color-text-muted))',
                 margin: 0,
                 textAlign: 'right',
               }}
@@ -150,7 +150,7 @@ export function OnboardingChecklist() {
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: 12,
-                color: 'var(--color-text-muted, #6b7280)',
+                color: 'var(--color-text-muted, var(--color-text-muted))',
                 padding: 0,
                 textDecoration: 'underline',
               }}

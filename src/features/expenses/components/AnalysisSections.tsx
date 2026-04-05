@@ -169,10 +169,10 @@ function extractLibraryId(notes?: string | null): string | null {
 
 function getPriorityLabel(priority: TaskPriority): { label: string; color: string; bg: string } {
   switch (priority) {
-    case 'required':    return { label: 'Obowiązkowa', color: '#1A5C32', bg: 'rgba(26,92,50,0.12)' }
-    case 'likely':      return { label: 'Prawdopodobna', color: '#3E8C58', bg: 'rgba(96,165,250,0.12)' }
-    case 'conditional': return { label: 'Warunkowa', color: '#B8742A', bg: 'rgba(212,150,10,0.12)' }
-    case 'optional':    return { label: 'Opcjonalna', color: '#6E6A60', bg: 'rgba(138,143,152,0.12)' }
+    case 'required':    return { label: 'Obowiązkowa', color: 'var(--color-brand)', bg: 'rgba(26,92,50,0.12)' }
+    case 'likely':      return { label: 'Prawdopodobna', color: 'var(--color-info)', bg: 'rgba(96,165,250,0.12)' }
+    case 'conditional': return { label: 'Warunkowa', color: 'var(--color-accent)', bg: 'rgba(212,150,10,0.12)' }
+    case 'optional':    return { label: 'Opcjonalna', color: 'var(--color-text-muted)', bg: 'rgba(138,143,152,0.12)' }
   }
 }
 
@@ -271,8 +271,8 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
         return (
           <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 8, flexWrap: 'wrap' }}>
             <span>Dopasowanie do katalogu:</span>
-            {strong > 0 && <span style={{ color: 'var(--color-success, #16a34a)' }}>📚 {strong} pewnych</span>}
-            {partial > 0 && <span style={{ color: '#B8742A' }}>📚? {partial} częściowych</span>}
+            {strong > 0 && <span style={{ color: 'var(--color-success, var(--color-brand))' }}>📚 {strong} pewnych</span>}
+            {partial > 0 && <span style={{ color: 'var(--color-accent)' }}>📚? {partial} częściowych</span>}
             {unmatched > 0 && <span style={{ color: 'var(--color-text-muted)' }}>✍️ {unmatched} własnych</span>}
           </div>
         )
@@ -307,19 +307,19 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                           {(() => {
                             const globalIdx = items.indexOf(item)
                             const mr = matchResults.get(globalIdx)
-                            if (mr?.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name} (${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
+                            if (mr?.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name} (${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, var(--color-success-soft))', color: 'var(--color-success, var(--color-brand))', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
                             if (mr?.best?.tier === 'partial') return (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%, ${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#B8742A', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
-                                {mr.alternatives.length > 0 && <span title={`Alternatywy: ${mr.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 8, padding: '0 3px', borderRadius: 3, background: 'rgba(212,150,10,0.06)', color: '#B8742A', cursor: 'help', whiteSpace: 'nowrap' }}>+{mr.alternatives.length}</span>}
+                                <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%, ${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: 'var(--color-accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
+                                {mr.alternatives.length > 0 && <span title={`Alternatywy: ${mr.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 8, padding: '0 3px', borderRadius: 3, background: 'rgba(212,150,10,0.06)', color: 'var(--color-accent)', cursor: 'help', whiteSpace: 'nowrap' }}>+{mr.alternatives.length}</span>}
                               </span>
                             )
                             if (mr?.alternatives && mr.alternatives.length > 0) return (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                <span title={`Brak dopasowania. Sugestie: ${mr.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(229,115,115,0.08)', color: '#E57373', fontWeight: 600, whiteSpace: 'nowrap' }}>❌ uzupełnij</span>
+                                <span title={`Brak dopasowania. Sugestie: ${mr.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(229,115,115,0.08)', color: 'var(--color-error)', fontWeight: 600, whiteSpace: 'nowrap' }}>❌ uzupełnij</span>
                               </span>
                             )
-                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, #f1f5f9)', color: 'var(--color-text-tertiary, #94a3b8)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️ własna</span>
+                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, var(--color-surface-soft))', color: 'var(--color-text-tertiary, var(--color-text-muted))', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️ własna</span>
                           })()}
                         </span>
                         {catName && (
@@ -329,10 +329,10 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                           <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{item.notes}</div>
                         )}
                         {item.provenance === 'dependency_inferred' && (
-                          <div style={{ fontSize: 9, color: '#3E8C58', marginTop: 2, fontStyle: 'italic' }}>⚙ wynika z zależności</div>
+                          <div style={{ fontSize: 9, color: 'var(--color-info)', marginTop: 2, fontStyle: 'italic' }}>⚙ wynika z zależności</div>
                         )}
                         {item.provenance === 'confirmation_needed' && (
-                          <div style={{ fontSize: 9, color: '#B8742A', marginTop: 2, fontStyle: 'italic' }}>? wymaga potwierdzenia</div>
+                          <div style={{ fontSize: 9, color: 'var(--color-accent)', marginTop: 2, fontStyle: 'italic' }}>? wymaga potwierdzenia</div>
                         )}
                       </td>
                       <td style={colStyle}>{item.unit ?? '—'}</td>
@@ -341,7 +341,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                         {item.quantity === 0 && <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}> brak danych</span>}
                       </td>
                       <td style={rightCol}>
-                        <span style={{ color: item.confidence >= 70 ? '#1A5C32' : item.confidence >= 40 ? '#B8742A' : '#E57373' }}>
+                        <span style={{ color: item.confidence >= 70 ? 'var(--color-brand)' : item.confidence >= 40 ? 'var(--color-accent)' : 'var(--color-error)' }}>
                           {item.confidence != null ? `${item.confidence}%` : '—'}
                         </span>
                       </td>
@@ -378,7 +378,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
           background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.3)',
           fontSize: 12,
         }}>
-          <p style={{ margin: '0 0 8px', fontWeight: 600, color: '#C62828' }}>
+          <p style={{ margin: '0 0 8px', fontWeight: 600, color: 'var(--color-error)' }}>
             ⚠ Pewność analizy jest niska — pozycje wymagają ręcznej weryfikacji.
           </p>
           <p style={{ margin: '0 0 10px', color: 'var(--color-text-secondary)' }}>
@@ -388,7 +388,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
             <button
               type="button"
               onClick={doTransfer}
-              style={{ padding: '5px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', color: '#C62828', background: 'rgba(229,115,115,0.12)', border: '1px solid rgba(229,115,115,0.4)' }}
+              style={{ padding: '5px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', color: 'var(--color-error)', background: 'rgba(229,115,115,0.12)', border: '1px solid rgba(229,115,115,0.4)' }}
             >
               Tak, przenieś mimo to
             </button>
@@ -412,8 +412,8 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             width: '100%', padding: '12px 20px', fontSize: 14, fontWeight: 700,
             color: isBlocked ? 'var(--color-text-muted)' : transferring ? 'var(--color-text-muted)' : '#fff',
-            background: isBlocked ? 'var(--color-surface-soft)' : transferring ? 'var(--color-surface-soft)' : 'var(--color-primary, #2563EB)',
-            border: `1px solid ${isBlocked || transferring ? 'var(--color-border)' : 'var(--color-primary, #2563EB)'}`,
+            background: isBlocked ? 'var(--color-surface-soft)' : transferring ? 'var(--color-surface-soft)' : 'var(--color-primary, var(--color-info))',
+            border: `1px solid ${isBlocked || transferring ? 'var(--color-border)' : 'var(--color-primary, var(--color-info))'}`,
             borderRadius: 10,
             cursor: (transferring || isBlocked) ? 'not-allowed' : 'pointer', transition: 'background 0.15s, transform 0.1s',
             opacity: (transferring || isBlocked) ? 0.55 : 1,
@@ -433,11 +433,11 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
 
 function CoverageBar({ coverage }: { coverage: CoverageResult }) {
   const pct = coverage.coveragePercent
-  const color = pct >= 80 ? '#1A5C32' : pct >= 50 ? '#B8742A' : '#E57373'
+  const color = pct >= 80 ? 'var(--color-brand)' : pct >= 50 ? 'var(--color-accent)' : 'var(--color-error)'
   const label = pct >= 80 ? 'Dobra' : pct >= 50 ? 'Częściowa' : 'Niska'
 
   return (
-    <div style={{ marginBottom: 10, padding: '6px 10px', borderRadius: 6, background: 'var(--color-surface-soft, #1E2024)', border: '1px solid var(--color-border)' }}>
+    <div style={{ marginBottom: 10, padding: '6px 10px', borderRadius: 6, background: 'var(--color-surface-soft, var(--color-text-primary))', border: '1px solid var(--color-border)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, marginBottom: 4 }}>
         <span style={{ color: 'var(--color-text-secondary)' }}>
           Pokrycie obowiązkowych pozycji
@@ -448,7 +448,7 @@ function CoverageBar({ coverage }: { coverage: CoverageResult }) {
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2, transition: 'width 0.3s' }} />
       </div>
       {coverage.brokenDependencies.length > 0 && (
-        <div style={{ marginTop: 4, fontSize: 10, color: '#B8742A' }}>
+        <div style={{ marginTop: 4, fontSize: 10, color: 'var(--color-accent)' }}>
           ⚠️ {coverage.brokenDependencies.length} pozycja(e) bez wymaganej zależności
         </div>
       )}
@@ -464,13 +464,13 @@ function MissingTasksSection({ coverage }: { coverage: CoverageResult }) {
 
   return (
     <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, background: 'rgba(212,150,10,0.06)', border: '1px solid rgba(212,150,10,0.2)' }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: '#B8742A', marginBottom: 6 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-accent)', marginBottom: 6 }}>
         ⚠️ Brakujące pozycje
       </div>
 
       {coverage.missingRequired.length > 0 && (
         <div style={{ marginBottom: 6 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#E57373', marginBottom: 2 }}>Brak obowiązkowych:</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-error)', marginBottom: 2 }}>Brak obowiązkowych:</div>
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, lineHeight: 1.6 }}>
             {coverage.missingRequired.map(t => (
               <li key={t.id} style={{ color: 'var(--color-text-secondary)' }}>
@@ -483,7 +483,7 @@ function MissingTasksSection({ coverage }: { coverage: CoverageResult }) {
 
       {coverage.missingLikely.length > 0 && (
         <div style={{ marginBottom: 6 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#3E8C58', marginBottom: 2 }}>Brak prawdopodobnych:</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-info)', marginBottom: 2 }}>Brak prawdopodobnych:</div>
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, lineHeight: 1.6 }}>
             {coverage.missingLikely.slice(0, 8).map(t => (
               <li key={t.id} style={{ color: 'var(--color-text-secondary)' }}>
@@ -499,7 +499,7 @@ function MissingTasksSection({ coverage }: { coverage: CoverageResult }) {
 
       {coverage.unconfirmed.length > 0 && (
         <div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#B8742A', marginBottom: 2 }}>Do potwierdzenia ({coverage.unconfirmed.length}):</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-accent)', marginBottom: 2 }}>Do potwierdzenia ({coverage.unconfirmed.length}):</div>
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, lineHeight: 1.6 }}>
             {coverage.unconfirmed.slice(0, 6).map(t => (
               <li key={t.id} style={{ color: 'var(--color-text-secondary)' }}>
@@ -521,15 +521,15 @@ function MissingTasksSection({ coverage }: { coverage: CoverageResult }) {
 import type { ClarificationQuestion, ClarificationAnswer, QuestionSeverity } from '@/services/ai/engines/clarification.types'
 
 const SEVERITY_CONFIG: Record<QuestionSeverity, { label: string; color: string; bg: string; border: string }> = {
-  critical_for_scope:     { label: 'Krytyczne', color: '#E57373', bg: 'rgba(229,115,115,0.08)', border: 'rgba(229,115,115,0.25)' },
-  important_for_accuracy: { label: 'Istotne',   color: '#B8742A', bg: 'rgba(212,150,10,0.07)',  border: 'rgba(212,150,10,0.22)' },
-  optional_detail:        { label: 'Opcjonalne', color: '#6E6A60', bg: 'rgba(138,143,152,0.06)', border: 'rgba(138,143,152,0.18)' },
+  critical_for_scope:     { label: 'Krytyczne', color: 'var(--color-error)', bg: 'rgba(229,115,115,0.08)', border: 'rgba(229,115,115,0.25)' },
+  important_for_accuracy: { label: 'Istotne',   color: 'var(--color-accent)', bg: 'rgba(212,150,10,0.07)',  border: 'rgba(212,150,10,0.22)' },
+  optional_detail:        { label: 'Opcjonalne', color: 'var(--color-text-muted)', bg: 'rgba(138,143,152,0.06)', border: 'rgba(138,143,152,0.18)' },
 }
 
-const CONFIRMED_GREEN = '#52A56E'
+const CONFIRMED_GREEN = 'var(--color-brand-light)'
 const CONFIRMED_BG    = 'rgba(82,165,110,0.08)'
 const CONFIRMED_BDR   = 'rgba(82,165,110,0.25)'
-const REJECTED_RED    = '#E57373'
+const REJECTED_RED    = 'var(--color-error)'
 
 function makeBtn(color: string, bg: string): React.CSSProperties {
   return { padding: '3px 10px', fontSize: 11, fontWeight: 600, borderRadius: 5, cursor: 'pointer', color, background: bg, border: `1px solid ${color}`, lineHeight: 1.5, fontFamily: 'inherit' }
@@ -615,7 +615,7 @@ function QuestionAnswerRow({
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {question.options!.map(opt => (
                 <button key={opt} type="button" onClick={() => submit(opt)}
-                  style={makeBtn('var(--color-primary, #2D7DD2)', 'rgba(45,125,210,0.08)')}>
+                  style={makeBtn('var(--color-primary, var(--color-info))', 'rgba(45,125,210,0.08)')}>
                   {opt}
                 </button>
               ))}
@@ -627,7 +627,7 @@ function QuestionAnswerRow({
                 onKeyDown={e => e.key === 'Enter' && draft.trim() && submit(Number(draft))}
                 style={{ ...inputCss, width: 80 }} placeholder="np. 12" />
               <button type="button" onClick={() => draft.trim() && submit(Number(draft))}
-                style={makeBtn('var(--color-primary, #2D7DD2)', 'rgba(45,125,210,0.08)')}>OK</button>
+                style={makeBtn('var(--color-primary, var(--color-info))', 'rgba(45,125,210,0.08)')}>OK</button>
             </div>
           )}
           {question.answerType === 'text' && (
@@ -635,7 +635,7 @@ function QuestionAnswerRow({
               <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={2}
                 style={{ ...inputCss, flex: 1, resize: 'vertical', minHeight: 44 }} placeholder="Opisz…" />
               <button type="button" onClick={() => draft.trim() && submit(draft.trim())}
-                style={makeBtn('var(--color-primary, #2D7DD2)', 'rgba(45,125,210,0.08)')}>OK</button>
+                style={makeBtn('var(--color-primary, var(--color-info))', 'rgba(45,125,210,0.08)')}>OK</button>
             </div>
           )}
         </div>

@@ -102,7 +102,7 @@ export function CompanyProfileCard() {
             {logoUrl ? (
               <img src={logoUrl} alt="Logo firmy" style={{ maxWidth: 200, maxHeight: 80, objectFit: 'contain', borderRadius: 8, border: '1px solid rgba(30,29,24,0.15)' }} />
             ) : (
-              <div style={{ width: 200, height: 80, borderRadius: 8, border: '2px dashed var(--color-border)', display: 'grid', placeItems: 'center', color: '#6E6A60', fontSize: 13 }}>
+              <div style={{ width: 200, height: 80, borderRadius: 8, border: '2px dashed var(--color-border)', display: 'grid', placeItems: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
                 Brak logo
               </div>
             )}
@@ -112,12 +112,12 @@ export function CompanyProfileCard() {
                 {logoUploading ? 'Przesyłanie…' : logoUrl ? 'Zmień logo' : 'Dodaj logo'}
               </Button>
               {logoUrl && (
-                <Button disabled={!canEdit} onClick={handleLogoRemove} style={{ background: 'transparent', color: '#A83228', border: '1px solid rgba(239,68,68,0.30)' }}>
+                <Button disabled={!canEdit} onClick={handleLogoRemove} style={{ background: 'transparent', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.30)' }}>
                   Usuń logo
                 </Button>
               )}
-              <p style={{ margin: 0, color: '#6E6A60', fontSize: 12 }}>PNG, JPG, SVG lub WebP · maks. 500 KB</p>
-              {logoError && <p style={{ margin: 0, color: '#A83228', fontSize: 12 }}>{logoError}</p>}
+              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 12 }}>PNG, JPG, SVG lub WebP · maks. 500 KB</p>
+              {logoError && <p style={{ margin: 0, color: 'var(--color-error)', fontSize: 12 }}>{logoError}</p>}
             </div>
           </div>
         </div>

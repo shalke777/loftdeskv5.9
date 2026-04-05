@@ -68,15 +68,15 @@ export function DocNumberingCard() {
   return (
     <Card>
       <h3>Numeracja dokumentów</h3>
-      <div style={{ fontSize: 13, color: '#6E6A60', marginBottom: 16, marginTop: 4, display: 'grid', gap: 4 }}>
-        <div><strong style={{ color: '#C9CCD4' }}>Przedrostek</strong> — stosowany natychmiastowo dla wszystkich nowych dokumentów.</div>
-        <div><strong style={{ color: '#C9CCD4' }}>Numer startowy</strong> — obowiązuje dopiero w nowej serii (pierwszy dokument nowego miesiąca lub nowej firmy). Nie zmienia trwającej serii.</div>
+      <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16, marginTop: 4, display: 'grid', gap: 4 }}>
+        <div><strong style={{ color: 'var(--color-border)' }}>Przedrostek</strong> — stosowany natychmiastowo dla wszystkich nowych dokumentów.</div>
+        <div><strong style={{ color: 'var(--color-border)' }}>Numer startowy</strong> — obowiązuje dopiero w nowej serii (pierwszy dokument nowego miesiąca lub nowej firmy). Nie zmienia trwającej serii.</div>
       </div>
 
       <div style={{ display: 'grid', gap: 16 }}>
         {DOC_TYPES.map(({ key, label }) => (
           <div key={key}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#E0E2E8' }}>{label}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--color-border)' }}>{label}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignItems: 'flex-start' }}>
               <div>
                 <div className="field__label" style={{ marginBottom: 4 }}>Przedrostek</div>
@@ -87,8 +87,8 @@ export function DocNumberingCard() {
                   disabled={!canEdit}
                   maxLength={8}
                 />
-                <div style={{ fontSize: 11, color: '#6A6F7A', marginTop: 4 }}>
-                  Następny dokument: <span style={{ fontFamily: 'monospace', color: '#6E6A60' }}>{buildPrefixPreview(config[key])}</span>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                  Następny dokument: <span style={{ fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>{buildPrefixPreview(config[key])}</span>
                 </div>
               </div>
               <div>
@@ -100,8 +100,8 @@ export function DocNumberingCard() {
                   onChange={e => setField(key, 'start_seq', e.target.value)}
                   disabled={!canEdit}
                 />
-                <div style={{ fontSize: 11, color: '#6A6F7A', marginTop: 4 }}>
-                  Nowa seria: <span style={{ fontFamily: 'monospace', color: '#6E6A60' }}>{buildNewSeriesPreview(config[key])}</span>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                  Nowa seria: <span style={{ fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>{buildNewSeriesPreview(config[key])}</span>
                 </div>
               </div>
             </div>

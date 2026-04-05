@@ -19,9 +19,9 @@ interface Props {
 // ── Bucket config ─────────────────────────────────────────────────────────────
 
 const BUCKET: Record<string, { bg: string; border: string; dot: string; label: string; icon: string }> = {
-  blocked:      { bg: 'var(--color-error-soft)', border: '#FECACA', dot: '#A83228', label: 'Zablokowane',    icon: '⛔' },
-  needs_review: { bg: '#FFFBEB', border: '#FDE68A', dot: '#B8742A', label: 'Do sprawdzenia', icon: '⚠' },
-  ready:        { bg: '#F0FDF4', border: '#BBF7D0', dot: '#1A5C32', label: 'Gotowe',          icon: '✓' },
+  blocked:      { bg: 'var(--color-error-soft)', border: 'var(--color-error-soft)', dot: 'var(--color-error)', label: 'Zablokowane',    icon: '⛔' },
+  needs_review: { bg: 'var(--color-warning-soft)', border: 'var(--color-warning-soft)', dot: 'var(--color-accent)', label: 'Do sprawdzenia', icon: '⚠' },
+  ready:        { bg: 'var(--color-success-soft)', border: 'var(--color-success-soft)', dot: 'var(--color-brand)', label: 'Gotowe',          icon: '✓' },
 }
 
 // ── Format machine review_reason into readable Polish ─────────────────────────
@@ -128,7 +128,7 @@ function ReviewItemRow({ item, defaultExpanded }: { item: ReviewQueueItem; defau
 
           {/* Conflict summaries */}
           {item.conflicts_summary.map((cs, i) => (
-            <div key={i} style={{ color: '#B8742A', fontSize: 11, fontFamily: 'monospace' }}>
+            <div key={i} style={{ color: 'var(--color-accent)', fontSize: 11, fontFamily: 'monospace' }}>
               ⚡ {cs}
             </div>
           ))}
@@ -218,7 +218,7 @@ export function FusionReviewQueuePanel({ queue, isLoading, error }: Props) {
 
   if (error) {
     return (
-      <div style={{ padding: '12px 14px', borderRadius: 8, background: 'var(--color-error-soft)', border: '1px solid #FECACA', fontSize: 12, color: '#A83228' }}>
+      <div style={{ padding: '12px 14px', borderRadius: 8, background: 'var(--color-error-soft)', border: '1px solid var(--color-error-soft)', fontSize: 12, color: 'var(--color-error)' }}>
         Błąd fusion review: {error.message}
       </div>
     )
@@ -253,17 +253,17 @@ export function FusionReviewQueuePanel({ queue, isLoading, error }: Props) {
           {summary.total} kandydatów
         </span>
         {summary.blocked > 0 && (
-          <span style={{ marginLeft: 'auto', background: '#FEE2E2', color: '#A83228', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
+          <span style={{ marginLeft: 'auto', background: 'var(--color-error-soft)', color: 'var(--color-error)', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
             ⛔ {summary.blocked}
           </span>
         )}
         {summary.needs_review > 0 && (
-          <span style={{ background: 'var(--color-warning-soft)', color: '#B8742A', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
+          <span style={{ background: 'var(--color-warning-soft)', color: 'var(--color-accent)', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
             ⚠ {summary.needs_review}
           </span>
         )}
         {summary.ready > 0 && (
-          <span style={{ background: 'var(--color-success-soft)', color: '#1A5C32', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
+          <span style={{ background: 'var(--color-success-soft)', color: 'var(--color-brand)', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
             ✓ {summary.ready}
           </span>
         )}

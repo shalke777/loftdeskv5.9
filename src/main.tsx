@@ -46,8 +46,8 @@ if (import.meta.env.DEV) {
       //    Helps immediately spot "wrong port" or "SW still active" situations.
       console.info(
         `%c[LoftDesk DEV]%c port=${window.location.port || '80'}  SW=${count > 0 ? `cleared ${count} registration(s)` : 'none'}  HMR=active`,
-        'color:#1A5C32;font-weight:700',
-        'color:#6E6A60',
+        'color:var(--color-brand);font-weight:700',
+        'color:var(--color-text-muted)',
       )
     })
   }

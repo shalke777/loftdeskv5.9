@@ -106,7 +106,7 @@ export function computeConfidenceBand(input: ConfidenceInput): ConfidenceBandRes
     return {
       band:  'low',
       label: 'Niska pewność',
-      color: 'var(--color-danger, #A83228)',
+      color: 'var(--color-danger, var(--color-error))',
       score,
     }
   }
@@ -114,7 +114,7 @@ export function computeConfidenceBand(input: ConfidenceInput): ConfidenceBandRes
     return {
       band:  'conditional',
       label: 'Warunkowa',
-      color: 'var(--color-warning, #B8742A)',
+      color: 'var(--color-warning, var(--color-accent))',
       score,
     }
   }
@@ -129,7 +129,7 @@ export function computeConfidenceBand(input: ConfidenceInput): ConfidenceBandRes
   return {
     band:  'high',
     label: 'Wysoka',
-    color: 'var(--color-success, #10B981)',
+    color: 'var(--color-success, var(--color-brand))',
     score,
   }
 }

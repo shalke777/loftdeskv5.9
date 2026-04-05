@@ -13,7 +13,7 @@ export function QueryError({
   return (
     <div className="empty-state" style={{ padding: '48px 24px' }}>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-        <AlertTriangle size={36} strokeWidth={1.25} color="var(--color-danger, #e53e3e)" />
+        <AlertTriangle size={36} strokeWidth={1.25} color="var(--color-danger, var(--color-error))" />
       </div>
       <h3>{message}</h3>
       <p>Sprawdź połączenie z internetem lub spróbuj ponownie.</p>

@@ -86,7 +86,7 @@ function StandaloneInvoiceCard({ invoice, onPreview }: { invoice: ClientInvoice;
           {gross != null ? `${gross.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} zł` : '—'}
         </span>
         {invoice.due_date && (
-          <span style={{ fontSize: 12, color: '#9ca3af' }}>
+          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
             Termin: {new Date(invoice.due_date + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })}
           </span>
         )}

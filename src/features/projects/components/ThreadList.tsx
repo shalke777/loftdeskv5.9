@@ -31,9 +31,9 @@ const THREAD_TYPE_LABELS: Record<string, string> = {
 }
 
 const VISIBILITY_CHIP: Record<string, { label: string; color: string; bg: string }> = {
-  internal:      { label: 'Wewn.',  color: '#6E6A60', bg: 'rgba(160,170,180,0.10)' },
-  client_shared: { label: 'Klient', color: '#1A5C32', bg: 'rgba(26,92,50,0.15)' },
-  approval:      { label: 'Akcept.',color: '#B8742A', bg: 'rgba(212,150,10,0.15)' },
+  internal:      { label: 'Wewn.',  color: 'var(--color-text-muted)', bg: 'rgba(160,170,180,0.10)' },
+  client_shared: { label: 'Klient', color: 'var(--color-brand)', bg: 'rgba(26,92,50,0.15)' },
+  approval:      { label: 'Akcept.',color: 'var(--color-accent)', bg: 'rgba(212,150,10,0.15)' },
 }
 
 interface VisibilityChipProps {

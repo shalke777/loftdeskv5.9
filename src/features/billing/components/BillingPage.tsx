@@ -129,8 +129,8 @@ export function BillingPage() {
       {/* Past-due or unpaid — high-urgency alert */}
       {isPastDue && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '12px 16px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 10, fontSize: 13 }}>
-          <AlertTriangle size={16} color="#A83228" style={{ flexShrink: 0 }} />
-          <span style={{ flex: 1, color: '#A83228' }}>
+          <AlertTriangle size={16} color="var(--color-error)" style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1, color: 'var(--color-error)' }}>
             <strong>Płatność nie powiodła się.</strong> Zaktualizuj metodę płatności, aby uniknąć przerwy w dostępie.
           </span>
           {stripeEnabled && (
@@ -144,8 +144,8 @@ export function BillingPage() {
       {/* Canceled — softer info */}
       {isCanceled && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '12px 16px', background: 'rgba(212,150,10,0.12)', border: '1px solid rgba(212,150,10,0.30)', borderRadius: 10, fontSize: 13 }}>
-          <Clock size={16} color="#c2410c" style={{ flexShrink: 0 }} />
-          <span style={{ flex: 1, color: '#B8742A' }}>
+          <Clock size={16} color="var(--color-error)" style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1, color: 'var(--color-accent)' }}>
             Subskrypcja została anulowana. Dostęp do funkcji premium wygasł.
           </span>
         </div>
@@ -169,7 +169,7 @@ export function BillingPage() {
             </span>
           </div>
           {data.subscriptionStatus === 'trialing' && daysLeft !== null && (
-            <p style={{ fontSize: 12, color: daysLeft <= 3 ? '#A83228' : '#B8742A', marginBottom: 6 }}>
+            <p style={{ fontSize: 12, color: daysLeft <= 3 ? 'var(--color-error)' : 'var(--color-accent)', marginBottom: 6 }}>
               {daysLeft === 0
                 ? '⏰ Trial wygasa dziś — aktywuj płatność, aby zachować dostęp.'
                 : `⏰ ${daysLeft} • dni trialu pozostało.${daysLeft <= 5 ? ' Aktywuj plan.' : ''}`}
@@ -214,7 +214,7 @@ export function BillingPage() {
               <div key={key} style={{ marginBottom: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
                   <span>{label}</span>
-                    <span style={{ fontWeight: 600, color: warn ? '#B8742A' : undefined }}>
+                    <span style={{ fontWeight: 600, color: warn ? 'var(--color-accent)' : undefined }}>
                     {renderLimit(limit, used)}
                   </span>
                 </div>
@@ -223,7 +223,7 @@ export function BillingPage() {
                     style={{
                       width: pct === null ? '4%' : `${Math.min(pct, 100)}%`,
                       height: '100%',
-                      background: pct !== null && pct >= 100 ? '#A83228' : warn ? '#B8742A' : 'var(--color-brand, #1A5C32)',
+                      background: pct !== null && pct >= 100 ? 'var(--color-error)' : warn ? 'var(--color-accent)' : 'var(--color-brand, var(--color-brand))',
                       transition: 'width 0.4s ease',
                     }}
                   />
@@ -247,16 +247,16 @@ export function BillingPage() {
           </p>
           {data.subscriptionStatus === 'trialing' && daysLeft !== null && daysLeft <= 7 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: daysLeft <= 2 ? 'rgba(239,68,68,0.12)' : 'rgba(212,150,10,0.12)', border: `1px solid ${daysLeft <= 2 ? 'rgba(239,68,68,0.30)' : 'rgba(212,150,10,0.30)'}`, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>
-              <Clock size={13} color={daysLeft <= 2 ? '#A83228' : '#B8742A'} />
-              <span style={{ color: daysLeft <= 2 ? '#A83228' : '#B8742A', flex: 1 }}>
+              <Clock size={13} color={daysLeft <= 2 ? 'var(--color-error)' : 'var(--color-accent)'} />
+              <span style={{ color: daysLeft <= 2 ? 'var(--color-error)' : 'var(--color-accent)', flex: 1 }}>
                 {daysLeft === 0 ? 'Trial wygasa dziś.' : `${daysLeft} dni trialu pozostało.`}
               </span>
             </div>
           )}
           {(data.currentPlan === 'free' || data.subscriptionStatus === 'canceled') && !isPastDue && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'rgba(212,150,10,0.12)', border: '1px solid rgba(212,150,10,0.30)', borderRadius: 8, fontSize: 12, marginBottom: 10 }}>
-              <Zap size={13} color="#B8742A" />
-              <span style={{ color: '#B8742A', flex: 1 }}>Plan <strong>Free</strong> — ograniczone limity.</span>
+              <Zap size={13} color="var(--color-accent)" />
+              <span style={{ color: 'var(--color-accent)', flex: 1 }}>Plan <strong>Free</strong> — ograniczone limity.</span>
             </div>
           )}
           <div className="actions-row" style={{ marginTop: 8 }}>
@@ -296,7 +296,7 @@ export function BillingPage() {
               <Card
                 key={plan.id}
                 style={{
-                  border: isActive ? '2px solid var(--color-brand, #1A5C32)' : undefined,
+                  border: isActive ? '2px solid var(--color-brand, var(--color-brand))' : undefined,
                   position: 'relative',
                 }}
               >
@@ -329,7 +329,7 @@ export function BillingPage() {
                 <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', display: 'grid', gap: 6 }}>
                   {plan.features.map((feature) => (
                     <li key={feature} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                      <CheckCircle2 size={14} color="var(--color-success, #1A5C32)" style={{ flexShrink: 0 }} />
+                      <CheckCircle2 size={14} color="var(--color-success, var(--color-brand))" style={{ flexShrink: 0 }} />
                       {feature}
                     </li>
                   ))}

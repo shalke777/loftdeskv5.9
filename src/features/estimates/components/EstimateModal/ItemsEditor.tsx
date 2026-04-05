@@ -89,14 +89,14 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* ── Fast-add form ── */}
       <div style={{ background: 'rgba(26,92,50,0.12)', border: '1px solid rgba(26,92,50,0.30)', borderRadius: 10, padding: '14px 16px' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#1A5C32', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-brand)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Dodaj pozycję
         </div>
         {/* Row 1: Nazwa + j.m. + Ilość + VAT + Dodaj */}
         <div className="items-fast-add-row" style={{ display: 'grid', gridTemplateColumns: '1fr 70px 74px 74px auto', gap: 8, alignItems: 'flex-end' }}>
           <div>
             <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>
-              Nazwa <span style={{ color: '#A83228' }}>*</span>
+              Nazwa <span style={{ color: 'var(--color-error)' }}>*</span>
             </label>
             <input
               className="input"
@@ -119,7 +119,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>
-              Ilość <span style={{ color: '#A83228' }}>*</span>
+              Ilość <span style={{ color: 'var(--color-error)' }}>*</span>
             </label>
             <input
               className="input"
@@ -262,7 +262,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
                 ) : (
                   <Fragment key={item.id}>
                     <tr
-                      style={{ borderBottom: '1px solid #f1f5f9' }}
+                      style={{ borderBottom: '1px solid var(--color-surface-soft)' }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-soft)')}
                       onMouseLeave={e => (e.currentTarget.style.background = '')}
                     >
@@ -271,7 +271,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           {item.name}
                           {item.catalog_item_id && (
-                            <span title="Z katalogu usług" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 4, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', whiteSpace: 'nowrap' }}>📚</span>
+                            <span title="Z katalogu usług" style={{ display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 4, background: 'var(--color-success-soft, var(--color-success-soft))', color: 'var(--color-success, var(--color-brand))', whiteSpace: 'nowrap' }}>📚</span>
                           )}
                         </span>
                       </td>
@@ -283,12 +283,12 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
                       <td style={{ padding: '9px 10px' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                           <button className="btn btn--sm btn--secondary" onClick={() => startEdit(item)} style={{ height: 26, padding: '0 10px', fontSize: 12 }}>Edytuj</button>
-                          <button className="btn btn--sm btn--ghost" onClick={() => removeRow(item.id)} style={{ height: 26, padding: '0 8px', fontSize: 12, color: '#A83228' }}>Usuń</button>
+                          <button className="btn btn--sm btn--ghost" onClick={() => removeRow(item.id)} style={{ height: 26, padding: '0 8px', fontSize: 12, color: 'var(--color-error)' }}>Usuń</button>
                         </div>
                       </td>
                     </tr>
                     {item.description?.trim() && (
-                      <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <tr style={{ borderBottom: '1px solid var(--color-surface-soft)' }}>
                         <td colSpan={8} style={{ padding: '2px 10px 8px 44px', fontSize: 12, color: 'var(--color-text-secondary)' }}>
                           {item.description}
                         </td>

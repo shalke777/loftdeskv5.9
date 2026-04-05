@@ -167,7 +167,7 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
           <div className="form-grid" style={{ marginTop: 10, padding: '10px 14px', background: 'var(--color-surface-soft)', borderRadius: 8, border: '1px solid var(--color-border)' }}>
             <div><div className="field__label">Netto</div><strong>{formatCurrency(totalNet)}</strong></div>
             <div><div className="field__label">VAT ({vatRate}%)</div><strong>{formatCurrency(vatAmount)}</strong></div>
-            <div><div className="field__label">Brutto (wartość umowy)</div><strong style={{ color: '#A83228' }}>{formatCurrency(totalGross)}</strong></div>
+            <div><div className="field__label">Brutto (wartość umowy)</div><strong style={{ color: 'var(--color-error)' }}>{formatCurrency(totalGross)}</strong></div>
           </div>
         ) : null}
       </div>
