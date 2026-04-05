@@ -27,7 +27,7 @@ function applyTheme(theme: Theme) {
   html.classList.toggle('dark', theme === 'dark')
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) {
-    meta.setAttribute('content', theme === 'dark' ? '#131610' : 'var(--color-bg)')
+    meta.setAttribute('content', theme === 'dark' ? '#131610' : '#F5F0E8')
   }
 }
 

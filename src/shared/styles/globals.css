@@ -3,55 +3,26 @@
 * { box-sizing: border-box; }
 
 :root {
-  /* ── LoftDesk — Warm Cream + Forest Green (synced with tokens.css) ── */
-  --color-bg: var(--color-bg, var(--color-bg));
-  --color-surface: #FFFFFF;
-  --color-surface-soft: var(--color-surface-soft);
+  /* ── Aliases only (source of truth = tokens.css) ── */
   --color-surface-alt: #F0EBE0;
-  --color-card: #FFFFFF;
   --color-primary: var(--color-text-primary);
   --color-primary-light: var(--color-text-muted);
   --color-primary-dark: var(--color-brand);
-  --color-brand: var(--color-brand);
-  --color-brand-2: var(--color-surface-soft);
-  --color-brand-light: var(--color-info);
-  --color-brand-border: rgba(26, 92, 50, 0.2);
   --color-action: var(--color-brand);
-  --color-action-hover: #155226;
-  --color-accent: var(--color-accent);
+  --color-action-hover: var(--color-brand-hover);
   --color-accent-hover: #A0641F;
-  --color-accent-soft: rgba(184, 116, 42, 0.1);
-  --color-success: var(--color-brand);
-  --color-success-soft: rgba(26, 92, 50, 0.1);
-  --color-warning: var(--color-accent);
-  --color-warning-soft: rgba(184, 116, 42, 0.1);
-  --color-error: var(--color-error);
-  --color-error-soft: rgba(168, 50, 40, 0.1);
-  --color-info: var(--color-info);
-  --color-info-soft: rgba(62, 140, 88, 0.1);
-  --color-text-primary: var(--color-text-primary);
-  --color-text-secondary: var(--color-text-muted);
-  --color-text-inverse: #FFFFFF;
-  --color-border: rgba(30, 29, 24, 0.1);
-  --color-border-light: rgba(30, 29, 24, 0.06);
-  --color-border-dark: rgba(30, 29, 24, 0.15);
-  --color-muted: #E6E0D2;
-  --color-muted-foreground: var(--color-text-muted);
-  --color-sidebar-bg: #FFFFFF;
-  --color-sidebar-text: var(--color-text-primary);
+  --color-sidebar-bg: var(--color-sidebar);
+  --color-sidebar-text: var(--color-sidebar-foreground);
   --color-sidebar-active: rgba(26, 92, 50, 0.12);
-  --color-sidebar-border: rgba(30, 29, 24, 0.08);
-  --color-chart-1: var(--color-brand);
-  --color-chart-2: var(--color-accent);
-  --color-chart-3: var(--color-info);
-  --color-chart-4: #D4A55A;
-  --color-chart-5: var(--color-error);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
-  --ring-brand: 0 0 0 2px rgba(26, 92, 50, 0.25);
-  --font-body: 'Inter', 'SF Pro', 'Roboto', 'Segoe UI', Arial, sans-serif;
-  --font-heading: 'Inter', 'SF Pro', 'Roboto', 'Segoe UI', Arial, sans-serif;
+  --color-text-inverse: #FFFFFF;
+  --color-border-dark: rgba(30, 29, 24, 0.15);
+}
+
+.dark {
+  --color-surface-alt: #252820;
+  --color-accent-hover: #B8742A;
+  --color-sidebar-active: rgba(62, 168, 90, 0.15);
+  --color-border-dark: rgba(237, 232, 221, 0.15);
 }
 
 html, body, #root { margin: 0; min-height: 100%; }
@@ -2580,9 +2551,9 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   gap: 16px;
   padding: 13px 24px;
   /* Explicit dark — guaranteed readable on all pages including login/landing */
-  background: var(--color-sidebar-bg, var(--color-sidebar-bg));
-  border-top: 1px solid rgba(180,190,200,0.10);
-  color: var(--color-text-secondary, var(--color-text-muted));
+  background: var(--color-sidebar-bg);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
   font-size: 13px;
   flex-wrap: wrap;
   box-shadow: 0 -6px 24px rgba(0,0,0,0.40);
