@@ -341,6 +341,13 @@ export async function parseInvoiceFromText(text: string): Promise<ParsedExpenseD
     result.amount_gross = Math.round((result.amount_net + result.amount_vat) * 100) / 100
   }
 
+  // ── Line items extraction ─────────────────────────────────────────────────
+  // Polish invoice tables typically have rows like:
+  //   1. Płytki ceramiczne  40  m²  30,00  1200,00  23  276,00  1476,00
+  // We look for lines starting with a row number or containing a pattern of
+  // name + numbers that looks like an invoice item row.
+  result.line_items = extractLineItems(text)
+
   return result
 }
 
@@ -377,6 +384,75 @@ function normalizeDatePl(raw: string): string {
     }
   }
   return clean
+}
+
+/**
+ * Extract line items from raw invoice text using regex patterns.
+ * Matches rows like: "1. Płytki ceramiczne 40 m² 30,00 1200,00 23% 276,00 1476,00"
+ * or tab/space-separated table rows with numeric patterns at the end.
+ */
+function extractLineItems(rawText: string): DocumentLineItem[] {
+  const items: DocumentLineItem[] = []
+  const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 3)
+
+  // Pattern: row number + item name + quantity + unit + amounts
+  // Captures: [rowNum] name qty unit price net [vat%] [vatAmt] gross
+  const ROW_PATTERN = /^(\d{1,3})[.)\s]+(.{3,80}?)\s+(\d+[.,]?\d*)\s+(szt|m[²2³3]?|mb|kg|l|kpl|op|rbh?|godz?|h|ton|pal|ark)\s+(\d+[\s]?\d*[.,]\d{2})/i
+
+  // Simpler pattern: just name followed by amounts at end of line
+  const SIMPLE_ROW = /^(\d{1,3})[.)\s]+(.{3,60}?)\s+(\d+[\s]?\d*[.,]\d{2})\s+(\d+[\s]?\d*[.,]\d{2})\s*$/
+
+  for (const line of lines) {
+    const match = line.match(ROW_PATTERN)
+    if (match) {
+      const name = match[2].trim()
+      const qty = parseFloat(match[3].replace(',', '.'))
+      const unit = match[4]
+      // Extract all amounts from the rest of the line after unit
+      const afterUnit = line.slice(line.indexOf(match[4]) + match[4].length)
+      const amounts = [...afterUnit.matchAll(/(\d+[\s]?\d*[.,]\d{2})/g)].map(m => parsePolishAmount(m[1]))
+
+      const item: DocumentLineItem = {
+        name,
+        quantity: qty,
+        unit,
+        unit_net: amounts.length >= 1 ? amounts[0] : null,
+        net_amount: amounts.length >= 2 ? amounts[1] : amounts[0] ?? null,
+        vat_rate: null,
+        vat_amount: null,
+        gross_amount: amounts.length >= 3 ? amounts[amounts.length - 1] : null,
+      }
+      // Try to find vat rate (a number like 23, 8, 5, 0 possibly with %)
+      const vatRateMatch = afterUnit.match(/\b(23|8|5|0|7)\s*%/)
+      if (vatRateMatch) item.vat_rate = parseInt(vatRateMatch[1], 10)
+
+      if (amounts.length >= 4) {
+        item.net_amount = amounts[1]
+        item.vat_amount = amounts[amounts.length - 2]
+        item.gross_amount = amounts[amounts.length - 1]
+      }
+
+      items.push(item)
+      continue
+    }
+
+    // Try simpler pattern for minimal table rows
+    const simpleMatch = line.match(SIMPLE_ROW)
+    if (simpleMatch) {
+      items.push({
+        name: simpleMatch[2].trim(),
+        quantity: null,
+        unit: null,
+        unit_net: null,
+        net_amount: parsePolishAmount(simpleMatch[3]),
+        vat_rate: null,
+        vat_amount: null,
+        gross_amount: parsePolishAmount(simpleMatch[4]),
+      })
+    }
+  }
+
+  return items
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

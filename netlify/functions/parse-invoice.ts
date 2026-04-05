@@ -717,27 +717,46 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
     if (receiptNum) result.invoice_number = 'PAR/' + receiptNum[1].trim().toUpperCase()
   }
 
-  // NIP — extract first occurrence as vendor, second (if present) as buyer
+  // NIP — context-aware extraction: check which section each NIP belongs to
   // Buyer NIP is often labelled "NIP nabywcy", "NIP kupującego", "NIP odbiorcy" etc.
   const buyerNipLabelMatch = t.match(/NIP\s*(?:nabywcy|kupuj[aą]cego|odbiorcy|zamawiaj[aą]cego)[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/i)
   if (buyerNipLabelMatch) {
     const digits = buyerNipLabelMatch[1].replace(/[\s\-]/g, '')
     if (digits.length === 10) result.buyer_nip = digits
   }
-  const nipMatch = t.match(/NIP[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/i)
-  if (nipMatch) {
-    const digits = nipMatch[1].replace(/[\s\-]/g, '')
-    if (digits.length === 10 && validateNip(digits)) result.vendor_nip = digits
-    else if (digits.length === 10) result.vendor_nip = digits  // keep even if checksum fails — warn later
+  // Vendor NIP — labelled "NIP sprzedawcy/wystawcy/dostawcy"
+  const vendorNipLabelMatch = t.match(/NIP\s*(?:sprzedawcy|wystawcy|dostawcy|wykonawcy)[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/i)
+  if (vendorNipLabelMatch) {
+    const digits = vendorNipLabelMatch[1].replace(/[\s\-]/g, '')
+    if (digits.length === 10) result.vendor_nip = digits
   }
-  // If no labelled buyer NIP found, look for a second NIP occurrence in the text
-  if (!result.buyer_nip) {
-    const allNips = [...t.matchAll(/NIP[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/gi)]
-    if (allNips.length >= 2) {
-      const secondDigits = allNips[1][1].replace(/[\s\-]/g, '')
-      if (secondDigits.length === 10 && secondDigits !== result.vendor_nip) {
-        result.buyer_nip = secondDigits
-      }
+  // Fallback: first generic NIP as vendor
+  if (!result.vendor_nip) {
+    const nipMatch = t.match(/NIP[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/i)
+    if (nipMatch) {
+      const digits = nipMatch[1].replace(/[\s\-]/g, '')
+      if (digits.length === 10) result.vendor_nip = digits
+    }
+  }
+  // Context-based: check if a NIP appears near "nabywca/sprzedawca" section markers
+  const allNips = [...t.matchAll(/NIP[:\s#]*([0-9]{3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,3}[\s\-]?[0-9]{2,4})/gi)]
+  for (const nipM of allNips) {
+    const digits = nipM[1].replace(/[\s\-]/g, '')
+    if (digits.length !== 10 || digits === result.vendor_nip || digits === result.buyer_nip) continue
+    // Check 200 chars before this NIP for section context
+    const pos = nipM.index ?? 0
+    const contextBefore = t.slice(Math.max(0, pos - 200), pos).toLowerCase()
+    if (/(?:nabywca|odbiorca|kupuj[aą]cy|zamawiaj[aą]cy)/.test(contextBefore)) {
+      if (!result.buyer_nip) result.buyer_nip = digits
+    } else if (/(?:sprzedawca|wystawca|dostawca|wykonawca)/.test(contextBefore)) {
+      if (!result.vendor_nip) result.vendor_nip = digits
+    }
+  }
+  // If still no buyer NIP, second NIP occurrence as fallback
+  if (!result.buyer_nip && allNips.length >= 2) {
+    const secondDigits = allNips[1][1].replace(/[\s\-]/g, '')
+    if (secondDigits.length === 10 && secondDigits !== result.vendor_nip) {
+      result.buyer_nip = secondDigits
     }
   }
 
@@ -855,12 +874,16 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
   else if (g && va && !n) result.net_amount   = Math.round((g - va) * 100) / 100
   else if (n && va && !g) result.gross_amount = Math.round((n + va) * 100) / 100
 
+  // ── Line items extraction ─────────────────────────────────────────────────
+  const lineItems = extractLineItemsFromText(text)
+
   return {
     document_type:    (result.document_type as ParseInvoiceResult['document_type']) ?? null,
     vendor_name:      (result.vendor_name as string) ?? null,
     vendor_nip:       (result.vendor_nip as string) ?? null,
     buyer_name:       (result.buyer_name as string) ?? null,
     buyer_nip:        (result.buyer_nip as string) ?? null,
+    line_items:       lineItems.length > 0 ? lineItems : undefined,
     invoice_number:   (result.invoice_number as string) ?? null,
     issue_date:       (result.issue_date as string) ?? null,
     sale_date:        (result.sale_date as string) ?? null,
@@ -905,6 +928,70 @@ function normalizeDatePl(raw: string): string {
       return `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`
   }
   return clean
+}
+
+/**
+ * Extract line items from raw invoice/PDF text using regex patterns.
+ * Matches rows like: "1. Płytki ceramiczne 40 m² 30,00 1200,00 23% 276,00 1476,00"
+ */
+function extractLineItemsFromText(rawText: string): ParseInvoiceLineItem[] {
+  const items: ParseInvoiceLineItem[] = []
+  const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 3)
+
+  // Pattern: row number + item name + quantity + unit + amounts
+  const ROW_PATTERN = /^(\d{1,3})[.)\s]+(.{3,80}?)\s+(\d+[.,]?\d*)\s+(szt|m[²2³3]?|mb|kg|l|kpl|op|rbh?|godz?|h|ton|pal|ark)\s+(\d+[\s]?\d*[.,]\d{2})/i
+
+  // Simpler: row number + name + two amounts at end
+  const SIMPLE_ROW = /^(\d{1,3})[.)\s]+(.{3,60}?)\s+(\d+[\s]?\d*[.,]\d{2})\s+(\d+[\s]?\d*[.,]\d{2})\s*$/
+
+  for (const line of lines) {
+    const match = line.match(ROW_PATTERN)
+    if (match) {
+      const name = match[2].trim()
+      const qty = parseFloat(match[3].replace(',', '.'))
+      const unit = match[4]
+      const afterUnit = line.slice(line.indexOf(match[4]) + match[4].length)
+      const amounts = [...afterUnit.matchAll(/(\d+[\s]?\d*[.,]\d{2})/g)].map(m => parsePolishAmount(m[1]))
+
+      const item: ParseInvoiceLineItem = {
+        name,
+        quantity: qty,
+        unit,
+        unit_net: amounts.length >= 1 ? amounts[0] : null,
+        net_amount: amounts.length >= 2 ? amounts[1] : amounts[0] ?? null,
+        vat_rate: null,
+        vat_amount: null,
+        gross_amount: amounts.length >= 3 ? amounts[amounts.length - 1] : null,
+      }
+      const vatRateMatch = afterUnit.match(/\b(23|8|5|0|7)\s*%/)
+      if (vatRateMatch) item.vat_rate = parseInt(vatRateMatch[1], 10)
+
+      if (amounts.length >= 4) {
+        item.net_amount = amounts[1]
+        item.vat_amount = amounts[amounts.length - 2]
+        item.gross_amount = amounts[amounts.length - 1]
+      }
+
+      items.push(item)
+      continue
+    }
+
+    const simpleMatch = line.match(SIMPLE_ROW)
+    if (simpleMatch) {
+      items.push({
+        name: simpleMatch[2].trim(),
+        quantity: null,
+        unit: null,
+        unit_net: null,
+        net_amount: parsePolishAmount(simpleMatch[3]),
+        vat_rate: null,
+        vat_amount: null,
+        gross_amount: parsePolishAmount(simpleMatch[4]),
+      })
+    }
+  }
+
+  return items
 }
 
 function validateDate(raw: string): string | null {
