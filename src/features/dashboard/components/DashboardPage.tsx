@@ -55,6 +55,34 @@ export function DashboardPage() {
     <div>
       <PageHeader title={data.companyName} />
 
+      {/* ── Szybkie akcje — na górze, widoczne wszędzie ──────────────── */}
+      <Card className="subtle-panel" style={{ marginBottom: 18 }}>
+          <div className="toolbar" style={{ marginBottom: 12 }}>
+            <div>
+              <h3>Szybkie akcje</h3>
+              <p className="field__label">Najczęściej używane akcje.</p>
+            </div>
+          </div>
+          <div className="quick-actions-grid">
+            {quickActions.map((action) => {
+              const Icon = action.icon
+              return (
+                <button
+                  key={action.title}
+                  className="quick-action"
+                  onClick={() => navigate({ to: action.href as any })}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                    <div className="quick-action__icon"><Icon size={18} /></div>
+                    <strong>{action.title}</strong>
+                  </div>
+                  <div className="field__label">{action.text}</div>
+                </button>
+              )
+            })}
+          </div>
+        </Card>
+
       {/* ── KPI — zwijalne na mobile, zawsze widoczne na desktop ──────── */}
       <button
         type="button"
@@ -73,7 +101,7 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {/* ── Mobile home — 6 kafli (tylko mobile) ─────────────────────────── */}
+      {/* ── Mobile home — kafli (tylko mobile) ─────────────────────────── */}
       <nav className="mobile-home-grid" aria-label="Główne moduły">
         {MOBILE_TILES.map(({ label, sub, icon: Icon, href }, i) => (
           <Link key={href} to={href as any} className={`mobile-tile mobile-tile--${i + 1}`}>
@@ -185,33 +213,6 @@ export function DashboardPage() {
 
       {/* ── Reszta dashboardu — ukryta na mobile ─────────────────────── */}
       <div className="dashboard-desktop-content">
-
-      <Card className="subtle-panel" style={{ marginBottom: 18 }}>
-          <div className="toolbar" style={{ marginBottom: 12 }}>
-            <div>
-              <h3>Szybkie akcje</h3>
-              <p className="field__label">Najczęściej używane akcje.</p>
-            </div>
-          </div>
-          <div className="quick-actions-grid">
-            {quickActions.map((action) => {
-              const Icon = action.icon
-              return (
-                <button
-                  key={action.title}
-                  className="quick-action"
-                  onClick={() => navigate({ to: action.href as any })}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                    <div className="quick-action__icon"><Icon size={18} /></div>
-                    <strong>{action.title}</strong>
-                  </div>
-                  <div className="field__label">{action.text}</div>
-                </button>
-              )
-            })}
-          </div>
-        </Card>
 
       <div className="grid-3" style={{ marginTop: 16 }}>
         <Card>
