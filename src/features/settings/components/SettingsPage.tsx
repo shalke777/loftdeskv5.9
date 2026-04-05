@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useRef } from 'react'
-import { Camera, ChartColumn, CreditCard, ShieldCheck, Users } from 'lucide-react'
+import { Camera, ChartColumn, CreditCard, Moon, ShieldCheck, Sun, Users } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
@@ -18,6 +18,7 @@ import { WorkspaceLimitsCard } from '@/features/settings/components/WorkspaceLim
 import { downloadBlob } from '@/shared/lib/downloads'
 import { LegalCenterCard } from '@/features/legal/components/LegalCenterCard'
 import { DocNumberingCard } from '@/features/settings/components/DocNumberingCard'
+import { useTheme } from '@/shared/hooks/useTheme'
 
 function HelperCard({ icon, title, text, href }: { icon: ReactNode; title: string; text: string; href: string }) {
   const navigate = useNavigate()
@@ -42,6 +43,7 @@ export function SettingsPage() {
   const { profile } = useSettings()
   const canUseKsef = useFeatureAccess('ksef')
   const importRef = useRef<HTMLInputElement | null>(null)
+  const { theme, toggleTheme } = useTheme()
 
   async function exportBackup() {
     const blob = new Blob([demoDb.exportState()], { type: 'application/json;charset=utf-8' })
@@ -75,6 +77,46 @@ export function SettingsPage() {
           <div className="actions-row">
             <Button variant="ghost" onClick={async () => { await signOut(); navigate({ to: '/login' as any }) }}>Wyloguj</Button>
           </div>
+        </Card>
+
+        <Card>
+          <h3>Preferencje</h3>
+          <div style={{ display: 'grid', gap: 12, fontSize: 14, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <strong>Motyw</strong>
+                <div className="field__label" style={{ marginTop: 2 }}>Jasny lub ciemny interfejs aplikacji.</div>
+              </div>
+              <Button variant="ghost" onClick={toggleTheme} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+                {theme === 'dark' ? 'Ciemny' : 'Jasny'}
+              </Button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <strong>Język</strong>
+                <div className="field__label" style={{ marginTop: 2 }}>Język interfejsu.</div>
+              </div>
+              <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>🇵🇱 Polski</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <strong>Format daty</strong>
+                <div className="field__label" style={{ marginTop: 2 }}>Format wyświetlania dat w aplikacji.</div>
+              </div>
+              <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>DD.MM.YYYY</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <strong>Strefa czasowa</strong>
+                <div className="field__label" style={{ marginTop: 2 }}>Strefa używana do dat i powiadomień.</div>
+              </div>
+              <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Europa/Warszawa (CET)</span>
+            </div>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border)', paddingTop: 12 }}>
+            Eksport danych (RODO): Aby pobrać wszystkie swoje dane, użyj opcji „Pobierz backup" w karcie Backup poniżej.
+          </p>
         </Card>
 
         <Card>
