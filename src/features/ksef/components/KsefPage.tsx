@@ -23,15 +23,15 @@ import { type KsefEnv } from '@/services/ksef/ksef.service'
 
 // ── Status Badge Component ─────────────────────────────────
 function KsefStatusBadge({ status, isMock }: { status: string | null; isMock?: boolean }) {
-  const configs: Record<string, { variant: 'success' | 'danger' | 'warning' | 'default'; label: string; icon: string }> = {
-    ksef_sent:    { variant: 'success', label: 'Wysłano',   icon: '✅' },
-    ksef_pending: { variant: 'warning', label: 'Oczekuje',  icon: '⏳' },
-    ksef_error:   { variant: 'danger',  label: 'Błąd',      icon: '❌' },
-    ksef_queued:  { variant: 'default', label: 'W kolejce',  icon: '📋' },
+  const configs: Record<string, { variant: 'success' | 'danger' | 'warning' | 'default'; label: string; icon: string; tooltip: string }> = {
+    ksef_sent:    { variant: 'success', label: 'Wysłano',   icon: '✅', tooltip: 'Faktura została poprawnie wysłana i zarejestrowana w KSeF' },
+    ksef_pending: { variant: 'warning', label: 'Oczekuje',  icon: '⏳', tooltip: 'Faktura czeka na wysłanie — kliknij „Wyślij do KSeF"' },
+    ksef_error:   { variant: 'danger',  label: 'Błąd',      icon: '❌', tooltip: 'Wysyłka nie powiodła się — sprawdź szczegóły i spróbuj ponownie' },
+    ksef_queued:  { variant: 'default', label: 'W kolejce',  icon: '📋', tooltip: 'Faktura dodana do kolejki wysyłki — zostanie wysłana automatycznie' },
   }
   const cfg = configs[status ?? ''] ?? configs.ksef_pending
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={cfg.tooltip}>
       <Badge variant={cfg.variant}>{`${cfg.icon} ${cfg.label}`}</Badge>
       {isMock && <span style={{ fontSize: 10, color: 'var(--color-accent)', fontWeight: 700 }}>[MOCK]</span>}
     </span>
@@ -83,7 +83,7 @@ function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend
       {step === 'confirm' && (
         <div>
           {isDemo && (
-            <div style={{ padding: '14px 16px', background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.30)', borderRadius: 8, marginBottom: 16 }}>
+            <div style={{ padding: '14px 16px', background: 'var(--color-info-soft)', border: '1px solid var(--color-info)', borderRadius: 8, marginBottom: 16 }}>
               <strong>🔵 Tryb demo</strong>
               <p style={{ margin: '6px 0 0', fontSize: 13 }}>
                 Dane nie będą wysłane do Ministerstwa Finansów — symulacja lokalna.
@@ -130,7 +130,7 @@ function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend
             <div style={{ marginBottom: 16 }}>
               <h4 style={{ fontSize: 13, marginBottom: 8 }}>Wysłane faktury:</h4>
               {result.items.filter((i) => i.status === 'sent').map((i) => (
-                <div key={i.invoice.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, padding: '8px 12px', background: 'rgba(26,92,50,0.12)', borderRadius: 8 }}>
+                <div key={i.invoice.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, padding: '8px 12px', background: 'var(--color-success-soft)', borderRadius: 8 }}>
                   <KsefStatusBadge status="ksef_sent" isMock={i.ksefRef?.startsWith('MOCK-') || i.ksefRef?.startsWith('DEMO-')} />
                   <span style={{ flex: 1, fontSize: 13 }}>{i.invoice.number}</span>
                   <code style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{i.ksefRef?.slice(0, 22)}…</code>
@@ -146,7 +146,7 @@ function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend
             <div style={{ marginBottom: 16 }}>
               <h4 style={{ fontSize: 13, marginBottom: 8, color: 'var(--color-error)' }}>Błędy:</h4>
               {result.items.filter((i) => i.status === 'error').map((i) => (
-                <div key={i.invoice.id} style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.12)', borderRadius: 8, marginBottom: 6 }}>
+                <div key={i.invoice.id} style={{ padding: '8px 12px', background: 'var(--color-error-soft)', borderRadius: 8, marginBottom: 6 }}>
                   <strong style={{ fontSize: 13 }}>{i.invoice.number}</strong>
                   <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-error)' }}>{i.error}</p>
                 </div>
@@ -163,14 +163,18 @@ function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <span style={{ fontSize: 48 }}>❌</span>
             <h3 style={{ marginTop: 8 }}>Błąd wysyłki</h3>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>
+              Sprawdź szczegóły poniżej i spróbuj ponownie.
+            </p>
           </div>
           {result.items.filter((i) => i.status === 'error').map((i) => (
-            <div key={i.invoice.id} style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.12)', borderRadius: 8, marginBottom: 8 }}>
+            <div key={i.invoice.id} style={{ padding: '12px 16px', background: 'var(--color-error-soft)', borderRadius: 8, marginBottom: 8 }}>
               <strong>{i.invoice.number}</strong>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-error)' }}>{i.error}</p>
             </div>
           ))}
-          <div style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+            <Button onClick={handleSend}>Spróbuj ponownie</Button>
             <Button variant="secondary" onClick={onClose}>Zamknij</Button>
           </div>
         </div>
@@ -277,7 +281,7 @@ export function KsefPage() {
           <h3 style={{ marginBottom: 16 }}>Sesja KSeF</h3>
           {session ? (
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: session.isDemo ? 'rgba(212,150,10,0.12)' : 'rgba(26,92,50,0.12)', border: `1px solid ${session.isDemo ? 'rgba(212,150,10,0.30)' : 'rgba(26,92,50,0.30)'}`, borderRadius: 10, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: session.isDemo ? 'var(--color-warning-soft)' : 'var(--color-success-soft)', border: `1px solid ${session.isDemo ? 'var(--color-warning)' : 'var(--color-success)'}`, borderRadius: 10, marginBottom: 16 }}>
                 <span style={{ fontSize: 22 }}>{session.isDemo ? '🔵' : '🟢'}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>
