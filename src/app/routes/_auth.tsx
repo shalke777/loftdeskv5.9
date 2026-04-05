@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import { Button } from '@/shared/ui/Button/Button'
+import { GlobalSearch } from '@/shared/ui/GlobalSearch/GlobalSearch'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { AuthScreen } from '@/features/auth/components/AuthScreen'
 import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
@@ -179,6 +180,7 @@ export function AuthLayout() {
 
       <section className="shell-main">
         <header className="shell-topbar">
+          <GlobalSearch />
           <div className="shell-topbar__right">
             <Link to="/billing" className={user.plan === 'free' ? 'shell-pill shell-pill--upgrade' : 'shell-pill'} style={{ textDecoration: 'none', cursor: 'pointer' }}>
               {user.plan === 'free' ? '⭐ Przejdź na Business' : `Plan: ${user.plan}`}
