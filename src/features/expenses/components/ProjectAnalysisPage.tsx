@@ -13,7 +13,7 @@ import { useAnalyzeProject } from '@/features/expenses/hooks/useAnalyzeProject'
 import { useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
 import { compareProjectToReality } from '@/services/ai/engines/comparison'
 import type { ProjectAnalysisResult, ProjectComparisonResult } from '@/services/ai/engines/project.types'
-import { AiErrorState, AiQualityBadge, AiReliabilityBanner, AiUploadRules, AiProgressSteps, aiPreflightValidate, sniffFileIntent } from '@/shared/ui/AiGuidance'
+import { AiErrorState, AiQualityBadge, AiReliabilityBanner, AiUploadRules, AiProgressSteps, aiPreflightValidate, sniffFileIntent, AiDraftDisclaimer, AiProjectContextBadge, AiNextActionBar } from '@/shared/ui/AiGuidance'
 import { computeProjectReliability } from '@/services/ai/engines/reliability'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { useProjects } from '@/features/projects/hooks/useProjects'
@@ -371,10 +371,17 @@ export function ProjectAnalysisPage() {
 
   // ── Processing step ──────────────────────────────────────────────────────
   if (step === 'processing') {
+    const processingProject = projects.find(p => p.id === selectedProjectId)
     return (
       <div>
         <PageHeader title="AI Analiza projektu" />
         <div style={{ maxWidth: 520, margin: '0 auto', padding: '32px 16px' }}>
+          {processingProject && (
+            <AiProjectContextBadge
+              projectNumber={processingProject.number}
+              projectName={processingProject.name}
+            />
+          )}
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             gap: 20, padding: '52px 24px',
@@ -393,26 +400,27 @@ export function ProjectAnalysisPage() {
   }
 
   // ── Results step ─────────────────────────────────────────────────────────
+  const selectedProject = projects.find(p => p.id === selectedProjectId)
+
   return (
     <div>
       <PageHeader title="AI Analiza projektu" />
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 16px 40px' }}>
+        {/* Project context badge */}
+        {selectedProject && (
+          <AiProjectContextBadge
+            projectNumber={selectedProject.number}
+            projectName={selectedProject.name}
+            onChangeProject={reset}
+          />
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
           {reliabilityReport && <AiReliabilityBanner report={reliabilityReport} compact />}
           <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
             <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 13 }}>
               ← Nowa analiza
             </button>
-            {selectedProjectId && (
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => navigate({ to: '/projects' as any })}
-                style={{ fontSize: 13 }}
-              >
-                Wróć do projektu →
-              </button>
-            )}
           </div>
         </div>
 
@@ -427,6 +435,9 @@ export function ProjectAnalysisPage() {
 
         {result && (
           <>
+            {/* Trust disclaimer */}
+            <AiDraftDisclaimer />
+
             <ProjectSummaryBar result={result} />
             {result.warnings.length > 0 && !error && (
               <div style={{
@@ -630,6 +641,24 @@ export function ProjectAnalysisPage() {
               )}
             </div>
             {/* ── end comparison ─────────────────────────────────────────  */}
+
+            {/* Next action bar */}
+            {result.suggested_estimate_items.length > 0 && (
+              <AiNextActionBar
+                primaryLabel="📋 Przenieś do wyceny"
+                primaryOnClick={() => navigate({ to: '/estimates' as any, search: { create: '1' } as any })}
+                secondaryLabel={selectedProjectId ? 'Wróć do projektu' : undefined}
+                secondaryOnClick={selectedProjectId ? () => navigate({ to: '/projects' as any }) : undefined}
+              />
+            )}
+            {result.suggested_estimate_items.length === 0 && selectedProjectId && (
+              <AiNextActionBar
+                primaryLabel="Wróć do projektu"
+                primaryOnClick={() => navigate({ to: '/projects' as any })}
+                secondaryLabel="Nowa analiza"
+                secondaryOnClick={reset}
+              />
+            )}
           </>
         )}
 

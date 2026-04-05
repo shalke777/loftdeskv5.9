@@ -14,7 +14,7 @@ import { getRoomTypeName } from '@/services/ai/room-types'
 import type { AnalysisResult } from '@/services/ai/analysis.types'
 import type { ClarificationAnswer } from '@/services/ai/engines/clarification.types'
 import { applyAnswersToResult } from '@/services/ai/engines/clarification-effects'
-import { AiErrorState, AiReliabilityBanner, AiUploadRules, AiProgressSteps } from '@/shared/ui/AiGuidance'
+import { AiErrorState, AiReliabilityBanner, AiUploadRules, AiProgressSteps, AiDraftDisclaimer, AiProjectContextBadge, AiNextActionBar } from '@/shared/ui/AiGuidance'
 import { computeRoomReliabilityFromAnalysis } from '@/services/ai/engines/reliability'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { useProjects } from '@/features/projects/hooks/useProjects'
@@ -203,10 +203,17 @@ export function RoomAnalysisPage() {
 
   // ── Processing ──
   if (step === 'processing') {
+    const processingProject = projects.find(p => p.id === selectedProjectId)
     return (
       <div>
         <PageHeader title="AI Analiza pomieszczenia" />
         <div style={{ maxWidth: 520, margin: '0 auto', padding: '32px 16px' }}>
+          {processingProject && (
+            <AiProjectContextBadge
+              projectNumber={processingProject.number}
+              projectName={processingProject.name}
+            />
+          )}
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             gap: 20, padding: '52px 24px',
@@ -225,10 +232,21 @@ export function RoomAnalysisPage() {
   }
 
   // ── Results ──
+  const selectedProject = projects.find(p => p.id === selectedProjectId)
+
   return (
     <div>
       <PageHeader title="AI Analiza pomieszczenia" />
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 16px' }}>
+        {/* Project context badge */}
+        {selectedProject && (
+          <AiProjectContextBadge
+            projectNumber={selectedProject.number}
+            projectName={selectedProject.name}
+            onChangeProject={reset}
+          />
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
           <button type="button" className="btn btn-ghost" onClick={reset} style={{ fontSize: 13 }}>
             ← Nowa analiza
@@ -236,16 +254,6 @@ export function RoomAnalysisPage() {
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
             Wyniki — {getRoomTypeName(roomType)}
           </h3>
-          {selectedProjectId && (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => navigate({ to: '/projects' as any })}
-              style={{ marginLeft: 'auto', fontSize: 13 }}
-            >
-              Wróć do projektu →
-            </button>
-          )}
         </div>
 
         {error && (
@@ -259,6 +267,9 @@ export function RoomAnalysisPage() {
 
         {result && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Trust disclaimer */}
+            <AiDraftDisclaimer />
+
             {/* Reliability banner — reflects answers via displayResult */}
             {reliabilityReport && (
               <AiReliabilityBanner report={reliabilityReport} />
@@ -283,7 +294,7 @@ export function RoomAnalysisPage() {
               />
             )}
 
-            {/* No results */}
+            {/* No results — improved guidance */}
             {!result.detected_materials?.length && !result.work_scope?.length && !result.suggested_estimate_items?.length && !error && (
               <div style={{
                 textAlign: 'center', padding: '48px 24px',
@@ -291,9 +302,37 @@ export function RoomAnalysisPage() {
                 color: 'var(--color-text-muted)',
               }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
-                <p style={{ margin: '0 0 12px', fontWeight: 600 }}>Brak wyników</p>
-                <p style={{ margin: 0, fontSize: 13 }}>AI nie rozpoznał zakresu prac. Spróbuj dodać więcej zdjęć i uzupełnić formularz.</p>
+                <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: 15, color: 'var(--color-text-primary)' }}>AI nie rozpoznał zakresu prac</p>
+                <p style={{ margin: '0 0 16px', fontSize: 13, lineHeight: 1.6 }}>
+                  Zdjęcia mogą być zbyt ciemne, rozmyte lub nie pokazują wystarczających szczegółów.
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <button type="button" className="btn btn-primary" onClick={handleAddMore} style={{ fontSize: 13 }}>
+                    Dodaj więcej zdjęć
+                  </button>
+                  <button type="button" className="btn btn-ghost" onClick={handleRetry} style={{ fontSize: 13 }}>
+                    Spróbuj ponownie
+                  </button>
+                </div>
               </div>
+            )}
+
+            {/* Next action bar — always visible when results exist */}
+            {(result.suggested_estimate_items?.length ?? 0) > 0 && (
+              <AiNextActionBar
+                primaryLabel="📋 Przenieś do wyceny"
+                primaryOnClick={() => navigate({ to: '/estimates' as any, search: { create: '1' } as any })}
+                secondaryLabel={selectedProjectId ? 'Wróć do projektu' : undefined}
+                secondaryOnClick={selectedProjectId ? () => navigate({ to: '/projects' as any }) : undefined}
+              />
+            )}
+            {(result.suggested_estimate_items?.length ?? 0) === 0 && selectedProjectId && (
+              <AiNextActionBar
+                primaryLabel="Wróć do projektu"
+                primaryOnClick={() => navigate({ to: '/projects' as any })}
+                secondaryLabel="Nowa analiza"
+                secondaryOnClick={reset}
+              />
             )}
           </div>
         )}

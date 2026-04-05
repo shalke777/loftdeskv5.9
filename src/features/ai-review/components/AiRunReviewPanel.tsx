@@ -133,7 +133,13 @@ function ScopeItemRow({
         padding:      '10px 12px',
         borderRadius:  8,
         border:       '1px solid var(--color-border)',
-        background:   'var(--color-surface)',
+        borderLeft:   `4px solid ${SCOPE_STATUS_COLOR[item.review_status]}`,
+        background:   item.review_status === 'rejected'
+          ? 'rgba(239,68,68,0.03)'
+          : item.review_status === 'accepted'
+            ? 'rgba(16,185,129,0.03)'
+            : 'var(--color-surface)',
+        opacity:      item.review_status === 'rejected' ? 0.7 : 1,
         display:      'grid',
         gap:           6,
       }}
@@ -493,6 +499,25 @@ function Section({ title, count, children }: { title: string; count: number; chi
   )
 }
 
+// ── StatBadge ─────────────────────────────────────────────────────────────────
+
+function StatBadge({ label, count, color }: { label: string; count: number; color: string }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 6,
+      padding: '4px 10px', borderRadius: 6,
+      background: count > 0 ? `${color}11` : 'transparent',
+      border: count > 0 ? `1px solid ${color}33` : '1px solid transparent',
+      fontSize: 12,
+    }}>
+      <span style={{ fontWeight: 700, fontSize: 14, color: count > 0 ? color : 'var(--color-text-muted)' }}>
+        {count}
+      </span>
+      <span style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
+    </div>
+  )
+}
+
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -552,8 +577,41 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
       })
     : null
 
+  const acceptedCount = scope.filter(s => s.review_status === 'accepted').length
+  const modifiedCount = scope.filter(s => s.review_status === 'modified').length
+  const rejectedCount = scope.filter(s => s.review_status === 'rejected').length
+
   return (
     <div style={{ display: 'grid', gap: 20 }}>
+      {/* Trust disclaimer */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '8px 14px', borderRadius: 8,
+        background: 'rgba(37,99,235,0.05)',
+        border: '1px solid rgba(37,99,235,0.15)',
+        fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5,
+      }}>
+        <span style={{ fontSize: 15, flexShrink: 0 }}>🤖</span>
+        <span>
+          <strong style={{ color: 'var(--color-text-primary)' }}>Sugestia AI</strong>
+          {' — przejrzyj każdą pozycję przed utworzeniem wyceny.'}
+        </span>
+      </div>
+
+      {/* Review progress bar */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 8, padding: '10px 14px',
+        borderRadius: 8, background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+      }}>
+        <StatBadge label="Oczekuje" count={pendingScope} color="var(--color-text-secondary)" />
+        <StatBadge label="Zaakceptowane" count={acceptedCount} color="var(--color-success, #10B981)" />
+        <StatBadge label="Zmodyfikowane" count={modifiedCount} color="var(--color-warning, #F59E0B)" />
+        <StatBadge label="Odrzucone" count={rejectedCount} color="var(--color-danger, #EF4444)" />
+        {pendingQuestions > 0 && <StatBadge label="Pytania" count={pendingQuestions} color="var(--color-primary, #2563EB)" />}
+        {openRisks > 0 && <StatBadge label="Ryzyka" count={openRisks} color="var(--color-danger, #EF4444)" />}
+      </div>
+
       {/* Run metadata header */}
       <div
         style={{
@@ -593,12 +651,6 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
             </span>
           </div>
         )}
-        <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-          <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: '0 0 2px' }}>Do przeglądu</p>
-          <p style={{ fontSize: 13, margin: 0 }}>
-            {pendingScope} zakresy · {pendingQuestions} pytania · {openRisks} ryzyka
-          </p>
-        </div>
       </div>
 
       {/* Scope items */}

@@ -458,3 +458,103 @@ export function AiReliabilityBanner({ report, compact = false }: AiReliabilityBa
 }
 
 export { AiProgressSteps } from './AiProgressSteps'
+
+// ── AiDraftDisclaimer ─────────────────────────────────────────────────────────
+// Lightweight trust banner — communicates that AI output is a draft suggestion.
+
+export function AiDraftDisclaimer() {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      padding: '8px 14px', borderRadius: 8, marginBottom: 14,
+      background: 'rgba(37,99,235,0.05)',
+      border: '1px solid rgba(37,99,235,0.15)',
+      fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5,
+    }}>
+      <span style={{ fontSize: 15, flexShrink: 0 }}>🤖</span>
+      <span>
+        <strong style={{ color: 'var(--color-text-primary)' }}>Sugestia AI</strong>
+        {' — wyniki wymagają weryfikacji. Sprawdź pozycje, ilości i ceny przed użyciem.'}
+      </span>
+    </div>
+  )
+}
+
+// ── AiProjectContextBadge ─────────────────────────────────────────────────────
+// Shows which project the current AI analysis is linked to.
+
+interface AiProjectContextBadgeProps {
+  projectNumber: string
+  projectName: string
+  onChangeProject?: () => void
+}
+
+export function AiProjectContextBadge({ projectNumber, projectName, onChangeProject }: AiProjectContextBadgeProps) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      padding: '7px 14px', borderRadius: 8, marginBottom: 14,
+      background: 'var(--color-primary-soft, rgba(37,99,235,0.06))',
+      border: '1px solid rgba(37,99,235,0.2)',
+      fontSize: 12, color: 'var(--color-text-secondary)',
+    }}>
+      <span style={{ fontSize: 14, flexShrink: 0 }}>📂</span>
+      <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+        {projectNumber} · {projectName}
+      </span>
+      {onChangeProject && (
+        <button
+          type="button"
+          onClick={onChangeProject}
+          style={{
+            marginLeft: 'auto', fontSize: 11, color: 'var(--color-primary, #2563EB)',
+            background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline',
+          }}
+        >
+          Zmień
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── AiNextActionBar ───────────────────────────────────────────────────────────
+// Primary CTA bar shown after analysis completes. Drives the operator to the
+// logical next step (e.g., create draft estimate, return to project).
+
+interface AiNextActionBarProps {
+  primaryLabel: string
+  primaryOnClick: () => void
+  primaryDisabled?: boolean
+  secondaryLabel?: string
+  secondaryOnClick?: () => void
+}
+
+export function AiNextActionBar({ primaryLabel, primaryOnClick, primaryDisabled, secondaryLabel, secondaryOnClick }: AiNextActionBarProps) {
+  return (
+    <div style={{
+      display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center',
+      padding: '14px 0', marginTop: 8, borderTop: '1px solid var(--color-border)',
+    }}>
+      <button
+        type="button"
+        className="btn btn-primary"
+        onClick={primaryOnClick}
+        disabled={primaryDisabled}
+        style={{ fontSize: 14, fontWeight: 600, padding: '10px 24px' }}
+      >
+        {primaryLabel}
+      </button>
+      {secondaryLabel && secondaryOnClick && (
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={secondaryOnClick}
+          style={{ fontSize: 13 }}
+        >
+          {secondaryLabel}
+        </button>
+      )}
+    </div>
+  )
+}
