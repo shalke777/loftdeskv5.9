@@ -8,9 +8,11 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquare,
+  Moon,
   Receipt,
   Settings,
   Shield,
+  Sun,
   Users,
   Wallet,
 } from 'lucide-react'
@@ -30,6 +32,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { LegalAcceptanceGate } from '@/features/legal/components/LegalAcceptanceGate'
 import { ClientShell } from '@/features/client-portal/components/ClientShell'
+import { useTheme } from '@/shared/hooks/useTheme'
 
 type MainNavItem = {
   type?: 'route'
@@ -75,6 +78,7 @@ export function AuthLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const canUsePortal = useFeatureAccess('portal')
   const canUseKsef = useFeatureAccess('ksef')
+  const { theme, toggleTheme } = useTheme()
   const { data: notifications = [] } = useOperatorNotifications()
   const { data: unreadCount = 0 } = useOperatorUnreadCount()
   const { data: chatUnreadCount = 0 } = useUnreadChatCount()
@@ -163,6 +167,9 @@ export function AuthLayout() {
 		</nav>
 
         <div className="sidebar__footer">
+          <Button variant="ghost" size="sm" onClick={toggleTheme} icon={theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}>
+            {theme === 'dark' ? 'Jasny' : 'Ciemny'}
+          </Button>
           <InstallAppButton compact />
           <Button variant="ghost" onClick={async () => { await signOut(); window.location.assign('/login') }} icon={<LogOut size={16} />}>
             Wyloguj
