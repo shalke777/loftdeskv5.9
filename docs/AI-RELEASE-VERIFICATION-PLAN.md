@@ -233,4 +233,4 @@ WHERE created_at > NOW() - INTERVAL '7 days';
 
 ---
 
-*Generated: 2026-04-05 | Sprints A–F complete | Migrations 106–108 pending deploy*
+*Generated: 2026-04-05 | Sprints A–F complete | Migrations 106–108 deployed ✅ (afc6ea5c)*
