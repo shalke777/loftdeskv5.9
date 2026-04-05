@@ -1,31 +1,27 @@
 import { useState } from 'react'
-import { Activity, Camera, ChevronRight, FileText, FolderKanban, Receipt, Sparkles, TrendingUp, Users, Wallet, DollarSign } from 'lucide-react'
+import { ChevronRight, DollarSign, FileText, FolderKanban, Receipt, Sparkles, TrendingUp, Users } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
-import { Button } from '@/shared/ui/Button/Button'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { useDashboardStats } from '@/features/dashboard/hooks/useDashboardStats'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { QueryError } from '@/shared/ui/QueryError/QueryError'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
-import { useFeatureAccess } from '@/features/auth/hooks/usePermissions'
-import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import { WelcomeBanner } from '@/features/onboarding/components/WelcomeBanner'
 import { OnboardingChecklist } from '@/features/onboarding/components/OnboardingChecklist'
 import { useOnboardingProgress } from '@/features/onboarding/hooks/useOnboardingProgress'
 import { useLocalStorage } from '@/shared/hooks/useLocalStorage'
 
 const quickActions = [
-  { icon: FileText,     title: 'Nowa wycena',        sub: 'Wygeneruj ofertę', color: 'var(--color-accent)',  href: '/estimates' },
-  { icon: Receipt,      title: 'Nowa faktura',       sub: 'Wystaw dokument', color: 'var(--color-info)',    href: '/invoices'  },
-  { icon: FolderKanban, title: 'Nowy projekt',       sub: 'Stwórz realizację', color: 'var(--color-brand)',   href: '/projects'  },
-  { icon: Sparkles,     title: 'AI / Import',        sub: 'OCR, analiza, koszty', color: 'var(--color-warning)', href: '/ai'       },
+  { icon: FolderKanban, title: 'Nowy projekt',       sub: 'Stwórz realizację', href: '/projects'  },
+  { icon: FileText,     title: 'Nowa wycena',        sub: 'Wygeneruj ofertę',  href: '/estimates' },
+  { icon: Receipt,      title: 'Nowa faktura',       sub: 'Wystaw dokument',   href: '/invoices'  },
+  { icon: Sparkles,     title: 'AI / Import',        sub: 'OCR, analiza, koszty', href: '/ai'     },
 ]
 
 export function DashboardPage() {
   const navigate = useNavigate()
   const companyId = useCompanyId()
-  const canUsePortal = useFeatureAccess('portal')
   const { data, isLoading, isError, refetch } = useDashboardStats()
   const { data: onboarding } = useOnboardingProgress()
   const [bannerDismissed, setBannerDismissed] = useLocalStorage('loftdesk-welcome-dismissed', false)
@@ -103,17 +99,12 @@ export function DashboardPage() {
           return (
             <button
               key={action.title}
-              className="quick-action"
+              className="quick-action quick-action--highlight"
               onClick={() => navigate({ to: action.href as any })}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: 'var(--radius-md, 8px)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  background: `color-mix(in srgb, ${action.color} 12%, transparent)`,
-                  border: `1px solid color-mix(in srgb, ${action.color} 20%, transparent)`,
-                }}>
-                  <Icon size={16} style={{ color: action.color }} />
+                <div className="quick-action__icon">
+                  <Icon size={16} />
                 </div>
                 <div style={{ textAlign: 'left' }}>
                   <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{action.title}</div>
@@ -240,36 +231,6 @@ export function DashboardPage() {
         </Card>
       )}
 
-      {/* ── Desktop content — activity & portal ──────────────────── */}
-      <div className="dashboard-desktop-content">
-        <div className="grid-3" style={{ marginTop: 16 }}>
-          <Card>
-            <h3>Wskaźniki</h3>
-            <div className="stack-sm" style={{ marginTop: 10 }}>
-              <div className="list-row"><span>Kosztorysy</span><strong>{data.estimatesCount}</strong></div>
-              <div className="list-row"><span>Umowy</span><strong>{data.contractsCount}</strong></div>
-              <div className="list-row"><span>KSeF</span><strong style={{ color: data.ksefReady ? undefined : 'var(--color-warning)' }}>{data.ksefReady ? 'Skonfigurowany' : 'Wymaga konfiguracji'}</strong></div>
-            </div>
-          </Card>
-          <Card>
-            <h3>Ostatnia aktywność</h3>
-            <div className="stack-sm" style={{ marginTop: 10 }}>
-              {data.recentActivity.length === 0
-                ? <EmptyState title="Brak aktywności" description="Historia zmian pojawi się tutaj." />
-                : data.recentActivity.map((item) => (
-                    <div key={item} className="list-row"><span>{item}</span></div>
-                  ))}
-            </div>
-          </Card>
-          <Card>
-            <h3>Portal klienta</h3>
-            <p>Klient dostaje dostęp do projektu — może przeglądać wyceny, faktury i komunikować się z firmą w jednym miejscu.</p>
-            <div className="actions-row">
-              <Button variant="secondary" onClick={() => navigate({ to: '/projects' })}>Przejdź do projektów</Button>
-            </div>
-          </Card>
-        </div>
-      </div>
     </div>
   )
 }

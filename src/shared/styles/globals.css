@@ -380,18 +380,34 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .highlight-card p, .highlight-card .field__label { color: rgba(255,255,255,.82); }
 .quick-actions-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.quick-action { padding: 16px; border-radius: var(--radius-lg, 10px); border: 1px solid var(--color-border); background: var(--color-card); transition: transform .15s ease, box-shadow .15s ease; text-align: left; cursor: pointer; width: 100%; color: var(--color-text-primary); }
+.quick-action { padding: 16px; border-radius: var(--radius-lg, 10px); border: 1px solid var(--color-border); background: var(--color-card); transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; text-align: left; cursor: pointer; width: 100%; color: var(--color-text-primary); }
 .quick-action:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 .quick-action strong, .quick-action .field__label { color: var(--color-text-primary); }
 .quick-action .field__label { color: var(--color-text-secondary); }
 .quick-action__icon { width: 36px; height: 36px; border-radius: var(--radius-md, 8px); display: grid; place-items: center; flex-shrink: 0; }
-/* Quick action tile icons — colored icon backgrounds */
-.quick-actions-grid .quick-action:nth-child(1) .quick-action__icon { background: rgba(26, 92, 50, 0.1); color: var(--color-brand); }
-.quick-actions-grid .quick-action:nth-child(2) .quick-action__icon { background: rgba(184, 116, 42, 0.1); color: var(--color-accent); }
-.quick-actions-grid .quick-action:nth-child(3) .quick-action__icon { background: rgba(184, 116, 42, 0.1); color: var(--color-accent); }
-.quick-actions-grid .quick-action:nth-child(4) .quick-action__icon { background: rgba(26, 92, 50, 0.1); color: var(--color-brand); }
-.quick-actions-grid .quick-action:nth-child(5) .quick-action__icon { background: rgba(62, 140, 88, 0.1); color: var(--color-brand-light); }
-.quick-actions-grid .quick-action:nth-child(6) .quick-action__icon { background: rgba(62, 140, 88, 0.1); color: var(--color-brand-light); }
+/* Quick action highlight — green gradient cards */
+.quick-action--highlight {
+  background: linear-gradient(135deg, rgba(26,92,50,0.06) 0%, rgba(62,168,90,0.10) 100%);
+  border: 1px solid rgba(62,168,90,0.25);
+}
+.quick-action--highlight:hover {
+  background: linear-gradient(135deg, rgba(26,92,50,0.10) 0%, rgba(62,168,90,0.16) 100%);
+  border-color: rgba(62,168,90,0.45);
+  box-shadow: 0 4px 16px rgba(26,92,50,0.12);
+}
+.quick-action--highlight .quick-action__icon {
+  background: linear-gradient(135deg, #1A5C32, #3EA85A);
+  color: #FFFFFF;
+}
+.dark .quick-action--highlight {
+  background: linear-gradient(135deg, rgba(62,168,90,0.08) 0%, rgba(26,92,50,0.14) 100%);
+  border-color: rgba(62,168,90,0.30);
+}
+.dark .quick-action--highlight:hover {
+  background: linear-gradient(135deg, rgba(62,168,90,0.14) 0%, rgba(26,92,50,0.22) 100%);
+  border-color: rgba(62,168,90,0.50);
+}
+/* Legacy icon color fallbacks (no longer needed per-child) */
 
 .portal-page { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
 .portal-chat { display: grid; gap: 12px; }

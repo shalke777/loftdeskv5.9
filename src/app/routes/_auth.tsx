@@ -16,7 +16,7 @@ import {
   Users,
   Wallet,
 } from 'lucide-react'
-import { Link, Outlet, useRouterState } from '@tanstack/react-router'
+import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { Button } from '@/shared/ui/Button/Button'
 import { GlobalSearch } from '@/shared/ui/GlobalSearch/GlobalSearch'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
@@ -76,6 +76,7 @@ function isActive(pathname: string, item: MainNavItem) {
 export function AuthLayout() {
   const { user, signOut, loading } = useAuth()
   const companyId = useCompanyId()
+  const navigate = useNavigate()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const canUsePortal = useFeatureAccess('portal')
   const canUseKsef = useFeatureAccess('ksef')
@@ -217,21 +218,28 @@ export function AuthLayout() {
                   position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, zIndex: 9999,
                   background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 10px)',
                   boxShadow: 'var(--shadow-lg)',
-                  width: Math.min(340, window.innerWidth - 16), maxHeight: 400, overflow: 'auto',
+                  width: Math.min(340, window.innerWidth - 16),
+                  maxHeight: `min(400px, calc(100dvh - ${dropdownPos.top + 8}px))`,
+                  display: 'flex', flexDirection: 'column', overflow: 'hidden',
                 }}>
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 14 }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 14, flexShrink: 0 }}>
                     Powiadomienia
                   </div>
+                  <div style={{ overflowY: 'auto', flex: 1 }}>
                   {notifications.length === 0 ? (
                     <div style={{ padding: '20px 16px', color: 'var(--color-text-secondary)', fontSize: 13, textAlign: 'center' }}>
                       Brak powiadomień
                     </div>
                   ) : (
                     notifications.slice(0, 20).map((n) => (
-                      <div key={n.id} style={{
+                      <button key={n.id} onClick={() => {
+                        setShowNotifications(false)
+                        navigate({ to: '/projects' as any })
+                      }} style={{
+                        display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer',
                         padding: '10px 16px', borderBottom: '1px solid var(--color-border)',
                         background: n.read_at ? 'var(--color-card)' : 'var(--color-sidebar-active)',
-                        fontSize: 13,
+                        fontSize: 13, border: 'none',
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontWeight: 600, fontSize: 12, color: n.type === 'client_approval_response' ? 'var(--color-success)' : 'var(--color-brand)' }}>
@@ -249,9 +257,10 @@ export function AuthLayout() {
                             {n.body}
                           </div>
                         )}
-                      </div>
+                      </button>
                     ))
                   )}
+                  </div>
                 </div>
               )}
             </div>

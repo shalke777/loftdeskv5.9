@@ -159,7 +159,7 @@ export function GlobalSearch() {
       >
         <Search size={15} />
         <span className="global-search-trigger__label">Szukaj…</span>
-        <kbd className="global-search-trigger__kbd">⌘K</kbd>
+        <kbd className="global-search-trigger__kbd">{navigator.platform?.includes('Mac') ? '⌘K' : 'Ctrl+K'}</kbd>
       </button>
     )
   }
