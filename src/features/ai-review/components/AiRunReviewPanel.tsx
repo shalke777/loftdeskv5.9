@@ -17,6 +17,7 @@ import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { useToast } from '@/shared/hooks/useToast'
 import { useServiceCatalog, matchCatalogItem } from '@/features/service-catalog'
 import { computeConfidenceBand } from '@/shared/lib/confidence-model'
+import { AiAssistantPanel } from './AiAssistantPanel'
 import {
   useAiScopeItems,
   useAiQuestions,
@@ -762,6 +763,18 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
           </div>
         )
       })()}
+
+      {/* Sprint E: AI Assistant — project-scoped Q&A */}
+      {run.status === 'completed' && !lScope && (
+        <AiAssistantPanel
+          run={run}
+          scope={scope}
+          questions={questions}
+          risks={risks}
+          catalog={catalog ?? undefined}
+          projectId={projectId}
+        />
+      )}
 
       {/* Sprint 4: Create Estimate Draft CTA */}
       {run.status === 'completed' && (() => {
