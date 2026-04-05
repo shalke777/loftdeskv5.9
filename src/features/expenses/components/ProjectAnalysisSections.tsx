@@ -43,7 +43,7 @@ function badge(
 function priorityBadge(priority: 'required' | 'likely' | 'optional') {
   switch (priority) {
     case 'required': return badge('Obowiązkowa', '#1A5C32', 'rgba(26,92,50,0.12)')
-    case 'likely':   return badge('Prawdopodobna', '#60A5FA', 'rgba(96,165,250,0.12)')
+    case 'likely':   return badge('Prawdopodobna', '#3E8C58', 'rgba(96,165,250,0.12)')
     case 'optional': return badge('Opcjonalna', '#6E6A60', 'rgba(138,143,152,0.12)')
   }
 }
@@ -268,7 +268,7 @@ export function ProjectScopeSection({ items }: { items: ProjectScopeItem[] }) {
                     </span>
                   )}
                   {item.provenance === 'dependency_inferred' && (
-                    <div style={{ fontSize: 9, color: '#60A5FA', marginTop: 2, fontStyle: 'italic' }}>⚙ wynika z zależności</div>
+                    <div style={{ fontSize: 9, color: '#3E8C58', marginTop: 2, fontStyle: 'italic' }}>⚙ wynika z zależności</div>
                   )}
                   {item.provenance === 'confirmation_needed' && (
                     <div style={{ fontSize: 9, color: '#B8742A', marginTop: 2, fontStyle: 'italic' }}>? wymaga potwierdzenia</div>
@@ -526,7 +526,7 @@ export function ProjectTransparencySection({
 
       {assumptions.length > 0 && (
         <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#60A5FA', marginBottom: 4 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#3E8C58', marginBottom: 4 }}>
             Przyjęte założenia:
           </div>
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, lineHeight: 1.8, color: 'var(--color-text-muted)' }}>

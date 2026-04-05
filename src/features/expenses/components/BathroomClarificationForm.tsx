@@ -72,8 +72,8 @@ export function BathroomClarificationForm({ photoCount, roomType, onSubmit, onSk
     padding: '6px 12px', fontSize: 12, fontWeight: 500, borderRadius: 8,
     cursor: disabled ? 'default' : 'pointer', transition: 'all .15s',
     background: active ? 'var(--color-primary-soft, rgba(59,130,246,.15))' : 'var(--color-bg-input, #2A2D32)',
-    color: active ? 'var(--color-primary, #60A5FA)' : 'var(--color-text-secondary, #6E6A60)',
-    border: `1px solid ${active ? 'var(--color-primary, #60A5FA)' : 'var(--color-border, rgba(30,29,24,0.15))'}`,
+    color: active ? 'var(--color-primary, #3E8C58)' : 'var(--color-text-secondary, #6E6A60)',
+    border: `1px solid ${active ? 'var(--color-primary, #3E8C58)' : 'var(--color-border, rgba(30,29,24,0.15))'}`,
   })
 
   const roomLabel = roomType ? getRoomTypeName(roomType) : 'łazienki'

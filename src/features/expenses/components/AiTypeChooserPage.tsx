@@ -23,7 +23,7 @@ interface AiMode {
 const AI_MODES: AiMode[] = [
   {
     emoji: '🧾',
-    accent: '#60A5FA',
+    accent: '#3E8C58',
     title: 'Dokument kosztowy',
     subtitle: 'Faktura · Paragon · Nota',
     description: 'AI odczytuje dane z dokumentu finansowego — numer, sprzedawcę, kwoty, termin płatności.',

@@ -39,8 +39,8 @@ import type {
 const SCOPE_STATUS_COLOR: Record<AiScopeItem['review_status'], string> = {
   pending:  'var(--color-text-secondary)',
   accepted: 'var(--color-success, #10B981)',
-  modified: 'var(--color-warning, #F59E0B)',
-  rejected: 'var(--color-danger, #EF4444)',
+  modified: 'var(--color-warning, #B8742A)',
+  rejected: 'var(--color-danger, #A83228)',
 }
 
 const SCOPE_STATUS_LABEL: Record<AiScopeItem['review_status'], string> = {
@@ -51,15 +51,15 @@ const SCOPE_STATUS_LABEL: Record<AiScopeItem['review_status'], string> = {
 }
 
 const SEVERITY_COLOR: Record<AiRisk['severity'], string> = {
-  high:   'var(--color-danger, #EF4444)',
-  medium: 'var(--color-warning, #F59E0B)',
+  high:   'var(--color-danger, #A83228)',
+  medium: 'var(--color-warning, #B8742A)',
   low:    'var(--color-success, #10B981)',
 }
 
 // Separate map — AiQuestion severity keys are NOT the same as AiRisk severity keys.
 const Q_SEVERITY_COLOR: Record<AiQuestion['severity'], string> = {
-  critical_for_scope:     'var(--color-danger, #EF4444)',
-  important_for_accuracy: 'var(--color-warning, #F59E0B)',
+  critical_for_scope:     'var(--color-danger, #A83228)',
+  important_for_accuracy: 'var(--color-warning, #B8742A)',
   optional_detail:        'var(--color-text-secondary)',
 }
 
@@ -164,7 +164,7 @@ function ScopeItemRow({
             return <span title="Brak dopasowania do katalogu" style={{ marginLeft: 4, fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, #f1f5f9)', color: 'var(--color-text-tertiary, #94a3b8)', fontWeight: 500 }}>✍️</span>
           })()}
           {item.scope_layer === 'HIDDEN_PROBABLE_SCOPE' && (
-          <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-warning, #F59E0B)' }}>
+          <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-warning, #B8742A)' }}>
             ukryty zakres
           </span>
         )}
@@ -184,7 +184,7 @@ function ScopeItemRow({
           <span>Cena AI: {item.price_suggested_by_ai} zł</span>
         )}
         {item.missing_price && (
-          <span style={{ color: 'var(--color-warning, #F59E0B)' }}>brak ceny</span>
+          <span style={{ color: 'var(--color-warning, #B8742A)' }}>brak ceny</span>
         )}
       </div>
 
@@ -446,8 +446,8 @@ function RiskRow({
 
 const COLOR_MAP: Record<string, { border: string; text: string; bg?: string }> = {
   success:   { border: 'var(--color-success, #10B981)',         text: 'var(--color-success, #10B981)' },
-  warning:   { border: 'var(--color-warning, #F59E0B)',         text: 'var(--color-warning, #F59E0B)' },
-  danger:    { border: 'var(--color-danger, #EF4444)',          text: 'var(--color-danger, #EF4444)' },
+  warning:   { border: 'var(--color-warning, #B8742A)',         text: 'var(--color-warning, #B8742A)' },
+  danger:    { border: 'var(--color-danger, #A83228)',          text: 'var(--color-danger, #A83228)' },
   primary:   { border: 'var(--color-brand)',                    text: 'var(--color-brand)' },
   secondary: { border: 'var(--color-border)',                   text: 'var(--color-text-secondary)' },
 }
@@ -576,7 +576,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
       null
     return (
       <div style={{ padding: '16px 0' }}>
-        <p style={{ color: 'var(--color-danger, #EF4444)', fontSize: 13 }}>
+        <p style={{ color: 'var(--color-danger, #A83228)', fontSize: 13 }}>
           Analiza zakończyła się błędem: {base}
         </p>
         {hint && (
@@ -635,10 +635,10 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
       }}>
         <StatBadge label="Oczekuje" count={pendingScope} color="var(--color-text-secondary)" />
         <StatBadge label="Zaakceptowane" count={acceptedCount} color="var(--color-success, #10B981)" />
-        <StatBadge label="Zmodyfikowane" count={modifiedCount} color="var(--color-warning, #F59E0B)" />
-        <StatBadge label="Odrzucone" count={rejectedCount} color="var(--color-danger, #EF4444)" />
+        <StatBadge label="Zmodyfikowane" count={modifiedCount} color="var(--color-warning, #B8742A)" />
+        <StatBadge label="Odrzucone" count={rejectedCount} color="var(--color-danger, #A83228)" />
         {pendingQuestions > 0 && <StatBadge label="Pytania" count={pendingQuestions} color="var(--color-primary, #2563EB)" />}
-        {openRisks > 0 && <StatBadge label="Ryzyka" count={openRisks} color="var(--color-danger, #EF4444)" />}
+        {openRisks > 0 && <StatBadge label="Ryzyka" count={openRisks} color="var(--color-danger, #A83228)" />}
       </div>
 
       {/* Run metadata header */}
@@ -672,10 +672,10 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 4,
             padding: '4px 10px', borderRadius: 4,
-            background: 'var(--color-warning-subtle, #FEF3C7)',
-            border: '1px solid var(--color-warning, #F59E0B)',
+            background: 'var(--color-warning-subtle, var(--color-warning-soft))',
+            border: '1px solid var(--color-warning, #B8742A)',
           }}>
-            <span style={{ fontSize: 12, color: 'var(--color-warning, #F59E0B)' }}>
+            <span style={{ fontSize: 12, color: 'var(--color-warning, #B8742A)' }}>
               Brakujące dane — odpowiedz na pytania, aby zwiększyć dokładność
             </span>
           </div>
@@ -707,10 +707,10 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
             <span>📅 {new Date(run.started_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })} → {new Date(run.completed_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</span>
           )}
           {run.retry_count != null && run.retry_count > 0 && (
-            <span style={{ color: 'var(--color-warning, #F59E0B)' }}>🔄 {run.retry_count}× retry</span>
+            <span style={{ color: 'var(--color-warning, #B8742A)' }}>🔄 {run.retry_count}× retry</span>
           )}
           {run.timeout_occurred && (
-            <span style={{ color: 'var(--color-danger, #EF4444)' }}>⚠ timeout</span>
+            <span style={{ color: 'var(--color-danger, #A83228)' }}>⚠ timeout</span>
           )}
           {run.parse_path && (
             <span>📎 {run.parse_path}</span>
@@ -719,7 +719,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
             <span>🔢 ~{((run.input_token_count ?? 0) + (run.output_token_count ?? 0)).toLocaleString()} tok</span>
           )}
           {run.input_file_size_bytes != null && run.input_file_size_bytes > 0 && (
-            <span style={run.input_file_size_bytes > 5242880 ? { color: 'var(--color-warning, #F59E0B)', fontWeight: 600 } : undefined}>
+            <span style={run.input_file_size_bytes > 5242880 ? { color: 'var(--color-warning, #B8742A)', fontWeight: 600 } : undefined}>
               📦 {(run.input_file_size_bytes / 1024 / 1024).toFixed(1)} MB{run.input_file_size_bytes > 5242880 ? ' (heavy)' : ''}
             </span>
           )}
@@ -735,7 +735,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
           return (
             <div style={{ fontSize: 11, color: 'var(--color-text-muted, #94A3B8)', marginBottom: 6, display: 'flex', gap: 10 }}>
               <span>📚 Katalog: {matched}/{scope.length} ({rate}%)</span>
-              {rate < 50 && <span style={{ color: 'var(--color-warning, #F59E0B)' }}>⚠ niska pokrywalność</span>}
+              {rate < 50 && <span style={{ color: 'var(--color-warning, #B8742A)' }}>⚠ niska pokrywalność</span>}
             </div>
           )
         })()}
@@ -817,16 +817,16 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
             <span style={{ color: 'var(--color-success, #10B981)' }}>
               ✓ {acceptedN + modifiedN} zaakceptowanych
               {modifiedN > 0 && (
-                <span style={{ color: 'var(--color-warning, #F59E0B)', marginLeft: 4 }}>
+                <span style={{ color: 'var(--color-warning, #B8742A)', marginLeft: 4 }}>
                   ({modifiedN} zmodyfikowanych)
                 </span>
               )}
             </span>
-            <span style={{ color: 'var(--color-danger, #EF4444)' }}>
+            <span style={{ color: 'var(--color-danger, #A83228)' }}>
               ✗ {rejectedN} odrzuconych
             </span>
             {missingN > 0 && (
-              <span style={{ color: 'var(--color-warning, #F59E0B)' }}>
+              <span style={{ color: 'var(--color-warning, #B8742A)' }}>
                 ⚠ {missingN} {missingN === 1 ? 'pozycja bez ceny' : 'pozycji bez ceny'}
               </span>
             )}
@@ -882,7 +882,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
               <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: 0 }}>
                 {reviewedItems.length} {reviewedItems.length === 1 ? 'pozycja' : reviewedItems.length < 5 ? 'pozycje' : 'pozycji'} zaakceptowanych lub zmodyfikowanych
                 {missingPrices > 0 && (
-                  <span style={{ color: 'var(--color-warning, #F59E0B)', marginLeft: 6 }}>
+                  <span style={{ color: 'var(--color-warning, #B8742A)', marginLeft: 6 }}>
                     · {missingPrices} {missingPrices === 1 ? 'pozycja bez ceny' : 'pozycji bez ceny'} — uzupełnij w edytorze wyceny
                   </span>
                 )}
@@ -894,10 +894,10 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
               <div style={{
                 padding:      '8px 12px',
                 borderRadius:  6,
-                background:   'var(--color-warning-subtle, #FEF3C7)',
-                border:       '1px solid var(--color-warning, #F59E0B)',
+                background:   'var(--color-warning-subtle, var(--color-warning-soft))',
+                border:       '1px solid var(--color-warning, #B8742A)',
                 fontSize:      12,
-                color:        'var(--color-warning, #F59E0B)',
+                color:        'var(--color-warning, #B8742A)',
               }}>
                 ⚠ {missingPrices} {missingPrices === 1 ? 'pozycja wymaga ceny' : 'pozycji wymaga ceny'} — wycena zostanie utworzona z ceną 0 zł. Uzupełnij ceny w edytorze wyceny przed wysłaniem do klienta.
               </div>
@@ -995,7 +995,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
 
             {createEstimate.isError && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <p style={{ fontSize: 12, color: 'var(--color-danger, #EF4444)', margin: 0 }}>
+                <p style={{ fontSize: 12, color: 'var(--color-danger, #A83228)', margin: 0 }}>
                   {(() => {
                     const err = createEstimate.error
                     const msg = err instanceof Error ? err.message : String((err as { message?: string } | null)?.message ?? '')

@@ -19,9 +19,9 @@ interface Props {
 // ── Bucket config ─────────────────────────────────────────────────────────────
 
 const BUCKET: Record<string, { bg: string; border: string; dot: string; label: string; icon: string }> = {
-  blocked:      { bg: '#FEF2F2', border: '#FECACA', dot: '#EF4444', label: 'Zablokowane',    icon: '⛔' },
-  needs_review: { bg: '#FFFBEB', border: '#FDE68A', dot: '#F59E0B', label: 'Do sprawdzenia', icon: '⚠' },
-  ready:        { bg: '#F0FDF4', border: '#BBF7D0', dot: '#22C55E', label: 'Gotowe',          icon: '✓' },
+  blocked:      { bg: 'var(--color-error-soft)', border: '#FECACA', dot: '#A83228', label: 'Zablokowane',    icon: '⛔' },
+  needs_review: { bg: '#FFFBEB', border: '#FDE68A', dot: '#B8742A', label: 'Do sprawdzenia', icon: '⚠' },
+  ready:        { bg: '#F0FDF4', border: '#BBF7D0', dot: '#1A5C32', label: 'Gotowe',          icon: '✓' },
 }
 
 // ── Format machine review_reason into readable Polish ─────────────────────────
@@ -128,7 +128,7 @@ function ReviewItemRow({ item, defaultExpanded }: { item: ReviewQueueItem; defau
 
           {/* Conflict summaries */}
           {item.conflicts_summary.map((cs, i) => (
-            <div key={i} style={{ color: '#92400E', fontSize: 11, fontFamily: 'monospace' }}>
+            <div key={i} style={{ color: '#B8742A', fontSize: 11, fontFamily: 'monospace' }}>
               ⚡ {cs}
             </div>
           ))}
@@ -218,7 +218,7 @@ export function FusionReviewQueuePanel({ queue, isLoading, error }: Props) {
 
   if (error) {
     return (
-      <div style={{ padding: '12px 14px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 12, color: '#DC2626' }}>
+      <div style={{ padding: '12px 14px', borderRadius: 8, background: 'var(--color-error-soft)', border: '1px solid #FECACA', fontSize: 12, color: '#A83228' }}>
         Błąd fusion review: {error.message}
       </div>
     )
@@ -253,17 +253,17 @@ export function FusionReviewQueuePanel({ queue, isLoading, error }: Props) {
           {summary.total} kandydatów
         </span>
         {summary.blocked > 0 && (
-          <span style={{ marginLeft: 'auto', background: '#FEE2E2', color: '#DC2626', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
+          <span style={{ marginLeft: 'auto', background: '#FEE2E2', color: '#A83228', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
             ⛔ {summary.blocked}
           </span>
         )}
         {summary.needs_review > 0 && (
-          <span style={{ background: '#FEF3C7', color: '#D97706', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
+          <span style={{ background: 'var(--color-warning-soft)', color: '#B8742A', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
             ⚠ {summary.needs_review}
           </span>
         )}
         {summary.ready > 0 && (
-          <span style={{ background: '#DCFCE7', color: '#16A34A', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
+          <span style={{ background: 'var(--color-success-soft)', color: '#1A5C32', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
             ✓ {summary.ready}
           </span>
         )}

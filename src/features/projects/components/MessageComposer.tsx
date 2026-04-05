@@ -89,7 +89,7 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
         return {
           bg:    'rgba(96,165,250,0.12)',
           border: 'rgba(96,165,250,0.30)',
-          color:  '#60A5FA',
+          color:  '#3E8C58',
           icon:   '🔒',
           text:   'Notatka wewnętrzna — widoczna tylko dla Twojego zespołu',
         }

@@ -129,7 +129,7 @@ export function TimelineEventItem({ event, isLast = false, compact = false }: Pr
                   borderRadius: 99,
                   fontSize:     10,
                   background:   'rgba(96,165,250,0.15)',
-                  color:        '#60A5FA',
+                  color:        '#3E8C58',
                   fontWeight:   600,
                 }}
               >

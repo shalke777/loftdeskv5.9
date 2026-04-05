@@ -16,9 +16,9 @@ const STATUS_LABEL: Record<AiAnalysisRun['status'], string> = {
 
 const STATUS_COLOR: Record<AiAnalysisRun['status'], string> = {
   draft:      'var(--color-text-secondary)',
-  processing: 'var(--color-warning, #F59E0B)',
+  processing: 'var(--color-warning, #B8742A)',
   completed:  'var(--color-success, #10B981)',
-  failed:     'var(--color-danger, #EF4444)',
+  failed:     'var(--color-danger, #A83228)',
 }
 
 const ROOM_LABEL: Record<AiAnalysisRun['room_type'], string> = {

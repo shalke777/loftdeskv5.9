@@ -170,7 +170,7 @@ function extractLibraryId(notes?: string | null): string | null {
 function getPriorityLabel(priority: TaskPriority): { label: string; color: string; bg: string } {
   switch (priority) {
     case 'required':    return { label: 'Obowiązkowa', color: '#1A5C32', bg: 'rgba(26,92,50,0.12)' }
-    case 'likely':      return { label: 'Prawdopodobna', color: '#60A5FA', bg: 'rgba(96,165,250,0.12)' }
+    case 'likely':      return { label: 'Prawdopodobna', color: '#3E8C58', bg: 'rgba(96,165,250,0.12)' }
     case 'conditional': return { label: 'Warunkowa', color: '#B8742A', bg: 'rgba(212,150,10,0.12)' }
     case 'optional':    return { label: 'Opcjonalna', color: '#6E6A60', bg: 'rgba(138,143,152,0.12)' }
   }
@@ -329,7 +329,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                           <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{item.notes}</div>
                         )}
                         {item.provenance === 'dependency_inferred' && (
-                          <div style={{ fontSize: 9, color: '#60A5FA', marginTop: 2, fontStyle: 'italic' }}>⚙ wynika z zależności</div>
+                          <div style={{ fontSize: 9, color: '#3E8C58', marginTop: 2, fontStyle: 'italic' }}>⚙ wynika z zależności</div>
                         )}
                         {item.provenance === 'confirmation_needed' && (
                           <div style={{ fontSize: 9, color: '#B8742A', marginTop: 2, fontStyle: 'italic' }}>? wymaga potwierdzenia</div>
@@ -483,7 +483,7 @@ function MissingTasksSection({ coverage }: { coverage: CoverageResult }) {
 
       {coverage.missingLikely.length > 0 && (
         <div style={{ marginBottom: 6 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#60A5FA', marginBottom: 2 }}>Brak prawdopodobnych:</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#3E8C58', marginBottom: 2 }}>Brak prawdopodobnych:</div>
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, lineHeight: 1.6 }}>
             {coverage.missingLikely.slice(0, 8).map(t => (
               <li key={t.id} style={{ color: 'var(--color-text-secondary)' }}>

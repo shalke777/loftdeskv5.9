@@ -175,7 +175,7 @@ const STATUS_COLORS: Record<string, string> = {
   active: '#16a34a',
   in_progress: '#2563EB',
   completed: '#6B7280',
-  on_hold: '#D97706',
+  on_hold: '#B8742A',
   draft: '#9CA3AF',
 }
 

@@ -93,7 +93,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
 
         {/* Internal / client-shared legend */}
         <div className="proj-timeline-legend">
-          <span style={{ padding: '2px 8px', borderRadius: 99, background: 'rgba(96,165,250,0.15)', color: '#60A5FA', fontWeight: 600 }}>
+          <span style={{ padding: '2px 8px', borderRadius: 99, background: 'rgba(96,165,250,0.15)', color: '#3E8C58', fontWeight: 600 }}>
             widoczne klientowi
           </span>
           <span style={{ padding: '2px 8px', borderRadius: 99, background: 'rgba(160,170,180,0.10)', color: '#6E6A60', fontWeight: 600 }}>

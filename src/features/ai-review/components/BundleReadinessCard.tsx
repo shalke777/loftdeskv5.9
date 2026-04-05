@@ -23,7 +23,7 @@ const REASON_LABELS: Record<string, string> = {
 }
 
 function statusColor(eligible: boolean): string {
-  return eligible ? 'var(--color-success, #22C55E)' : 'var(--color-warning, #F59E0B)'
+  return eligible ? 'var(--color-success, #1A5C32)' : 'var(--color-warning, #B8742A)'
 }
 
 export function BundleReadinessCard({ readiness, bundleCount }: Props) {
@@ -84,7 +84,7 @@ export function BundleReadinessCard({ readiness, bundleCount }: Props) {
           </span>
         )}
         {r.must_use_missing.length > 0 && (
-          <span style={{ color: 'var(--color-warning, #F59E0B)' }}>
+          <span style={{ color: 'var(--color-warning, #B8742A)' }}>
             <strong>{r.must_use_missing.length}</strong> brakujących
           </span>
         )}

@@ -8,7 +8,7 @@ const LIGHT = {
   '--color-primary': '#1E1D18',
   '--color-brand': '#1A5C32',
   '--color-brand-2': '#13442A',
-  '--color-brand-light': '#E8F0EB',
+  '--color-brand-light': 'var(--color-success-soft)',
   '--color-accent': '#B8742A',
   '--color-accent-soft': '#F5EDE0',
   '--color-success': '#2E8B57',
@@ -63,7 +63,7 @@ const TOKENS = [
   { label: '--color-border', light: '#D5CEBC', dark: '#3A3828' },
   { label: '--color-surface-soft', light: '#EAE4D6', dark: '#242A22' },
   { label: '--color-muted', light: '#F0EBE1', dark: '#242A22' },
-  { label: '--color-brand-light', light: '#E8F0EB', dark: '#1A2E1A' },
+  { label: '--color-brand-light', light: 'var(--color-success-soft)', dark: '#1A2E1A' },
   { label: '--color-accent-soft', light: '#F5EDE0', dark: '#2A2218' },
   { label: '--color-error-soft', light: '#FBEAE8', dark: '#2A1614' },
 ]
@@ -148,7 +148,7 @@ export function ColorPaletteDemo({ dark: initialDark, onToggleDark }: { dark?: b
             <div style={{ background: dark ? '#0E120C' : '#1A2E1A', borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 8, transition: 'background .3s' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.12)', marginBottom: 8 }}>
                 <div style={{ width: 34, height: 34, borderRadius: 10, background: brand, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13, transition: 'background .3s' }}>LD</div>
-                <div style={{ color: '#E8F0EB' }}>
+                <div style={{ color: 'var(--color-success-soft)' }}>
                   <strong style={{ fontSize: 14 }}>LoftDesk</strong>
                   <span style={{ display: 'block', fontSize: 11, opacity: 0.65 }}>Plan Free</span>
                 </div>
@@ -161,12 +161,12 @@ export function ColorPaletteDemo({ dark: initialDark, onToggleDark }: { dark?: b
             {/* MAIN CONTENT */}
             <div style={{ display: 'grid', gap: 16 }}>
               {/* HERO BANNER */}
-              <div style={{ background: dark ? '#0E120C' : '#1A2E1A', borderRadius: 18, padding: '24px 28px', color: '#E8F0EB', transition: 'background .3s' }}>
-                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6, color: '#E8F0EB' }}>Witaj w LoftDesk</h3>
+              <div style={{ background: dark ? '#0E120C' : '#1A2E1A', borderRadius: 18, padding: '24px 28px', color: 'var(--color-success-soft)', transition: 'background .3s' }}>
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6, color: 'var(--color-success-soft)' }}>Witaj w LoftDesk</h3>
                 <p style={{ fontSize: 14, opacity: 0.8, margin: 0 }}>System do wycen, umów, faktur i realizacji.</p>
                 <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                   <button style={{ padding: '10px 18px', borderRadius: 12, border: 'none', background: brand, color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 13, transition: 'background .3s' }}>Nowa wycena</button>
-                  <button style={{ padding: '10px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,.2)', background: 'transparent', color: '#E8F0EB', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Nowy klient</button>
+                  <button style={{ padding: '10px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,.2)', background: 'transparent', color: 'var(--color-success-soft)', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Nowy klient</button>
                 </div>
               </div>
 

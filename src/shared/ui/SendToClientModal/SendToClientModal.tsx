@@ -136,7 +136,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
     <Modal open={open} onClose={onClose} title={isPackage ? 'Wyślij pakiet dokumentów do klienta' : `Wyślij ${label.toLowerCase()} do klienta`} size="md">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {isPackage ? (
-          <div style={{ background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.30)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#60A5FA' }}>
+          <div style={{ background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.30)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#3E8C58' }}>
             <strong>Projekt:</strong> {documentName.replace(/^Dokumenty projektu – /, '')}
             {docSummary && docSummary.length > 0 && (
               <div style={{ marginTop: 6, lineHeight: 1.7 }}>
@@ -187,7 +187,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
         </div>
 
         {pdfHtml && (
-          <div style={{ background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.30)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#60A5FA' }}>
+          <div style={{ background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.30)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#3E8C58' }}>
             📎 PDF dokumentu zostanie dołączony do emaila jako załącznik.
           </div>
         )}

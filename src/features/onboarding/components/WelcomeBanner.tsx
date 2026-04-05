@@ -25,11 +25,12 @@ export function WelcomeBanner({ companyName, onDismiss }: Props) {
   return (
     <Card
       style={{
-        background: 'linear-gradient(135deg, #1a0a10 0%, #4a1020 100%)',
+        background: 'linear-gradient(135deg, #0E2A1A 0%, #163C24 60%, #0A1E12 100%)',
         color: 'white',
         marginBottom: 16,
         position: 'relative',
         overflow: 'hidden',
+        border: '1px solid rgba(26, 92, 50, 0.2)',
       }}
     >
       {/* Decorative circle */}

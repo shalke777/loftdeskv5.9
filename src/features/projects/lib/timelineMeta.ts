@@ -83,7 +83,7 @@ const METADATA: Record<string, TimelineEventMeta> = {
   },
   cost_approved: {
     icon: CheckCircle2, label: 'Klient zaakceptował koszt',
-    dotColor: '#059669', bgColor: '#d1fae5', category: 'approvals',
+    dotColor: '#1A5C32', bgColor: '#d1fae5', category: 'approvals',
   },
   cost_rejected: {
     icon: XCircle, label: 'Klient odrzucił koszt',
@@ -105,7 +105,7 @@ const METADATA: Record<string, TimelineEventMeta> = {
   },
   doc_approved: {
     icon: CheckCircle2, label: 'Klient zaakceptował dokument',
-    dotColor: '#059669', bgColor: '#d1fae5', category: 'approvals',
+    dotColor: '#1A5C32', bgColor: '#d1fae5', category: 'approvals',
   },
   doc_rejected: {
     icon: XCircle, label: 'Klient odrzucił dokument',
@@ -129,7 +129,7 @@ const METADATA: Record<string, TimelineEventMeta> = {
   // ── Portal ───────────────────────────────────────────────────────────────
   portal_activated: {
     icon: Globe, label: 'Portal klienta aktywowany',
-    dotColor: '#059669', bgColor: '#d1fae5', category: 'portal',
+    dotColor: '#1A5C32', bgColor: '#d1fae5', category: 'portal',
   },
   portal_revoked: {
     icon: Link2Off, label: 'Dostęp do portalu cofnięty',

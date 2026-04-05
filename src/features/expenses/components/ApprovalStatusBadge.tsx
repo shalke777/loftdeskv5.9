@@ -11,7 +11,7 @@ const STATUS_CONFIG: Record<ApprovalStatus, { label: string; icon: string; color
   pending_client: { label: 'Oczekuje na klienta', icon: '⏳', color: '#B8742A', bg: 'rgba(212,150,10,0.15)' },
   accepted:       { label: 'Zaakceptowany',        icon: '✅', color: '#1A5C32', bg: 'rgba(26,92,50,0.18)' },
   rejected:       { label: 'Odrzucony',            icon: '❌', color: '#A83228', bg: 'rgba(239,68,68,0.12)' },
-  questioned:     { label: 'Klient ma pytanie',    icon: '❓', color: '#60A5FA', bg: 'rgba(96,165,250,0.15)' },
+  questioned:     { label: 'Klient ma pytanie',    icon: '❓', color: '#3E8C58', bg: 'rgba(96,165,250,0.15)' },
   cancelled:      { label: 'Anulowany',            icon: '🚫', color: 'var(--color-text-secondary)', bg: 'rgba(160,170,180,0.10)' },
 }
 

@@ -103,7 +103,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
                 fontSize: 13, fontWeight: 500,
                 color: 'var(--color-text-primary, #E5E7EB)',
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary, #60A5FA)'; e.currentTarget.style.background = 'var(--color-primary-soft, rgba(59,130,246,.08))' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary, #3E8C58)'; e.currentTarget.style.background = 'var(--color-primary-soft, rgba(59,130,246,.08))' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border, rgba(30,29,24,0.15))'; e.currentTarget.style.background = 'var(--color-bg-input, #2A2D32)' }}
             >
               <span style={{ fontSize: 24 }}>{rt.icon}</span>
@@ -266,7 +266,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
                 fontSize: 13, fontWeight: 500,
                 color: 'var(--color-text-primary, #E5E7EB)',
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary, #60A5FA)'; e.currentTarget.style.background = 'var(--color-primary-soft, rgba(59,130,246,.08))' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary, #3E8C58)'; e.currentTarget.style.background = 'var(--color-primary-soft, rgba(59,130,246,.08))' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border, rgba(30,29,24,0.15))'; e.currentTarget.style.background = 'var(--color-bg-input, #2A2D32)' }}
             >
               <span style={{ fontSize: 24 }}>{rt.icon}</span>
