@@ -36,7 +36,7 @@ const proPlan = ['Nieograniczone projekty i uzytkownicy', 'KSeF - elektroniczne 
 
 const mockItems = [
   { Icon: Calculator, iBg: 'var(--color-brand-light)', iC: 'var(--color-brand)', label: 'Kosztorys - Remont Wilanow', sub: 'Wyslany do klienta - 38 400 zl', badge: 'Oczekuje', bBg: 'var(--color-brand-light)', bC: 'var(--color-brand)' },
-  { Icon: Receipt, iBg: 'var(--color-accent-soft)', iC: 'var(--color-accent)', label: 'FV/03/2026 - wyslana do KSeF', sub: 'Zaksiegowana - 12 300 zl', badge: 'KSeF ok', bBg: 'rgba(26,92,50,0.15)', bC: '#1A5C32' },
+  { Icon: Receipt, iBg: 'var(--color-accent-soft)', iC: 'var(--color-accent)', label: 'FV/03/2026 - wyslana do KSeF', sub: 'Zaksiegowana - 12 300 zl', badge: 'KSeF ok', bBg: 'var(--color-success-soft)', bC: 'var(--color-success)' },
   { Icon: MessageSquareText, iBg: 'var(--color-surface-soft)', iC: 'var(--color-chart-4)', label: 'Portal - Kowalski Jan', sub: 'Nowy komentarz - 2 godz. temu', badge: 'Nowy', bBg: 'var(--color-muted)', bC: 'var(--color-text-secondary)' },
 ]
 
@@ -129,19 +129,19 @@ export function LandingPage() {
 
       {/* PAIN */}
       <section className="section-block">
-        <div style={{ background: 'var(--color-brand-2)', borderRadius: 24, padding: '48px 40px' }}>
-          <h2 style={{ color: 'white', margin: '0 0 8px', maxWidth: 680 }}>Jak wyglada zarzadzanie firma budowlana bez LoftDesk?</h2>
-          <p style={{ color: 'rgba(255,255,255,0.6)', margin: '0 0 32px', fontSize: 16 }}>Brzmi znajomo? Tak wyglada codziennosc wiekszosci firm w branzy.</p>
+        <div className="landing-dark-section">
+          <h2 style={{ color: '#EDE8DD', margin: '0 0 8px', maxWidth: 680 }}>Jak wyglada zarzadzanie firma budowlana bez LoftDesk?</h2>
+          <p style={{ color: 'rgba(237,232,221,0.55)', margin: '0 0 32px', fontSize: 16 }}>Brzmi znajomo? Tak wyglada codziennosc wiekszosci firm w branzy.</p>
           <div className="landing-grid landing-grid--3">
             {[
               { e: '📁', t: 'Excel i foldery na dysku', d: 'Kosztorys w jednym miejscu, faktura w innym, umowa trzeciia. Szukasz godzinami zamiast budowac.' },
               { e: '📧', t: 'Maile i Messenger', d: 'Ustalenia z klientem rozrzucone w kilku watkach. Co, kiedy i przez kogo zostalo ustalone? Nikt nie pamietia.' },
               { e: '⏱️', t: 'Reczna robota co tydzien', d: 'Kopiowanie danych miedzy programami zabiera godziny. To czas ktory moglbys poswiecic na realizacje.' },
             ].map(({ e, t, d }) => (
-              <div key={t} style={{ padding: 24, borderRadius: 16, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div key={t} style={{ padding: 24, borderRadius: 16, background: 'rgba(237,232,221,0.06)', border: '1px solid rgba(237,232,221,0.1)' }}>
                 <div style={{ fontSize: 28, marginBottom: 10 }}>{e}</div>
-                <h3 style={{ color: 'white', margin: '0 0 8px', fontSize: 16, fontWeight: 700 }}>{t}</h3>
-                <p style={{ color: 'rgba(255,255,255,0.62)', fontSize: 14, lineHeight: 1.65, margin: 0 }}>{d}</p>
+                <h3 style={{ color: '#EDE8DD', margin: '0 0 8px', fontSize: 16, fontWeight: 700 }}>{t}</h3>
+                <p style={{ color: 'rgba(237,232,221,0.62)', fontSize: 14, lineHeight: 1.65, margin: 0 }}>{d}</p>
               </div>
             ))}
           </div>
@@ -197,7 +197,7 @@ export function LandingPage() {
 
       {/* FOR WHO */}
       <section className="section-block">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, alignItems: 'center' }}>
+        <div className="landing-grid landing-grid--2">
           <div>
             <h2 style={{ margin: '0 0 16px' }}>LoftDesk jest dla Ciebie jesli...</h2>
             <p style={{ fontSize: 16, color: 'var(--color-text-secondary)', margin: 0, lineHeight: 1.7 }}>
@@ -222,7 +222,7 @@ export function LandingPage() {
         <div className="section-head">
           <h2>Prosty cennik. Zero ukrytych kosztow.</h2>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, maxWidth: 800, margin: '0 auto' }}>
+        <div className="landing-grid landing-grid--2" style={{ maxWidth: 800, margin: '0 auto' }}>
           <Card style={{ padding: '32px 28px', display: 'flex', flexDirection: 'column' }}>
             <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Start</p>
             <div style={{ marginBottom: 24 }}>
@@ -267,11 +267,11 @@ export function LandingPage() {
 
       {/* CTA FINALE */}
       <section className="section-block">
-        <div style={{ background: 'var(--color-brand-2)', borderRadius: 24, padding: '60px 40px', textAlign: 'center' }}>
-          <h2 style={{ color: 'white', fontSize: 'clamp(28px,3.5vw,46px)', letterSpacing: '-0.04em', margin: '0 0 12px', lineHeight: 1.1 }}>
+        <div className="landing-dark-section" style={{ textAlign: 'center' }}>
+          <h2 style={{ color: '#EDE8DD', fontSize: 'clamp(28px,3.5vw,46px)', letterSpacing: '-0.04em', margin: '0 0 12px', lineHeight: 1.1 }}>
             Zacznij porzadkowac firme - dzis.
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 17, margin: '0 0 36px', lineHeight: 1.6 }}>
+          <p style={{ color: 'rgba(237,232,221,0.6)', fontSize: 17, margin: '0 0 36px', lineHeight: 1.6 }}>
             Bez umowy. Bez karty kredytowej. Gotowy w 5 minut.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>

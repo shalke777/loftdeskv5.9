@@ -414,7 +414,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .landing-brand span { display: block; color: var(--color-text-secondary); font-size: 13px; }
 .landing-nav__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 28px; align-items: center; padding: 18px 0 8px; }
-.hero__eyebrow { display: inline-flex; padding: 8px 12px; border-radius: 999px; background: var(--color-brand-light); color: var(--color-brand); font-weight: 700; font-size: 12px; margin-bottom: 14px; }
+.hero__eyebrow { display: inline-flex; padding: 8px 12px; border-radius: 999px; background: var(--color-success-soft); color: var(--color-brand); font-weight: 700; font-size: 12px; margin-bottom: 14px; }
 .hero h1 { font-size: clamp(42px, 5vw, 64px); line-height: .98; letter-spacing: -.05em; margin-bottom: 16px; }
 .hero p { font-size: 18px; color: var(--color-text-secondary); }
 .hero__actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
@@ -436,9 +436,11 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .section-block--split { grid-template-columns: 1fr 1fr; }
 .section-block--cta { margin-top: 8px; }
 .landing-grid { display: grid; gap: 16px; }
+.landing-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: center; }
 .landing-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.landing-dark-section { background: linear-gradient(135deg, #0E2A1A 0%, #163C24 60%, #0A1E12 100%); border-radius: 24px; padding: 48px 40px; }
 .feature-card { min-height: 220px; }
-.feature-card__icon { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; background: var(--color-brand-light); color: var(--color-brand); margin-bottom: 14px; }
+.feature-card__icon { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; background: var(--color-success-soft); color: var(--color-brand); margin-bottom: 14px; }
 .landing-list { display: grid; gap: 8px; margin: 0; }
 .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .preview-links { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -448,7 +450,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 @media (max-width: 1200px) {
   .stats-grid, .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .landing-grid--3, .dashboard-hero, .hero, .section-block--split { grid-template-columns: 1fr; }
+  .landing-grid--2, .landing-grid--3, .dashboard-hero, .hero, .section-block--split { grid-template-columns: 1fr; }
 }
 @media (max-width: 1024px) {
   .app-shell { grid-template-columns: 1fr; }
@@ -471,6 +473,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   /* Toast: push up above mobile nav + safe area (mobile nav ~56px + inset + gap) */
   .toast-viewport { bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 8px); }
   .landing-nav { flex-direction: column; align-items: flex-start; }
+  .landing-dark-section { padding: 32px 20px; }
   .hero h1 { font-size: 40px; }
   .legal-gate__card { max-height: 92vh; overflow-y: auto; margin: 16px; }
   .legal-page { padding: 16px; }
