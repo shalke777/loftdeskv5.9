@@ -21,6 +21,8 @@ interface OpenAIRetryResult {
   body: string
   retried: boolean
   headers: Headers
+  duration_ms: number
+  timeout_occurred: boolean
 }
 
 const RETRY_STATUSES = new Set([500, 502, 503])
@@ -67,6 +69,9 @@ export async function callOpenAIWithRetry(
 
   console.info(`[${label}] timeout=${timeoutMs}ms`)
 
+  const t0 = Date.now()
+  let timeoutOccurred = false
+
   // First attempt
   let resp: Response
   let body: string
@@ -76,6 +81,7 @@ export async function callOpenAIWithRetry(
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
     const isTimeout = msg.includes('abort')
+    timeoutOccurred = isTimeout
     console.warn(`[${label}] attempt 1 failed: ${msg} (timeout=${isTimeout})`)
 
     if (!isTimeout) {
@@ -89,7 +95,7 @@ export async function callOpenAIWithRetry(
     try {
       resp = await fetchWithTimeout(url, init, timeoutMs)
       body = await resp.text()
-      return { ok: resp.ok, status: resp.status, body, retried: true, headers: resp.headers }
+      return { ok: resp.ok, status: resp.status, body, retried: true, headers: resp.headers, duration_ms: Date.now() - t0, timeout_occurred: true }
     } catch (e2: unknown) {
       throw new Error(`OpenAI timeout after retry: ${e2 instanceof Error ? e2.message : String(e2)}`)
     }
@@ -97,7 +103,7 @@ export async function callOpenAIWithRetry(
 
   // First attempt succeeded (even if not 2xx)
   if (resp.ok || !RETRY_STATUSES.has(resp.status)) {
-    return { ok: resp.ok, status: resp.status, body, retried: false, headers: resp.headers }
+    return { ok: resp.ok, status: resp.status, body, retried: false, headers: resp.headers, duration_ms: Date.now() - t0, timeout_occurred: timeoutOccurred }
   }
 
   // Transient error → retry once
@@ -111,7 +117,7 @@ export async function callOpenAIWithRetry(
     throw new Error(`OpenAI retry failed: ${e instanceof Error ? e.message : String(e)}`)
   }
 
-  return { ok: resp.ok, status: resp.status, body, retried: true, headers: resp.headers }
+  return { ok: resp.ok, status: resp.status, body, retried: true, headers: resp.headers, duration_ms: Date.now() - t0, timeout_occurred: timeoutOccurred }
 }
 
 function sleep(ms: number): Promise<void> {

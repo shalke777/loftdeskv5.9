@@ -763,6 +763,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
   // ── Call OpenAI (with retry) ─────────────────────────────────────────────
 
   let aiRaw: string
+  let govRetryCount = 0
+  let govTimeoutOccurred = false
+  let govDurationMs = 0
   try {
     const { callOpenAIWithRetry } = await import('./shared/openai-retry')
     const resp = await callOpenAIWithRetry({
@@ -771,6 +774,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
       text: { format: ROOM_ANALYSIS_SCHEMA_FORMAT },
       max_output_tokens: 6_000,
     }, 'analyze-room-photo')
+
+    govRetryCount = resp.retried ? 1 : 0
+    govTimeoutOccurred = resp.timeout_occurred
+    govDurationMs = resp.duration_ms
 
     if (resp.retried) console.info('PROVIDER_RETRIED', JSON.stringify({ finalStatus: resp.status, elapsed_ms: Date.now() - t0 }))
 
@@ -1076,6 +1083,14 @@ export const handler: Handler = async (event: HandlerEvent) => {
     notes:          operatorNotes,
     modelName:      model,
     imageRefs:      imageRefs.length > 0 ? imageRefs : undefined,
+    governance: {
+      retry_count:         govRetryCount,
+      timeout_occurred:    govTimeoutOccurred,
+      request_duration_ms: govDurationMs,
+      parse_path:          'vision',
+      input_token_count:   Math.round(JSON.stringify(content).length / 4),
+      output_token_count:  Math.round((aiRaw?.length ?? 0) / 4),
+    },
     result,
   })
 

@@ -337,6 +337,11 @@ export const handler: Handler = async (event) => {
       max_output_tokens: 8_000,
     }, 'analyze-project-bg', 300_000) // 5 min timeout for large PDFs
 
+    const govRetryCount = resp.retried ? 1 : 0
+    const govTimeoutOccurred = resp.timeout_occurred
+    const govDurationMs = resp.duration_ms
+    const govParsePath = usedTextPath ? 'text' : 'vision'
+
     if (resp.retried) console.info('[bg] OPENAI_RETRIED', JSON.stringify({ finalStatus: resp.status, elapsed_ms: Date.now() - t0 }))
 
     if (!resp.ok) {
@@ -464,11 +469,15 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    // ── Save result ───────────────────────────────────────────────────────
+    // ── Save result with governance metadata ───────────────────────────
     await sb.from('project_analysis_jobs').update({
       status: 'done',
       result_json: result,
       completed_at: new Date().toISOString(),
+      retry_count: govRetryCount,
+      timeout_occurred: govTimeoutOccurred,
+      request_duration_ms: govDurationMs,
+      parse_path: govParsePath,
     }).eq('id', jobId)
 
     console.info('[bg] JOB_DONE', JSON.stringify({

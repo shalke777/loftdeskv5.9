@@ -196,8 +196,27 @@ export const handler: Handler = async (event: HandlerEvent) => {
       model,
       answerLen: answer.length,
       retried: resp.retried,
+      duration_ms: resp.duration_ms,
       total_ms: Date.now() - t0,
     }))
+
+    // Sprint F: persist query to audit log
+    const auditClient = makeRateLimitClient()
+    if (auditClient && company_id && userId !== 'dev') {
+      auditClient.from('ai_assistant_queries').insert({
+        company_id,
+        project_id,
+        run_id: run_id || null,
+        user_id: userId,
+        question: question.slice(0, 500),
+        answer_source: 'ai',
+        answer_length: answer.length,
+        model_name: model,
+        duration_ms: resp.duration_ms,
+      }).then(() => undefined).catch(e => {
+        console.warn('[ai-project-assistant] audit insert failed:', e)
+      })
+    }
 
     return ok(answer.trim())
   } catch (e: unknown) {

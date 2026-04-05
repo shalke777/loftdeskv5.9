@@ -667,6 +667,45 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
         )}
       </div>
 
+      {/* Sprint F: Governance metadata (shown only when data available) */}
+      {run.status === 'completed' && (run.request_duration_ms || run.retry_count || run.model_name) && (
+        <div
+          style={{
+            display:      'flex',
+            flexWrap:     'wrap',
+            gap:          '6px 14px',
+            padding:      '8px 14px',
+            borderRadius: 8,
+            background:   'rgba(100,116,139,0.04)',
+            border:       '1px solid rgba(100,116,139,0.12)',
+            fontSize:     11,
+            color:        'var(--color-text-muted, #94A3B8)',
+          }}
+        >
+          {run.model_name && (
+            <span>🧠 {run.model_name}</span>
+          )}
+          {run.request_duration_ms != null && run.request_duration_ms > 0 && (
+            <span>⏱ {(run.request_duration_ms / 1000).toFixed(1)}s</span>
+          )}
+          {(run.started_at && run.completed_at) && (
+            <span>📅 {new Date(run.started_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })} → {new Date(run.completed_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</span>
+          )}
+          {run.retry_count != null && run.retry_count > 0 && (
+            <span style={{ color: 'var(--color-warning, #F59E0B)' }}>🔄 {run.retry_count}× retry</span>
+          )}
+          {run.timeout_occurred && (
+            <span style={{ color: 'var(--color-danger, #EF4444)' }}>⚠ timeout</span>
+          )}
+          {run.parse_path && (
+            <span>📎 {run.parse_path}</span>
+          )}
+          {(run.input_token_count || run.output_token_count) && (
+            <span>🔢 ~{((run.input_token_count ?? 0) + (run.output_token_count ?? 0)).toLocaleString()} tok</span>
+          )}
+        </div>
+      )}
+
       {/* Scope items */}
       <Section title="Zakres prac" count={scope.length}>
         {scope.map(item => (

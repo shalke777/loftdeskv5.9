@@ -75,6 +75,15 @@ export interface PersistBundleInput {
   modelName?:     string
   /** Sprint 3: storage paths for uploaded photos — persisted to ai_input_assets after run creation */
   imageRefs?:     Array<{ storage_path: string; original_filename: string; mime_type: string; file_size: number }>
+  /** Sprint F: governance metadata from OpenAI retry wrapper */
+  governance?: {
+    retry_count?:         number
+    timeout_occurred?:    boolean
+    request_duration_ms?: number
+    parse_path?:          string
+    input_token_count?:   number
+    output_token_count?:  number
+  }
   result:         RoomAnalysisResult
 }
 
@@ -154,7 +163,7 @@ export async function persistAnalysisBundle(input: PersistBundleInput): Promise<
   const {
     sb, userId, companyId, projectId, roomType,
     textDescription, clarification, dimensionsJson, notes, modelName,
-    imageRefs,
+    imageRefs, governance,
     result,
   } = input
 
@@ -177,6 +186,13 @@ export async function persistAnalysisBundle(input: PersistBundleInput): Promise<
       started_at:       startedAt,
       missing_data:     result.missing_information.length > 0,
       confidence_summary: result.confidence,
+      // Sprint F governance
+      retry_count:         governance?.retry_count ?? 0,
+      timeout_occurred:    governance?.timeout_occurred ?? false,
+      request_duration_ms: governance?.request_duration_ms ?? null,
+      parse_path:          governance?.parse_path ?? null,
+      input_token_count:   governance?.input_token_count ?? null,
+      output_token_count:  governance?.output_token_count ?? null,
     })
     .select('id')
     .single()

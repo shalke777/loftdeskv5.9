@@ -173,6 +173,12 @@ export function useCreateEstimateFromRun() {
       }
     },
     onSuccess: (_, variables) => {
+      // Sprint F: mark draft_created on the run for governance tracking
+      void supabase?.from('ai_analysis_runs')
+        .update({ draft_created: true })
+        .eq('id', variables.run.id)
+        .then(({ error }) => { if (error) console.warn('[useCreateEstimateFromRun] draft_created update failed:', error.message) })
+
       // Invalidate the DB guard query so the panel immediately shows the
       // "already exists" notice if reopened or if the same run is opened
       // in another tab after creation.
