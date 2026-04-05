@@ -59,12 +59,12 @@ export function BathroomClarificationForm({ photoCount, roomType, onSubmit, onSk
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '8px 10px', fontSize: 14,
     background: 'var(--color-bg-input, #2A2D32)', color: 'var(--color-text-primary, #E5E7EB)',
-    border: '1px solid var(--color-border, #3A3D42)', borderRadius: 8,
+    border: '1px solid var(--color-border, rgba(30,29,24,0.15))', borderRadius: 8,
   }
 
   const labelStyle: React.CSSProperties = {
     display: 'block', fontSize: 12, fontWeight: 600,
-    color: 'var(--color-text-secondary, #A7ABB3)', marginBottom: 4,
+    color: 'var(--color-text-secondary, #6E6A60)', marginBottom: 4,
   }
 
   const chipStyle = (active: boolean): React.CSSProperties => ({
@@ -72,8 +72,8 @@ export function BathroomClarificationForm({ photoCount, roomType, onSubmit, onSk
     padding: '6px 12px', fontSize: 12, fontWeight: 500, borderRadius: 8,
     cursor: disabled ? 'default' : 'pointer', transition: 'all .15s',
     background: active ? 'var(--color-primary-soft, rgba(59,130,246,.15))' : 'var(--color-bg-input, #2A2D32)',
-    color: active ? 'var(--color-primary, #60A5FA)' : 'var(--color-text-secondary, #A7ABB3)',
-    border: `1px solid ${active ? 'var(--color-primary, #60A5FA)' : 'var(--color-border, #3A3D42)'}`,
+    color: active ? 'var(--color-primary, #60A5FA)' : 'var(--color-text-secondary, #6E6A60)',
+    border: `1px solid ${active ? 'var(--color-primary, #60A5FA)' : 'var(--color-border, rgba(30,29,24,0.15))'}`,
   })
 
   const roomLabel = roomType ? getRoomTypeName(roomType) : 'łazienki'
@@ -82,7 +82,7 @@ export function BathroomClarificationForm({ photoCount, roomType, onSubmit, onSk
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 24, maxWidth: 440, margin: '0 auto' }}>
       <div style={{ textAlign: 'center', marginBottom: 4 }}>
         <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>🔍 Szczegóły {roomLabel}</p>
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted, #8A8F98)' }}>
+        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted, #6E6A60)' }}>
           Opcjonalne — pomaga AI lepiej dopasować zakres prac. {photoCount} {photoCount === 1 ? 'zdjęcie' : 'zdjęć'} gotowe.
         </p>
       </div>

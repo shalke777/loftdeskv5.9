@@ -58,7 +58,7 @@ export function OnboardingPage() {
               style={{
                 width: `${progress.progress}%`,
                 height: '100%',
-                background: progress.progress >= 80 ? 'var(--color-success, #77BA8A)' : 'var(--color-brand, #77BA8A)',
+                background: progress.progress >= 80 ? 'var(--color-success, #1A5C32)' : 'var(--color-brand, #1A5C32)',
                 transition: 'width 0.4s ease',
               }}
             />
@@ -70,7 +70,7 @@ export function OnboardingPage() {
             Plan: <strong style={{ color: planDef.color }}>{planDef.name}</strong>
           </p>
           {progress.isComplete && (
-            <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(119,186,138,0.15)', border: '1px solid rgba(119,186,138,0.30)', borderRadius: 8, fontSize: 13, color: '#77BA8A', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(26,92,50,0.15)', border: '1px solid rgba(26,92,50,0.30)', borderRadius: 8, fontSize: 13, color: '#1A5C32', display: 'flex', alignItems: 'center', gap: 8 }}>
               <CheckCircle2 size={15} />
               <strong>Workspace gotowy!</strong>&nbsp;Masz skonfigurowane wszystkie podstawowe funkcje.
             </div>
@@ -87,13 +87,13 @@ export function OnboardingPage() {
                   <button
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                      background: 'var(--color-surface-secondary, #2A2A2E)',
-                      border: '1px solid var(--color-border-light, #3A3D42)',
+                      background: 'var(--color-surface-secondary, #FFFFFF)',
+                      border: '1px solid var(--color-border-light, rgba(30,29,24,0.15))',
                       borderRadius: 8, padding: '10px 14px', cursor: 'pointer',
                       fontSize: 13, fontWeight: 500, color: 'var(--color-text)',
                     }}
                   >
-                    <Icon size={15} color="var(--color-brand, #77BA8A)" />
+                    <Icon size={15} color="var(--color-brand, #1A5C32)" />
                     {item.label}
                     <ArrowRight size={13} color="var(--color-text-tertiary)" style={{ marginLeft: 'auto' }} />
                   </button>
@@ -123,15 +123,15 @@ export function OnboardingPage() {
                 }}
               >
                 {step.done ? (
-                  <CheckCircle2 size={20} color="var(--color-success, #77BA8A)" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <CheckCircle2 size={20} color="var(--color-success, #1A5C32)" style={{ flexShrink: 0, marginTop: 1 }} />
                 ) : (
-                  <Circle size={20} color="var(--color-text-tertiary, #8A8F98)" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <Circle size={20} color="var(--color-text-tertiary, #6E6A60)" style={{ flexShrink: 0, marginTop: 1 }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, fontWeight: 600, fontSize: 14, textDecoration: step.done ? 'line-through' : 'none', color: step.done ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
                     {step.label}
                   </p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted, #8A8F98)' }}>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted, #6E6A60)' }}>
                     {step.description}
                   </p>
                 </div>

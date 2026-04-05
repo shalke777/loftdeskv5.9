@@ -48,7 +48,7 @@ function MessageBubble({ msg, onDelete, deleting }: BubbleProps) {
             padding:      '4px 12px',
             borderRadius: 999,
             fontSize:     11,
-            color:        '#A7ABB3',
+            color:        '#6E6A60',
             background:   'rgba(160,170,180,0.08)',
           }}
         >
@@ -69,12 +69,12 @@ function MessageBubble({ msg, onDelete, deleting }: BubbleProps) {
           ...(isInternal && !isClient ? {
             background:   'rgba(212,150,10,0.12)',
             border:       '1px solid rgba(212,150,10,0.30)',
-            color:        '#D4960A',
+            color:        '#B8742A',
           } : {}),
           // Wiadomości klienta — jasnoszare
           ...(isClient ? {
             background:   'rgba(160,170,180,0.10)',
-            color:        '#F0F2F3',
+            color:        '#1E1D18',
             borderRadius: '20px 20px 20px 5px',
             padding:      '10px 15px',
             fontSize:     14,
@@ -143,7 +143,7 @@ function MessageBubble({ msg, onDelete, deleting }: BubbleProps) {
             }}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 11, color: '#8A8F98', marginLeft: 6, padding: '0 2px',
+              fontSize: 11, color: '#6E6A60', marginLeft: 6, padding: '0 2px',
               lineHeight: 1,
             }}
           >
@@ -266,7 +266,7 @@ export function ThreadView({ threadId, projectId, visibility, onNewThread }: Thr
           {visibility === 'client_shared' && list.every(m => m.sender_type !== 'client') && (
             <div style={{
               textAlign: 'center', margin: '16px 8px 4px',
-              fontSize: 12, color: '#8A8F98',
+              fontSize: 12, color: '#6E6A60',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}>
               <span>⏳</span> Oczekiwanie na odpowiedź klienta z portalu projektu

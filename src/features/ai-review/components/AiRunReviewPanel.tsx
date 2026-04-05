@@ -160,7 +160,7 @@ function ScopeItemRow({
             const name = item.title ?? item.description ?? ''
             const mr = matchCatalogItem(name, catalog)
             if (mr.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name}`} style={{ marginLeft: 4, fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600 }}>📚</span>
-            if (mr.best?.tier === 'partial') return <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%)`} style={{ marginLeft: 4, fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#D4960A', fontWeight: 600 }}>📚?</span>
+            if (mr.best?.tier === 'partial') return <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%)`} style={{ marginLeft: 4, fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#B8742A', fontWeight: 600 }}>📚?</span>
             return <span title="Brak dopasowania do katalogu" style={{ marginLeft: 4, fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft, #f1f5f9)', color: 'var(--color-text-tertiary, #94a3b8)', fontWeight: 500 }}>✍️</span>
           })()}
           {item.scope_layer === 'HIDDEN_PROBABLE_SCOPE' && (

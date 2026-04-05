@@ -88,15 +88,15 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* ── Fast-add form ── */}
-      <div style={{ background: 'rgba(119,186,138,0.12)', border: '1px solid rgba(119,186,138,0.30)', borderRadius: 10, padding: '14px 16px' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#77BA8A', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <div style={{ background: 'rgba(26,92,50,0.12)', border: '1px solid rgba(26,92,50,0.30)', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#1A5C32', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Dodaj pozycję
         </div>
         {/* Row 1: Nazwa + j.m. + Ilość + VAT + Dodaj */}
         <div className="items-fast-add-row" style={{ display: 'grid', gridTemplateColumns: '1fr 70px 74px 74px auto', gap: 8, alignItems: 'flex-end' }}>
           <div>
             <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>
-              Nazwa <span style={{ color: '#EF6B6B' }}>*</span>
+              Nazwa <span style={{ color: '#A83228' }}>*</span>
             </label>
             <input
               className="input"
@@ -119,7 +119,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>
-              Ilość <span style={{ color: '#EF6B6B' }}>*</span>
+              Ilość <span style={{ color: '#A83228' }}>*</span>
             </label>
             <input
               className="input"
@@ -283,7 +283,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
                       <td style={{ padding: '9px 10px' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                           <button className="btn btn--sm btn--secondary" onClick={() => startEdit(item)} style={{ height: 26, padding: '0 10px', fontSize: 12 }}>Edytuj</button>
-                          <button className="btn btn--sm btn--ghost" onClick={() => removeRow(item.id)} style={{ height: 26, padding: '0 8px', fontSize: 12, color: '#EF6B6B' }}>Usuń</button>
+                          <button className="btn btn--sm btn--ghost" onClick={() => removeRow(item.id)} style={{ height: 26, padding: '0 8px', fontSize: 12, color: '#A83228' }}>Usuń</button>
                         </div>
                       </td>
                     </tr>

@@ -31,7 +31,7 @@ interface Props {
 const colStyle: React.CSSProperties = { padding: '6px 4px', fontSize: 12 }
 
 function confColor(c: number): string {
-  return c >= 70 ? '#77BA8A' : c >= 40 ? '#D4960A' : '#E57373'
+  return c >= 70 ? '#1A5C32' : c >= 40 ? '#B8742A' : '#E57373'
 }
 
 interface DiffRowProps {
@@ -355,7 +355,7 @@ export function ComparisonResultView({ result, projectName }: Props) {
         title="Zgodne z projektem"
         icon="✅"
         diffs={matching}
-        accent="rgba(119,186,138,0.6)"
+        accent="rgba(26,92,50,0.6)"
       />
 
       {/* Missing from reality */}

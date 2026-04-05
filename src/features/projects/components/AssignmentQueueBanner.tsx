@@ -44,7 +44,7 @@ export function AssignmentQueueBanner() {
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <strong style={{ color: '#D4960A', fontSize: 14 }}>
+        <strong style={{ color: '#B8742A', fontSize: 14 }}>
           ⚠ {pending.length} {pending.length === 1 ? 'dokument wymaga' : 'dokumenty wymagają'} przypisania do projektu
         </strong>
       </div>
@@ -67,20 +67,20 @@ export function AssignmentQueueBanner() {
           >
             <span style={{ flex: 1, minWidth: 0 }}>
               <strong>{DOC_LABEL[item.doc_type] ?? item.doc_type}</strong>
-              <span style={{ color: '#A7ABB3', fontSize: 12, marginLeft: 6 }}>
+              <span style={{ color: '#6E6A60', fontSize: 12, marginLeft: 6 }}>
                 {resolveDocName(item.doc_type, item.doc_id)}
               </span>
               {suggested && (
-                <span style={{ color: '#A7ABB3', marginLeft: 8 }}>
+                <span style={{ color: '#6E6A60', marginLeft: 8 }}>
                   → sugerowany:{' '}
-                  <strong style={{ color: '#D0D4DA' }}>{suggested.name}</strong>
-                  <span style={{ color: '#8A8F98', fontSize: 11, marginLeft: 4 }}>
+                  <strong style={{ color: '#6E6A60' }}>{suggested.name}</strong>
+                  <span style={{ color: '#6E6A60', fontSize: 11, marginLeft: 4 }}>
                     ({item.confidence}%)
                   </span>
                 </span>
               )}
               {!suggested && (
-                <span style={{ color: '#8A8F98', marginLeft: 8 }}>brak sugestii</span>
+                <span style={{ color: '#6E6A60', marginLeft: 8 }}>brak sugestii</span>
               )}
             </span>
             {suggested && (
@@ -111,7 +111,7 @@ export function AssignmentQueueBanner() {
         )
       })}
       {pending.length > 5 && (
-        <p style={{ fontSize: 12, color: '#A7ABB3', marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(212,150,10,0.30)' }}>
+        <p style={{ fontSize: 12, color: '#6E6A60', marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(212,150,10,0.30)' }}>
           … i {pending.length - 5} więcej
         </p>
       )}

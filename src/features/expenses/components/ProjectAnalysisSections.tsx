@@ -42,9 +42,9 @@ function badge(
 
 function priorityBadge(priority: 'required' | 'likely' | 'optional') {
   switch (priority) {
-    case 'required': return badge('Obowiązkowa', '#77BA8A', 'rgba(119,186,138,0.12)')
+    case 'required': return badge('Obowiązkowa', '#1A5C32', 'rgba(26,92,50,0.12)')
     case 'likely':   return badge('Prawdopodobna', '#60A5FA', 'rgba(96,165,250,0.12)')
-    case 'optional': return badge('Opcjonalna', '#8A8F98', 'rgba(138,143,152,0.12)')
+    case 'optional': return badge('Opcjonalna', '#6E6A60', 'rgba(138,143,152,0.12)')
   }
 }
 
@@ -52,7 +52,7 @@ function priorityBadge(priority: 'required' | 'likely' | 'optional') {
 
 export function ProjectSummaryBar({ result }: { result: ProjectAnalysisResult }) {
   const conf = result.confidence
-  const confColor = conf >= 70 ? '#77BA8A' : conf >= 40 ? '#D4960A' : '#E57373'
+  const confColor = conf >= 70 ? '#1A5C32' : conf >= 40 ? '#B8742A' : '#E57373'
 
   const typeLabel: Record<string, string> = {
     architectural_drawing: '📐 Rzut architektoniczny',
@@ -271,7 +271,7 @@ export function ProjectScopeSection({ items }: { items: ProjectScopeItem[] }) {
                     <div style={{ fontSize: 9, color: '#60A5FA', marginTop: 2, fontStyle: 'italic' }}>⚙ wynika z zależności</div>
                   )}
                   {item.provenance === 'confirmation_needed' && (
-                    <div style={{ fontSize: 9, color: '#D4960A', marginTop: 2, fontStyle: 'italic' }}>? wymaga potwierdzenia</div>
+                    <div style={{ fontSize: 9, color: '#B8742A', marginTop: 2, fontStyle: 'italic' }}>? wymaga potwierdzenia</div>
                   )}
                 </div>
                 <div style={{ flexShrink: 0 }}>
@@ -389,8 +389,8 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
                             if (matchResult.best && matchResult.best.tier === 'partial') {
                               return (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                  <span title={`Częściowe: ${matchResult.best.canonical_name} (${matchResult.best.confidence}%, ${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#D4960A', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
-                                  {matchResult.alternatives.length > 0 && <span title={`Alternatywy: ${matchResult.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 8, padding: '0 3px', borderRadius: 3, background: 'rgba(212,150,10,0.06)', color: '#D4960A', cursor: 'help', whiteSpace: 'nowrap' }}>+{matchResult.alternatives.length}</span>}
+                                  <span title={`Częściowe: ${matchResult.best.canonical_name} (${matchResult.best.confidence}%, ${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#B8742A', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
+                                  {matchResult.alternatives.length > 0 && <span title={`Alternatywy: ${matchResult.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 8, padding: '0 3px', borderRadius: 3, background: 'rgba(212,150,10,0.06)', color: '#B8742A', cursor: 'help', whiteSpace: 'nowrap' }}>+{matchResult.alternatives.length}</span>}
                                 </span>
                               )
                             }
@@ -409,7 +409,7 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
                         {item.quantity > 0 ? item.quantity : '—'}
                       </td>
                       <td style={rightCol}>
-                        <span style={{ color: item.confidence >= 70 ? '#77BA8A' : item.confidence >= 40 ? '#D4960A' : '#E57373' }}>
+                        <span style={{ color: item.confidence >= 70 ? '#1A5C32' : item.confidence >= 40 ? '#B8742A' : '#E57373' }}>
                           {item.confidence}%
                         </span>
                       </td>
@@ -507,7 +507,7 @@ export function ProjectTransparencySection({
         <div style={{
           marginBottom: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12,
           background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-          color: 'var(--color-danger, #EF6B6B)',
+          color: 'var(--color-danger, #A83228)',
         }}>
           {warnings.map((w, i) => <div key={i}>⚠️ {w}</div>)}
         </div>
@@ -515,7 +515,7 @@ export function ProjectTransparencySection({
 
       {missingInfo.length > 0 && (
         <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#D4960A', marginBottom: 4 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#B8742A', marginBottom: 4 }}>
             Brakujące dane do pełnej wyceny:
           </div>
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, lineHeight: 1.8, color: 'var(--color-text-secondary)' }}>

@@ -23,7 +23,7 @@ export function TimelineFilterBar({ active, counts, onChange }: Props) {
         display:    'flex',
         gap:        2,
         flexWrap:   'wrap',
-        borderBottom: '1px solid var(--color-border, #3A3D42)',
+        borderBottom: '1px solid var(--color-border, rgba(30,29,24,0.15))',
         paddingBottom: 0,
         marginBottom: 16,
       }}
@@ -49,7 +49,7 @@ export function TimelineFilterBar({ active, counts, onChange }: Props) {
               fontSize:     13,
               color:        isActive
                 ? 'var(--color-brand, #4f46e5)'
-                : 'var(--color-text-secondary, #A7ABB3)',
+                : 'var(--color-text-secondary, #6E6A60)',
               borderBottom: isActive
                 ? '2px solid var(--color-brand, #4f46e5)'
                 : '2px solid transparent',

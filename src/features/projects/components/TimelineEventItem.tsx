@@ -64,7 +64,7 @@ export function TimelineEventItem({ event, isLast = false, compact = false }: Pr
             style={{
               width:      2,
               flex:       1,
-              background: 'var(--color-border, #3A3D42)',
+              background: 'var(--color-border, rgba(30,29,24,0.15))',
               marginTop:  4,
             }}
           />
@@ -79,7 +79,7 @@ export function TimelineEventItem({ event, isLast = false, compact = false }: Pr
             margin:     0,
             fontSize:   14,
             fontWeight: 600,
-            color:      'var(--color-text, #F0F2F3)',
+            color:      'var(--color-text, #1E1D18)',
             lineHeight: 1.4,
             wordBreak:  'break-word',
           }}
@@ -93,7 +93,7 @@ export function TimelineEventItem({ event, isLast = false, compact = false }: Pr
             style={{
               margin:     '4px 0 0',
               fontSize:   13,
-              color:      'var(--color-text-muted, #8A8F98)',
+              color:      'var(--color-text-muted, #6E6A60)',
               lineHeight: 1.5,
             }}
           >
@@ -110,7 +110,7 @@ export function TimelineEventItem({ event, isLast = false, compact = false }: Pr
               flexWrap:   'wrap',
               marginTop:  6,
               fontSize:   12,
-              color:      'var(--color-text-muted, #8A8F98)',
+              color:      'var(--color-text-muted, #6E6A60)',
             }}
           >
             {event.actor_name && (

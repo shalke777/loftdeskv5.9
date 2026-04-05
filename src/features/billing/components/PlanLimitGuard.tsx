@@ -90,11 +90,11 @@ function UpgradeBannerInline({
       }}
     >
       {isExceeded ? (
-        <TrendingUp size={15} color="#EF6B6B" style={{ flexShrink: 0 }} />
+        <TrendingUp size={15} color="#A83228" style={{ flexShrink: 0 }} />
       ) : (
-        <Zap size={15} color="#D4960A" style={{ flexShrink: 0 }} />
+        <Zap size={15} color="#B8742A" style={{ flexShrink: 0 }} />
       )}
-      <span style={{ flex: 1, color: isExceeded ? '#EF6B6B' : '#D4960A' }}>
+      <span style={{ flex: 1, color: isExceeded ? '#A83228' : '#B8742A' }}>
         {isExceeded
           ? `Osiągnięto limit ${label} (${status.used}/${status.limit}). Ulepsz plan, aby dodać więcej.`
           : `Zbliżasz się do limitu ${label} (${status.used}/${status.limit}).`}
@@ -102,7 +102,7 @@ function UpgradeBannerInline({
       <button
         onClick={onUpgrade}
         style={{
-          background: isExceeded ? '#EF6B6B' : '#D4960A',
+          background: isExceeded ? '#A83228' : '#B8742A',
           color: 'white',
           border: 'none',
           borderRadius: 6,

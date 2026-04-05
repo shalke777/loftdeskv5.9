@@ -68,7 +68,7 @@ export function DocNumberingCard() {
   return (
     <Card>
       <h3>Numeracja dokumentów</h3>
-      <div style={{ fontSize: 13, color: '#A7ABB3', marginBottom: 16, marginTop: 4, display: 'grid', gap: 4 }}>
+      <div style={{ fontSize: 13, color: '#6E6A60', marginBottom: 16, marginTop: 4, display: 'grid', gap: 4 }}>
         <div><strong style={{ color: '#C9CCD4' }}>Przedrostek</strong> — stosowany natychmiastowo dla wszystkich nowych dokumentów.</div>
         <div><strong style={{ color: '#C9CCD4' }}>Numer startowy</strong> — obowiązuje dopiero w nowej serii (pierwszy dokument nowego miesiąca lub nowej firmy). Nie zmienia trwającej serii.</div>
       </div>
@@ -88,7 +88,7 @@ export function DocNumberingCard() {
                   maxLength={8}
                 />
                 <div style={{ fontSize: 11, color: '#6A6F7A', marginTop: 4 }}>
-                  Następny dokument: <span style={{ fontFamily: 'monospace', color: '#A7ABB3' }}>{buildPrefixPreview(config[key])}</span>
+                  Następny dokument: <span style={{ fontFamily: 'monospace', color: '#6E6A60' }}>{buildPrefixPreview(config[key])}</span>
                 </div>
               </div>
               <div>
@@ -101,7 +101,7 @@ export function DocNumberingCard() {
                   disabled={!canEdit}
                 />
                 <div style={{ fontSize: 11, color: '#6A6F7A', marginTop: 4 }}>
-                  Nowa seria: <span style={{ fontFamily: 'monospace', color: '#A7ABB3' }}>{buildNewSeriesPreview(config[key])}</span>
+                  Nowa seria: <span style={{ fontFamily: 'monospace', color: '#6E6A60' }}>{buildNewSeriesPreview(config[key])}</span>
                 </div>
               </div>
             </div>

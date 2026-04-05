@@ -81,7 +81,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
         <p style={{ margin: 0, fontSize: 15, fontWeight: 600, textAlign: 'center' }}>
           📐 Typ pomieszczenia
         </p>
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted, #8A8F98)', textAlign: 'center' }}>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted, #6E6A60)', textAlign: 'center' }}>
           Wybierz typ — dostosujemy analizę i bibliotekę pozycji.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 4 }}>
@@ -98,19 +98,19 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
                 padding: '16px 12px', borderRadius: 10,
                 background: 'var(--color-bg-input, #2A2D32)',
-                border: '1px solid var(--color-border, #3A3D42)',
+                border: '1px solid var(--color-border, rgba(30,29,24,0.15))',
                 cursor: 'pointer', transition: 'all .15s',
                 fontSize: 13, fontWeight: 500,
                 color: 'var(--color-text-primary, #E5E7EB)',
               }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary, #60A5FA)'; e.currentTarget.style.background = 'var(--color-primary-soft, rgba(59,130,246,.08))' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border, #3A3D42)'; e.currentTarget.style.background = 'var(--color-bg-input, #2A2D32)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border, rgba(30,29,24,0.15))'; e.currentTarget.style.background = 'var(--color-bg-input, #2A2D32)' }}
             >
               <span style={{ fontSize: 24 }}>{rt.icon}</span>
               <span>{rt.name}</span>
               <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textAlign: 'center' }}>{rt.description}</span>
               {rt.hasLibrary && (
-                <span style={{ fontSize: 9, color: '#77BA8A', fontWeight: 600 }}>+ Biblioteka pozycji</span>
+                <span style={{ fontSize: 9, color: '#1A5C32', fontWeight: 600 }}>+ Biblioteka pozycji</span>
               )}
             </button>
           ))}
@@ -144,7 +144,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
         <p style={{ margin: 0, fontSize: 15, fontWeight: 600, textAlign: 'center' }}>
           {roomInfo?.icon ?? '🏠'} Zdjęcia — {roomInfo?.name ?? 'Pomieszczenie'}
         </p>
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted, #8A8F98)', textAlign: 'center' }}>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted, #6E6A60)', textAlign: 'center' }}>
           Dodaj 1–{MAX_ROOM_PHOTOS} zdjęć z różnych kątów. Im więcej, tym lepsza analiza. Maks. 8 MB / zdjęcie.
         </p>
 
@@ -244,7 +244,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
         <p style={{ margin: 0, fontSize: 15, fontWeight: 600, textAlign: 'center' }}>
           📐 Typ pomieszczenia
         </p>
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted, #8A8F98)', textAlign: 'center' }}>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted, #6E6A60)', textAlign: 'center' }}>
           Wybierz typ — dostosujemy analizę i bibliotekę pozycji.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 4 }}>
@@ -261,19 +261,19 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
                 padding: '16px 12px', borderRadius: 10,
                 background: 'var(--color-bg-input, #2A2D32)',
-                border: '1px solid var(--color-border, #3A3D42)',
+                border: '1px solid var(--color-border, rgba(30,29,24,0.15))',
                 cursor: 'pointer', transition: 'all .15s',
                 fontSize: 13, fontWeight: 500,
                 color: 'var(--color-text-primary, #E5E7EB)',
               }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary, #60A5FA)'; e.currentTarget.style.background = 'var(--color-primary-soft, rgba(59,130,246,.08))' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border, #3A3D42)'; e.currentTarget.style.background = 'var(--color-bg-input, #2A2D32)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border, rgba(30,29,24,0.15))'; e.currentTarget.style.background = 'var(--color-bg-input, #2A2D32)' }}
             >
               <span style={{ fontSize: 24 }}>{rt.icon}</span>
               <span>{rt.name}</span>
               <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textAlign: 'center' }}>{rt.description}</span>
               {rt.hasLibrary && (
-                <span style={{ fontSize: 9, color: '#77BA8A', fontWeight: 600 }}>+ Biblioteka pozycji</span>
+                <span style={{ fontSize: 9, color: '#1A5C32', fontWeight: 600 }}>+ Biblioteka pozycji</span>
               )}
             </button>
           ))}
@@ -292,7 +292,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
         padding: 24, maxWidth: 400, margin: '0 auto',
       }}
     >
-      <p style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--color-text-muted, #8A8F98)', textAlign: 'center' }}>
+      <p style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--color-text-muted, #6E6A60)', textAlign: 'center' }}>
         Wybierz źródło faktury / paragonu
       </p>
 
@@ -329,7 +329,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
         <span>📄</span> Dodaj PDF
       </button>
 
-      <div style={{ margin: '4px 0', textAlign: 'center', fontSize: 12, color: 'var(--color-text-muted, #8A8F98)' }}>
+      <div style={{ margin: '4px 0', textAlign: 'center', fontSize: 12, color: 'var(--color-text-muted, #6E6A60)' }}>
         — lub —
       </div>
 

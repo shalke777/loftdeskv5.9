@@ -169,10 +169,10 @@ function extractLibraryId(notes?: string | null): string | null {
 
 function getPriorityLabel(priority: TaskPriority): { label: string; color: string; bg: string } {
   switch (priority) {
-    case 'required':    return { label: 'Obowiązkowa', color: '#77BA8A', bg: 'rgba(119,186,138,0.12)' }
+    case 'required':    return { label: 'Obowiązkowa', color: '#1A5C32', bg: 'rgba(26,92,50,0.12)' }
     case 'likely':      return { label: 'Prawdopodobna', color: '#60A5FA', bg: 'rgba(96,165,250,0.12)' }
-    case 'conditional': return { label: 'Warunkowa', color: '#D4960A', bg: 'rgba(212,150,10,0.12)' }
-    case 'optional':    return { label: 'Opcjonalna', color: '#8A8F98', bg: 'rgba(138,143,152,0.12)' }
+    case 'conditional': return { label: 'Warunkowa', color: '#B8742A', bg: 'rgba(212,150,10,0.12)' }
+    case 'optional':    return { label: 'Opcjonalna', color: '#6E6A60', bg: 'rgba(138,143,152,0.12)' }
   }
 }
 
@@ -272,7 +272,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
           <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 8, flexWrap: 'wrap' }}>
             <span>Dopasowanie do katalogu:</span>
             {strong > 0 && <span style={{ color: 'var(--color-success, #16a34a)' }}>📚 {strong} pewnych</span>}
-            {partial > 0 && <span style={{ color: '#D4960A' }}>📚? {partial} częściowych</span>}
+            {partial > 0 && <span style={{ color: '#B8742A' }}>📚? {partial} częściowych</span>}
             {unmatched > 0 && <span style={{ color: 'var(--color-text-muted)' }}>✍️ {unmatched} własnych</span>}
           </div>
         )
@@ -310,8 +310,8 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                             if (mr?.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name} (${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft, #dcfce7)', color: 'var(--color-success, #16a34a)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
                             if (mr?.best?.tier === 'partial') return (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%, ${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#D4960A', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
-                                {mr.alternatives.length > 0 && <span title={`Alternatywy: ${mr.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 8, padding: '0 3px', borderRadius: 3, background: 'rgba(212,150,10,0.06)', color: '#D4960A', cursor: 'help', whiteSpace: 'nowrap' }}>+{mr.alternatives.length}</span>}
+                                <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%, ${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: '#B8742A', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
+                                {mr.alternatives.length > 0 && <span title={`Alternatywy: ${mr.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 8, padding: '0 3px', borderRadius: 3, background: 'rgba(212,150,10,0.06)', color: '#B8742A', cursor: 'help', whiteSpace: 'nowrap' }}>+{mr.alternatives.length}</span>}
                               </span>
                             )
                             if (mr?.alternatives && mr.alternatives.length > 0) return (
@@ -332,7 +332,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                           <div style={{ fontSize: 9, color: '#60A5FA', marginTop: 2, fontStyle: 'italic' }}>⚙ wynika z zależności</div>
                         )}
                         {item.provenance === 'confirmation_needed' && (
-                          <div style={{ fontSize: 9, color: '#D4960A', marginTop: 2, fontStyle: 'italic' }}>? wymaga potwierdzenia</div>
+                          <div style={{ fontSize: 9, color: '#B8742A', marginTop: 2, fontStyle: 'italic' }}>? wymaga potwierdzenia</div>
                         )}
                       </td>
                       <td style={colStyle}>{item.unit ?? '—'}</td>
@@ -341,7 +341,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                         {item.quantity === 0 && <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}> brak danych</span>}
                       </td>
                       <td style={rightCol}>
-                        <span style={{ color: item.confidence >= 70 ? '#77BA8A' : item.confidence >= 40 ? '#D4960A' : '#E57373' }}>
+                        <span style={{ color: item.confidence >= 70 ? '#1A5C32' : item.confidence >= 40 ? '#B8742A' : '#E57373' }}>
                           {item.confidence != null ? `${item.confidence}%` : '—'}
                         </span>
                       </td>
@@ -433,7 +433,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
 
 function CoverageBar({ coverage }: { coverage: CoverageResult }) {
   const pct = coverage.coveragePercent
-  const color = pct >= 80 ? '#77BA8A' : pct >= 50 ? '#D4960A' : '#E57373'
+  const color = pct >= 80 ? '#1A5C32' : pct >= 50 ? '#B8742A' : '#E57373'
   const label = pct >= 80 ? 'Dobra' : pct >= 50 ? 'Częściowa' : 'Niska'
 
   return (
@@ -448,7 +448,7 @@ function CoverageBar({ coverage }: { coverage: CoverageResult }) {
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2, transition: 'width 0.3s' }} />
       </div>
       {coverage.brokenDependencies.length > 0 && (
-        <div style={{ marginTop: 4, fontSize: 10, color: '#D4960A' }}>
+        <div style={{ marginTop: 4, fontSize: 10, color: '#B8742A' }}>
           ⚠️ {coverage.brokenDependencies.length} pozycja(e) bez wymaganej zależności
         </div>
       )}
@@ -464,7 +464,7 @@ function MissingTasksSection({ coverage }: { coverage: CoverageResult }) {
 
   return (
     <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, background: 'rgba(212,150,10,0.06)', border: '1px solid rgba(212,150,10,0.2)' }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: '#D4960A', marginBottom: 6 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: '#B8742A', marginBottom: 6 }}>
         ⚠️ Brakujące pozycje
       </div>
 
@@ -499,7 +499,7 @@ function MissingTasksSection({ coverage }: { coverage: CoverageResult }) {
 
       {coverage.unconfirmed.length > 0 && (
         <div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#D4960A', marginBottom: 2 }}>Do potwierdzenia ({coverage.unconfirmed.length}):</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#B8742A', marginBottom: 2 }}>Do potwierdzenia ({coverage.unconfirmed.length}):</div>
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, lineHeight: 1.6 }}>
             {coverage.unconfirmed.slice(0, 6).map(t => (
               <li key={t.id} style={{ color: 'var(--color-text-secondary)' }}>
@@ -522,8 +522,8 @@ import type { ClarificationQuestion, ClarificationAnswer, QuestionSeverity } fro
 
 const SEVERITY_CONFIG: Record<QuestionSeverity, { label: string; color: string; bg: string; border: string }> = {
   critical_for_scope:     { label: 'Krytyczne', color: '#E57373', bg: 'rgba(229,115,115,0.08)', border: 'rgba(229,115,115,0.25)' },
-  important_for_accuracy: { label: 'Istotne',   color: '#D4960A', bg: 'rgba(212,150,10,0.07)',  border: 'rgba(212,150,10,0.22)' },
-  optional_detail:        { label: 'Opcjonalne', color: '#8A8F98', bg: 'rgba(138,143,152,0.06)', border: 'rgba(138,143,152,0.18)' },
+  important_for_accuracy: { label: 'Istotne',   color: '#B8742A', bg: 'rgba(212,150,10,0.07)',  border: 'rgba(212,150,10,0.22)' },
+  optional_detail:        { label: 'Opcjonalne', color: '#6E6A60', bg: 'rgba(138,143,152,0.06)', border: 'rgba(138,143,152,0.18)' },
 }
 
 const CONFIRMED_GREEN = '#52A56E'

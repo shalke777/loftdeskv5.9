@@ -159,7 +159,7 @@ export function ExpenseApprovalModal({ projectId, expense, onClose }: Props) {
 
           {/* Error */}
           {create.isError && (
-            <div style={{ padding: '8px 12px', borderRadius: 6, background: 'rgba(239,68,68,0.12)', border: '1px solid #EF6B6B', fontSize: 13, color: '#EF6B6B' }}>
+            <div style={{ padding: '8px 12px', borderRadius: 6, background: 'rgba(239,68,68,0.12)', border: '1px solid #A83228', fontSize: 13, color: '#A83228' }}>
               Błąd: {(create.error as Error)?.message ?? 'Nieznany błąd'}
             </div>
           )}

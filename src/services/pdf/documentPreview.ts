@@ -34,7 +34,7 @@ function pageShell(title: string, subtitle: string, content: string) {
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>${escapeHtml(title)}</title>
 <style>
-  :root { --accent:#77BA8A; --ink:#1f2937; --muted:#5b6475; --line:#d7dde6; --soft:#f5f7fb; }
+  :root { --accent:#1A5C32; --ink:#1f2937; --muted:#5b6475; --line:#d7dde6; --soft:#f5f7fb; }
   * { box-sizing:border-box; }
   body { margin:0; font-family: Inter, Arial, sans-serif; background:#eef2f7; color:var(--ink); }
   .doc { width: 900px; margin: 24px auto; background:#fff; box-shadow: 0 18px 50px rgba(15,23,42,.12); }

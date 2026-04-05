@@ -190,7 +190,7 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
     return (
       <Card>
         <h3 style={{ margin: '0 0 8px' }}>Dostęp klienta</h3>
-        <p style={{ fontSize: 13, color: '#D4960A', background: 'rgba(212,150,10,0.15)', border: '1px solid rgba(212,150,10,0.30)', borderRadius: 6, padding: '8px 12px', margin: 0 }}>
+        <p style={{ fontSize: 13, color: '#B8742A', background: 'rgba(212,150,10,0.15)', border: '1px solid rgba(212,150,10,0.30)', borderRadius: 6, padding: '8px 12px', margin: 0 }}>
           Portal klienta działa tylko w trybie produkcyjnym (wymaga Supabase + Netlify).
         </p>
       </Card>
@@ -202,7 +202,7 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
     return (
       <Card>
         <h3 style={{ margin: '0 0 8px' }}>Dostęp klienta</h3>
-        <p style={{ fontSize: 13, color: '#A7ABB3' }}>Sprawdzanie statusu…</p>
+        <p style={{ fontSize: 13, color: '#6E6A60' }}>Sprawdzanie statusu…</p>
       </Card>
     )
   }
@@ -212,18 +212,18 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
     return (
       <Card>
         <h3 style={{ margin: '0 0 12px' }}>Dostęp klienta</h3>
-        <div style={{ background: 'rgba(119,186,138,0.12)', border: '1px solid rgba(119,186,138,0.30)', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
-          <div style={{ fontWeight: 600, color: '#77BA8A', marginBottom: 6 }}>
+        <div style={{ background: 'rgba(26,92,50,0.12)', border: '1px solid rgba(26,92,50,0.30)', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
+          <div style={{ fontWeight: 600, color: '#1A5C32', marginBottom: 6 }}>
             ✅ Dostęp nadany — {email}
           </div>
           {emailSent ? (
-            <p style={{ fontSize: 13, color: '#77BA8A', margin: 0, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 13, color: '#1A5C32', margin: 0, lineHeight: 1.6 }}>
               📧 Email z linkiem logowania został wysłany automatycznie.
               Klient powinien go otrzymać w ciągu kilku minut.
             </p>
           ) : magicLink ? (
             <>
-              <p style={{ fontSize: 13, color: '#77BA8A', margin: '0 0 10px', lineHeight: 1.6 }}>
+              <p style={{ fontSize: 13, color: '#1A5C32', margin: '0 0 10px', lineHeight: 1.6 }}>
                 Skopiuj link i wyślij klientowi (email, SMS, WhatsApp).
                 Link jest jednorazowy — po użyciu klient może logować się przez email.
               </p>
@@ -231,19 +231,19 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
                 <input
                   readOnly
                   value={magicLink}
-                  style={{ flex: 1, fontSize: 11, padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(119,186,138,0.30)', background: 'var(--color-surface)', color: '#D0D4DA', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  style={{ flex: 1, fontSize: 11, padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(26,92,50,0.30)', background: 'var(--color-surface)', color: '#6E6A60', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                   onFocus={e => e.currentTarget.select()}
                 />
                 <button
                   onClick={() => void copyLink()}
-                  style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #77BA8A', background: copied ? '#77BA8A' : 'var(--color-surface)', color: copied ? '#fff' : '#77BA8A', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s' }}
+                  style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #1A5C32', background: copied ? '#1A5C32' : 'var(--color-surface)', color: copied ? '#fff' : '#1A5C32', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s' }}
                 >
                   {copied ? '✓ Skopiowano' : 'Kopiuj'}
                 </button>
               </div>
             </>
           ) : (
-            <p style={{ fontSize: 13, color: '#77BA8A', margin: 0 }}>
+            <p style={{ fontSize: 13, color: '#1A5C32', margin: 0 }}>
               Klient może zalogować się przez magic link na swój email.
             </p>
           )}
@@ -259,9 +259,9 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
   if (access && mode === 'view') {
     const since = new Date(access.grantedAt).toLocaleDateString('pl-PL')
     const isActive  = access.hasLoggedIn
-    const statusColor  = isActive  ? '#77BA8A' : '#D4960A'
-    const statusBg     = isActive  ? 'rgba(119,186,138,0.08)' : 'rgba(212,150,10,0.10)'
-    const statusBorder = isActive  ? 'rgba(119,186,138,0.25)' : 'rgba(212,150,10,0.30)'
+    const statusColor  = isActive  ? '#1A5C32' : '#B8742A'
+    const statusBg     = isActive  ? 'rgba(26,92,50,0.08)' : 'rgba(212,150,10,0.10)'
+    const statusBorder = isActive  ? 'rgba(26,92,50,0.25)' : 'rgba(212,150,10,0.30)'
     const statusLabel  = isActive  ? 'Klient ma aktywny dostęp' : 'Dostęp wysłany'
     const statusIcon   = isActive  ? '🟢' : '🟡'
     const contextLine  = isActive
@@ -274,12 +274,12 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
 
         {/* A. Klient */}
         <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 11, color: '#8A8F98', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>Klient</p>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#D0D4DA' }}>
+          <p style={{ fontSize: 11, color: '#6E6A60', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>Klient</p>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#6E6A60' }}>
             {access.fullName || access.email}
           </div>
           {access.fullName && (
-            <div style={{ fontSize: 12, color: '#8A8F98', marginTop: 2 }}>{access.email}</div>
+            <div style={{ fontSize: 12, color: '#6E6A60', marginTop: 2 }}>{access.email}</div>
           )}
         </div>
 
@@ -288,13 +288,13 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
           <div style={{ fontSize: 13, fontWeight: 600, color: statusColor, marginBottom: 4 }}>
             {statusIcon} {statusLabel}
           </div>
-          <div style={{ fontSize: 12, color: '#8A8F98' }}>
+          <div style={{ fontSize: 12, color: '#6E6A60' }}>
             Wysłano: {since}
           </div>
         </div>
 
         {/* E. Kontekst operacyjny */}
-        <p style={{ fontSize: 12, color: '#8A8F98', lineHeight: 1.5, margin: '0 0 14px' }}>
+        <p style={{ fontSize: 12, color: '#6E6A60', lineHeight: 1.5, margin: '0 0 14px' }}>
           {contextLine}
         </p>
 
@@ -341,7 +341,7 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
               <Button
                 variant="ghost"
                 size="sm"
-                style={{ color: 'var(--color-danger, #EF6B6B)' }}
+                style={{ color: 'var(--color-danger, #A83228)' }}
                 loading={revoke.isPending}
                 onClick={() => void handleRevoke()}
               >
@@ -373,12 +373,12 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
       {/* A. Klient — jeśli znany z projektu */}
       {knownClient && (
         <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 11, color: '#8A8F98', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>Klient</p>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#D0D4DA' }}>
+          <p style={{ fontSize: 11, color: '#6E6A60', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>Klient</p>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#6E6A60' }}>
             {clientName || clientEmail}
           </div>
           {clientName && clientEmail && (
-            <div style={{ fontSize: 12, color: '#8A8F98', marginTop: 2 }}>{clientEmail}</div>
+            <div style={{ fontSize: 12, color: '#6E6A60', marginTop: 2 }}>{clientEmail}</div>
           )}
         </div>
       )}
@@ -386,7 +386,7 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
       {/* B. Status */}
       {!isReInvite && (
         <div style={{ background: 'rgba(167,171,179,0.10)', border: '1px solid rgba(167,171,179,0.20)', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#A7ABB3' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6A60' }}>
             ⚪ Brak dostępu
           </div>
         </div>
@@ -394,7 +394,7 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
 
       {isReInvite && (
         <button
-          style={{ background: 'none', border: 'none', color: '#8A8F98', fontSize: 12, cursor: 'pointer', padding: '0 0 10px', textDecoration: 'underline', display: 'block' }}
+          style={{ background: 'none', border: 'none', color: '#6E6A60', fontSize: 12, cursor: 'pointer', padding: '0 0 10px', textDecoration: 'underline', display: 'block' }}
           onClick={() => setMode('view')}
         >
           ← Wróć
@@ -403,7 +403,7 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
 
       {/* E. Kontekst */}
       {!isReInvite && (
-        <p style={{ fontSize: 12, color: '#8A8F98', lineHeight: 1.5, margin: '0 0 12px' }}>
+        <p style={{ fontSize: 12, color: '#6E6A60', lineHeight: 1.5, margin: '0 0 12px' }}>
           Klient otrzyma dostęp do dokumentów, wiadomości, sekcji Do zatwierdzenia i osi czasu.
           Nie zobaczy kosztów wewnętrznych ani notatek firmowych.
         </p>
@@ -430,10 +430,10 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
           disabled={mode === 'sending'}
         />
         {mode === 'failed' && errorMsg && (
-          <div style={{ fontSize: 12, color: 'var(--color-error, #EF6B6B)', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 6, padding: '8px 12px' }}>
+          <div style={{ fontSize: 12, color: 'var(--color-error, #A83228)', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 6, padding: '8px 12px' }}>
             ⚠️ {errorMsg}{' '}
             <button
-              style={{ background: 'none', border: 'none', color: '#EF6B6B', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: 12 }}
+              style={{ background: 'none', border: 'none', color: '#A83228', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: 12 }}
               onClick={() => { setMode(isReInvite ? 'invite' : 'view'); setErrorMsg(null) }}
             >
               Spróbuj ponownie

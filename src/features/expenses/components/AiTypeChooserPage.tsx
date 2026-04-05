@@ -32,7 +32,7 @@ const AI_MODES: AiMode[] = [
   },
   {
     emoji: '📸',
-    accent: '#77BA8A',
+    accent: '#1A5C32',
     title: 'Zdjęcia pomieszczenia',
     subtitle: 'Łazienka · Kuchnia · Salon · Budowa',
     description: 'AI analizuje stan pomieszczenia — rozpoznaje materiały, generuje zakres prac i draft wyceny.',

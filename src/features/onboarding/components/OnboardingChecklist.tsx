@@ -17,7 +17,7 @@ export function OnboardingChecklist() {
   const nextStep = progress.steps.find((s) => !s.done)
 
   return (
-    <Card style={{ marginBottom: 16, borderLeft: '4px solid var(--color-brand, #77BA8A)' }}>
+    <Card style={{ marginBottom: 16, borderLeft: '4px solid var(--color-brand, #1A5C32)' }}>
       <div
         style={{
           display: 'flex',
@@ -30,14 +30,14 @@ export function OnboardingChecklist() {
         {/* Left: progress */}
         <div style={{ flex: '1 1 280px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <Rocket size={16} color="var(--color-brand, #77BA8A)" />
+            <Rocket size={16} color="var(--color-brand, #1A5C32)" />
             <strong style={{ fontSize: 14 }}>Pierwsze kroki</strong>
             <span
               style={{
                 marginLeft: 'auto',
                 fontSize: 12,
                 fontWeight: 600,
-                color: 'var(--color-brand, #77BA8A)',
+                color: 'var(--color-brand, #1A5C32)',
               }}
             >
               {progress.done}/{progress.total}
@@ -58,7 +58,7 @@ export function OnboardingChecklist() {
               style={{
                 width: `${progress.progress}%`,
                 height: '100%',
-                background: 'var(--color-brand, #77BA8A)',
+                background: 'var(--color-brand, #1A5C32)',
                 transition: 'width 0.4s ease',
               }}
             />
@@ -85,9 +85,9 @@ export function OnboardingChecklist() {
                 }}
               >
                 {step.done ? (
-                  <CheckCircle2 size={16} color="var(--color-success, #77BA8A)" style={{ flexShrink: 0 }} />
+                  <CheckCircle2 size={16} color="var(--color-success, #1A5C32)" style={{ flexShrink: 0 }} />
                 ) : (
-                  <Circle size={16} color="var(--color-text-tertiary, #8A8F98)" style={{ flexShrink: 0 }} />
+                  <Circle size={16} color="var(--color-text-tertiary, #6E6A60)" style={{ flexShrink: 0 }} />
                 )}
                 <span
                   style={{

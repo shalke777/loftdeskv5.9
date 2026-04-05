@@ -95,9 +95,9 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
         }
       case 'client_shared':
         return {
-          bg:    'rgba(119,186,138,0.12)',
-          border: 'rgba(119,186,138,0.30)',
-          color:  '#77BA8A',
+          bg:    'rgba(26,92,50,0.12)',
+          border: 'rgba(26,92,50,0.30)',
+          color:  '#1A5C32',
           icon:   '💬',
           text:   'Wiadomość do klienta — klient zobaczy ją w portalu',
         }
@@ -105,7 +105,7 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
         return {
           bg:    'rgba(212,150,10,0.12)',
           border: 'rgba(212,150,10,0.30)',
-          color:  '#D4960A',
+          color:  '#B8742A',
           icon:   '✅',
           text:   'Wiadomość w kontekście akceptacji — widoczna dla klienta',
         }

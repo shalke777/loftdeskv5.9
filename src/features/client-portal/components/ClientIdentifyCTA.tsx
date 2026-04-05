@@ -9,13 +9,13 @@ export function ClientIdentifyCTA({ portalToken: _portalToken }: Props) {
   return (
     <div
       style={{
-        background:    'rgba(119,186,138,0.12)',
-        border:        '1px solid rgba(119,186,138,0.30)',
+        background:    'rgba(26,92,50,0.12)',
+        border:        '1px solid rgba(26,92,50,0.30)',
         borderRadius:  12,
         padding:       '14px 18px',
         marginBottom:  20,
         fontSize:      13,
-        color:         '#77BA8A',
+        color:         '#1A5C32',
         lineHeight:    1.6,
       }}
     >

@@ -299,7 +299,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
                       <span
                         style={{
                           fontSize: 11, padding: '2px 6px', borderRadius: 99,
-                          background: 'var(--color-warning, #D4960A)', color: '#fff', fontWeight: 600,
+                          background: 'var(--color-warning, #B8742A)', color: '#fff', fontWeight: 600,
                         }}
                       >
                         Możliwy duplikat
@@ -498,8 +498,8 @@ export function ProjectExpensesTab({ projectId }: Props) {
           style={{
             marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: 13,
             background: 'var(--color-danger-soft, rgba(239,68,68,0.12))',
-            border: '1px solid var(--color-danger, #EF6B6B)',
-            color: 'var(--color-danger, #EF6B6B)',
+            border: '1px solid var(--color-danger, #A83228)',
+            color: 'var(--color-danger, #A83228)',
           }}
         >
           Błąd zapisu: {translateError(createExpense.error)}

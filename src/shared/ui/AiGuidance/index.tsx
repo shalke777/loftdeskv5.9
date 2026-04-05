@@ -232,8 +232,8 @@ interface AiQualityBadgeProps {
 
 export function AiQualityBadge({ confidence }: AiQualityBadgeProps) {
   const label = confidence >= 70 ? 'Dobry wynik' : confidence >= 55 ? 'Częściowy wynik' : 'Słaby materiał'
-  const color = confidence >= 70 ? '#77BA8A' : confidence >= 55 ? '#D4960A' : '#E57373'
-  const bg    = confidence >= 70 ? 'rgba(119,186,138,0.12)' : confidence >= 55 ? 'rgba(212,150,10,0.1)' : 'rgba(229,115,115,0.1)'
+  const color = confidence >= 70 ? '#1A5C32' : confidence >= 55 ? '#B8742A' : '#E57373'
+  const bg    = confidence >= 70 ? 'rgba(26,92,50,0.12)' : confidence >= 55 ? 'rgba(212,150,10,0.1)' : 'rgba(229,115,115,0.1)'
 
   return (
     <span style={{
@@ -318,7 +318,7 @@ export function AiUploadRules({ config }: AiUploadRulesProps) {
         }}>
           {config.tips.map((t, i) => (
             <div key={i} style={{ color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>
-              <span style={{ color: '#77BA8A', marginRight: 5 }}>✓</span>{t}
+              <span style={{ color: '#1A5C32', marginRight: 5 }}>✓</span>{t}
             </div>
           ))}
         </div>
@@ -342,8 +342,8 @@ interface StateConfig {
 }
 
 const RELIABILITY_STATE_CONFIG: Record<ReliabilityState, StateConfig> = {
-  strong:  { label: 'Wysoka pewność',    color: '#77BA8A', bg: 'rgba(119,186,138,0.08)', icon: '✓' },
-  partial: { label: 'Częściowa pewność', color: '#D4960A', bg: 'rgba(212,150,10,0.07)',  icon: '≈' },
+  strong:  { label: 'Wysoka pewność',    color: '#1A5C32', bg: 'rgba(26,92,50,0.08)', icon: '✓' },
+  partial: { label: 'Częściowa pewność', color: '#B8742A', bg: 'rgba(212,150,10,0.07)',  icon: '≈' },
   weak:    { label: 'Niska pewność',     color: '#E57373', bg: 'rgba(229,115,115,0.07)', icon: '⚠' },
   blocked: { label: 'Zablokowany',       color: '#D32F2F', bg: 'rgba(211,47,47,0.08)',   icon: '✕' },
 }

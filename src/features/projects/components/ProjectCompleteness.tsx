@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function ProjectCompleteness({ score, flags, compact = false }: Props) {
-  const color = score >= 80 ? '#77BA8A' : score >= 50 ? '#D4960A' : '#EF6B6B'
+  const color = score >= 80 ? '#1A5C32' : score >= 50 ? '#B8742A' : '#A83228'
 
   if (compact) {
     return (
@@ -78,8 +78,8 @@ export function ProjectCompleteness({ score, flags, compact = false }: Props) {
                 fontSize: 11,
                 padding: '2px 8px',
                 borderRadius: 12,
-                background: flags[key] ? 'rgba(119,186,138,0.18)' : 'rgba(239,68,68,0.18)',
-                color: flags[key] ? '#77BA8A' : '#EF6B6B',
+                background: flags[key] ? 'rgba(26,92,50,0.18)' : 'rgba(239,68,68,0.18)',
+                color: flags[key] ? '#1A5C32' : '#A83228',
               }}
             >
               {flags[key] ? '✓' : '✗'} {label}

@@ -182,7 +182,7 @@ export function ExpenseConfirmForm({
   // Returns extra style for autofilled inputs (subtle left-border tint)
   function autoStyle(field: keyof FormState): React.CSSProperties {
     return autofilled.has(field)
-      ? { ...inputStyle, borderLeftColor: 'var(--color-success, #77BA8A)', borderLeftWidth: 3 }
+      ? { ...inputStyle, borderLeftColor: 'var(--color-success, #1A5C32)', borderLeftWidth: 3 }
       : inputStyle
   }
 

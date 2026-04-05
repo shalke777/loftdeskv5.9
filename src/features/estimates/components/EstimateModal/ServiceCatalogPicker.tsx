@@ -142,7 +142,7 @@ export function ServiceCatalogPicker({ open, onClose, onAdd, existingCount }: Pr
             {search || category ? ' (filtrowane)' : ''}
           </span>
           {selected.size > 0 && (
-            <span style={{ color: '#77BA8A', fontWeight: 600 }}>
+            <span style={{ color: '#1A5C32', fontWeight: 600 }}>
               Zaznaczono: {selected.size}
             </span>
           )}
@@ -201,21 +201,21 @@ export function ServiceCatalogPicker({ open, onClose, onAdd, existingCount }: Pr
                         padding: '8px 12px',
                         borderBottom: '1px solid var(--color-border)',
                         cursor: 'pointer',
-                        background: isSelected ? 'rgba(119,186,138,0.08)' : undefined,
+                        background: isSelected ? 'rgba(26,92,50,0.08)' : undefined,
                         transition: 'background 0.1s',
                       }}
                       onMouseEnter={(e) => {
                         if (!isSelected) e.currentTarget.style.background = 'var(--color-surface-soft)'
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = isSelected ? 'rgba(119,186,138,0.08)' : ''
+                        e.currentTarget.style.background = isSelected ? 'rgba(26,92,50,0.08)' : ''
                       }}
                     >
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggle(item.id)}
-                        style={{ accentColor: '#77BA8A', width: 16, height: 16, flexShrink: 0 }}
+                        style={{ accentColor: '#1A5C32', width: 16, height: 16, flexShrink: 0 }}
                       />
                       <span style={{ flex: 1, fontSize: 13, color: 'var(--color-text-primary)' }}>
                         {item.name}

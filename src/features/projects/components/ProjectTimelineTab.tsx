@@ -33,7 +33,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '32px 0', color: 'var(--color-text-muted, #8A8F98)', fontSize: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '32px 0', color: 'var(--color-text-muted, #6E6A60)', fontSize: 14 }}>
         <span className="spinner" style={{ width: 16, height: 16 }} />
         Ładowanie osi czasu…
       </div>
@@ -63,9 +63,9 @@ export function ProjectTimelineTab({ projectId }: Props) {
         style={{
           textAlign:    'center',
           padding:      '48px 24px',
-          border:       '2px dashed var(--color-border, #3A3D42)',
+          border:       '2px dashed var(--color-border, rgba(30,29,24,0.15))',
           borderRadius: 10,
-          color:        'var(--color-text-muted, #8A8F98)',
+          color:        'var(--color-text-muted, #6E6A60)',
         }}
       >
         <div style={{ fontSize: 40, marginBottom: 12 }}>🕒</div>
@@ -85,7 +85,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
           Oś czasu projektu
           {events.length > 0 && (
-            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: 'var(--color-text-muted, #8A8F98)' }}>
+            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: 'var(--color-text-muted, #6E6A60)' }}>
               ({events.length} zdarzeń)
             </span>
           )}
@@ -96,7 +96,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
           <span style={{ padding: '2px 8px', borderRadius: 99, background: 'rgba(96,165,250,0.15)', color: '#60A5FA', fontWeight: 600 }}>
             widoczne klientowi
           </span>
-          <span style={{ padding: '2px 8px', borderRadius: 99, background: 'rgba(160,170,180,0.10)', color: '#A7ABB3', fontWeight: 600 }}>
+          <span style={{ padding: '2px 8px', borderRadius: 99, background: 'rgba(160,170,180,0.10)', color: '#6E6A60', fontWeight: 600 }}>
             wewnętrzne
           </span>
         </div>
@@ -111,7 +111,7 @@ export function ProjectTimelineTab({ projectId }: Props) {
           style={{
             textAlign:    'center',
             padding:      '32px 16px',
-            color:        'var(--color-text-muted, #8A8F98)',
+            color:        'var(--color-text-muted, #6E6A60)',
             fontSize:     13,
           }}
         >

@@ -144,7 +144,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
                 {docSummary.map(n => <div key={n} style={{ paddingLeft: 8 }}>• {n}</div>)}
               </div>
             )}
-            <div style={{ marginTop: 8, fontSize: 12, color: '#A7ABB3' }}>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#6E6A60' }}>
               Klient otrzyma email z linkiem do projektu. Żadne pliki nie są dołączane bezpośrednio — dokumenty są dostępne w portalu klienta.
             </div>
           </div>
@@ -157,7 +157,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
 
         <div>
           <label className="field__label" htmlFor="stc-email" style={{ display: 'block', marginBottom: 4 }}>
-            Adres email klienta <span style={{ color: '#EF6B6B' }}>*</span>
+            Adres email klienta <span style={{ color: '#A83228' }}>*</span>
           </label>
           <input
             id="stc-email"
@@ -193,11 +193,11 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
         )}
 
         {portalUrl ? (
-          <div style={{ background: 'rgba(119,186,138,0.12)', border: '1px solid rgba(119,186,138,0.30)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#77BA8A' }}>
+          <div style={{ background: 'rgba(26,92,50,0.12)', border: '1px solid rgba(26,92,50,0.30)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#1A5C32' }}>
             ✓ Email będzie zawierał przycisk &ldquo;{isPackage ? 'Otwórz projekt w portalu' : 'Otwórz dokument w portalu'}&rdquo;
           </div>
         ) : !pdfHtml ? (
-          <div style={{ background: 'rgba(212,150,10,0.12)', border: '1px solid rgba(212,150,10,0.30)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#D4960A' }}>
+          <div style={{ background: 'rgba(212,150,10,0.12)', border: '1px solid rgba(212,150,10,0.30)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#B8742A' }}>
             Brak linku do portalu — klient otrzyma tylko informację o dokumencie.
           </div>
         ) : null}
