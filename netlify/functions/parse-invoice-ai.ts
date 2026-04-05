@@ -289,6 +289,26 @@ export const handler: Handler = async (event: HandlerEvent) => {
   if (rlClient) {
     const rl = await isRateLimitedDb(rlClient, userId, 'parse-invoice-ai', RATE_MAX, RATE_WINDOW_MS)
     if (rl.limited) return err(429, 'too_many_requests', 'Za dużo żądań. Spróbuj za chwilę.')
+
+    // ── Daily company limit ───────────────────────────────────────────────
+    const { data: memberRow } = await rlClient
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle()
+    if (memberRow?.company_id) {
+      const dailyLimit = parseInt(process.env.AI_DAILY_LIMIT ?? '50', 10)
+      const { count: todayCount, error: countErr } = await rlClient
+        .from('ai_analysis_runs')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', memberRow.company_id as string)
+        .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
+      if (!countErr && typeof todayCount === 'number' && todayCount >= dailyLimit) {
+        console.warn('[parse-invoice-ai] Daily limit exceeded', { companyId: memberRow.company_id, todayCount, dailyLimit })
+        return err(429, 'daily_limit_exceeded', `Dzienny limit analiz AI (${dailyLimit}) został wyczerpany. Spróbuj ponownie jutro.`)
+      }
+    }
   }
 
   const apiKey = process.env.OPENAI_API_KEY
