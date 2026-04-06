@@ -34,15 +34,15 @@ export function LineItemsSection({ items: rawItems }: { items: DocumentLineItem[
   return (
     <AnalysisSectionCard title="Pozycje dokumentu" count={items.length} icon="📋">
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <table className="exp-items-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
               <th style={headCol}>#</th>
               <th style={headCol}>Nazwa</th>
-              <th style={headRight}>Ilość</th>
-              <th style={headCol}>J.m.</th>
-              <th style={headRight}>Netto</th>
-              <th style={headRight}>VAT%</th>
+              <th className="exp-col-hide-mobile" style={headRight}>Ilość</th>
+              <th className="exp-col-hide-mobile" style={headCol}>J.m.</th>
+              <th className="exp-col-hide-mobile" style={headRight}>Netto</th>
+              <th className="exp-col-hide-mobile" style={headRight}>VAT%</th>
               <th style={headRight}>Brutto</th>
             </tr>
           </thead>
@@ -53,10 +53,10 @@ export function LineItemsSection({ items: rawItems }: { items: DocumentLineItem[
                 <td style={{ ...colStyle, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {item.name ?? '—'}
                 </td>
-                <td style={rightCol}>{item.quantity != null ? item.quantity : '—'}</td>
-                <td style={colStyle}>{item.unit ?? '—'}</td>
-                <td style={rightCol}>{item.net_amount != null ? item.net_amount.toFixed(2) : '—'}</td>
-                <td style={rightCol}>{item.vat_rate != null ? `${item.vat_rate}%` : '—'}</td>
+                <td className="exp-col-hide-mobile" style={rightCol}>{item.quantity != null ? item.quantity : '—'}</td>
+                <td className="exp-col-hide-mobile" style={colStyle}>{item.unit ?? '—'}</td>
+                <td className="exp-col-hide-mobile" style={rightCol}>{item.net_amount != null ? item.net_amount.toFixed(2) : '—'}</td>
+                <td className="exp-col-hide-mobile" style={rightCol}>{item.vat_rate != null ? `${item.vat_rate}%` : '—'}</td>
                 <td style={{ ...rightCol, fontWeight: 600 }}>{item.gross_amount != null ? item.gross_amount.toFixed(2) : '—'}</td>
               </tr>
             ))}

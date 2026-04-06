@@ -151,7 +151,7 @@ function PhoneMockup({ t }: { t: typeof T.minimal }) {
           </div>
           <div style={{ borderRadius: 10, padding: "10px", background: "rgba(77,184,113,0.1)", border: "1px solid rgba(77,184,113,0.2)" }}>
             <p style={{ color: "rgba(237,232,221,0.5)", fontSize: "0.55rem" }}>Projekt</p>
-            <p style={{ color: "#EDE8DD", fontSize: "0.8rem", fontWeight: 700, lineHeight: 1.2 }}>Renovacja biura</p>
+            <p style={{ color: "#EDE8DD", fontSize: "0.8rem", fontWeight: 700, lineHeight: 1.2 }}>Renowacja biura</p>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
               <span style={{ padding: "2px 6px", borderRadius: 99, background: "rgba(77,184,113,0.2)", color: "#4DB871", fontSize: "0.5rem", fontWeight: 600 }}>W toku</span>
               <span style={{ color: "rgba(237,232,221,0.45)", fontSize: "0.55rem" }}>MMO Artis</span>

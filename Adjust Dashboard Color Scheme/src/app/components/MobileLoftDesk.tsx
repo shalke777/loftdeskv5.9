@@ -46,7 +46,7 @@ const RUNS: Run[] = [
 ];
 
 const PROJECTS = [
-  { id: "p1", code: "ZLP-048", name: "Renovacja biura", client: "MMO Artis", status: "W toku", timeAgo: "15h", value: "18 400 zł", color: GREEN },
+  { id: "p1", code: "ZLP-048", name: "Renowacja biura", client: "MMO Artis", status: "W toku", timeAgo: "15h", value: "18 400 zł", color: GREEN },
   { id: "p2", code: "ZLP-045", name: "Modernizacja kuchni", client: "Core-BUD", status: "Oferta", timeAgo: "2d", value: "9 200 zł", color: AMBER },
   { id: "p3", code: "ZLP-042", name: "Apartament Wola", client: "Jan Kowalski", status: "Gotowy", timeAgo: "5d", value: "32 100 zł", color: GREEN },
   { id: "p4", code: "ZLP-040", name: "Biuro Śródmieście", client: "Biuro MDA", status: "Do akceptacji", timeAgo: "1w", value: "14 700 zł", color: AMBER },
@@ -299,7 +299,7 @@ function ProjectDetailScreen({ onBack }: { onBack: () => void }) {
           <ArrowLeft className="w-4 h-4" style={{ color: TEXT }} />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 style={{ color: TEXT, fontWeight: 700, fontSize: "1.2rem", lineHeight: 1.2 }}>Renovacja biura</h1>
+          <h1 style={{ color: TEXT, fontWeight: 700, fontSize: "1.2rem", lineHeight: 1.2 }}>Renowacja biura</h1>
           <p style={{ color: TEXT_DIM, fontSize: "0.75rem" }}>MMO Artis · 15h · <span style={{ color: GREEN }}>●</span></p>
         </div>
         <span className="px-2.5 py-1 rounded-lg text-xs font-semibold font-mono" style={{ background: "rgba(200,134,60,0.15)", color: AMBER }}>ZLP-048</span>
@@ -309,7 +309,7 @@ function ProjectDetailScreen({ onBack }: { onBack: () => void }) {
       <div className="mx-5 rounded-2xl overflow-hidden mb-4" style={{ height: 160 }}>
         <img
           src="https://images.unsplash.com/photo-1662379940109-1026a0dcfe95?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBvZmZpY2UlMjBpbnRlcmlvciUyMHJlbm92YXRpb24lMjBsb2Z0fGVufDF8fHx8MTc3NTQxMTgzN3ww&ixlib=rb-4.1.0&q=80&w=1080"
-          alt="Renovacja biura"
+          alt="Renowacja biura"
           className="w-full h-full object-cover"
         />
       </div>

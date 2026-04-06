@@ -282,10 +282,10 @@ export function ExpenseConfirmForm({
 
   const inputStyle: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box',
-    padding: '8px 10px', borderRadius: 6, fontSize: 14,
+    padding: '8px 10px', borderRadius: 8, fontSize: 14,
     border: '1px solid var(--color-border)',
     background: 'var(--color-surface)',
-    color: 'var(--color-text, #111)',
+    color: 'var(--color-text)',
   }
   const labelStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 6,
@@ -390,7 +390,7 @@ export function ExpenseConfirmForm({
         <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
           Nabywca
           <button type="button" onClick={handleSwapBuyerVendor}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--color-brand)', background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', marginLeft: 'auto' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--color-brand)', background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '3px 8px', cursor: 'pointer', marginLeft: 'auto' }}
             title="Zamień nabywcę ze sprzedawcą">
             <ArrowLeftRight size={12} /> Zamień
           </button>
