@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
+import { CalendarCheck, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
 import type { Project } from '@/entities/project/model'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Card } from '@/shared/ui/Card/Card'
@@ -24,6 +24,7 @@ import { ContractForm } from '@/features/contracts/components/ContractModal/Cont
 import { useCreateInvoice } from '@/features/invoices/hooks/useInvoices'
 import { InvoiceForm } from '@/features/invoices/components/InvoiceModal/InvoiceForm'
 import { useCompanyId, useAuth } from '@/features/auth/hooks/useAuth'
+import { supabase } from '@/shared/lib/supabase'
 
 const AI_ENABLED = import.meta.env.VITE_AI_ENGINE_ENABLED === 'true'
 
@@ -42,6 +43,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
   const [showEstimateModal, setShowEstimateModal] = useState(false)
   const [showContractModal, setShowContractModal] = useState(false)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [reportStatus, setReportStatus] = useState<'idle' | 'confirm' | 'sending' | 'done' | 'error'>('idle')
   const { data: clients } = useClients()
   const linkedClient = clients?.find(c => c.id === project?.client_id)
   const companyId = useCompanyId()
@@ -62,6 +64,40 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
   const hasContract = flags.has_contract || projectContracts.length > 0
   const latestEstimate = projectEstimates[projectEstimates.length - 1] ?? null
   const latestContract = projectContracts[projectContracts.length - 1] ?? null
+
+  async function sendDailyReport() {
+    if (!supabase || !linkedClient?.email || !project) return
+    setReportStatus('sending')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token ?? ''
+      const today = new Date().toLocaleDateString('pl-PL', { day: '2-digit', month: 'long', year: 'numeric' })
+      const lines = [
+        `Data: ${today}`,
+        `Projekt: ${project.number} — ${project.name}`,
+        project.address ? `Adres budowy: ${project.address}` : null,
+        `Status: ${STATUS_LABEL[project.status]}`,
+        '',
+        'Prace są kontynuowane. Zapraszamy do sprawdzenia aktualnego stanu projektu i dokumentów w portalu klienta.',
+      ]
+      const res = await fetch('/.netlify/functions/send-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          to_email: linkedClient.email,
+          document_type: 'package',
+          document_name: `Raport dzienny — ${project.name} — ${today}`,
+          message: lines.filter(Boolean).join('\n'),
+          document_url: `${window.location.origin}/client/project/${project.id}`,
+        }),
+      })
+      setReportStatus(res.ok ? 'done' : 'error')
+      setTimeout(() => setReportStatus('idle'), res.ok ? 4000 : 3000)
+    } catch {
+      setReportStatus('error')
+      setTimeout(() => setReportStatus('idle'), 3000)
+    }
+  }
 
   return (
     <div className="grid-3" style={{ alignItems: 'start' }}>
@@ -88,6 +124,31 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
           )}
           {hasContract && (
             <Button onClick={() => setShowInvoiceModal(true)}>Generuj fakturę</Button>
+          )}
+          {/* Raport dzienny — widoczny gdy projekt ma klienta z e-mailem */}
+          {linkedClient?.email && reportStatus === 'idle' && (
+            <Button variant="secondary" onClick={() => setReportStatus('confirm')}>
+              <CalendarCheck size={14} style={{ marginRight: 4 }} />
+              Raport dzienny
+            </Button>
+          )}
+          {linkedClient?.email && reportStatus === 'confirm' && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>→ {linkedClient.email}</span>
+              <Button size="sm" onClick={sendDailyReport}>Wyślij</Button>
+              <Button size="sm" variant="secondary" onClick={() => setReportStatus('idle')}>Anuluj</Button>
+            </span>
+          )}
+          {linkedClient?.email && reportStatus === 'sending' && (
+            <Button variant="secondary" loading disabled>Wysyłanie...</Button>
+          )}
+          {linkedClient?.email && reportStatus === 'done' && (
+            <span style={{ fontSize: 12, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <CalendarCheck size={13} /> Raport wysłany
+            </span>
+          )}
+          {linkedClient?.email && reportStatus === 'error' && (
+            <span style={{ fontSize: 12, color: 'var(--color-error)' }}>Błąd wysyłki — spróbuj ponownie</span>
           )}
         </div>
 
