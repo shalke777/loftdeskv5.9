@@ -2,29 +2,39 @@ import { useState } from 'react'
 import { ChevronRight, DollarSign, FileText, FolderKanban, Receipt, Sparkles, TrendingUp, Users } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
+import { Modal } from '@/shared/ui/Modal/Modal'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { useDashboardStats } from '@/features/dashboard/hooks/useDashboardStats'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { QueryError } from '@/shared/ui/QueryError/QueryError'
-import { useCompanyId } from '@/features/auth/hooks/useAuth'
+import { useCompanyId, useAuth } from '@/features/auth/hooks/useAuth'
 import { WelcomeBanner } from '@/features/onboarding/components/WelcomeBanner'
 import { OnboardingChecklist } from '@/features/onboarding/components/OnboardingChecklist'
 import { useOnboardingProgress } from '@/features/onboarding/hooks/useOnboardingProgress'
 import { useLocalStorage } from '@/shared/hooks/useLocalStorage'
+import { ProjectAiTab } from '@/features/ai-review/components/ProjectAiTab'
+import { useProjects } from '@/features/projects/hooks/useProjects'
+
+const AI_ENABLED = import.meta.env.VITE_AI_ENGINE_ENABLED === 'true'
 
 const quickActions = [
   { icon: FolderKanban, title: 'Nowy projekt',       sub: 'Stwórz realizację', href: '/projects'  },
   { icon: FileText,     title: 'Nowa wycena',        sub: 'Wygeneruj ofertę',  href: '/estimates' },
   { icon: Receipt,      title: 'Nowa faktura',       sub: 'Wystaw dokument',   href: '/invoices'  },
-  { icon: Sparkles,     title: 'AI / Import',        sub: 'OCR, analiza, koszty', href: '/ai'     },
+  { icon: Sparkles,     title: 'AI Asystent',        sub: 'Analiza, OCR, koszty', href: '__ai__'  },
 ]
 
 export function DashboardPage() {
   const navigate = useNavigate()
   const companyId = useCompanyId()
+  const { user } = useAuth()
   const { data, isLoading, isError, refetch } = useDashboardStats()
   const { data: onboarding } = useOnboardingProgress()
   const [bannerDismissed, setBannerDismissed] = useLocalStorage('loftdesk-welcome-dismissed', false)
+  const [showAiModal, setShowAiModal] = useState(false)
+  const [aiProjectId, setAiProjectId] = useState<string>('')
+  const { data: projects = [] } = useProjects()
+  const showAi = AI_ENABLED && (user?.plan === 'pro' || user?.plan === 'business' || user?.plan === 'admin')
 
   if (isLoading) return <Spinner />
   if (isError || !data) return <QueryError onRetry={() => refetch()} />
@@ -100,7 +110,13 @@ export function DashboardPage() {
             <button
               key={action.title}
               className="quick-action quick-action--highlight"
-              onClick={() => navigate({ to: action.href as any })}
+              onClick={() => {
+                if (action.href === '__ai__') {
+                  setShowAiModal(true)
+                } else {
+                  navigate({ to: action.href as any })
+                }
+              }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div className="quick-action__icon">
@@ -230,6 +246,53 @@ export function DashboardPage() {
           </div>
         </Card>
       )}
+
+      {/* ── AI Asystent modal ────────────────────────────────────── */}
+      <Modal
+        open={showAiModal}
+        onClose={() => { setShowAiModal(false); setAiProjectId('') }}
+        title="AI Asystent"
+        size="xl"
+      >
+        <div style={{ padding: '16px 0' }}>
+          {/* Project selector */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>
+              Wybierz projekt do analizy
+            </label>
+            <select
+              value={aiProjectId}
+              onChange={e => setAiProjectId(e.target.value)}
+              style={{
+                width: '100%', padding: '10px 12px', fontSize: 14,
+                background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
+                border: '1px solid var(--color-border)', borderRadius: 8,
+              }}
+            >
+              <option value="">— wybierz projekt —</option>
+              {projects
+                .filter(p => p.status !== 'cancelled')
+                .map(p => (
+                  <option key={p.id} value={p.id}>{p.number} — {p.name}</option>
+                ))
+              }
+            </select>
+          </div>
+
+          {/* AI tab content */}
+          {aiProjectId && showAi ? (
+            <ProjectAiTab projectId={aiProjectId} companyId={companyId} />
+          ) : aiProjectId && !showAi ? (
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', padding: '24px 0' }}>
+              AI Asystent jest dostępny w planach Pro i Business.
+            </p>
+          ) : (
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', padding: '24px 0' }}>
+              Wybierz projekt, aby uruchomić analizę AI.
+            </p>
+          )}
+        </div>
+      </Modal>
 
     </div>
   )
