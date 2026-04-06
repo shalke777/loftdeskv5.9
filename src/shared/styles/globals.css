@@ -2174,6 +2174,33 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   }
 }
 
+/* Full-screen OCR overlay — works on ALL devices / ALL viewports */
+.exp-ocr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.exp-ocr-overlay__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 32px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-brand);
+  border-radius: 20px;
+  min-width: 260px;
+  max-width: 90vw;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+  animation: exp-ocr-pulse 2s ease-in-out infinite;
+}
+
 .exp-upload-zone {
   border: 2px dashed var(--color-border);
   border-radius: 14px;

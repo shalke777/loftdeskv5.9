@@ -156,6 +156,9 @@ export function ExpensesPage() {
     setUploadError(null)
     setParseStatus(null)
     setOcrConfidence(null)
+    // Yield to browser so React flushes the uploading=true state and
+    // the loading overlay actually renders before heavy work begins.
+    await new Promise(resolve => setTimeout(resolve, 32))
     try {
       // ── Pre-parse gate: screen images BEFORE upload or extraction ─────────
       // PDFs use their own keyword check and pass through. Image files are
@@ -535,6 +538,25 @@ export function ExpensesPage() {
     <div className="page">
       <PageHeader title="Koszty" subtitle="Skanuj faktury od dostawców — dane uzupełniają się automatycznie." />
 
+      {/* ── OCR loading overlay — fixed full-screen, always visible ────── */}
+      {uploading && (
+      <div className="exp-ocr-overlay">
+        <div className="exp-ocr-overlay__card">
+          <div className="exp-ocr-loading__icon">
+            <FileText size={36} className="exp-ocr-loading__doc" />
+            <div className="exp-ocr-loading__scan" />
+          </div>
+          <strong style={{ fontSize: 17, marginTop: 14, color: 'var(--color-text)' }}>{uploadStep}</strong>
+          <div className="exp-ocr-loading__dots">
+            <span /><span /><span />
+          </div>
+          <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 6, textAlign: 'center' }}>
+            To może zająć kilka sekund — nie zamykaj okna.
+          </span>
+        </div>
+      </div>
+      )}
+
       {/* ── Mobile quick-action bar (hidden on desktop) ──────────────── */}
       {!uploading && (
       <div className="exp-mobile-actions">
@@ -553,23 +575,6 @@ export function ExpensesPage() {
           <FileText size={22} />
           Ręcznie
         </button>
-      </div>
-      )}
-
-      {/* ── Mobile OCR loading (visible only on mobile when uploading) ── */}
-      {uploading && (
-      <div className="exp-mobile-loading">
-        <div className="exp-ocr-loading__icon">
-          <FileText size={32} className="exp-ocr-loading__doc" />
-          <div className="exp-ocr-loading__scan" />
-        </div>
-        <strong style={{ fontSize: 16, marginTop: 12, color: 'var(--color-text)' }}>{uploadStep}</strong>
-        <div className="exp-ocr-loading__dots">
-          <span /><span /><span />
-        </div>
-        <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
-          To może zająć kilka sekund — nie zamykaj okna.
-        </span>
       </div>
       )}
 
