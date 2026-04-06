@@ -116,6 +116,18 @@ Po każdym linkowaniu: `invalidateQueries(['projects', companyId])`.
 5. **Kolejny krok jest oczywisty** — każdy ważny ekran prowadzi do następnej akcji
 6. **Noise reduction** — nie dodawać opcji bez przyczyny; cofać przed dodaniem
 
+### V.7 ZAKAZ PREHISTORYCZNYCH IKON — BEZWZGLĘDNY
+
+**NIGDY** nie używaj emoji jako ikon interfejsu: 📁 📧 ⏱️ 📊 ✅ 🏗️ 💼 i im podobnych.
+
+**NIGDY** nie twórz paneli z mockupem tablicy/dashboardu (listy z ikonami + badge) w sekcjach marketingowych — wygląda jak reklama przestarzałego CRM.
+
+**Dozwolone ikony:** wyłącznie komponenty z biblioteki Lucide React (`lucide-react`).  
+**Dozwolone wizualizacje:** typografia, liczby, geometria CSS, proste ilustracje SVG, kolory tokenów.  
+**Wzorzec nowoczesny:** duże cyfry/liczby, bold headline, minimalna geometria — zero skeuomorfizmu.
+
+Złamanie tej zasady = regres wizualny produktu.
+
 ---
 
 ## VI. Prawa bezpieczeństwa (niezmienne)

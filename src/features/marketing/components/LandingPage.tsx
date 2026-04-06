@@ -1,4 +1,4 @@
-import { ArrowRight, Bot, Calculator, CheckCircle2, FileText, FolderKanban, MessageSquareText, Receipt, Shield, Smartphone, Wallet, Scan, Clock, TrendingUp, Zap } from 'lucide-react'
+import { ArrowRight, Bot, Calculator, CheckCircle2, FileText, FolderKanban, MessageSquareText, Receipt, Shield, Smartphone, Wallet, Scan, Clock, TrendingUp, Zap, XCircle } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { APP_NAME } from '@/shared/lib/constants'
@@ -46,10 +46,10 @@ const roiItems = [
   { icon: Receipt, value: '0', label: 'błędów KSeF', desc: 'automatyczna wysyłka do Ministerstwa Finansów — zgodność bez stresu' },
 ]
 
-const mockItems = [
-  { Icon: Calculator, iBg: 'var(--color-brand-light)', iC: 'var(--color-brand)', label: 'Kosztorys — Remont Wilanów', sub: 'Wysłany do klienta · 38 400 zł', badge: 'Oczekuje', bBg: 'var(--color-brand-light)', bC: 'var(--color-brand)' },
-  { Icon: Receipt, iBg: 'var(--color-accent-soft)', iC: 'var(--color-accent)', label: 'FV/03/2026 — wysłana do KSeF', sub: 'Zaksięgowana · 12 300 zł', badge: 'KSeF ✓', bBg: 'var(--color-success-soft)', bC: 'var(--color-success)' },
-  { Icon: MessageSquareText, iBg: 'var(--color-surface-soft)', iC: 'var(--color-chart-4)', label: 'Portal — Kowalski Jan', sub: 'Nowy komentarz · 2 godz. temu', badge: 'Nowy', bBg: 'var(--color-muted)', bC: 'var(--color-text-secondary)' },
+const painItems = [
+  { icon: XCircle, title: 'Excel i foldery na dysku', desc: 'Kosztorys w jednym miejscu, faktura w innym, umowa trzecia. Szukasz godzinami zamiast budować.' },
+  { icon: XCircle, title: 'Maile i Messenger', desc: 'Ustalenia z klientem rozrzucone w kilku wątkach. Co, kiedy i przez kogo zostało ustalone? Nikt nie pamięta.' },
+  { icon: XCircle, title: 'Ręczna robota co tydzień', desc: 'Kopiowanie danych między programami zabiera godziny. To czas który mógłbyś poświęcić na realizację.' },
 ]
 
 export function LandingPage() {
@@ -85,11 +85,11 @@ export function LandingPage() {
       </nav>
 
       {/* HERO */}
-      <section className="hero">
+      <section className="hero hero--centered">
         <div className="hero__content">
-          <span className="hero__eyebrow">🏗️ System dla wykonawców w Polsce · KSeF-ready · Działa na telefonie</span>
-          <h1>Jeden system zamiast Excela, maila i segregatora.</h1>
-          <p>Wyceny, umowy, faktury i KSeF — od pierwszego kontaktu do odbioru budowy. Dla firm wykończeniowych i budowlanych, które chcą działać profesjonalnie bez biurokratycznego chaosu.</p>
+          <span className="hero__eyebrow">System dla firm budowlanych i wykończeniowych w Polsce · KSeF-ready</span>
+          <h1>Jeden system zamiast Excela,<br />maila i segregatora.</h1>
+          <p>Wyceny, umowy, faktury i KSeF — od pierwszego kontaktu do odbioru budowy.<br />Dla wykonawców którzy chcą działać profesjonalnie bez biurokratycznego chaosu.</p>
           <div className="hero__actions">
             <Link to={user ? (user.role === 'client' ? '/client/dashboard' : '/dashboard') : '/login'}>
               <Button size="lg" icon={<ArrowRight size={16} />}>Zacznij bezpłatnie</Button>
@@ -103,37 +103,6 @@ export function LandingPage() {
             <span className="hero-pill"><Bot size={14} style={{ color: 'var(--color-chart-3)' }} /> AI skanuje faktury</span>
           </div>
         </div>
-
-        <div className="hero__panel">
-          <div className="card" style={{ padding: 24, boxShadow: 'var(--shadow-lg)' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
-              <div>
-                <strong style={{ fontSize: 15, display: 'block' }}>Tablica — Loftbau</strong>
-                <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Aktywne projekty i dokumenty</span>
-              </div>
-              <span style={{ padding: '5px 12px', borderRadius: 999, background: 'var(--color-accent-soft)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap' }}>Plan Pro</span>
-            </div>
-            <div className="hero-metrics" style={{ marginBottom: 16 }}>
-              <div><span>Pipeline</span><strong style={{ display: 'block', fontSize: 18, color: 'var(--color-brand)' }}>124 800 zł</strong></div>
-              <div><span>Projekty</span><strong style={{ display: 'block', fontSize: 18, color: 'var(--color-brand)' }}>7</strong></div>
-              <div><span>Faktury</span><strong style={{ display: 'block', fontSize: 18, color: 'var(--color-accent)' }}>5</strong></div>
-            </div>
-            <div style={{ display: 'grid', gap: 8 }}>
-              {mockItems.map(({ Icon, iBg, iC, label, sub, badge, bBg, bC }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: 'var(--color-muted)' }}>
-                  <span style={{ width: 32, height: 32, borderRadius: 10, background: iBg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                    <Icon size={15} style={{ color: iC }} />
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{label}</p>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>{sub}</p>
-                  </div>
-                  <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 8, background: bBg, color: bC, fontWeight: 700, whiteSpace: 'nowrap' }}>{badge}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
       </section>
 
       {/* PAIN */}
@@ -142,15 +111,13 @@ export function LandingPage() {
           <h2 style={{ color: '#EDE8DD', margin: '0 0 8px', maxWidth: 680 }}>Jak wygląda zarządzanie firmą budowlaną bez LoftDesk?</h2>
           <p style={{ color: 'rgba(237,232,221,0.55)', margin: '0 0 32px', fontSize: 16 }}>Brzmi znajomo? Tak wygląda codzienność większości firm w branży.</p>
           <div className="landing-grid landing-grid--3">
-            {[
-              { e: '📁', t: 'Excel i foldery na dysku', d: 'Kosztorys w jednym miejscu, faktura w innym, umowa trzecia. Szukasz godzinami zamiast budować.' },
-              { e: '📧', t: 'Maile i Messenger', d: 'Ustalenia z klientem rozrzucone w kilku wątkach. Co, kiedy i przez kogo zostało ustalone? Nikt nie pamięta.' },
-              { e: '⏱️', t: 'Ręczna robota co tydzień', d: 'Kopiowanie danych między programami zabiera godziny. To czas który mógłbyś poświęcić na realizację.' },
-            ].map(({ e, t, d }) => (
-              <div key={t} style={{ padding: 24, borderRadius: 16, background: 'rgba(237,232,221,0.06)', border: '1px solid rgba(237,232,221,0.1)' }}>
-                <div style={{ fontSize: 28, marginBottom: 10 }}>{e}</div>
-                <h3 style={{ color: '#EDE8DD', margin: '0 0 8px', fontSize: 16, fontWeight: 700 }}>{t}</h3>
-                <p style={{ color: 'rgba(237,232,221,0.62)', fontSize: 14, lineHeight: 1.65, margin: 0 }}>{d}</p>
+            {painItems.map(({ icon: Icon, title, desc }) => (
+              <div key={title} style={{ padding: 28, borderRadius: 16, background: 'rgba(237,232,221,0.06)', border: '1px solid rgba(237,232,221,0.1)' }}>
+                <div style={{ marginBottom: 16 }}>
+                  <Icon size={22} style={{ color: 'rgba(237,232,221,0.35)' }} />
+                </div>
+                <h3 style={{ color: '#EDE8DD', margin: '0 0 8px', fontSize: 16, fontWeight: 700 }}>{title}</h3>
+                <p style={{ color: 'rgba(237,232,221,0.62)', fontSize: 14, lineHeight: 1.65, margin: 0 }}>{desc}</p>
               </div>
             ))}
           </div>
@@ -289,7 +256,7 @@ export function LandingPage() {
               ))}
             </div>
             <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
-              👤 Idealny dla freelancerów i firm jednoosobowych
+              Idealny dla freelancerów i firm jednoosobowych
             </p>
             <Link to="/login" style={{ display: 'block' }}>
               <Button variant="secondary" style={{ width: '100%' }}>Zacznij za darmo</Button>
@@ -313,7 +280,7 @@ export function LandingPage() {
               ))}
             </div>
             <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '0 0 20px', lineHeight: 1.5 }}>
-              👥 Gdy masz pracowników lub podwykonawców — Pro się opłaca od pierwszego użytkownika dodanego do zespołu
+              Gdy masz pracowników lub podwykonawców — Pro się opłaca od pierwszego użytkownika dodanego do zespołu
             </p>
             <Link to="/login" style={{ display: 'block' }}>
               <Button variant="secondary" style={{ width: '100%' }}>Wybierz Pro</Button>
