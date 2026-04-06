@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { Camera, Plus, PenLine, Receipt } from 'lucide-react'
 import { translateError } from '@/shared/lib/errorMessages'
 import type { ExpenseSourceType, CreateExpenseForProjectInput, ExpenseInvoiceV4 } from '@/features/expenses/api/expenses.api'
 import { rehydrateAnalysisResult } from '@/features/expenses/api/expenses.api'
@@ -58,6 +59,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
   const parseInvoice  = useParseInvoice()
   const analyzeRoom   = useAnalyzeRoomPhoto()
   const analyzeRooms  = useAnalyzeRoomPhotos()
+  const directCameraRef = useRef<HTMLInputElement>(null)
 
   // Multi-photo / clarification state
   const [roomFiles, setRoomFiles] = useState<File[]>([])
@@ -65,6 +67,15 @@ export function ProjectExpensesTab({ projectId }: Props) {
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   function startCapture() { setMode('capture') }
+
+  function startDirectCamera() { directCameraRef.current?.click() }
+
+  function handleDirectCameraFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    handleFileCapture(file, 'camera')
+  }
 
   function startManual() {
     setFileState(null)
@@ -207,6 +218,16 @@ export function ProjectExpensesTab({ projectId }: Props) {
   if (mode === 'list') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 0' }}>
+        {/* Hidden direct-camera input — triggers camera app in 1 tap on mobile */}
+        <input
+          ref={directCameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: 'none' }}
+          onChange={handleDirectCameraFile}
+        />
+
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
@@ -217,9 +238,27 @@ export function ProjectExpensesTab({ projectId }: Props) {
               </span>
             )}
           </h3>
-          <button type="button" className="btn" onClick={startCapture} style={{ fontSize: 13 }}>
-            + Dodaj koszt
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={startDirectCamera}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, background: 'var(--color-brand)', color: '#fff', border: 'none' }}
+            >
+              <Camera style={{ width: 15, height: 15 }} />
+              Skanuj fakturę
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={startCapture}
+              title="Inne opcje: galeria, PDF, analiza pomieszczenia, ręcznie"
+              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}
+            >
+              <Plus style={{ width: 14, height: 14 }} />
+              Dodaj
+            </button>
+          </div>
         </div>
 
         {/* Loading */}
@@ -239,12 +278,22 @@ export function ProjectExpensesTab({ projectId }: Props) {
               borderRadius: 10, color: 'var(--color-text-muted)',
             }}
           >
-            <div style={{ fontSize: 36, marginBottom: 12 }}>🧾</div>
+            <Receipt style={{ width: 36, height: 36, marginBottom: 12, opacity: 0.4 }} />
             <p style={{ margin: '0 0 16px', fontWeight: 600 }}>Brak kosztów</p>
-            <p style={{ margin: '0 0 20px', fontSize: 13 }}>Dodaj pierwszy koszt projektu — zrób zdjęcie faktury lub wpisz ręcznie.</p>
+            <p style={{ margin: '0 0 20px', fontSize: 13 }}>Dodaj pierwszy koszt — zrób zdjęcie faktury lub wpisz ręcznie.</p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button type="button" className="btn" onClick={startCapture}>📷 Zrób zdjęcie / PDF</button>
-              <button type="button" className="btn btn-secondary" onClick={startManual}>✏️ Wpisz ręcznie</button>
+              <button type="button" className="btn" onClick={startDirectCamera} style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, background: 'var(--color-brand)', color: '#fff', border: 'none' }}>
+                <Camera style={{ width: 16, height: 16 }} />
+                Skanuj fakturę
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={startCapture} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Plus style={{ width: 15, height: 15 }} />
+                Inne opcje
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={startManual} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <PenLine style={{ width: 15, height: 15 }} />
+                Wpisz ręcznie
+              </button>
             </div>
           </div>
         )}
