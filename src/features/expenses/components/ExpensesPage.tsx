@@ -584,9 +584,15 @@ export function ExpensesPage() {
         />
 
         {uploading ? (
-          <div className="exp-upload-zone__inner" style={{ padding: '32px 16px' }}>
-            <Spinner />
-            <strong style={{ fontSize: 15, marginTop: 8 }}>{uploadStep}</strong>
+          <div className="exp-upload-zone__inner exp-ocr-loading" style={{ padding: '40px 16px' }}>
+            <div className="exp-ocr-loading__icon">
+              <FileText size={32} className="exp-ocr-loading__doc" />
+              <div className="exp-ocr-loading__scan" />
+            </div>
+            <strong style={{ fontSize: 16, marginTop: 12, color: 'var(--color-text)' }}>{uploadStep}</strong>
+            <div className="exp-ocr-loading__dots">
+              <span /><span /><span />
+            </div>
             <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
               To może zająć kilka sekund — nie zamykaj okna.
             </span>
