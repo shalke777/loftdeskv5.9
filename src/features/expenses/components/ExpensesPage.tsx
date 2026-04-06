@@ -156,9 +156,14 @@ export function ExpensesPage() {
     setUploadError(null)
     setParseStatus(null)
     setOcrConfidence(null)
-    // Yield to browser so React flushes the uploading=true state and
-    // the loading overlay actually renders before heavy work begins.
-    await new Promise(resolve => setTimeout(resolve, 32))
+    // iOS PWA standalone: React state flush + force a painted frame before heavy work.
+    // Double-rAF ensures the browser has actually committed the new DOM to screen
+    // (single rAF only schedules, double rAF fires AFTER the paint).
+    await new Promise<void>(resolve => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+    })
+    // Extra 50ms fallback for iOS WebKit compositor lag in standalone mode
+    await new Promise(resolve => setTimeout(resolve, 50))
     try {
       // ── Pre-parse gate: screen images BEFORE upload or extraction ─────────
       // PDFs use their own keyword check and pass through. Image files are

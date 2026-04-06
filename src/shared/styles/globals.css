@@ -357,7 +357,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 }
 
 .empty-state { text-align: center; padding: 36px; color: var(--color-text-secondary); }
-.spinner { width: 32px; height: 32px; border-radius: 999px; border: 3px solid var(--color-border); border-top-color: var(--color-brand); animation: spin .8s linear infinite; }
+.spinner { width: 32px; height: 32px; border-radius: 999px; border: 3px solid var(--color-border); border-top-color: var(--color-brand); animation: spin .8s linear infinite; will-change: transform; transform: translateZ(0); }
 
 .modal-backdrop { position: fixed; inset: 0; background: var(--overlay-medium); display: grid; place-items: center; padding: 20px; padding-top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px)); z-index: 40; backdrop-filter: blur(6px); overscroll-behavior: contain; overflow: auto; }
 .modal { width: min(780px, 100%); background: var(--color-card); border-radius: var(--radius-xl, 14px); overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--color-border); margin-block: auto; }
@@ -2178,6 +2178,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .exp-ocr-overlay {
   position: fixed;
   inset: 0;
+  /* iOS PWA safe area: push above home indicator */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -2185,6 +2187,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+  /* GPU-composited layer — forces iOS WebKit to paint this independently */
+  will-change: opacity;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 .exp-ocr-overlay__card {
   display: flex;
@@ -2199,6 +2205,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   max-width: 90vw;
   box-shadow: 0 8px 40px rgba(0,0,0,0.25);
   animation: exp-ocr-pulse 2s ease-in-out infinite;
+  /* GPU layer for animation */
+  will-change: box-shadow;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .exp-upload-zone {
@@ -2291,6 +2301,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   border-radius: 2px;
   opacity: 0.7;
   animation: exp-ocr-scan 1.6s ease-in-out infinite;
+  /* GPU layer: top animation runs on compositor thread */
+  will-change: top, opacity;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 @keyframes exp-ocr-scan {
   0%   { top: 10px; opacity: 0.3; }
@@ -2308,6 +2322,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   border-radius: 50%;
   background: var(--color-brand);
   animation: exp-ocr-dot 1.2s ease-in-out infinite;
+  /* GPU layer for scale+opacity animation */
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 .exp-ocr-loading__dots span:nth-child(2) { animation-delay: 0.2s; }
 .exp-ocr-loading__dots span:nth-child(3) { animation-delay: 0.4s; }
