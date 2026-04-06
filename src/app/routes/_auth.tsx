@@ -1,4 +1,4 @@
-import {
+﻿import {
   Bell,
   Calculator,
   CreditCard,
@@ -242,8 +242,8 @@ export function AuthLayout() {
                         fontSize: 13, border: 'none',
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 600, fontSize: 12, color: n.type === 'client_approval_response' ? 'var(--color-success)' : 'var(--color-brand)' }}>
-                            {n.type === 'client_approval_response' ? '✅ Odpowiedź klienta' : '💬 Wiadomość od klienta'}
+                          <span style={{ fontWeight: 600, fontSize: 12, color: n.type === 'client_approval_response' ? 'var(--color-success)' : n.type === 'missing_costs' ? 'var(--color-warning)' : 'var(--color-brand)' }}>
+                            {n.type === 'client_approval_response' ? '✅ Odpowiedź klienta' : n.type === 'missing_costs' ? '⚠ Brakujące koszty' : '💬 Wiadomość od klienta'}
                           </span>
                           <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
                             {new Date(n.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}

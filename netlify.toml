@@ -22,6 +22,9 @@
 [functions."analyze-room-photo"]
   timeout = 26
 
+[functions."check-missing-costs"]
+  schedule = "0 8 * * *"
+
 [build.processing]
   skip_processing = true
 

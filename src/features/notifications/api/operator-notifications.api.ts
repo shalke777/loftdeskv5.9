@@ -13,6 +13,7 @@ import { supabase, isDemoMode } from '@/shared/lib/supabase'
 export type OperatorNotificationType =
   | 'client_message'
   | 'client_approval_response'
+  | 'missing_costs'
 
 export interface OperatorNotification {
   id: string
