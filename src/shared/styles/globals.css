@@ -2808,8 +2808,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 /* ── No-project row indicator ───────────────────────────────────── */
 .exp-table__row--no-project td:nth-child(3) {
   color: var(--color-text-muted);
-  border-left: 3px solid var(--color-accent);
-  padding-left: 11px;
 }
 
 /* ── Two-column modal split: preview + form ─────────────────────── */

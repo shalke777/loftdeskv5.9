@@ -785,13 +785,46 @@ function parseTextWithRegex(text: string, companyNip = ''): Omit<ParseInvoiceRes
     }
   }
 
-  // Vendor name
+  // Reusable address-line guard: postal codes (XX-XXX), street prefixes, lines with
+  // embedded NIP at a non-start position (address + NIP on one line).
+  // Used by both vendor and last-resort scans.
+  const ADDR_LINE = /\d{2}-\d{3}|\bul\.\s|\bal\.\s|\bos\.\s|\bpl\.\s|\bdroga\b/i
+
+  // Vendor name — Pass 1: labelled single-line match ("Sprzedawca: <name>")
   const vendorLabelMatch = t.match(/(?:sprzedawca|wystawca|sprzedaj[aą]cy|firma|dostawca|wykonawca)[:\s]+([^\n,;(]{4,60}(?:sp\.\s*z\.?\s*o\.?\.?o\.?|s\.?a\.?|sp\.\s*j\.?|ltd|gmbh)?[^\n,;(]{0,30})/i)
-  if (vendorLabelMatch) result.vendor_name = vendorLabelMatch[1].trim().replace(/\s{2,}/g, ' ')
+  if (vendorLabelMatch) {
+    const candidate = vendorLabelMatch[1].trim().replace(/\s{2,}/g, ' ')
+    // Accept only if the captured text is not an address line
+    if (!ADDR_LINE.test(candidate)) result.vendor_name = candidate
+  }
+
+  // Vendor name — Pass 2: multi-line scan in the "Sprzedawca" section.
+  // Finds the position of the label in raw text, then walks lines after it
+  // looking for the first non-address, non-junk company line.
+  if (!result.vendor_name) {
+    const LABEL_SKIP = /^(?:sprzedawca|wystawca|dostawca|wykonawca|ul\.|al\.|os\.|pl\.|nip|pesel|konto|bank|iban|swift|www|http)/i
+    const sprzIdx = text.search(/sprzedawca|wystawca|dostawca/i)
+    if (sprzIdx !== -1) {
+      const afterLabel = text.slice(sprzIdx)
+      const sectionEnd = afterLabel.search(/\bnabywca\b|\bodbiorca\b|\bkupuj[aą]cy\b/i)
+      const vendorSection = sectionEnd > 0 ? afterLabel.slice(0, sectionEnd) : afterLabel.slice(0, 600)
+      const lines = vendorSection.split('\n').map(l => l.replace(/^[:\s]+/, '').trim())
+      const found = lines.find(l =>
+        l.length > 3 &&
+        /[a-zA-ZąęółśźćńĄĘÓŁŚŹĆŃ]{3}/.test(l) &&
+        !LABEL_SKIP.test(l) &&
+        !ADDR_LINE.test(l)
+      )
+      if (found) result.vendor_name = found.slice(0, 80)
+    }
+  }
+
+  // Vendor name — Pass 3: company with legal-form suffix (Sp. z o.o., S.A., etc.)
   if (!result.vendor_name) {
     const companyMatch = t.match(/([A-ZŁÓŚĄŹĆĘŃ][A-Za-ząęółśźćń\s\.\-"]{3,50}(?:Sp\.\s*z\s*o\.o\.|S\.A\.|Sp\.\s*j\.|Ltd\.|GmbH|s\.c\.))/i)
     if (companyMatch) result.vendor_name = companyMatch[1].trim()
   }
+
   // Buyer name — try labelled match first
   if (!result.buyer_name) {
     const buyerLabelMatch = t.match(/(?:nabywca|kupuj[aą]cy|odbiorca|zamawiaj[aą]cy)[:\s]+([^\n,;(]{4,60})/i)
@@ -799,16 +832,28 @@ function parseTextWithRegex(text: string, companyNip = ''): Omit<ParseInvoiceRes
   }
 
   // Vendor last-resort: scan first 15 non-empty lines for any company-like content.
-  // Skips headings (FAKTURA/VAT), dates, NIP lines, numeric junk, very short strings,
-  // and buyer-section labels (nabywca, kupujący, odbiorca, zamawiający) to avoid
-  // accidentally picking up the buyer name when OCR text order puts buyer before seller.
+  // Skips headings (FAKTURA/VAT), dates, NIP lines, address lines, numeric junk, very
+  // short strings, and buyer-section labels to avoid accidentally picking up the buyer
+  // name or street address when the OCR text order differs from the visual layout.
   if (!result.vendor_name) {
     const SKIP_LINE = /^(?:faktura|fv|fa|fs|fz|vat|nip[:\s]|pesel[:\s]|data[\s:]|nr[\s:.]|numer|suma|brutto|netto|razem|wystawiono|termin|zaliczka|orygi|kopia|nabywca|kupuj[aą]cy|odbiorca|zamawiaj[aą]cy|\d{4}[\-.\/]\d{2}|\d{1,2}[\-.\/]\d{1,2}[\-.\/]\d{4})/i
     const candidateLines = text.split('\n')
       .map(l => l.trim())
-      .filter(l => l.length > 4 && /[a-zA-ZąęółśźćńĄĘÓŁŚŹĆŃ]{3}/.test(l) && !SKIP_LINE.test(l))
+      .filter(l => l.length > 4 && /[a-zA-ZąęółśźćńĄĘÓŁŚŹĆŃ]{3}/.test(l) && !SKIP_LINE.test(l) && !ADDR_LINE.test(l))
       .slice(0, 15)
     if (candidateLines.length > 0) result.vendor_name = candidateLines[0].slice(0, 80)
+  }
+
+  // ── Name cross-check after NIP swap ─────────────────────────────────────────
+  // If the NIP cross-check (Layer 2 above) determined the company NIP belongs to
+  // the buyer (i.e. result.buyer_nip === companyNip), but names were extracted
+  // without that context, swap vendor_name ↔ buyer_name to match the NIP assignment.
+  if (companyNip && companyNip.length === 10 &&
+      result.buyer_nip === companyNip &&
+      result.vendor_name && result.buyer_name) {
+    const tmpName = result.vendor_name
+    result.vendor_name = result.buyer_name
+    result.buyer_name = tmpName
   }
 
   // Issue date
