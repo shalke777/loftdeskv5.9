@@ -2155,6 +2155,25 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .exp-upload-zone { display: none; }
 }
 
+/* Mobile OCR loading — shown instead of mobile-actions during analysis */
+.exp-mobile-loading {
+  display: none;
+}
+@media (max-width: 640px) {
+  .exp-mobile-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 36px 16px;
+    margin-bottom: 16px;
+    border: 2px solid var(--color-brand);
+    border-radius: 14px;
+    background: var(--color-surface);
+    animation: exp-ocr-pulse 2s ease-in-out infinite;
+  }
+}
+
 .exp-upload-zone {
   border: 2px dashed var(--color-border);
   border-radius: 14px;

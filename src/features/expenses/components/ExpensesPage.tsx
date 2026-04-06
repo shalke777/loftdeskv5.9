@@ -536,6 +536,7 @@ export function ExpensesPage() {
       <PageHeader title="Koszty" subtitle="Skanuj faktury od dostawców — dane uzupełniają się automatycznie." />
 
       {/* ── Mobile quick-action bar (hidden on desktop) ──────────────── */}
+      {!uploading && (
       <div className="exp-mobile-actions">
         <button type="button" onClick={() => cameraInputRef.current?.click()}>
           <Camera size={22} />
@@ -553,6 +554,24 @@ export function ExpensesPage() {
           Ręcznie
         </button>
       </div>
+      )}
+
+      {/* ── Mobile OCR loading (visible only on mobile when uploading) ── */}
+      {uploading && (
+      <div className="exp-mobile-loading">
+        <div className="exp-ocr-loading__icon">
+          <FileText size={32} className="exp-ocr-loading__doc" />
+          <div className="exp-ocr-loading__scan" />
+        </div>
+        <strong style={{ fontSize: 16, marginTop: 12, color: 'var(--color-text)' }}>{uploadStep}</strong>
+        <div className="exp-ocr-loading__dots">
+          <span /><span /><span />
+        </div>
+        <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
+          To może zająć kilka sekund — nie zamykaj okna.
+        </span>
+      </div>
+      )}
 
       {/* Upload zone */}
       <div
