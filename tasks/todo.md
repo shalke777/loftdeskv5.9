@@ -1,3 +1,19 @@
+# A5 — FAB Voice Button + Cleanup AI w projektach
+
+## Klasyfikacja
+TYPE: feature | RISK: MEDIUM | SCOPE: cross-module | AREA: AI extraction + expenses + UI
+
+## Plan implementacji
+
+### [ ] 1. ProjectDetail.tsx — usuń sekcję Asystent AI
+### [ ] 2. ProjectExpensesTab.tsx — usuń głos
+### [ ] 3. voice-to-expense.ts — przebuduj na array wydatków
+### [ ] 4. FloatingVoiceButton.tsx — nowy komponent FAB
+### [ ] 5. _auth.tsx — dodaj FAB do operatora
+### [ ] 6. Quality gates
+
+---
+
 # A4 — Szybki kosztorys głosowy (Voice Estimate)
 
 ## Klasyfikacja
@@ -14,7 +30,7 @@
 - [x] 4. Zaktualizuj `EstimateForm.tsx` — rozszerz `isAiDraft` o `voice_whisper`
 - [x] 5. `npx tsc --noEmit` — 0 błędów
 - [x] 6. `npm run build` — clean
-- [ ] 7. Commit
+- [x] 7. Commit
 
 ## Kluczowe decyzje
 - EstimateForm czyta draft z sessionStorage (`estimate_form_draft`) → wystarczy go zapisać przed otwarciem modala

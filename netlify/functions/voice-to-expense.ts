@@ -1,10 +1,10 @@
 // =============================================================================
-// voice-to-expense.ts — Voice note → structured expense data
+// voice-to-expense.ts — Voice note → structured expense data (ARRAY)
 // =============================================================================
 // 1. Receives audio blob (base64) from the browser
 // 2. Sends to Whisper API for transcription (Polish language, construction hints)
-// 3. Sends transcript to GPT-4o-mini for expense data extraction
-// 4. Returns ParseInvoiceResult-compatible object for ExpenseConfirmForm
+// 3. Sends transcript to GPT-4o-mini for expense data extraction — returns ARRAY
+// 4. Returns { expenses: [...], transcript, parser_source, extraction_confidence }
 //
 // Request:
 //   POST /.netlify/functions/voice-to-expense
@@ -13,9 +13,8 @@
 //   Body: { audio_base64: string, audio_type: string }
 //
 // Response 200:
-//   { vendor_name, gross_amount, net_amount, currency, description,
-//     cost_type, invoice_number, issue_date, extraction_confidence,
-//     transcript, parser_source: 'voice_whisper' }
+//   { expenses: VoiceExpense[], transcript, parser_source: 'voice_whisper',
+//     extraction_confidence: number }
 // =============================================================================
 
 import type { Handler, HandlerEvent } from '@netlify/functions'
@@ -102,20 +101,26 @@ export const handler: Handler = async (event) => {
     return { statusCode: 502, headers: corsHeaders, body: JSON.stringify({ error: 'Transcription exception' }) }
   }
 
-  // ── Step 2: GPT-4o-mini expense extraction ─────────────────────────────────
+  // ── Step 2: GPT-4o-mini — ekstrakcja TABLICY wydatków ──────────────────────
 
   const systemPrompt = `Jesteś asystentem firmy budowlano-wykończeniowej w Polsce.
-Wyciągnij dane wydatku z transkrypcji głosowej i zwróć TYLKO JSON bez dodatkowego tekstu.
-
-Pola do wyciągnięcia:
-- vendor_name: nazwa sprzedawcy/dostawcy (string lub null)
-- invoice_number: numer faktury lub paragonu jeśli podany (string lub null)
-- issue_date: data w formacie YYYY-MM-DD jeśli podana (string lub null)
-- gross_amount: kwota brutto (number, wymagane — jeśli nie podano VAT, traktuj jako brutto)
-- net_amount: kwota netto (number lub null)
-- currency: waluta (domyślnie "PLN")
-- description: krótki opis wydatku po polsku (string)
-- cost_type: jeden z: material, service, labor, transport, equipment, other`
+Z nagrania głosowego wyciągnij WSZYSTKIE wspomniane wydatki.
+Operator może wymienić wiele zakupów w jednym nagraniu.
+Zwróć TYLKO JSON bez dodatkowego tekstu:
+{
+  "expenses": [
+    {
+      "vendor_name": "nazwa dostawcy lub null",
+      "gross_amount": liczba lub null,
+      "net_amount": liczba lub null,
+      "currency": "PLN",
+      "description": "krótki opis po polsku",
+      "cost_type": "material|service|labor|transport|equipment|other"
+    }
+  ]
+}
+Jeśli cena nie wspomniana — wstaw null.
+Jeśli jeden wydatek — tablica z jednym elementem.`
 
   try {
     const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -127,7 +132,7 @@ Pola do wyciągnięcia:
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         response_format: { type: 'json_object' },
-        max_tokens: 300,
+        max_tokens: 600,
         temperature: 0,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -138,18 +143,15 @@ Pola do wyciągnięcia:
 
     if (!gptRes.ok) {
       console.error('[voice-to-expense] GPT error:', await gptRes.text())
-      // Return raw transcript even if parsing fails
+      // Return empty expenses with transcript on GPT failure
       return {
         statusCode: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          expenses: [],
           transcript,
-          description: transcript,
-          gross_amount: null,
-          currency: 'PLN',
-          cost_type: 'other',
-          extraction_confidence: 20,
           parser_source: 'voice_whisper',
+          extraction_confidence: 20,
           extraction_warnings: ['Nie udało się przetworzyć transkrypcji — uzupełnij dane ręcznie.'],
         }),
       }
@@ -158,35 +160,48 @@ Pola do wyciągnięcia:
     const gptData = await gptRes.json() as { choices: Array<{ message: { content: string } }> }
     const raw = gptData.choices?.[0]?.message?.content ?? '{}'
 
-    let parsed: Record<string, unknown>
+    let parsed: { expenses?: unknown[] }
     try {
       parsed = JSON.parse(raw)
     } catch {
-      parsed = {}
+      parsed = { expenses: [] }
     }
 
-    const gross = typeof parsed.gross_amount === 'number' ? parsed.gross_amount : null
-    const net   = typeof parsed.net_amount === 'number' ? parsed.net_amount : null
-    const confidence = gross ? 65 : 30
+    const rawExpenses = Array.isArray(parsed.expenses) ? parsed.expenses : []
+
+    interface VoiceExpense {
+      vendor_name: string | null
+      gross_amount: number | null
+      net_amount: number | null
+      currency: string
+      description: string
+      cost_type: string
+    }
+
+    const expenses: VoiceExpense[] = rawExpenses.map((e: unknown) => {
+      const item = e as Record<string, unknown>
+      return {
+        vendor_name:  typeof item.vendor_name  === 'string'  ? item.vendor_name  : null,
+        gross_amount: typeof item.gross_amount === 'number'  ? item.gross_amount : null,
+        net_amount:   typeof item.net_amount   === 'number'  ? item.net_amount   : null,
+        currency:     typeof item.currency     === 'string'  ? item.currency     : 'PLN',
+        description:  typeof item.description  === 'string'  ? item.description  : transcript,
+        cost_type:    typeof item.cost_type    === 'string'  ? item.cost_type    : 'other',
+      }
+    })
+
+    // extraction_confidence: 70 if ≥1 expense has gross_amount, 40 if no prices, 20 if no expenses
+    const hasAnyPrice = expenses.some(e => e.gross_amount != null)
+    const extractionConfidence = expenses.length === 0 ? 20 : hasAnyPrice ? 70 : 40
 
     return {
       statusCode: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        expenses,
         transcript,
-        vendor_name:    parsed.vendor_name   ?? null,
-        invoice_number: parsed.invoice_number ?? null,
-        issue_date:     parsed.issue_date    ?? null,
-        gross_amount:   gross,
-        net_amount:     net,
-        vat_amount:     gross != null && net != null ? +(gross - net).toFixed(2) : null,
-        currency:       typeof parsed.currency === 'string' ? parsed.currency : 'PLN',
-        description:    typeof parsed.description === 'string' ? parsed.description : transcript,
-        cost_type:      typeof parsed.cost_type === 'string' ? parsed.cost_type : 'other',
-        extraction_confidence: confidence,
-        parser_source:  'voice_whisper',
-        extraction_warnings: gross ? [] : ['Kwota nie została rozpoznana — uzupełnij ręcznie.'],
-        requires_user_confirmation: true,
+        parser_source: 'voice_whisper',
+        extraction_confidence: extractionConfidence,
       }),
     }
   } catch (err) {

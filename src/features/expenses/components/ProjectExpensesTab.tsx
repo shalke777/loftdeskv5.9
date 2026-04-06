@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Camera, Mic, MicOff, Plus, PenLine, Receipt } from 'lucide-react'
+import { Camera, Plus, PenLine, Receipt } from 'lucide-react'
 import { translateError } from '@/shared/lib/errorMessages'
 import type { ExpenseSourceType, CreateExpenseForProjectInput, ExpenseInvoiceV4 } from '@/features/expenses/api/expenses.api'
 import { rehydrateAnalysisResult } from '@/features/expenses/api/expenses.api'
@@ -21,7 +21,6 @@ import {
   WorkScopeSection,
   SuggestedEstimateSection,
 } from './AnalysisSections'
-import { supabase } from '@/shared/lib/supabase'
 import type { AnalysisResult } from '@/services/ai/analysis.types'
 import type { ApprovalStatus } from '@/features/expenses/api/cost-approvals.api'
 
@@ -54,9 +53,6 @@ export function ProjectExpensesTab({ projectId }: Props) {
   const [parseError,  setParseError]  = useState<string | null>(null)
   const [approvalExpense, setApprovalExpense] = useState<ExpenseInvoiceV4 | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [voiceMode, setVoiceMode] = useState<'idle' | 'recording' | 'processing'>('idle')
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef   = useRef<Blob[]>([])
 
   const { data: expenses = [], isLoading } = useProjectExpenses(projectId)
   const createExpense = useCreateExpense(projectId)
@@ -79,95 +75,6 @@ export function ProjectExpensesTab({ projectId }: Props) {
     if (!file) return
     e.target.value = ''
     handleFileCapture(file, 'camera')
-  }
-
-  async function startVoiceCapture() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      audioChunksRef.current = []
-      const recorder = new MediaRecorder(stream)
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data)
-      }
-
-      recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop())
-        setVoiceMode('processing')
-        const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
-        await sendVoiceToExpense(audioBlob, recorder.mimeType || 'audio/webm')
-      }
-
-      mediaRecorderRef.current = recorder
-      recorder.start()
-      setVoiceMode('recording')
-    } catch {
-      setParseError('Brak dostępu do mikrofonu — sprawdź uprawnienia przeglądarki.')
-      setMode('confirm')
-    }
-  }
-
-  function stopVoiceCapture() {
-    mediaRecorderRef.current?.stop()
-    // voiceMode will switch to 'processing' in recorder.onstop
-  }
-
-  async function sendVoiceToExpense(audioBlob: Blob, mimeType: string) {
-    try {
-      const reader = new FileReader()
-      const base64: string = await new Promise((res, rej) => {
-        reader.onload = () => res((reader.result as string).split(',')[1])
-        reader.onerror = rej
-        reader.readAsDataURL(audioBlob)
-      })
-
-      const { data: { session } } = await supabase!.auth.getSession()
-      const token = session?.access_token ?? ''
-
-      const res = await fetch('/.netlify/functions/voice-to-expense', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ audio_base64: base64, audio_type: mimeType }),
-      })
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-      const data = await res.json()
-      setVoiceMode('idle')
-      setSourceType('manual')
-      setFileState(null)
-
-      // Map response to AnalysisResult shape for ExpenseConfirmForm
-      const voiceResult: AnalysisResult = {
-        input_type:    'cost_note',
-        document_type: 'other',
-        vendor_name:   data.vendor_name   ?? null,
-        vendor_nip:    null,
-        invoice_number: data.invoice_number ?? null,
-        issue_date:    data.issue_date    ?? null,
-        sale_date:     null,
-        payment_due_date: null,
-        net_amount:    data.net_amount    ?? null,
-        vat_amount:    data.vat_amount    ?? null,
-        gross_amount:  data.gross_amount  ?? null,
-        currency:      data.currency      ?? 'PLN',
-        line_items:    [],
-        description:   data.description  ?? data.transcript ?? '',
-        extraction_confidence:     data.extraction_confidence ?? 30,
-        extraction_warnings:       data.extraction_warnings ?? [],
-        requires_user_confirmation: true,
-        parser_source: 'voice_whisper',
-      } as unknown as AnalysisResult
-
-      setParseResult(voiceResult)
-      setParseError(data.gross_amount ? null : 'Kwota nie została rozpoznana — uzupełnij ręcznie.')
-      setMode('confirm')
-    } catch (err) {
-      setVoiceMode('idle')
-      const msg = err instanceof Error ? err.message : 'Nie udało się przetworzyć nagrania.'
-      setParseError(msg)
-      setMode('confirm')
-    }
   }
 
   function startManual() {
@@ -341,36 +248,6 @@ export function ProjectExpensesTab({ projectId }: Props) {
               <Camera style={{ width: 15, height: 15 }} />
               Skanuj fakturę
             </button>
-            {/* Voice note button */}
-            {voiceMode === 'idle' && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={startVoiceCapture}
-                title="Nagraj notatkę głosową — AI wyciągnie dane kosztu"
-                style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}
-              >
-                <Mic style={{ width: 14, height: 14 }} />
-                Głos
-              </button>
-            )}
-            {voiceMode === 'recording' && (
-              <button
-                type="button"
-                className="btn"
-                onClick={stopVoiceCapture}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, background: 'var(--color-error, #d44)', color: '#fff', border: 'none', animation: 'pulse 1.2s ease-in-out infinite' }}
-              >
-                <MicOff style={{ width: 14, height: 14 }} />
-                Zatrzymaj
-              </button>
-            )}
-            {voiceMode === 'processing' && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text-secondary)' }}>
-                <span className="spinner" style={{ width: 14, height: 14 }} />
-                Przetwarzam…
-              </span>
-            )}
             <button
               type="button"
               className="btn btn-secondary"

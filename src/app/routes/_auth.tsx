@@ -34,6 +34,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LegalAcceptanceGate } from '@/features/legal/components/LegalAcceptanceGate'
 import { ClientShell } from '@/features/client-portal/components/ClientShell'
 import { useTheme } from '@/shared/hooks/useTheme'
+import { FloatingVoiceButton } from '@/shared/components/FloatingVoiceButton'
 
 type MainNavItem = {
   type?: 'route'
@@ -122,6 +123,7 @@ export function AuthLayout() {
     <>
       {/* Acceptance gate — renders as full-screen overlay when required docs are missing */}
       <LegalAcceptanceGate />
+      <FloatingVoiceButton />
       <div className="app-shell">
       <aside className="sidebar">
 		<div className="sidebar__brand">
