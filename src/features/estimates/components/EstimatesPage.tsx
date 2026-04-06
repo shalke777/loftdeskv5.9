@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect } from 'react'
-import { Plus } from 'lucide-react'
+import { useMemo, useState, useEffect, useRef } from 'react'
+import { Plus, Mic, MicOff } from 'lucide-react'
 import { useSearch } from '@tanstack/react-router'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useCreateEstimate, useDeleteEstimate, useEstimates, useUpdateEstimate } from '@/features/estimates/hooks/useEstimates'
@@ -17,6 +17,7 @@ import { PlanLimitGuard } from '@/features/billing/components/PlanLimitGuard'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import type { Estimate } from '@/entities/estimate/model'
+import { supabase } from '@/shared/lib/supabase'
 
 type FilterStatus = 'all' | Estimate['status']
 
@@ -32,6 +33,10 @@ export function EstimatesPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Estimate | null>(null)
+  const [voiceMode, setVoiceMode] = useState<'idle' | 'recording' | 'processing'>('idle')
+  const [voiceError, setVoiceError] = useState<string | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef   = useRef<Blob[]>([])
 
   const { create: autoCreate } = useSearch({ from: '/_auth/estimates' as any }) as { create?: boolean }
 
@@ -88,11 +93,126 @@ export function EstimatesPage() {
     }
   }
 
+  // ── Voice estimate handlers ────────────────────────────────────────────────
+
+  async function startVoiceCapture() {
+    setVoiceError(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      audioChunksRef.current = []
+      const recorder = new MediaRecorder(stream)
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        setVoiceMode('processing')
+        const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+        await sendVoiceToEstimate(audioBlob, recorder.mimeType || 'audio/webm')
+      }
+
+      mediaRecorderRef.current = recorder
+      recorder.start()
+      setVoiceMode('recording')
+    } catch {
+      setVoiceError('Brak dostępu do mikrofonu — sprawdź uprawnienia przeglądarki.')
+    }
+  }
+
+  function stopVoiceCapture() {
+    mediaRecorderRef.current?.stop()
+  }
+
+  async function sendVoiceToEstimate(audioBlob: Blob, mimeType: string) {
+    try {
+      const reader = new FileReader()
+      const base64: string = await new Promise((res, rej) => {
+        reader.onload = () => res((reader.result as string).split(',')[1])
+        reader.onerror = rej
+        reader.readAsDataURL(audioBlob)
+      })
+
+      const { data: { session } } = await supabase!.auth.getSession()
+      const token = session?.access_token ?? ''
+
+      const res = await fetch('/.netlify/functions/voice-to-estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ audio_base64: base64, audio_type: mimeType }),
+      })
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+      const data = await res.json() as {
+        title?: string
+        items?: Array<{ description: string; quantity: number; unit: string; unit_price: number; vat_rate: number }>
+        extraction_confidence?: number
+        transcript?: string
+        extraction_warnings?: string[]
+      }
+
+      // Map AI items → EstimateItem shape (name = description, generated id & sort_order)
+      const estimateItems = (data.items ?? []).map((item, idx) => ({
+        id: crypto.randomUUID(),
+        name: item.description ?? '',
+        unit: item.unit ?? 'm²',
+        quantity: typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1,
+        unit_price: typeof item.unit_price === 'number' ? item.unit_price : 0,
+        vat_rate: typeof item.vat_rate === 'number' ? item.vat_rate : 8,
+        sort_order: idx,
+        catalog_item_id: null,
+      }))
+
+      // Save as sessionStorage draft — EstimateForm reads this on mount
+      const draft = {
+        name: data.title ?? 'Wycena głosowa',
+        notes: '',
+        clientId: '',
+        status: 'draft',
+        validUntil: '',
+        projectId: '',
+        items: estimateItems,
+        _source: 'voice_whisper',
+      }
+      try { sessionStorage.setItem('estimate_form_draft', JSON.stringify(draft)) } catch { /* ignore */ }
+
+      setVoiceMode('idle')
+      if ((data.extraction_confidence ?? 100) < 50) {
+        setVoiceError('Ceny nie zostały rozpoznane — sprawdź i uzupełnij pozycje przed zapisaniem.')
+      }
+      setEditing(null)
+      setOpen(true)
+    } catch (err) {
+      setVoiceMode('idle')
+      setVoiceError(err instanceof Error ? err.message : 'Nie udało się przetworzyć nagrania.')
+    }
+  }
+
   return (
     <div className="page">
       <div className="toolbar">
         <PageHeader title="Wyceny" subtitle="Przygotuj ofertę, wyślij do klienta i przekształć w umowę jednym kliknięciem." />
         <div className="toolbar__actions">
+          {canCreate && (
+            <PlanLimitGuard resource="estimates">
+              <Button
+                variant="secondary"
+                onClick={voiceMode === 'idle' ? startVoiceCapture : voiceMode === 'recording' ? stopVoiceCapture : () => {}}
+                disabled={voiceMode === 'processing'}
+                style={voiceMode === 'recording' ? { borderColor: '#dc2626', color: '#dc2626' } : {}}
+              >
+                {voiceMode === 'processing' ? (
+                  'Przetwarzam…'
+                ) : voiceMode === 'recording' ? (
+                  <><MicOff size={16} style={{ marginRight: 4 }} /> Zatrzymaj</>
+                ) : (
+                  <><Mic size={16} style={{ marginRight: 4 }} /> Wycena głosowa</>
+                )}
+              </Button>
+            </PlanLimitGuard>
+          )}
           {canCreate && (
             <PlanLimitGuard resource="estimates">
               <Button onClick={() => { setEditing(null); setOpen(true) }}>
@@ -103,6 +223,18 @@ export function EstimatesPage() {
           )}
         </div>
       </div>
+
+      {voiceError && (
+        <div style={{
+          background: 'var(--color-warning-soft)', border: '1px solid var(--color-warning)',
+          borderRadius: 8, padding: '8px 14px', fontSize: 12,
+          color: 'var(--color-text-primary)', marginBottom: 8,
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <span>⚠️ {voiceError}</span>
+          <button type="button" onClick={() => setVoiceError(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, lineHeight: 1, color: 'var(--color-text-secondary)' }}>×</button>
+        </div>
+      )}
 
       <div className="proj-filters">
         {FILTER_LABELS.map(({ value, label }) => (

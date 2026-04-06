@@ -28,6 +28,9 @@
 [functions."voice-to-expense"]
   timeout = 26
 
+[functions."voice-to-estimate"]
+  timeout = 26
+
 [build.processing]
   skip_processing = true
 

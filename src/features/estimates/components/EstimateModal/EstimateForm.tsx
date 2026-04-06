@@ -100,7 +100,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
         setValidUntil((draft.validUntil as string) ?? todayStr())
         setProjectId((draft.projectId as string) ?? '')
         setItems((draft.items as EstimateItem[]) ?? [])
-        setIsAiDraft(draft._source === 'ai_analysis' || draft._source === 'project_analysis')
+        setIsAiDraft(draft._source === 'ai_analysis' || draft._source === 'project_analysis' || draft._source === 'voice_whisper')
       } else {
         setName(''); setNotes(''); setClientId(initialClientId || ''); setStatus('draft')
         setValidUntil(todayStr()); setProjectId(initialProjectId || ''); setItems([])
