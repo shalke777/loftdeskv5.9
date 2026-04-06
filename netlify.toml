@@ -25,6 +25,9 @@
 [functions."check-missing-costs"]
   schedule = "0 8 * * *"
 
+[functions."voice-to-expense"]
+  timeout = 26
+
 [build.processing]
   skip_processing = true
 
