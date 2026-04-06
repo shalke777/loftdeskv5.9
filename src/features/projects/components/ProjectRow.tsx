@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Edit2, FileText, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Edit2, FileText, Trash2 } from 'lucide-react'
 import type { Project } from '@/entities/project/model'
 import { ProjectDetail } from '@/features/projects/components/ProjectDetail'
 import { ProjectCompleteness } from '@/features/projects/components/ProjectCompleteness'
@@ -26,6 +26,7 @@ interface Props {
   project:          Project
   clientName:       string | null
   onEdit:           (project: Project) => void
+  onDuplicate:      (project: Project) => void
   onStatusChange:   (id: string, status: Project['status']) => void
   onCreateInvoice:  (id: string) => void
   onDelete:         (id: string) => void
@@ -39,6 +40,7 @@ export function ProjectRow({
   project,
   clientName,
   onEdit,
+  onDuplicate,
   onStatusChange,
   onCreateInvoice,
   onDelete,
@@ -110,6 +112,14 @@ export function ProjectRow({
               onClick={() => onEdit(project)}
             >
               <Edit2 size={14} />
+            </button>
+            <button
+              type="button"
+              className="proj-action-btn"
+              title="Duplikuj jako nowy projekt"
+              onClick={() => onDuplicate(project)}
+            >
+              <Copy size={14} />
             </button>
             <button
               type="button"

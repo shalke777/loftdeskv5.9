@@ -18,6 +18,8 @@ import {
 import { ProjectRow } from '@/features/projects/components/ProjectRow'
 import { AssignmentQueueBanner } from '@/features/projects/components/AssignmentQueueBanner'
 import { ProjectForm } from '@/features/projects/components/ProjectModal/ProjectForm'
+import { ProjectTemplatePicker } from '@/features/projects/components/ProjectModal/ProjectTemplatePicker'
+import type { ProjectTemplateValues } from '@/features/projects/components/ProjectModal/ProjectTemplatePicker'
 import type { Project } from '@/entities/project/model'
 import { useCan } from '@/features/auth/hooks/usePermissions'
 import { PlanLimitGuard } from '@/features/billing/components/PlanLimitGuard'
@@ -39,6 +41,8 @@ export function ProjectsPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Project | null>(null)
+  // null = show template picker, non-null = skip picker and go straight to form
+  const [templateValues, setTemplateValues] = useState<ProjectTemplateValues | null>(null)
   const [invoiceProjectId, setInvoiceProjectId] = useState<string | null>(null)
 
   const companyId   = useCompanyId()
@@ -76,12 +80,23 @@ export function ProjectsPage() {
       if (editing) await updateProject.mutateAsync({ id: editing.id, input })
       else await createProject.mutateAsync(input)
       setEditing(null)
+      setTemplateValues(null)
       setOpen(false)
     } catch { /* error handled by hook's onError */ }
   }
 
-  function handleEdit(project: Project) { setEditing(project); setOpen(true) }
+  function handleEdit(project: Project) { setEditing(project); setTemplateValues(null); setOpen(true) }
   function handleCreateInvoice(id: string) { setInvoiceProjectId(id) }
+  function handleDuplicate(project: Project) {
+    setEditing(null)
+    setTemplateValues({
+      name: `Kopia — ${project.name}`,
+      notes: project.notes || '',
+      status: 'offer',
+      address: project.address || '',
+    })
+    setOpen(true)
+  }
   function submitInvoiceConfig(config: InvoiceFromProjectConfig) { createInvoice.mutate(config); setInvoiceProjectId(null) }
 
   return (
@@ -147,6 +162,7 @@ export function ProjectsPage() {
               project={project}
               clientName={project.client_id ? (clientMap[project.client_id] ?? null) : null}
               onEdit={handleEdit}
+              onDuplicate={handleDuplicate}
               onStatusChange={(id, status) => updateStatus.mutate({ id, status })}
               onCreateInvoice={handleCreateInvoice}
               onDelete={(id) => deleteProject.mutate(id)}
@@ -159,8 +175,21 @@ export function ProjectsPage() {
 
       {/* Add / edit modal */}
       {canCreate && (
-        <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edytuj projekt' : 'Nowy projekt'}>
-          <ProjectForm companyId={companyId} initialProject={editing} onSubmit={submit} />
+        <Modal
+          open={open}
+          onClose={() => { setOpen(false); setEditing(null); setTemplateValues(null) }}
+          title={editing ? 'Edytuj projekt' : templateValues ? 'Nowy projekt' : 'Nowy projekt — wybierz szablon'}
+        >
+          {!editing && !templateValues ? (
+            <ProjectTemplatePicker onSelect={(data) => setTemplateValues(data)} />
+          ) : (
+            <ProjectForm
+              companyId={companyId}
+              initialProject={editing}
+              initialValues={templateValues ?? undefined}
+              onSubmit={submit}
+            />
+          )}
         </Modal>
       )}
 

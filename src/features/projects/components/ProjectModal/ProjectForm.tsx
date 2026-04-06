@@ -6,7 +6,20 @@ import type { CreateProjectInput, Project } from '@/entities/project/model'
 import { useClients, useCreateClient } from '@/features/clients/hooks/useClients'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 
-export function ProjectForm({ companyId, onSubmit, initialProject }: { companyId: string; onSubmit: (input: CreateProjectInput) => Promise<void>; initialProject?: Project | null }) {
+interface ProjectFormDefaults {
+  name?: string
+  notes?: string
+  status?: Project['status']
+  address?: string
+  client_id?: string
+}
+
+export function ProjectForm({ companyId, onSubmit, initialProject, initialValues }: {
+  companyId: string
+  onSubmit: (input: CreateProjectInput) => Promise<void>
+  initialProject?: Project | null
+  initialValues?: ProjectFormDefaults
+}) {
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [notes, setNotes] = useState('')
@@ -26,14 +39,14 @@ export function ProjectForm({ companyId, onSubmit, initialProject }: { companyId
   const _companyId = useCompanyId()
 
   useEffect(() => {
-    setName(initialProject?.name || '')
-    setAddress(initialProject?.address || '')
-    setNotes(initialProject?.notes || '')
-    setClientId(initialProject?.client_id || '')
-    setStatus(initialProject?.status || 'offer')
+    setName(initialProject?.name ?? initialValues?.name ?? '')
+    setAddress(initialProject?.address ?? initialValues?.address ?? '')
+    setNotes(initialProject?.notes ?? initialValues?.notes ?? '')
+    setClientId(initialProject?.client_id ?? initialValues?.client_id ?? '')
+    setStatus(initialProject?.status ?? initialValues?.status ?? 'offer')
     setStartDate(initialProject?.start_date || '')
     setEndDate(initialProject?.end_date || '')
-  }, [initialProject])
+  }, [initialProject, initialValues])
 
   async function handleAddClient() {
     if (!ncName.trim()) return
