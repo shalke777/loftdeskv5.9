@@ -264,7 +264,7 @@ function HeroSection({ t, variant }: { t: typeof T.minimal; variant: Variant }) 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            style={{ color: t.text, fontSize: t.heroSize, fontWeight: 800, lineHeight: 1.05, letterSpacing: t.letterSpacing, marginBottom: "1.5rem" }}
+            style={{ color: t.text, fontSize: t.heroSize, fontWeight: 900, lineHeight: 1.05, letterSpacing: t.letterSpacing, marginBottom: "1.5rem" }}
           >
             {variant === "minimal"
               ? <>Ogarnij projekty<br /><span style={{ color: t.accent }}>bez chaosu.</span></>
@@ -356,7 +356,7 @@ function ProblemSection({ t }: { t: typeof T.minimal }) {
       <div className="lp2-container">
         <FadeUp style={{ textAlign: "center", marginBottom: 64 }}>
           <p className="lp2-overline" style={{ color: t.accent }}>Brzmi znajomo?</p>
-          <h2 style={{ color: t.text, fontSize: t.sectionTitle, fontWeight: 800, letterSpacing: t.letterSpacing, lineHeight: 1.1 }}>
+          <h2 style={{ color: t.text, fontSize: t.sectionTitle, fontWeight: 900, letterSpacing: t.letterSpacing, lineHeight: 1.1 }}>
             Masz wszystko.<br />
             <span style={{ color: t.dim }}>Tylko nie w jednym miejscu.</span>
           </h2>
@@ -483,7 +483,7 @@ function HowItWorksSection({ t }: { t: typeof T.minimal }) {
       <div className="lp2-container">
         <FadeUp style={{ textAlign: "center", marginBottom: 64 }}>
           <p className="lp2-overline" style={{ color: t.accent }}>Jak to działa</p>
-          <h2 style={{ color: t.text, fontSize: t.sectionTitle, fontWeight: 800, letterSpacing: t.letterSpacing, lineHeight: 1.1 }}>
+          <h2 style={{ color: t.text, fontSize: t.sectionTitle, fontWeight: 900, letterSpacing: t.letterSpacing, lineHeight: 1.1 }}>
             Trzy kroki.<br /><span style={{ color: t.dim }}>To wszystko.</span>
           </h2>
         </FadeUp>
@@ -532,7 +532,7 @@ function EffectsSection({ t }: { t: typeof T.minimal }) {
       <div className="lp2-container">
         <FadeUp style={{ textAlign: "center", marginBottom: 64 }}>
           <p className="lp2-overline" style={{ color: t.accent }}>Efekty, nie funkcje</p>
-          <h2 style={{ color: t.text, fontSize: t.sectionTitle, fontWeight: 800, letterSpacing: t.letterSpacing, lineHeight: 1.1 }}>
+          <h2 style={{ color: t.text, fontSize: t.sectionTitle, fontWeight: 900, letterSpacing: t.letterSpacing, lineHeight: 1.1 }}>
             Co to dla Ciebie<br /><span style={{ color: t.dim }}>naprawdę znaczy.</span>
           </h2>
         </FadeUp>
@@ -592,7 +592,7 @@ function NotSystemSection({ t, variant }: { t: typeof T.minimal; variant: Varian
                 <p style={{
                   color: line.accent ? t.accent : t.text,
                   fontSize: variant === "raw" ? "clamp(1.8rem, 4vw, 3.5rem)" : "clamp(1.6rem, 3.5vw, 3rem)",
-                  fontWeight: 800,
+                  fontWeight: 900,
                   lineHeight: 1.1,
                   letterSpacing: t.letterSpacing,
                 }}>
