@@ -376,7 +376,7 @@ export async function screenImageForInvoice(
  *
  * Exported so that non-hook components (e.g. ExpensesPage) can call it directly.
  */
-export async function callParseInvoice(file: File, sourceType: ExpenseSourceType, fileUrl?: string): Promise<ParseInvoiceResult> {
+export async function callParseInvoice(file: File, sourceType: ExpenseSourceType, fileUrl?: string, companyNip?: string): Promise<ParseInvoiceResult> {
   // Client-side file size guard
   if (file.size > MAX_FILE_SIZE) {
     return {
@@ -405,6 +405,7 @@ export async function callParseInvoice(file: File, sourceType: ExpenseSourceType
     file_type:   processedFile.type,
     source_type: sourceType,
   }
+  if (companyNip) payload.company_nip = companyNip
 
   if (useLargeFilePath) {
     payload.file_url = fileUrl

@@ -660,7 +660,7 @@ function isReadableName(name: string): boolean {
 
 // ─── Regex parser (inline from expenses.api.ts logic) ───────────────────────
 
-function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_confidence' | 'extraction_warnings' | 'requires_user_confirmation' | 'parser_source'> {
+function parseTextWithRegex(text: string, companyNip = ''): Omit<ParseInvoiceResult, 'extraction_confidence' | 'extraction_warnings' | 'requires_user_confirmation' | 'parser_source'> {
   const t = text.replace(/\s+/g, ' ')
   const result: Record<string, unknown> = { currency: 'PLN', notes: null }
 
@@ -757,6 +757,31 @@ function parseTextWithRegex(text: string): Omit<ParseInvoiceResult, 'extraction_
     const secondDigits = allNips[1][1].replace(/[\s\-]/g, '')
     if (secondDigits.length === 10 && secondDigits !== result.vendor_nip) {
       result.buyer_nip = secondDigits
+    }
+  }
+
+  // ── Layer 2: Company NIP cross-check ────────────────────────────────────
+  // If the caller sent their own company NIP, match it against extracted NIPs.
+  // In the Expenses flow the uploading company is always the BUYER (they are
+  // recording a cost document they received from a vendor).
+  if (companyNip && companyNip.length === 10) {
+    if (result.vendor_nip === companyNip) {
+      // Vendor was wrongly assigned the company NIP → swap
+      const tmp = result.buyer_nip
+      result.buyer_nip = companyNip
+      result.vendor_nip = tmp ?? null
+    } else if (!result.buyer_nip) {
+      // Check if company NIP exists anywhere in the document
+      const allDigits = allNips.map(m => m[1].replace(/[\s\-]/g, ''))
+      if (allDigits.includes(companyNip)) {
+        result.buyer_nip = companyNip
+      }
+    }
+    // If buyer_nip matches company but vendor_nip is missing, try to find vendor
+    if (result.buyer_nip === companyNip && !result.vendor_nip) {
+      const allDigits = allNips.map(m => m[1].replace(/[\s\-]/g, ''))
+      const vendorCandidate = allDigits.find(d => d.length === 10 && d !== companyNip)
+      if (vendorCandidate) result.vendor_nip = vendorCandidate
     }
   }
 
@@ -930,63 +955,113 @@ function normalizeDatePl(raw: string): string {
   return clean
 }
 
-/**
- * Extract line items from raw invoice/PDF text using regex patterns.
- * Matches rows like: "1. Płytki ceramiczne 40 m² 30,00 1200,00 23% 276,00 1476,00"
- */
 function extractLineItemsFromText(rawText: string): ParseInvoiceLineItem[] {
-  const items: ParseInvoiceLineItem[] = []
   const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 3)
+  
+  // Negative patterns — lines that should NEVER be items
+  const SKIP = /^(?:razem|suma|w tym|do zap[łl]aty|zap[łl]acono|pozosta[łl]o|og[oó][łl]em|nale[żz]no[śs][ćc]|warto[śs][ćc]\s+netto|warto[śs][ćc]\s+brutto|kwota\s+vat|stawka|podatek|podstawa|termin|forma|spos[oó]b|uwagi|adnotacje|podpis|wystawca|nabywca|sprzedawca|odbiorca|iban|nr\s+konta|bank|konto|swift|bic|faktura|paragon|rachunek|data|nip|regon|pesel|tel|email|www|ul\.|al\.|os\.|plac|kod|miasto|strona|page|\d{2}[\s\-]?\d{3})/i
 
-  // Pattern: row number + item name + quantity + unit + amounts
-  const ROW_PATTERN = /^(\d{1,3})[.)\s]+(.{3,80}?)\s+(\d+[.,]?\d*)\s+(szt|m[²2³3]?|mb|kg|l|kpl|op|rbh?|godz?|h|ton|pal|ark)\s+(\d+[\s]?\d*[.,]\d{2})/i
+  // ─── Pass 1: Numbered rows with unit ──────────────────────────────────
+  // "1. Płytki ceramiczne 40 m² 30,00 1200,00 23% 276,00 1476,00"
+  const ROW_WITH_UNIT = /^(\d{1,3})[.)\s]+(.{3,80}?)\s+(\d+[.,]?\d*)\s+(szt|m[²2³3]?|mb|km|kg|l|kpl|op|rbh?|godz?|h|ton|pal|ark|zest|kart|para|rol)[.\s]+(\d+[\s]?\d*[.,]\d{2})/i
 
-  // Simpler: row number + name + two amounts at end
-  const SIMPLE_ROW = /^(\d{1,3})[.)\s]+(.{3,60}?)\s+(\d+[\s]?\d*[.,]\d{2})\s+(\d+[\s]?\d*[.,]\d{2})\s*$/
+  // ─── Pass 2: Numbered rows, two amounts at end ─────────────────────
+  // "1. Klej montażowy  125,00  153,75"
+  const ROW_SIMPLE = /^(\d{1,3})[.)\s]+(.{3,60}?)\s+(\d+[\s]?\d*[.,]\d{2})\s+(\d+[\s]?\d*[.,]\d{2})\s*$/
 
+  // ─── Pass 3: No row number, but has unit + amounts ────────────────
+  // "Płytki ścienne 25 m² 45,00 1125,00"
+  const NO_NUM_WITH_UNIT = /^([A-Za-ząęółśźćńĄĘÓŁŚŹĆŃ].{2,70}?)\s+(\d+[.,]?\d*)\s+(szt|m[²2³3]?|mb|km|kg|l|kpl|op|rbh?|godz?|h|ton|pal|ark|zest|kart|para|rol)[.\s]+(\d+[\s]?\d*[.,]\d{2})/i
+
+  // ─── Pass 4: No row number, two+ amounts at line end ──────────────
+  // "Materiały budowlane  1200,00  1476,00"
+  const NO_NUM_AMOUNTS = /^([A-Za-ząęółśźćńĄĘÓŁŚŹĆŃ].{2,60}?)\s+(\d+[\s]?\d*[.,]\d{2})\s+(\d+[\s]?\d*[.,]\d{2})\s*$/
+
+  const items: ParseInvoiceLineItem[] = []
+  const seen = new Set<string>()
+
+  function addItem(item: ParseInvoiceLineItem) {
+    // Deduplicate by name+gross
+    const key = `${(item.name || '').slice(0, 20).toLowerCase()}|${item.gross_amount ?? item.net_amount ?? 0}`
+    if (seen.has(key)) return
+    seen.add(key)
+    items.push(item)
+  }
+
+  function extractAmountsAfter(line: string, unitEnd: number): number[] {
+    const rest = line.slice(unitEnd)
+    return [...rest.matchAll(/(\d+[\s]?\d*[.,]\d{2})/g)].map(m => parsePolishAmount(m[1]))
+  }
+
+  function extractVatRate(text: string): number | null {
+    const m = text.match(/\b(23|8|5|0|7)\s*%/)
+    return m ? parseInt(m[1], 10) : null
+  }
+
+  // Run all passes
   for (const line of lines) {
-    const match = line.match(ROW_PATTERN)
-    if (match) {
-      const name = match[2].trim()
-      const qty = parseFloat(match[3].replace(',', '.'))
-      const unit = match[4]
-      const afterUnit = line.slice(line.indexOf(match[4]) + match[4].length)
-      const amounts = [...afterUnit.matchAll(/(\d+[\s]?\d*[.,]\d{2})/g)].map(m => parsePolishAmount(m[1]))
+    if (SKIP.test(line)) continue
 
-      const item: ParseInvoiceLineItem = {
-        name,
-        quantity: qty,
-        unit,
-        unit_net: amounts.length >= 1 ? amounts[0] : null,
+    // Pass 1
+    const m1 = line.match(ROW_WITH_UNIT)
+    if (m1) {
+      const unitEndIdx = line.indexOf(m1[4], line.indexOf(m1[3])) + m1[4].length
+      const amounts = extractAmountsAfter(line, unitEndIdx)
+      addItem({
+        name: m1[2].trim(),
+        quantity: parseFloat(m1[3].replace(',', '.')),
+        unit: m1[4],
+        unit_net: amounts[0] ?? null,
         net_amount: amounts.length >= 2 ? amounts[1] : amounts[0] ?? null,
-        vat_rate: null,
-        vat_amount: null,
+        vat_rate: extractVatRate(line.slice(unitEndIdx)),
+        vat_amount: amounts.length >= 4 ? amounts[amounts.length - 2] : null,
         gross_amount: amounts.length >= 3 ? amounts[amounts.length - 1] : null,
-      }
-      const vatRateMatch = afterUnit.match(/\b(23|8|5|0|7)\s*%/)
-      if (vatRateMatch) item.vat_rate = parseInt(vatRateMatch[1], 10)
-
-      if (amounts.length >= 4) {
-        item.net_amount = amounts[1]
-        item.vat_amount = amounts[amounts.length - 2]
-        item.gross_amount = amounts[amounts.length - 1]
-      }
-
-      items.push(item)
+      })
       continue
     }
 
-    const simpleMatch = line.match(SIMPLE_ROW)
-    if (simpleMatch) {
-      items.push({
-        name: simpleMatch[2].trim(),
-        quantity: null,
-        unit: null,
-        unit_net: null,
-        net_amount: parsePolishAmount(simpleMatch[3]),
-        vat_rate: null,
+    // Pass 2
+    const m2 = line.match(ROW_SIMPLE)
+    if (m2) {
+      addItem({
+        name: m2[2].trim(),
+        quantity: null, unit: null, unit_net: null,
+        net_amount: parsePolishAmount(m2[3]),
+        vat_rate: extractVatRate(line),
         vat_amount: null,
-        gross_amount: parsePolishAmount(simpleMatch[4]),
+        gross_amount: parsePolishAmount(m2[4]),
+      })
+      continue
+    }
+
+    // Pass 3
+    const m3 = line.match(NO_NUM_WITH_UNIT)
+    if (m3) {
+      const unitEndIdx = line.indexOf(m3[3], line.indexOf(m3[2])) + m3[3].length
+      const amounts = extractAmountsAfter(line, unitEndIdx)
+      addItem({
+        name: m3[1].trim(),
+        quantity: parseFloat(m3[2].replace(',', '.')),
+        unit: m3[3],
+        unit_net: amounts[0] ?? null,
+        net_amount: amounts.length >= 2 ? amounts[1] : amounts[0] ?? null,
+        vat_rate: extractVatRate(line.slice(unitEndIdx)),
+        vat_amount: amounts.length >= 4 ? amounts[amounts.length - 2] : null,
+        gross_amount: amounts.length >= 3 ? amounts[amounts.length - 1] : null,
+      })
+      continue
+    }
+
+    // Pass 4
+    const m4 = line.match(NO_NUM_AMOUNTS)
+    if (m4 && !SKIP.test(m4[1])) {
+      addItem({
+        name: m4[1].trim(),
+        quantity: null, unit: null, unit_net: null,
+        net_amount: parsePolishAmount(m4[2]),
+        vat_rate: extractVatRate(line),
+        vat_amount: null,
+        gross_amount: parsePolishAmount(m4[3]),
       })
     }
   }
@@ -1009,14 +1084,45 @@ function toNum(v: unknown): number | null {
 function calcConfidence(r: Partial<ParseInvoiceResult>): number {
   let score = 0
   const isReceipt = r.document_type === 'receipt'
-  if (r.vendor_name)                               score += 20
-  // Receipts don't require an invoice number — give partial credit for being a paragon
-  if (r.invoice_number)                            score += 25
-  else if (isReceipt)                              score += 15
-  if (r.issue_date)                                score += 20
-  if (r.gross_amount != null && r.gross_amount > 0) score += 25
-  if (r.vendor_nip)                                score += 10
-  return score
+
+  // Vendor name: quality-aware scoring
+  if (r.vendor_name) {
+    const alphaChars = (r.vendor_name.match(/[a-zA-ZąęółśźćńĄĘÓŁŚŹĆŃ]/g) || []).length
+    score += alphaChars >= 3 ? 20 : 8  // short/garbage name = partial credit only
+  }
+
+  // Invoice number
+  if (r.invoice_number)      score += 25
+  else if (isReceipt)        score += 15
+
+  // Date
+  if (r.issue_date)          score += 20
+
+  // Amount: must be positive and sane
+  if (r.gross_amount != null && r.gross_amount > 0) {
+    if (r.gross_amount < 0.01 || r.gross_amount > 10_000_000) {
+      score += 8  // suspicious amount = partial credit
+    } else {
+      score += 25
+    }
+  }
+
+  // NIP: checksum-aware scoring
+  if (r.vendor_nip) {
+    const digits = r.vendor_nip.replace(/\D/g, '')
+    if (digits.length === 10 && validateNip(digits)) {
+      score += 10  // valid NIP with correct checksum
+    } else {
+      score += 3   // NIP present but invalid checksum
+    }
+  }
+
+  // Line items bonus/penalty
+  if ((r as any).line_items && ((r as any).line_items as unknown[]).length > 0) {
+    score += 5  // bonus for extracted line items
+  }
+
+  return Math.min(score, 100)
 }
 
 function buildWarnings(r: Partial<ParseInvoiceResult>): string[] {
@@ -1067,8 +1173,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const file_name   = String(body.file_name  ?? 'file')
   const file_type   = String(body.file_type  ?? 'application/octet-stream').toLowerCase()
   const source_type = String(body.source_type ?? 'manual')
+  const company_nip = typeof body.company_nip === 'string' ? body.company_nip.replace(/\D/g, '') : ''
 
-  // ── Validate ──────────────────────────────────────────────────────────────
+  // ── Validate──────────────────────────────────────────────────────────────
   if (!file_base64 && !file_url) {
     // No file → manual entry mode → return empty result
     return json(200, {
@@ -1157,7 +1264,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   // ── Regex parse ───────────────────────────────────────────────────────────
-  const parsed = parseTextWithRegex(extractedText)
+  const parsed = parseTextWithRegex(extractedText, company_nip)
 
   // Post-parse sanitization: null out vendor/buyer names that look like
   // subsetted-font garbage. Only applied when text came from a PDF text layer

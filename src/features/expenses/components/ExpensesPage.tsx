@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
+import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { useSearch } from '@tanstack/react-router'
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks/useExpenses'
 import { expensesApi, ExpenseInvoice, ParsedExpenseData, parseInvoiceFromText } from '../api/expenses.api'
@@ -113,6 +114,7 @@ function formFromExpense(e: ExpenseInvoice): FormState {
 export function ExpensesPage() {
   const companyId = useCompanyId()
   const { user } = useAuth()
+  const companyMeta = useCompanyMeta()
   const { projectId: urlProjectId } = useSearch({ strict: false }) as { projectId?: string }
   const { data: expenses = [], isLoading } = useExpenses(companyId)
   const createExpense = useCreateExpense(companyId)
@@ -210,7 +212,7 @@ export function ExpensesPage() {
         // Step A: OCR (Tesseract / PDF text extraction on server)
         try {
           const sourceType: ExpenseSourceType = isPDF ? 'pdf' : 'gallery'
-          ocrResult = await callParseInvoice(file, sourceType, url)
+          ocrResult = await callParseInvoice(file, sourceType, url, companyMeta.nip)
         } catch (ocrErr: unknown) {
           const msg = ocrErr instanceof Error ? ocrErr.message : ''
           ocrFailed = true
