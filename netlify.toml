@@ -31,6 +31,9 @@
 [functions."voice-to-estimate"]
   timeout = 26
 
+[functions."voice-to-note"]
+  timeout = 60
+
 [build.processing]
   skip_processing = true
 

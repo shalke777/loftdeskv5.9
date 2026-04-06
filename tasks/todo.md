@@ -1,3 +1,19 @@
+# A6 — FAB voice note → project notes + voice expense in /expenses
+
+## Klasyfikacja
+TYPE: feature | RISK: MEDIUM | SCOPE: cross-module | AREA: AI + projects + expenses
+
+## Plan implementacji
+
+### [ ] 1. Utwórz `netlify/functions/voice-to-note.ts` (Whisper only, bez GPT)
+### [ ] 2. Przebuduj `FloatingVoiceButton.tsx` (project note flow + modal fallback)
+### [ ] 3. Zaktualizuj `ProjectNotes.tsx` (reaktywne nasłuchiwanie custom event)
+### [ ] 4. Zaktualizuj `ExpensesPage.tsx` (przyciski głosowe desktop + mobile)
+### [ ] 5. Dodaj `[functions."voice-to-note"] timeout = 60` w `netlify.toml`
+### [ ] 6. Quality gates: tsc 0 + build clean + commit + push
+
+---
+
 # A5 — FAB Voice Button + Cleanup AI w projektach
 
 ## Klasyfikacja
@@ -5,12 +21,12 @@ TYPE: feature | RISK: MEDIUM | SCOPE: cross-module | AREA: AI extraction + expen
 
 ## Plan implementacji
 
-### [ ] 1. ProjectDetail.tsx — usuń sekcję Asystent AI
-### [ ] 2. ProjectExpensesTab.tsx — usuń głos
-### [ ] 3. voice-to-expense.ts — przebuduj na array wydatków
-### [ ] 4. FloatingVoiceButton.tsx — nowy komponent FAB
-### [ ] 5. _auth.tsx — dodaj FAB do operatora
-### [ ] 6. Quality gates
+### [x] 1. ProjectDetail.tsx — usuń sekcję Asystent AI
+### [x] 2. ProjectExpensesTab.tsx — usuń głos
+### [x] 3. voice-to-expense.ts — przebuduj na array wydatków
+### [x] 4. FloatingVoiceButton.tsx — nowy komponent FAB
+### [x] 5. _auth.tsx — dodaj FAB do operatora
+### [x] 6. Quality gates ✅ tsc 0 errors, build clean, committed
 
 ---
 

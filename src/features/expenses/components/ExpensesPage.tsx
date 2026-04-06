@@ -17,9 +17,10 @@ import { Input } from '@/shared/ui/Input/Input'
 import { Select } from '@/shared/ui/Select/Select'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
+import { supabase } from '@/shared/lib/supabase'
 // useProjects takes no arguments — companyId is read internally
 import {
-  Upload, Camera, FileText, Trash2, Edit2, AlertTriangle, CheckCircle, Clock, Package, Receipt,
+  Upload, Camera, FileText, Trash2, Edit2, AlertTriangle, CheckCircle, Clock, Package, Receipt, Mic, MicOff,
 } from 'lucide-react'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -125,6 +126,83 @@ export function ExpensesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
+  // ── Voice expense ────────────────────────────────────────────────────────
+  const [voiceMode, setVoiceMode] = useState<'idle' | 'recording' | 'processing'>('idle')
+  const expMediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const expAudioChunksRef   = useRef<Blob[]>([])
+
+  async function startExpenseVoice() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      expAudioChunksRef.current = []
+      const recorder = new MediaRecorder(stream)
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) expAudioChunksRef.current.push(e.data) }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        setVoiceMode('processing')
+        const blob = new Blob(expAudioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+        await sendExpenseVoice(blob, recorder.mimeType || 'audio/webm')
+      }
+      expMediaRecorderRef.current = recorder
+      recorder.start()
+      setVoiceMode('recording')
+    } catch {
+      alert('Brak dostępu do mikrofonu — sprawdź uprawnienia przeglądarki.')
+    }
+  }
+
+  function stopExpenseVoice() {
+    expMediaRecorderRef.current?.stop()
+  }
+
+  async function sendExpenseVoice(audioBlob: Blob, mimeType: string) {
+    try {
+      const reader = new FileReader()
+      const base64: string = await new Promise((res, rej) => {
+        reader.onload  = () => res((reader.result as string).split(',')[1])
+        reader.onerror = rej
+        reader.readAsDataURL(audioBlob)
+      })
+      let token = ''
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession()
+        token = session?.access_token ?? ''
+      }
+      const res = await fetch('/.netlify/functions/voice-to-expense', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ audio_base64: base64, audio_type: mimeType }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json() as { expenses: Array<{ vendor_name: string|null; gross_amount: number|null; net_amount: number|null; currency: string; description: string; cost_type: string }>; transcript: string }
+      const expenses = Array.isArray(data.expenses) ? data.expenses : []
+      const exp = expenses[0]
+      const parsedData: ParsedExpenseData = exp ? {
+        vendor:       exp.vendor_name  ?? undefined,
+        amount_gross: exp.gross_amount ?? undefined,
+        amount_net:   exp.net_amount   ?? undefined,
+        currency:     exp.currency     || 'PLN',
+        description:  exp.description  || undefined,
+      } : {}
+      const prefilled: FormState = {
+        ...emptyForm(),
+        vendor:       String(parsedData.vendor       ?? ''),
+        amount_gross: parsedData.amount_gross != null ? String(parsedData.amount_gross) : '',
+        amount_net:   parsedData.amount_net   != null ? String(parsedData.amount_net)   : '',
+        currency:     String(parsedData.currency      ?? 'PLN'),
+        description:  String(parsedData.description   ?? ''),
+      }
+      setForm(prefilled)
+      setModal({ type: 'add', fileUrl: '', fileName: '', parsed: parsedData })
+    } catch (err) {
+      console.error('[ExpensesPage] sendExpenseVoice error:', err)
+      alert('Nie udało się przetworzyć nagrania — spróbuj ponownie.')
+    } finally {
+      setVoiceMode('idle')
+    }
+  }
+
+  // ── /Voice expense ───────────────────────────────────────────────────────
   const [uploading, setUploading] = useState(false)
   const [uploadStep, setUploadStep] = useState<string>('Przesyłanie...')
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -580,6 +658,19 @@ export function ExpensesPage() {
           <FileText size={22} />
           Ręcznie
         </button>
+        <button
+          type="button"
+          onClick={voiceMode === 'idle' ? startExpenseVoice : voiceMode === 'recording' ? stopExpenseVoice : () => {}}
+          disabled={voiceMode === 'processing'}
+          style={voiceMode === 'recording' ? { color: '#dc2626' } : {}}
+        >
+          {voiceMode === 'idle'
+            ? <Mic size={22} />
+            : voiceMode === 'recording'
+              ? <MicOff size={22} />
+              : <span className="spinner" style={{ width: 22, height: 22, borderWidth: 2, display: 'inline-block' }} />}
+          {voiceMode === 'idle' ? 'Głosem' : voiceMode === 'recording' ? 'Zatrzymaj' : 'Przetwarzam…'}
+        </button>
       </div>
       )}
 
@@ -643,6 +734,22 @@ export function ExpensesPage() {
                 setModal({ type: 'add', fileUrl: '', fileName: '', parsed: {} })
               }}>
                 Ręczne wprowadzenie
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={
+                  voiceMode === 'idle'
+                    ? <Mic size={14} />
+                    : voiceMode === 'recording'
+                      ? <MicOff size={14} />
+                      : <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2, display: 'inline-block' }} />
+                }
+                onClick={voiceMode === 'idle' ? startExpenseVoice : voiceMode === 'recording' ? stopExpenseVoice : () => {}}
+                disabled={voiceMode === 'processing'}
+                style={voiceMode === 'recording' ? { borderColor: '#dc2626', color: '#dc2626' } : {}}
+              >
+                {voiceMode === 'idle' ? 'Głosem' : voiceMode === 'recording' ? 'Zatrzymaj' : 'Przetwarzam…'}
               </Button>
             </div>
           </div>
