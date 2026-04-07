@@ -73,3 +73,6 @@
 
 [functions."memory-check"]
   timeout = 10
+
+[functions."daily-report"]
+  timeout = 26

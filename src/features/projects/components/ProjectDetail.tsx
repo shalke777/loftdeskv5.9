@@ -42,6 +42,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
   const [showContractModal, setShowContractModal] = useState(false)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [reportStatus, setReportStatus] = useState<'idle' | 'confirm' | 'sending' | 'done' | 'error'>('idle')
+  const [htmlReportLoading, setHtmlReportLoading] = useState(false)
   const { data: clients } = useClients()
   const linkedClient = clients?.find(c => c.id === project?.client_id)
   const companyId = useCompanyId()
@@ -60,6 +61,29 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
   const hasContract = flags.has_contract || projectContracts.length > 0
   const latestEstimate = projectEstimates[projectEstimates.length - 1] ?? null
   const latestContract = projectContracts[projectContracts.length - 1] ?? null
+
+  async function openDailyReport() {
+    if (!supabase || !project) return
+    setHtmlReportLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token ?? ''
+      const res = await fetch('/.netlify/functions/daily-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ project_id: project.id }),
+      })
+      if (!res.ok) throw new Error('Błąd generowania raportu')
+      const { html } = await res.json()
+      const blob = new Blob([html], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+    } catch {
+      alert('Nie udało się wygenerować raportu dziennego.')
+    } finally {
+      setHtmlReportLoading(false)
+    }
+  }
 
   async function sendDailyReport() {
     if (!supabase || !linkedClient?.email || !project) return
@@ -121,6 +145,10 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
           {hasContract && (
             <Button onClick={() => setShowInvoiceModal(true)}>Generuj fakturę</Button>
           )}
+          {/* Raport dzienny HTML — podgląd + druk */}
+          <Button variant="secondary" onClick={openDailyReport} disabled={htmlReportLoading}>
+            {htmlReportLoading ? '⏳ Generowanie...' : '📋 Raport dzienny'}
+          </Button>
           {/* Raport dzienny — widoczny gdy projekt ma klienta z e-mailem */}
           {linkedClient?.email && reportStatus === 'idle' && (
             <Button variant="secondary" onClick={() => setReportStatus('confirm')}>
