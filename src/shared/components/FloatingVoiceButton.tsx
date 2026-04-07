@@ -38,6 +38,11 @@ export function FloatingVoiceButton() {
   }, [voiceMode])
 
   async function startRecording() {
+    // Transcription requires network — inform user gracefully
+    if (!navigator.onLine) {
+      setToast('⚠ Nagrywanie głosowe wymaga internetu (transkrypcja AI offline niedostępna)')
+      return
+    }
     // Check MediaRecorder support
     if (typeof MediaRecorder === 'undefined') {
       setToast('⚠ Nagrywanie nie jest wspierane w tej przeglądarce')

@@ -1,9 +1,11 @@
-import { QueryClientProvider } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { queryClient } from '@/shared/lib/queryClient'
+import { idbPersister } from '@/shared/lib/queryPersister'
 import { generateId } from '@/shared/lib/generateId'
 import { ToastViewport } from '@/shared/ui/Toast/Toast'
 import { CookieBanner } from '@/features/legal/components/CookieBanner'
+import { OfflineBanner } from '@/shared/ui/OfflineBanner'
 import { useLocalStorage } from '@/shared/hooks/useLocalStorage'
 import { demoDb, type DemoRole } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
@@ -202,14 +204,18 @@ export function useToastContext() {
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister: idbPersister, maxAge: 24 * 60 * 60 * 1000 }}
+    >
       <ToastProvider>
         <AuthProvider>
           {children}
           <ToastViewport />
           <CookieBanner />
+          <OfflineBanner />
         </AuthProvider>
       </ToastProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   )
 }

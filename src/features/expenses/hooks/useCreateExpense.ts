@@ -6,12 +6,34 @@ import {
 } from '@/features/expenses/api/expenses.api'
 import { useAuth, useCompanyId } from '@/features/auth'
 import { createTimelineEvent } from '@/features/projects/lib/timeline'
+import { enqueue } from '@/shared/lib/offlineQueue'
+import { registerOfflineHandler } from '@/shared/ui/OfflineBanner'
+
+// Offline expense payload (file omitted — can't upload binary offline)
+type ExpenseOfflinePayload = Omit<CreateExpenseForProjectInput, 'company_id' | 'project_id'> & {
+  _companyId: string
+  _projectId: string
+}
+
+// Register global replay handler once (module-level, idempotent)
+registerOfflineHandler('expense:create', async (raw: unknown) => {
+  const p = raw as ExpenseOfflinePayload
+  await projectExpensesApi.createForProject({
+    ...p,
+    company_id: p._companyId,
+    project_id: p._projectId,
+    file_url: null,
+    file_name: null,
+  })
+})
 
 /**
  * Mutation to create an expense for a project.
  * Side effects (fire-and-forget):
  *   1. File upload to Supabase Storage (if file provided)
  *   2. Timeline event: 'expense_created'
+ *
+ * Offline-aware: enqueues to IndexedDB when navigator.onLine = false (file skipped).
  */
 export function useCreateExpense(projectId: string) {
   const queryClient = useQueryClient()
@@ -22,6 +44,23 @@ export function useCreateExpense(projectId: string) {
     mutationFn: async (payload: Omit<CreateExpenseForProjectInput, 'company_id' | 'project_id'> & { file?: File | null }) => {
       const { file, ...rest } = payload
 
+      // ── Offline path: queue for later sync ────────────────────────────────
+      if (!navigator.onLine) {
+        await enqueue('expense:create', {
+          ...rest,
+          _companyId: companyId,
+          _projectId: projectId,
+        } satisfies ExpenseOfflinePayload)
+        // Return synthetic result — UI shows optimistic feedback
+        return {
+          id: `offline-${Date.now()}`,
+          company_id: companyId,
+          project_id: projectId,
+          ...rest,
+        } as any // eslint-disable-line @typescript-eslint/no-explicit-any
+      }
+
+      // ── Online path ────────────────────────────────────────────────────────
       // Upload file if provided
       let fileUrl:  string | null = null
       let fileName: string | null = null
@@ -47,6 +86,9 @@ export function useCreateExpense(projectId: string) {
 
     onSuccess: (expense) => {
       queryClient.invalidateQueries({ queryKey: ['project-expenses', projectId] })
+
+      // Skip timeline event for offline-queued entries (id starts with 'offline-')
+      if (String(expense.id).startsWith('offline-')) return
 
       // Fire-and-forget timeline event
       createTimelineEvent({
@@ -75,3 +117,4 @@ export function useCreateExpense(projectId: string) {
     },
   })
 }
+
