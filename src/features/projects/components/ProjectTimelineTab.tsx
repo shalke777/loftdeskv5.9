@@ -9,10 +9,11 @@ import {
   getEventCategory,
   type TimelineFilterCategory,
 } from '@/features/projects/lib/timelineMeta'
+import { ProjectStagesPanel } from './ProjectStagesPanel'
 
-interface Props { projectId: string }
+interface Props { projectId: string; onRequestInvoice?: (projectId: string) => void }
 
-export function ProjectTimelineTab({ projectId }: Props) {
+export function ProjectTimelineTab({ projectId, onRequestInvoice }: Props) {
   const [filter, setFilter] = useState<TimelineFilterCategory>('all')
   const { data: events = [], isLoading, isError, refetch } = useProjectTimeline(projectId)
 
@@ -71,6 +72,12 @@ export function ProjectTimelineTab({ projectId }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0, padding: '16px 0' }}>
+
+      {/* Stages progress panel — C2 */}
+      <ProjectStagesPanel
+        projectId={projectId}
+        onRequestInvoice={onRequestInvoice ?? (() => {})}
+      />
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
