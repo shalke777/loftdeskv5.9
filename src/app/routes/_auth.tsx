@@ -8,6 +8,7 @@
   LayoutDashboard,
   LogOut,
   MessageSquare,
+  Mic,
   Moon,
   Receipt,
   Settings,
@@ -38,7 +39,7 @@ import { FloatingVoiceButton } from '@/shared/components/FloatingVoiceButton'
 
 type MainNavItem = {
   type?: 'route'
-  to: '/dashboard' | '/clients' | '/estimates' | '/contracts' | '/invoices' | '/projects' | '/ksef' | '/settings' | '/chat' | '/expenses'
+  to: '/dashboard' | '/clients' | '/estimates' | '/contracts' | '/invoices' | '/projects' | '/ksef' | '/settings' | '/chat' | '/expenses' | '/notes'
   label: string
   icon: typeof LayoutDashboard
   feature?: 'ksef'
@@ -53,6 +54,7 @@ const mainNavItems: MainNavItem[] = [
   { to: '/projects', label: 'Projekty', icon: FolderKanban },
   { to: '/chat', label: 'Chat', icon: MessageSquare },
   { to: '/expenses', label: 'Koszty', icon: Wallet },
+  { to: '/notes', label: 'Notatki', icon: Mic },
   { to: '/ksef', label: 'KSeF', icon: Shield, feature: 'ksef' },
   { to: '/settings', label: 'Ustawienia', icon: Settings },
 ]
@@ -61,6 +63,7 @@ const mobileNav: MainNavItem[] = [
   { to: '/dashboard',  label: 'Tablica',       icon: LayoutDashboard },
   { to: '/projects',   label: 'Projekty',      icon: FolderKanban },
   { to: '/chat',       label: 'Chat',          icon: MessageSquare },
+  { to: '/notes',      label: 'Notatki',       icon: Mic },
   { to: '/expenses',   label: 'Koszty',        icon: Wallet },
   { to: '/invoices',   label: 'Faktura',       icon: Receipt },
   { to: '/clients',    label: 'Kontrahenci',   icon: Users },

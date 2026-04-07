@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bot, ChevronRight, DollarSign, FileText, FolderKanban, Receipt, Sparkles, TrendingUp, Users } from 'lucide-react'
+import { Bot, ChevronRight, DollarSign, FileText, FolderKanban, Mic, Receipt, Sparkles, TrendingUp, Users } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { Modal } from '@/shared/ui/Modal/Modal'
@@ -21,6 +21,7 @@ const quickActions = [
   { icon: FolderKanban, title: 'Nowy projekt',       sub: 'Stwórz realizację', href: '/projects'  },
   { icon: FileText,     title: 'Nowa wycena',        sub: 'Wygeneruj ofertę',  href: '/estimates' },
   { icon: Receipt,      title: 'Nowa faktura',       sub: 'Wystaw dokument',   href: '/invoices'  },
+  { icon: Mic,          title: 'Notatki głosowe',    sub: 'Transkrypcje i AI', href: '/notes'     },
   { icon: Sparkles,     title: 'AI / Import',        sub: 'OCR, analiza, koszty', href: '/ai'     },
   { icon: Bot,          title: 'AI Asystent',        sub: 'Asystent projektu',    href: '__ai_assistant__' },
 ]
