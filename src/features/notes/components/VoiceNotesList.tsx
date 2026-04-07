@@ -367,7 +367,7 @@ export function VoiceNotesList({ projectId }: { projectId?: string }) {
 
               {/* Extracted result */}
               {isExpanded && note.extracted_result && (
-                <div style={{ padding: '12px 14px', borderTop: '1px solid var(--color-border)', background: 'var(--color-surface-elevated, #f9fafb)' }}>
+                <div style={{ padding: '12px 14px', borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
                   {note.extracted_result.summary && (
                     <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 500, lineHeight: 1.6 }}>{note.extracted_result.summary}</p>
                   )}
