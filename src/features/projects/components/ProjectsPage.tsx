@@ -7,6 +7,7 @@ import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { QueryError } from '@/shared/ui/QueryError/QueryError'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
+import { createTimelineEvent } from '@/features/projects/lib/timeline'
 import {
   useCreateInvoiceFromProject,
   useCreateProject,
@@ -77,8 +78,27 @@ export function ProjectsPage() {
 
   async function submit(input: any) {
     try {
-      if (editing) await updateProject.mutateAsync({ id: editing.id, input })
-      else await createProject.mutateAsync(input)
+      if (editing) {
+        await updateProject.mutateAsync({ id: editing.id, input })
+      } else {
+        const newProject = await createProject.mutateAsync(input)
+        // Seed default timeline stages from template (non-fatal)
+        const stages = templateValues?.default_stages ?? []
+        if (stages.length > 0 && newProject?.id && companyId) {
+          await Promise.allSettled(
+            stages.map((stage) =>
+              createTimelineEvent({
+                company_id: companyId,
+                project_id: newProject.id,
+                event_type: 'stage_started',
+                visibility: 'internal',
+                title: stage,
+                actor_type: 'operator',
+              })
+            )
+          )
+        }
+      }
       setEditing(null)
       setTemplateValues(null)
       setOpen(false)

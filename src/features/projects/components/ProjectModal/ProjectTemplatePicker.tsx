@@ -10,6 +10,7 @@ export interface ProjectTemplateValues {
   notes: string
   status: Project['status']
   address: string
+  default_stages?: string[]
 }
 
 interface Template {
@@ -26,7 +27,7 @@ const TEMPLATES: Template[] = [
     icon: FilePlus2,
     label: 'Pusty projekt',
     description: 'Zacznij od zera',
-    data: { name: '', notes: '', status: 'offer', address: '' },
+    data: { name: '', notes: '', status: 'offer', address: '', default_stages: [] },
   },
   {
     id: 'kitchen',
@@ -38,6 +39,15 @@ const TEMPLATES: Template[] = [
       notes: 'Zakres: demontaż starych okładzin, hydroizolacja, glazura, biały montaż, meble kuchenne na wymiar.',
       status: 'offer',
       address: '',
+      default_stages: [
+        'Demontaż i przygotowanie podłoża',
+        'Instalacje hydrauliczne',
+        'Hydroizolacja',
+        'Glazura i terakota',
+        'Biały montaż',
+        'Meble kuchenne na wymiar',
+        'Odbiór końcowy',
+      ],
     },
   },
   {
@@ -50,6 +60,15 @@ const TEMPLATES: Template[] = [
       notes: 'Zakres: hydroizolacja, glazura i terakota, biały montaż (wanna / prysznic), akcesoria łazienkowe.',
       status: 'offer',
       address: '',
+      default_stages: [
+        'Demontaż i przygotowanie',
+        'Instalacje hydrauliczne',
+        'Hydroizolacja',
+        'Glazura i terakota',
+        'Biały montaż',
+        'Akcesoria i wykończenie',
+        'Odbiór końcowy',
+      ],
     },
   },
   {
@@ -62,6 +81,17 @@ const TEMPLATES: Template[] = [
       notes: 'Pełny zakres: posadzki, ściany, sufity, instalacje elektryczne i hydrauliczne, wykończenie.',
       status: 'offer',
       address: '',
+      default_stages: [
+        'Projekt i kosztorys',
+        'Demontaż',
+        'Instalacje elektryczne',
+        'Instalacje hydrauliczne',
+        'Prace murarskie i tynkarskie',
+        'Posadzki i okładziny',
+        'Malowanie',
+        'Zabudowy i stolarka',
+        'Odbiór końcowy',
+      ],
     },
   },
   {
@@ -74,6 +104,14 @@ const TEMPLATES: Template[] = [
       notes: 'Zakres: gruntowanie, szpachlowanie ubytków, gipsowanie, malowanie ścian i sufitów (2 warstwy).',
       status: 'offer',
       address: '',
+      default_stages: [
+        'Przygotowanie powierzchni',
+        'Gruntowanie',
+        'Szpachlowanie i gipsowanie',
+        'I warstwa malowania',
+        'II warstwa malowania',
+        'Odbiór końcowy',
+      ],
     },
   },
   {
@@ -86,6 +124,19 @@ const TEMPLATES: Template[] = [
       notes: 'Kompleksowe wykończenie mieszkania deweloperskiego: podłogi, płytki, malowanie, instalacje, meble.',
       status: 'offer',
       address: '',
+      default_stages: [
+        'Projekt i kosztorys',
+        'Instalacje elektryczne',
+        'Instalacje hydrauliczne',
+        'Tynki i wyrównanie podłóg',
+        'Glazura i terakota (łazienki, kuchnia)',
+        'Podłogi (panele, parkiet)',
+        'Malowanie',
+        'Drzwi wewnętrzne i stolarka',
+        'Biały montaż',
+        'Meble kuchenne na wymiar',
+        'Odbiór końcowy',
+      ],
     },
   },
 ]
