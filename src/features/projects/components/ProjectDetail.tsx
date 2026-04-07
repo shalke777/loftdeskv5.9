@@ -15,6 +15,7 @@ import { ProjectExpensesTab }  from '@/features/expenses/components/ProjectExpen
 import { ProjectApprovalsTab } from '@/features/expenses/components/ProjectApprovalsTab'
 import { ProjectTimelineTab }  from '@/features/projects/components/ProjectTimelineTab'
 import { ProjectPhotosSection } from '@/features/projects/components/ProjectPhotosSection'
+import { BudgetComparisonTab } from '@/features/projects/components/BudgetComparisonTab'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useCreateEstimate, useEstimates } from '@/features/estimates/hooks/useEstimates'
 import { EstimateForm, clearDraft as clearEstimateDraft } from '@/features/estimates/components/EstimateModal/EstimateForm'
@@ -32,7 +33,7 @@ const STATUS_LABEL: Record<Project['status'], string> = {
   cancelled: 'Anulowany',
 }
 
-type MainTab = 'overview' | 'threads' | 'expenses' | 'approvals' | 'photos' | 'timeline'
+type MainTab = 'overview' | 'threads' | 'expenses' | 'budget' | 'approvals' | 'photos' | 'timeline'
 
 export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: Project | null; onEdit?: (project: Project) => void; onCreateInvoice?: (id: string) => void }) {
   const [tab, setTab] = useState<MainTab>('overview')
@@ -148,7 +149,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
 
         {/* Zakładki główne */}
         <div className="proj-detail-tabs" style={{ display: 'flex', gap: 4, marginTop: 20, marginBottom: 16, borderBottom: '1px solid var(--color-border)', paddingBottom: 0, overflowX: 'auto' }}>
-          {(['overview', 'threads', 'expenses', 'approvals', 'photos', 'timeline'] as MainTab[]).map(t => (
+          {(['overview', 'threads', 'expenses', 'budget', 'approvals', 'photos', 'timeline'] as MainTab[]).map(t => (
             <button
               key={t}
               className="proj-detail-tab"
@@ -162,6 +163,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
               {t === 'overview'  ? 'Przegląd'
                : t === 'threads'   ? 'Wątki'
                : t === 'expenses'  ? 'Koszty'
+               : t === 'budget'    ? 'Plan vs wykon.'
                : t === 'approvals' ? 'Akceptacje'
                : t === 'photos'    ? 'Zdjęcia'
                : 'Oś czasu'}
@@ -173,6 +175,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
         {tab === 'overview'   && <ProjectTimeline project={project} />}
         {tab === 'threads'    && <ProjectThreadsTab  projectId={project.id} />}
         {tab === 'expenses'   && <ProjectExpensesTab projectId={project.id} />}
+        {tab === 'budget'     && <BudgetComparisonTab projectId={project.id} />}
         {tab === 'approvals'  && <ProjectApprovalsTab projectId={project.id} />}
         {tab === 'photos'     && <ProjectPhotosSection project={project} />}
         {tab === 'timeline'   && <ProjectTimelineTab  projectId={project.id} />}
