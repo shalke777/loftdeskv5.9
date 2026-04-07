@@ -38,22 +38,42 @@ export function FloatingVoiceButton() {
   }, [voiceMode])
 
   async function startRecording() {
+    // Check MediaRecorder support
+    if (typeof MediaRecorder === 'undefined') {
+      setToast('⚠ Nagrywanie nie jest wspierane w tej przeglądarce')
+      return
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       audioChunksRef.current = []
-      const recorder = new MediaRecorder(stream)
+
+      // iOS Safari needs audio/mp4 — detect supported format
+      const preferredMime =
+        MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4'
+        : MediaRecorder.isTypeSupported('audio/ogg') ? 'audio/ogg'
+        : ''
+
+      const recorder = preferredMime
+        ? new MediaRecorder(stream, { mimeType: preferredMime })
+        : new MediaRecorder(stream)
+
+      const usedMime = recorder.mimeType || preferredMime || 'audio/mp4'
+
       recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
       recorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop())
         setVoiceMode('processing')
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
-        await processRecording(blob, recorder.mimeType || 'audio/webm')
+        const blob = new Blob(audioChunksRef.current, { type: usedMime })
+        await processRecording(blob, usedMime)
       }
       mediaRecorderRef.current = recorder
       recorder.start()
       setVoiceMode('recording')
-    } catch {
-      setToast('⚠ Brak dostępu do mikrofonu')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setToast(`⚠ Mikrofon: ${msg}`)
     }
   }
 
@@ -98,7 +118,12 @@ export function FloatingVoiceButton() {
       setToast('✓ Notatka zapisana — otwórz AI hub żeby ekstraktować')
     } catch (err) {
       setVoiceMode('idle')
-      setToast(`⚠ Błąd: ${err instanceof Error ? err.message : 'Nieznany błąd'}`)
+      const msg = err instanceof Error ? err.message
+        : (err as { message?: string })?.message
+        ? (err as { message: string }).message
+        : JSON.stringify(err)
+      console.error('[FAB] voice error:', err)
+      setToast(`⚠ Błąd: ${msg || 'Nieznany błąd'}`)
     }
   }
 
