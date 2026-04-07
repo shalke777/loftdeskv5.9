@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Mic, Sparkles, Trash2, ChevronDown, ChevronUp, Edit2, Check, X, Download, FileText, RotateCcw } from 'lucide-react'
+import { Mic, Sparkles, Trash2, ChevronDown, ChevronUp, Edit2, Check, X, Download, FileText, RotateCcw, PlusCircle } from 'lucide-react'
 import { voiceNotesApi, type VoiceNote } from '../api/voice-notes.api'
 import { supabase } from '@/shared/lib/supabase'
 import { useNavigate } from '@tanstack/react-router'
+import { projectExpensesApi } from '@/features/expenses/api/expenses.api'
+import { useCompanyId } from '@/features/auth/hooks/useAuth'
 
 function useToast() {
   const [message, setMessage] = useState<{ text: string; type: 'error' | 'success' } | null>(null)
@@ -127,8 +129,11 @@ export function VoiceNotesList({ projectId }: { projectId?: string }) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState<string | null>(null)
   const [transcriptModal, setTranscriptModal] = useState<VoiceNote | null>(null)
+  const [addingCostId, setAddingCostId] = useState<string | null>(null)
+  const [costDoneId, setCostDoneId]     = useState<string | null>(null)
   const navigate = useNavigate()
   const toast = useToast()
+  const companyId = useCompanyId()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -167,6 +172,41 @@ export function VoiceNotesList({ projectId }: { projectId?: string }) {
       toast.show(`Ekstrakcja nie powiodła się: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setExtracting(null)
+    }
+  }
+
+  async function addToCosts(note: VoiceNote) {
+    const amounts = note.extracted_result?.amounts ?? []
+    if (amounts.length === 0) { toast.show('Brak kwot do dodania — najpierw wykonaj ekstrakcję', 'error'); return }
+    const pid = note.project_id ?? projectId
+    if (!pid) { toast.show('Notatka nie jest przypisana do projektu — przypisz ją najpierw', 'error'); return }
+    if (!companyId) { toast.show('Brak identyfikatora firmy', 'error'); return }
+    setAddingCostId(note.id)
+    try {
+      const today = new Date().toISOString().slice(0, 10)
+      await Promise.all(
+        amounts.map(a =>
+          projectExpensesApi.createForProject({
+            company_id: companyId,
+            project_id: pid,
+            vendor_name: note.title,
+            gross_amount: a.amount,
+            net_amount: Math.round(a.amount / 1.23 * 100) / 100,
+            currency: a.currency ?? 'PLN',
+            notes: a.description,
+            issue_date: today,
+            source_type: 'manual',
+            parser_source: 'ai',
+          })
+        )
+      )
+      setCostDoneId(note.id)
+      toast.show(`Dodano ${amounts.length} ${amounts.length === 1 ? 'koszt' : 'koszty'} do projektu`, 'success')
+      setTimeout(() => setCostDoneId(d => d === note.id ? null : d), 4000)
+    } catch (err) {
+      toast.show(`Błąd dodawania kosztów: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setAddingCostId(null)
     }
   }
 
@@ -431,6 +471,27 @@ export function VoiceNotesList({ projectId }: { projectId?: string }) {
                         style={{ fontSize: 12, fontWeight: 700, padding: '6px 12px', borderRadius: 6, background: 'var(--color-brand)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                       >
                         <Sparkles size={12} /> Stwórz wycenę
+                      </button>
+                    )}
+
+                    {/* Add amounts as project costs */}
+                    {note.extracted_result.amounts.length > 0 && (
+                      <button
+                        type="button"
+                        disabled={addingCostId === note.id}
+                        onClick={() => addToCosts(note)}
+                        style={{
+                          fontSize: 12, fontWeight: 700, padding: '6px 12px', borderRadius: 6,
+                          background: costDoneId === note.id ? 'var(--color-success-soft, #d1fae5)' : 'var(--color-surface-soft)',
+                          color: costDoneId === note.id ? 'var(--color-success)' : 'var(--color-text-primary)',
+                          border: '1px solid var(--color-border)',
+                          cursor: addingCostId === note.id ? 'wait' : 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          opacity: addingCostId === note.id ? 0.6 : 1,
+                        }}
+                      >
+                        <PlusCircle size={12} />
+                        {addingCostId === note.id ? 'Dodawanie...' : costDoneId === note.id ? '✓ Dodano do kosztów' : 'Dodaj do kosztów'}
                       </button>
                     )}
                   </div>
