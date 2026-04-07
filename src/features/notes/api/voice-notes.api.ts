@@ -1,4 +1,4 @@
-import { getDataScope, withScope } from '@/shared/lib/dataScope'
+import { getDataScope } from '@/shared/lib/dataScope'
 import { supabase } from '@/shared/lib/supabase'
 
 export interface VoiceNote {
@@ -33,16 +33,16 @@ export const voiceNotesApi = {
   async create(input: CreateVoiceNoteInput): Promise<VoiceNote> {
     if (!supabase) throw new Error('Supabase not available')
     const scope = await getDataScope()
-    const payload = withScope(scope, {
-      project_id: input.project_id ?? null,
-      title: input.title,
-      transcript: input.transcript,
-      audio_url: input.audio_url ?? null,
-      status: 'raw' as const,
-    })
     const { data, error } = await supabase
       .from('voice_notes')
-      .insert(payload)
+      .insert({
+        company_id: scope.companyId,
+        project_id: input.project_id ?? null,
+        title: input.title,
+        transcript: input.transcript,
+        audio_url: input.audio_url ?? null,
+        status: 'raw' as const,
+      })
       .select()
       .single()
     if (error) throw error
