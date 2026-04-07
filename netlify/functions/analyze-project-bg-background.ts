@@ -263,6 +263,39 @@ export const handler: Handler = async (event) => {
     let instructionText = INSTRUCTIONS
     if (context) instructionText += `\n\nKONTEKST OD UŻYTKOWNIKA: ${context}`
 
+    // ── Inject L1+L2 project memory context (mem-7) ──────────────────────
+    if (job.project_id) {
+      try {
+        const { data: memEntries } = await sb
+          .from('project_memory_entries')
+          .select('memory_type, topic, content')
+          .eq('project_id', job.project_id)
+          .order('created_at', { ascending: false })
+          .limit(10)
+
+        const { data: projMem } = await sb
+          .from('projects')
+          .select('ai_context_summary')
+          .eq('id', job.project_id)
+          .single()
+
+        const memLines: string[] = []
+        if (projMem?.ai_context_summary) {
+          memLines.push(`Podsumowanie: ${projMem.ai_context_summary}`)
+        }
+        if (memEntries?.length) {
+          memLines.push(
+            ...memEntries.map(e => `[${e.memory_type.toUpperCase()}] ${e.topic ? e.topic + ': ' : ''}${e.content}`)
+          )
+        }
+        if (memLines.length > 0) {
+          instructionText += `\n\nKONTEKST PROJEKTU (pamięć):\n${memLines.join('\n')}`
+        }
+      } catch (memErr) {
+        console.warn('[bg] Memory context fetch failed (non-fatal):', String(memErr))
+      }
+    }
+
     // ── TEXT-FIRST PATH: extract text from PDF to save tokens ────────────
     let usedTextPath = false
     if (isPdf) {
