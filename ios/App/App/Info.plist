@@ -56,5 +56,40 @@
 	<!-- Encryption: LoftDesk uses only standard HTTPS (exempt encryption) -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+
+	<!-- iOS Home Screen Quick Actions (B2) — appear on long-press of app icon -->
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>add-expense</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Dodaj koszt</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Zeskanuj fakturę lub wpisz ręcznie</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeAdd</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>projects</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Projekty</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Otwórz listę projektów</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeHome</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>voice-note</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Notatka głosowa</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Nagraj notatkę z budowy</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeAudio</string>
+		</dict>
+	</array>
 </dict>
 </plist>

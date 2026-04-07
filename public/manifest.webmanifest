@@ -7,6 +7,29 @@
   "background_color": "#202125",
   "theme_color": "#202125",
   "lang": "pl",
+  "shortcuts": [
+    {
+      "name": "Dodaj koszt",
+      "short_name": "Koszt",
+      "description": "Szybko dodaj koszt lub zeskanuj fakturę",
+      "url": "/expenses",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Projekty",
+      "short_name": "Projekty",
+      "description": "Otwórz listę projektów",
+      "url": "/projects",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Notatka głosowa",
+      "short_name": "Notatka",
+      "description": "Nagraj notatkę głosową z budowy",
+      "url": "/notes",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },

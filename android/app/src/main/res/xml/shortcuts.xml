@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android static App Shortcuts — appear on long-press of LoftDesk icon.
+  Requires Android 7.1+ (API 25).
+  Deep-link scheme: loftdesk://app/{path} → handled by appUrlOpen in main.tsx.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Shortcut 1: Dodaj koszt -->
+    <shortcut
+        android:shortcutId="add-expense"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_expense_short"
+        android:shortcutLongLabel="@string/shortcut_expense_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="loftdesk://app/expenses" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <!-- Shortcut 2: Projekty -->
+    <shortcut
+        android:shortcutId="projects"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_projects_short"
+        android:shortcutLongLabel="@string/shortcut_projects_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="loftdesk://app/projects" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <!-- Shortcut 3: Notatka głosowa -->
+    <shortcut
+        android:shortcutId="voice-note"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_voice_short"
+        android:shortcutLongLabel="@string/shortcut_voice_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="loftdesk://app/notes" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+</shortcuts>

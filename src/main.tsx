@@ -61,8 +61,10 @@ window.addEventListener('unhandledrejection', (event) => {
 })
 
 // Register appUrlOpen deep-link handler for Capacitor native shell.
-// Fires when the OS hands a URL to the app (Universal Link / Custom Scheme).
-// We extract the path+query and navigate within the WebView.
+// Fires when the OS hands a URL to the app (Universal Link / Custom Scheme / App Shortcut).
+// Handles:
+//   - Universal Links: https://loftdesk.pl/path → navigate to /path
+//   - App Shortcuts (B2): loftdesk://app/expenses → navigate to /expenses
 ;(function registerNativeDeepLinks() {
   const cap = (window as any).Capacitor
   if (!cap?.isNativePlatform?.()) return

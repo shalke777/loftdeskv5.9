@@ -4,4 +4,12 @@
     <string name="title_activity_main">LoftDesk</string>
     <string name="package_name">pl.loftdesk.app</string>
     <string name="custom_url_scheme">pl.loftdesk.app</string>
+
+    <!-- App Shortcuts labels (B2) -->
+    <string name="shortcut_expense_short">Dodaj koszt</string>
+    <string name="shortcut_expense_long">Dodaj koszt lub zeskanuj fakturę</string>
+    <string name="shortcut_projects_short">Projekty</string>
+    <string name="shortcut_projects_long">Otwórz listę projektów</string>
+    <string name="shortcut_voice_short">Notatka głosowa</string>
+    <string name="shortcut_voice_long">Nagraj notatkę głosową z budowy</string>
 </resources>

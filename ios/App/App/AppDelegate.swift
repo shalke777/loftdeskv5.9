@@ -46,4 +46,25 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+    // ── iOS Home Screen Quick Actions (B2) ────────────────────────────────────
+    // Called when user taps a quick action from the home screen (long-press icon).
+    // Maps shortcutItem.type → internal URL, then routes via existing appUrlOpen handler.
+    func application(_ application: UIApplication,
+                     performActionFor shortcutItem: UIApplicationShortcutItem,
+                     completionHandler: @escaping (Bool) -> Void) {
+        let routes: [String: String] = [
+            "add-expense": "loftdesk://app/expenses",
+            "projects":    "loftdesk://app/projects",
+            "voice-note":  "loftdesk://app/notes",
+        ]
+        if let urlString = routes[shortcutItem.type],
+           let url = URL(string: urlString) {
+            // Re-use the existing Capacitor URL-open pipeline
+            _ = ApplicationDelegateProxy.shared.application(application, open: url, options: [:])
+            completionHandler(true)
+        } else {
+            completionHandler(false)
+        }
+    }
+
 }
