@@ -567,7 +567,7 @@ const DOC_TYPE_LABEL_APPROVAL: Record<string, string> = {
   other:    'Dokument',
 }
 
-function ApprovalsTab({ projectId, onSwitchToChat }: { projectId: string; onSwitchToChat?: () => void }) {
+function ApprovalsTab({ projectId, projectName, companyId, onSwitchToChat }: { projectId: string; projectName?: string; companyId?: string; onSwitchToChat?: () => void }) {
   const { user } = useAuth()
   const { data: docRequests, isLoading } = useClientDocSignatureRequests(projectId)
   const respondDocMutation = useClientRespondDocApproval(projectId)
@@ -613,6 +613,23 @@ function ApprovalsTab({ projectId, onSwitchToChat }: { projectId: string; onSwit
       consentText,
       comment:            comments[req.id] ?? undefined,
     })
+    // Fire-and-forget: notify operator via email (non-blocking)
+    if (companyId || req.company_id) {
+      fetch('/.netlify/functions/notify-approval-response', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company_id:     companyId ?? req.company_id,
+          project_id:     req.project_id,
+          project_name:   projectName ?? req.project_id,
+          document_label: req.document_label ?? req.document_type,
+          decision,
+          client_name:    user.fullName ?? undefined,
+          client_email:   user.email ?? undefined,
+          comment:        comments[req.id] ?? undefined,
+        }),
+      }).catch(() => { /* ignore — notification is best-effort */ })
+    }
     setConfirmingId(null)
     setConfirmDecision(null)
     if (decision === 'questioned') {
@@ -872,7 +889,7 @@ export function ClientProjectPage({ projectId }: Props) {
       <div className="client-tab-panel">
         {activeTab === 'documents'  && <DocumentsTab  projectId={projectId} />}
         {activeTab === 'chat'       && <ChatTab        projectId={projectId} />}
-        {activeTab === 'approvals'  && <ApprovalsTab   projectId={projectId} onSwitchToChat={() => setActiveTab('chat')} />}
+        {activeTab === 'approvals'  && <ApprovalsTab   projectId={projectId} projectName={project?.name} companyId={project?.company_id} onSwitchToChat={() => setActiveTab('chat')} />}
         {activeTab === 'timeline'   && <TimelineTab    projectId={projectId} />}
       </div>
     </div>

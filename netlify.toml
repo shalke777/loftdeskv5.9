@@ -76,3 +76,6 @@
 
 [functions."daily-report"]
   timeout = 26
+
+[functions."notify-approval-response"]
+  timeout = 10
