@@ -697,7 +697,7 @@ function EditableLineItemsList({ items, onUpdate, onRemove, onAdd, sumMismatch, 
 
       {/* Sum mismatch warning */}
       {sumMismatch && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: 'rgba(184, 116, 42, 0.1)', border: '1px solid rgba(184, 116, 42, 0.3)', borderRadius: 6, fontSize: 12, color: 'var(--color-warning)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: 'rgba(184, 116, 42, 0.1)', border: '1px solid rgba(184, 116, 42, 0.3)', borderRadius: 'var(--radius-md, 8px)', fontSize: 12, color: 'var(--color-warning)' }}>
           <AlertTriangle size={14} />
           Suma pozycji ({lineItemsSum.toFixed(2)}) ≠ kwota brutto faktury ({isNaN(formGross) ? '—' : formGross.toFixed(2)})
         </div>

@@ -309,7 +309,7 @@ function HeroSection({ t, variant }: { t: typeof T.minimal; variant: Variant }) 
           >
             {[
               { label: "Bez uczenia się" },
-              { label: "Działasz od razu" },
+              { label: "KSeF od ręki" },
               { label: "Mobile-first" },
             ].map((f) => (
               <div key={f.label} className="lp2-check-pill">
@@ -397,10 +397,10 @@ function ProblemSection({ t }: { t: typeof T.minimal }) {
 
 function SolutionSection({ t }: { t: typeof T.minimal }) {
   const items = [
-    { label: "Wrzucasz zdjęcia z telefonu" },
-    { label: "Dodajesz dokumenty i koszty" },
-    { label: "Masz pełny kontekst projektu" },
-    { label: "Widzisz co, kiedy i za ile" },
+    { label: "Wrzucasz zdjęcia z telefonu → są przy projekcie, nie w rolce" },
+    { label: "Dodajesz PDF → AI odczytuje kwoty i pozycje automatycznie" },
+    { label: "Piszesz do klienta → historia jest w jednym miejscu" },
+    { label: "Sprawdzasz koszty → widzisz marżę zanim wyślesz fakturę" },
   ];
   return (
     <section className="lp2-section" style={{ background: t.bg }}>
@@ -474,7 +474,7 @@ function HowItWorksSection({ t }: { t: typeof T.minimal }) {
     {
       num: "03",
       title: "Działasz szybciej",
-      desc: "Wycena gotowa w minutę. Klient dostaje odpowiedź od razu. Koszty nie uciekają.",
+      desc: "Wycena gotowa w 10 minut. Klient widzi etapy — bez SMSów z pytaniem. Faktura jednym kliknięciem do KSeF.",
       icon: Zap,
     },
   ];
@@ -522,10 +522,10 @@ function HowItWorksSection({ t }: { t: typeof T.minimal }) {
 
 function EffectsSection({ t }: { t: typeof T.minimal }) {
   const effects = [
-    { icon: FolderOpen, title: "Mniej chaosu", accent: t.accent, desc: "Nie szukasz informacji po telefonie. Nie dzwonisz do siebie żeby coś przypomnieć.", detail: "Wszystko w jednym projekcie" },
-    { icon: Zap, title: "Szybsze decyzje", accent: t.warm, desc: "Masz kontekst na wyciągnięcie ręki. Klient pyta — odpowiadasz od razu.", detail: "Bez szukania" },
-    { icon: ShieldCheck, title: "Mniej pomyłek", accent: "#6B9CF5", desc: "Nie zapominasz o kosztach. Każda pozycja jest zapisana. Historia nie znika.", detail: "Pełna historia projektu" },
-    { icon: Clock, title: "Więcej kontroli", accent: "#A78BFA", desc: "Nie gubisz ustaleń z klientem. Wiesz co zostało powiedziane i kiedy.", detail: "Chronologia zdarzeń" },
+    { icon: FolderOpen, title: "Koniec szukania", accent: t.accent, desc: "Nie szukasz zdjęć z budowy po telefonie. Nie dzwonisz do siebie żeby coś przypomnieć.", detail: "Wszystko przy projekcie" },
+    { icon: Zap, title: "Wycena w 10 minut", accent: t.warm, desc: "Powiedz co trzeba zrobić — AI generuje draft kosztorysu. Sprawdzasz, wysyłasz. Koniec.", detail: "Nie 2 godziny" },
+    { icon: ShieldCheck, title: "Klient sam sprawdza", accent: "#6B9CF5", desc: "Klient widzi etapy projektu, zatwierdza decyzje, podpisuje — bez 15 maili z pytaniem.", detail: "-70% pytań SMS/mail" },
+    { icon: Clock, title: "KSeF gotowy od ręki", accent: "#A78BFA", desc: "Faktura idzie do KSeF automatycznie — bez dodatkowego programu. Od 2026 to obowiązkowe.", detail: "Obowiązek od Feb 2026" },
   ];
   return (
     <section className="lp2-section" style={{ background: t.bg }}>
@@ -573,9 +573,9 @@ function NotSystemSection({ t, variant }: { t: typeof T.minimal; variant: Varian
     { text: "Po prostu wrzucasz i działasz.", accent: true },
   ];
   const features = [
-    { Icon: Smartphone, label: "Zaczyna się od telefonu", sub: "Tak jak Twoja praca" },
-    { Icon: Zap, label: "Działa od razu", sub: "Bez konfiguracji, bez onboardingu" },
-    { Icon: Sparkles, label: "AI gdzie trzeba", sub: "Bez hype'u, z realną pomocą" },
+    { Icon: Smartphone, label: "Działa na budowie", sub: "Telefon, zdjęcie, głos — bez biurka" },
+    { Icon: Sparkles, label: "AI robi nudną robotę", sub: "Odczytuje faktury, liczy koszty, proponuje kwoty" },
+    { Icon: ShieldCheck, label: "Klient ma swój widok", sub: "Ty masz swój. Nikt nie widzi za dużo." },
   ];
   return (
     <section className="lp2-section--lg" style={{ background: t.bgAlt }}>
@@ -625,9 +625,9 @@ function NotSystemSection({ t, variant }: { t: typeof T.minimal; variant: Varian
 
 function TestimonialsSection({ t }: { t: typeof T.minimal }) {
   const quotes = [
-    { text: "W końcu mam wszystko w jednym miejscu. Zajęło mi 10 minut żeby wrzucić pierwszy projekt. Nie wróciłem do Excela.", name: "Tomasz K.", role: "Właściciel firmy remontowej", avatar: "TK" },
-    { text: "Myślałem że to kolejny system, który trzeba wdrażać. Okazało sie, że po prostu działa od pierwszego dnia.", name: "Marek W.", role: "Wykonawca, 8 pracowników", avatar: "MW" },
-    { text: "Klient pyta, ja odpowiadam w 30 sekund bo mam wszystko pod ręką. Wcześniej szukałem w 4 miejscach.", name: "Dariusz S.", role: "Firma wykończeniowa", avatar: "DS" },
+    { text: "W końcu mam wszystko w jednym miejscu i nie dzwonię do siebie po zdjęcia z budowy.", name: "Marcin K.", role: "Firma wykończeniowa", avatar: "MK" },
+    { text: "Nie wróciłem już do Excela. Marża jest widoczna zanim wyślę fakturę.", name: "Piotr W.", role: "Generalny wykonawca", avatar: "PW" },
+    { text: "Klient akceptuje kosztorys jednym kliknięciem — bez tłumaczenia gdzie kliknąć.", name: "Łukasz D.", role: "Remonty i wykończenia", avatar: "ŁD" },
   ];
   return (
     <section className="lp2-section" style={{ background: t.bg }}>
