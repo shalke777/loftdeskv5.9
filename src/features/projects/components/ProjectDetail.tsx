@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarCheck } from 'lucide-react'
+import { CalendarCheck, QrCode } from 'lucide-react'
 import type { Project } from '@/entities/project/model'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Card } from '@/shared/ui/Card/Card'
@@ -18,6 +18,7 @@ import { ProjectPhotosSection } from '@/features/projects/components/ProjectPhot
 import { BudgetComparisonTab } from '@/features/projects/components/BudgetComparisonTab'
 import { ProjectMemoryPanel } from '@/features/projects/components/ProjectMemoryPanel'
 import { ProjectWeatherWidget } from '@/features/projects/components/ProjectWeatherWidget'
+import { ProjectQRCodeModal } from '@/features/projects/components/ProjectQRCodeModal'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useCreateEstimate, useEstimates } from '@/features/estimates/hooks/useEstimates'
 import { EstimateForm, clearDraft as clearEstimateDraft } from '@/features/estimates/components/EstimateModal/EstimateForm'
@@ -44,6 +45,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [reportStatus, setReportStatus] = useState<'idle' | 'confirm' | 'sending' | 'done' | 'error'>('idle')
   const [htmlReportLoading, setHtmlReportLoading] = useState(false)
+  const [showQR, setShowQR] = useState(false)
   const { data: clients } = useClients()
   const linkedClient = clients?.find(c => c.id === project?.client_id)
   const companyId = useCompanyId()
@@ -149,6 +151,11 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
           {/* Raport dzienny HTML — podgląd + druk */}
           <Button variant="secondary" onClick={openDailyReport} disabled={htmlReportLoading}>
             {htmlReportLoading ? '⏳ Generowanie...' : '📋 Raport dzienny'}
+          </Button>
+          {/* QR kod projektu */}
+          <Button variant="secondary" onClick={() => setShowQR(true)}>
+            <QrCode size={14} style={{ marginRight: 4 }} />
+            Kod QR
           </Button>
           {/* Raport dzienny — widoczny gdy projekt ma klienta z e-mailem */}
           {linkedClient?.email && reportStatus === 'idle' && (
@@ -295,6 +302,15 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
           }}
         />
       </Modal>
+
+      {/* QR kod projektu */}
+      <ProjectQRCodeModal
+        open={showQR}
+        onClose={() => setShowQR(false)}
+        projectId={project.id}
+        projectName={project.name}
+        projectNumber={project.number}
+      />
     </div>
   )
 }
