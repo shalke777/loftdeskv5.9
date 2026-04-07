@@ -3,6 +3,78 @@
 import type { Handler, HandlerEvent } from '@netlify/functions'
 import { createClient } from '@supabase/supabase-js'
 
+// Chunk transcript into segments of max CHUNK_SIZE chars for GPT context safety
+const CHUNK_SIZE = 40_000
+const MAX_CHUNKS = 4 // limit: ~160k chars max input total
+
+function chunkTranscript(transcript: string): string[] {
+  if (transcript.length <= CHUNK_SIZE) return [transcript]
+  const chunks: string[] = []
+  let offset = 0
+  while (offset < transcript.length && chunks.length < MAX_CHUNKS) {
+    chunks.push(transcript.slice(offset, offset + CHUNK_SIZE))
+    offset += CHUNK_SIZE
+  }
+  return chunks
+}
+
+async function extractFromChunk(
+  openaiKey: string,
+  systemPrompt: string,
+  chunk: string,
+  chunkIndex: number,
+  totalChunks: number
+): Promise<Record<string, unknown>> {
+  const chunkNote = totalChunks > 1 ? ` (fragment ${chunkIndex + 1} z ${totalChunks})` : ''
+  const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      response_format: { type: 'json_object' },
+      max_tokens: 1500,
+      temperature: 0,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Transkrypt${chunkNote}:\n\n${chunk}` },
+      ],
+    }),
+  })
+
+  if (!gptRes.ok) {
+    const errText = await gptRes.text()
+    throw new Error(`GPT HTTP ${gptRes.status}: ${errText.slice(0, 200)}`)
+  }
+
+  const gptData = await gptRes.json() as { choices: Array<{ message: { content: string } }> }
+  const raw = gptData.choices?.[0]?.message?.content ?? '{}'
+  try { return JSON.parse(raw) } catch { return {} }
+}
+
+function mergeChunkResults(results: Record<string, unknown>[]) {
+  const summaries: string[] = []
+  const action_items: string[] = []
+  const amounts: Array<{ description: string; amount: number; currency: string }> = []
+  const decisions: string[] = []
+  const estimateHints: string[] = []
+
+  for (const r of results) {
+    if (typeof r.summary === 'string' && r.summary) summaries.push(r.summary)
+    if (Array.isArray(r.action_items)) action_items.push(...(r.action_items as string[]))
+    if (Array.isArray(r.amounts)) amounts.push(...(r.amounts as typeof amounts))
+    if (Array.isArray(r.decisions)) decisions.push(...(r.decisions as string[]))
+    if (typeof r.estimate_hint === 'string' && r.estimate_hint) estimateHints.push(r.estimate_hint)
+  }
+
+  return {
+    summary: summaries.join(' '),
+    action_items: [...new Set(action_items)],
+    amounts,
+    decisions: [...new Set(decisions)],
+    estimate_hint: estimateHints.join('; ') || null,
+  }
+}
+
 async function verifyAuth(event: HandlerEvent): Promise<string | null> {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
   const key = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
@@ -66,38 +138,11 @@ Przeanalizuj transkrypt notatki głosowej i wyciągnij:
 Zwróć TYLKO JSON bez dodatkowego tekstu.`
 
   try {
-    const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        response_format: { type: 'json_object' },
-        max_tokens: 800,
-        temperature: 0,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Transkrypt:\n\n${note.transcript}` },
-        ],
-      }),
-    })
-
-    if (!gptRes.ok) {
-      await sb.from('voice_notes').update({ status: 'error' }).eq('id', body.note_id)
-      return { statusCode: 502, headers: cors, body: JSON.stringify({ error: 'GPT failed' }) }
-    }
-
-    const gptData = await gptRes.json() as { choices: Array<{ message: { content: string } }> }
-    const raw = gptData.choices?.[0]?.message?.content ?? '{}'
-    let extracted: Record<string, unknown>
-    try { extracted = JSON.parse(raw) } catch { extracted = {} }
-
-    const result = {
-      summary:      typeof extracted.summary === 'string' ? extracted.summary : '',
-      action_items: Array.isArray(extracted.action_items) ? extracted.action_items as string[] : [],
-      amounts:      Array.isArray(extracted.amounts) ? extracted.amounts : [],
-      decisions:    Array.isArray(extracted.decisions) ? extracted.decisions as string[] : [],
-      estimate_hint: typeof extracted.estimate_hint === 'string' ? extracted.estimate_hint : null,
-    }
+    const chunks = chunkTranscript(note.transcript)
+    const chunkResults = await Promise.all(
+      chunks.map((chunk, i) => extractFromChunk(openaiKey, systemPrompt, chunk, i, chunks.length))
+    )
+    const result = mergeChunkResults(chunkResults)
 
     await sb.from('voice_notes').update({
       status: 'processed',
@@ -112,6 +157,7 @@ Zwróć TYLKO JSON bez dodatkowego tekstu.`
     }
   } catch (err) {
     await sb.from('voice_notes').update({ status: 'error' }).eq('id', body.note_id)
-    return { statusCode: 502, headers: cors, body: JSON.stringify({ error: 'Exception', detail: String(err) }) }
+    const detail = err instanceof Error ? err.message : String(err)
+    return { statusCode: 502, headers: cors, body: JSON.stringify({ error: 'Extraction failed', detail }) }
   }
 }

@@ -63,4 +63,4 @@
   status = 200
 
 [functions."voice-extract"]
-  timeout = 30
+  timeout = 26

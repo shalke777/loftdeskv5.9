@@ -55,7 +55,7 @@ export const voiceNotesApi = {
       .from('voice_notes')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(50)
+      .limit(200)
     if (error) throw error
     return (data ?? []) as VoiceNote[]
   },
@@ -94,6 +94,42 @@ export const voiceNotesApi = {
     const { error } = await supabase
       .from('voice_notes')
       .update({ status: 'error', updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (error) throw error
+  },
+
+  async update(id: string, patch: Partial<Pick<VoiceNote, 'title' | 'transcript'>>): Promise<void> {
+    if (!supabase) return
+    const { error } = await supabase
+      .from('voice_notes')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (error) throw error
+  },
+
+  async updateTitle(id: string, title: string): Promise<void> {
+    if (!supabase) return
+    const { error } = await supabase
+      .from('voice_notes')
+      .update({ title, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (error) throw error
+  },
+
+  async updateTranscript(id: string, transcript: string): Promise<void> {
+    if (!supabase) return
+    const { error } = await supabase
+      .from('voice_notes')
+      .update({ transcript, status: 'raw', extracted_result: null, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (error) throw error
+  },
+
+  async resetToRaw(id: string): Promise<void> {
+    if (!supabase) return
+    const { error } = await supabase
+      .from('voice_notes')
+      .update({ status: 'raw', extracted_result: null, updated_at: new Date().toISOString() })
       .eq('id', id)
     if (error) throw error
   },
