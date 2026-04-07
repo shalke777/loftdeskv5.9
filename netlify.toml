@@ -64,3 +64,12 @@
 
 [functions."voice-extract"]
   timeout = 26
+
+[functions."memory-context"]
+  timeout = 26
+
+[functions."memory-add"]
+  timeout = 10
+
+[functions."memory-check"]
+  timeout = 10
