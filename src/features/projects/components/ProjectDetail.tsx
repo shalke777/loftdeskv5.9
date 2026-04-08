@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarCheck, QrCode, ClipboardCheck } from 'lucide-react'
+import { CalendarCheck, FileDown, QrCode, ClipboardCheck } from 'lucide-react'
 import type { Project } from '@/entities/project/model'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Card } from '@/shared/ui/Card/Card'
@@ -25,9 +25,10 @@ import { useCreateEstimate, useEstimates } from '@/features/estimates/hooks/useE
 import { EstimateForm, clearDraft as clearEstimateDraft } from '@/features/estimates/components/EstimateModal/EstimateForm'
 import { useCreateContract, useContracts } from '@/features/contracts/hooks/useContracts'
 import { ContractForm } from '@/features/contracts/components/ContractModal/ContractForm'
-import { useCreateInvoice } from '@/features/invoices/hooks/useInvoices'
+import { useCreateInvoice, useInvoices } from '@/features/invoices/hooks/useInvoices'
 import { InvoiceForm } from '@/features/invoices/components/InvoiceModal/InvoiceForm'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
+import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { supabase } from '@/shared/lib/supabase'
 
 const STATUS_LABEL: Record<Project['status'], string> = {
@@ -46,22 +47,26 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [reportStatus, setReportStatus] = useState<'idle' | 'confirm' | 'sending' | 'done' | 'error'>('idle')
   const [htmlReportLoading, setHtmlReportLoading] = useState(false)
+  const [projectReportLoading, setProjectReportLoading] = useState(false)
   const [showQR, setShowQR] = useState(false)
   const [showHandover, setShowHandover] = useState(false)
   const { data: clients } = useClients()
   const linkedClient = clients?.find(c => c.id === project?.client_id)
   const companyId = useCompanyId()
+  const companyMeta = useCompanyMeta()
   const createEstimate = useCreateEstimate()
   const createContract = useCreateContract()
   const createInvoice = useCreateInvoice()
   const { data: estimates = [] } = useEstimates()
   const { data: contracts = [] } = useContracts()
+  const { data: allInvoices = [] } = useInvoices()
 
   if (!project) return null
 
   const flags = (project.completeness_flags ?? {}) as Record<string, boolean>
   const projectEstimates = estimates.filter(e => e.project_id === project.id)
   const projectContracts = contracts.filter(c => c.project_id === project.id)
+  const projectInvoices  = allInvoices.filter(i => i.project_id === project.id)
   const hasEstimate = flags.has_estimate || projectEstimates.length > 0
   const hasContract = flags.has_contract || projectContracts.length > 0
   const latestEstimate = projectEstimates[projectEstimates.length - 1] ?? null
@@ -124,6 +129,29 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
     }
   }
 
+  async function exportProjectReport() {
+    if (!project) return
+    setProjectReportLoading(true)
+    try {
+      const { buildProjectReportPreview } = await import('@/services/pdf/documentPreview')
+      const { generatePdfBlob } = await import('@/services/pdf/pdfGenerator')
+      const { downloadBlob } = await import('@/shared/lib/downloads')
+      const html = buildProjectReportPreview(
+        { project, estimates: projectEstimates, contracts: projectContracts, invoices: projectInvoices, client: linkedClient ?? null },
+        { name: companyMeta.name, nip: companyMeta.nip, address: companyMeta.address,
+          postalCity: companyMeta.postalCity, email: companyMeta.email, phone: companyMeta.phone, logoUrl: companyMeta.logoUrl },
+      )
+      const blob = await generatePdfBlob(html)
+      const filename = `Raport_${(project.number ?? project.id).replace(/[/\\:*?"<>|]/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`
+      downloadBlob(filename, blob)
+    } catch (e) {
+      console.error('[ProjectReport] export error', e)
+      alert('Nie udało się wygenerować raportu PDF.')
+    } finally {
+      setProjectReportLoading(false)
+    }
+  }
+
   return (
     <div className="grid-3" style={{ alignItems: 'start' }}>
       <Card className="grid-span-2">
@@ -153,6 +181,11 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
           {/* Raport dzienny HTML — podgląd + druk */}
           <Button variant="secondary" onClick={openDailyReport} disabled={htmlReportLoading}>
             {htmlReportLoading ? '⏳ Generowanie...' : '📋 Raport dzienny'}
+          </Button>
+          {/* Raport zbiorczy projektu — PDF */}
+          <Button variant="secondary" onClick={exportProjectReport} disabled={projectReportLoading}>
+            <FileDown size={14} style={{ marginRight: 4 }} />
+            {projectReportLoading ? 'Generowanie...' : 'Eksportuj PDF'}
           </Button>
           {/* QR kod projektu */}
           <Button variant="secondary" onClick={() => setShowQR(true)}>

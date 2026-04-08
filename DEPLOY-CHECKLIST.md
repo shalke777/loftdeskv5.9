@@ -1,13 +1,97 @@
-# LoftDesk v5.9 — Deploy & Release Checklist (Etap 10)
+# LoftDesk v5.9 — Deploy & Release Checklist (Etap 10 + Sprint P/S/UX)
 
 > Wersja: v5.9  
-> Data: 2026-03-26  
+> Ostatnia aktualizacja: 2026-04-08  
+> Ostatni commit: `9fe84a08`  
 > Branch deploy: `main`  
 > Build: `npm install && cd netlify/functions && npm install && cd ../.. && npx vite build`  
 > Publish dir: `dist`  
 > Functions dir: `netlify/functions`
 
 ---
+
+## ⚠️ KRYTYCZNE: MIGRACJE DO WYKONANIA NA SUPABASE PRODUKCYJNYM
+
+### Migration 115 — `invoice_reminders`
+**Feature:** Powiadomienia o płatnościach (F2: Payment Reminders)
+
+```sql
+-- Uruchom w Supabase Dashboard → SQL Editor (prod)
+-- Plik: supabase/migrations/115_invoice_reminders.sql
+
+-- Tworzy:
+--   • tabela invoice_reminders (id, company_id, invoice_id, reminder_number, sent_at, ...)
+--   • kolumny reminder_count + last_reminder_at na tabeli invoices
+--   • RLS policies
+--   • Rozszerza constraint na operator_notifications o 'payment_reminder'
+```
+
+**Kroki:**
+- [ ] Otwórz Supabase Dashboard → SQL Editor → New query
+- [ ] Wklej zawartość pliku `supabase/migrations/115_invoice_reminders.sql`
+- [ ] Wykonaj → sprawdź brak błędów
+- [ ] Weryfikacja: `SELECT COUNT(*) FROM invoice_reminders;` → zwraca `0` (pusta tabela)
+- [ ] Weryfikacja: `SELECT reminder_count FROM invoices LIMIT 1;` → zwraca wartość
+
+**Rollback (jeśli coś pójdzie nie tak):**
+```sql
+ALTER TABLE invoices DROP COLUMN IF EXISTS reminder_count;
+ALTER TABLE invoices DROP COLUMN IF EXISTS last_reminder_at;
+DROP TABLE IF EXISTS invoice_reminders;
+-- Przywróć poprzedni constraint na operator_notifications ręcznie
+```
+
+---
+
+### Migration 116 — `company_price_list`
+**Feature:** Cennik usług firm (S1: autocomplete wycen + S2: widok w Ustawieniach)
+
+```sql
+-- Uruchom w Supabase Dashboard → SQL Editor (prod)
+-- Plik: supabase/migrations/116_company_price_list.sql
+
+-- Tworzy:
+--   • tabela company_price_list (id, company_id, catalog_item_id, unit_price, updated_at)
+--   • UNIQUE (company_id, catalog_item_id)
+--   • INDEX company_price_list_company_idx
+--   • RLS policies: select/insert/update/delete dla company_members
+```
+
+**Kroki:**
+- [ ] Otwórz Supabase Dashboard → SQL Editor → New query
+- [ ] Wklej zawartość pliku `supabase/migrations/116_company_price_list.sql`
+- [ ] Wykonaj → sprawdź brak błędów
+- [ ] Weryfikacja: `SELECT COUNT(*) FROM company_price_list;` → zwraca `0`
+- [ ] Weryfikacja RLS: upewnij się że tabela ma włączone RLS (zielona ikona w Table Editor)
+
+**Rollback:**
+```sql
+DROP TABLE IF EXISTS company_price_list;
+```
+
+---
+
+### Kolejność wykonania migracji
+```
+115 (invoice_reminders) → 116 (company_price_list)
+```
+Obie są niezależne — można wykonać w dowolnej kolejności. Nie mają wzajemnych zależności.
+
+---
+
+## SMOKE TEST — MIGRACJE
+
+Po wykonaniu obu migracji:
+
+- [ ] Wejdź na `/settings` → sekcja **Cennik usług** widoczna
+- [ ] Kliknij "Dodaj pozycję" → wyszukaj "malowanie" → ceny zapisują się do `company_price_list`
+- [ ] Wejdź na `/estimates` → nowa wycena → dodaj pozycję → cena z cennika auto-wypełnia się
+- [ ] Wejdź na `/invoices` → istniejąca faktura → kliknij dzwoneczek (przypomnienie) → `invoice_reminders` powinien logować wpis
+- [ ] Ustawienia → Cennik usług → edytuj cenę → przeładuj stronę → cena zachowana
+
+---
+
+
 
 ## STATUS PRZED DEPLOYEM
 

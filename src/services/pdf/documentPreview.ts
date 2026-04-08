@@ -2,6 +2,8 @@ import type { Estimate } from '@/entities/estimate/model'
 import type { Invoice } from '@/entities/invoice/model'
 import type { Contract } from '@/entities/contract/model'
 import type { HandoverProtocol } from '@/entities/documentation/model'
+import type { Project } from '@/entities/project/model'
+import type { Client } from '@/entities/client/model'
 import { formatCurrency } from '@/shared/lib/formatters'
 
 type Party = {
@@ -810,6 +812,127 @@ export function buildBudgetReportPreview(data: BudgetReportData, companyInput?: 
   </section>`
 
   return pageShell(`Raport budżetowy — ${data.projectNumber}`, data.projectName, page)
+}
+
+// ─── PROJECT REPORT (zbiorczy) ────────────────────────────────────────────────
+
+export interface ProjectReportData {
+  project: Project
+  estimates: Estimate[]
+  contracts: Contract[]
+  invoices: Invoice[]
+  client: Client | null
+}
+
+const STATUS_LABEL_PR: Record<string, string> = {
+  offer: 'Oferta', active: 'W realizacji', done: 'Zakończony', cancelled: 'Anulowany',
+}
+const INVOICE_STATUS_PR: Record<string, string> = {
+  draft: 'Szkic', unpaid: 'Nieopłacona', paid: 'Opłacona', overdue: 'Zaległa',
+}
+const EST_STATUS_PR: Record<string, string> = {
+  draft: 'Szkic', sent: 'Wysłana', accepted: 'Zaakceptowana', rejected: 'Odrzucona',
+}
+const CON_STATUS_PR: Record<string, string> = {
+  unsigned: 'Niepodpisana', signed: 'Podpisana',
+}
+
+export function buildProjectReportPreview(data: ProjectReportData, company?: CompanyMeta): string {
+  const { project, estimates, contracts, invoices, client } = data
+  const fmt = (v: number | null | undefined) => formatCurrency(v ?? 0)
+  const today = new Date().toLocaleDateString('pl-PL', { day: '2-digit', month: 'long', year: 'numeric' })
+
+  // ── Nagłówek projektu ──────────────────────────────────────────────────────
+  const projectStatus = STATUS_LABEL_PR[project.status] ?? project.status
+  const clientInfo = client
+    ? `${escapeHtml(client.name)}${client.email ? ` · ${escapeHtml(client.email)}` : ''}${client.phone ? ` · ${escapeHtml(client.phone)}` : ''}`
+    : '—'
+
+  const headerSection = `
+    <div class="section">
+      <table>
+        <thead><tr><th>Pole</th><th>Wartość</th></tr></thead>
+        <tbody>
+          <tr><td>Numer projektu</td><td>${escapeHtml(project.number ?? '—')}</td></tr>
+          <tr><td>Nazwa</td><td>${escapeHtml(project.name)}</td></tr>
+          <tr><td>Status</td><td>${escapeHtml(projectStatus)}</td></tr>
+          <tr><td>Adres</td><td>${escapeHtml(project.address ?? '—')}</td></tr>
+          <tr><td>Data rozpoczęcia</td><td>${escapeHtml(project.start_date ?? '—')}</td></tr>
+          <tr><td>Data zakończenia</td><td>${escapeHtml(project.end_date ?? '—')}</td></tr>
+          <tr><td>Klient</td><td>${clientInfo}</td></tr>
+        </tbody>
+      </table>
+    </div>`
+
+  // ── Wyceny ─────────────────────────────────────────────────────────────────
+  const estRows = estimates.length === 0
+    ? '<tr><td colspan="4" style="text-align:center;color:#888;">Brak wycen</td></tr>'
+    : estimates.map(e => {
+        return `<tr><td>${escapeHtml(e.number ?? '—')}</td><td>${escapeHtml(EST_STATUS_PR[e.status] ?? e.status)}</td><td class="num">${fmt(e.total_gross)}</td><td>${escapeHtml(e.created_at?.slice(0, 10) ?? '—')}</td></tr>`
+      }).join('')
+  const estimatesSection = `
+    <div class="section">
+      <h2>Wyceny (${estimates.length})</h2>
+      <table>
+        <thead><tr><th>Numer</th><th>Status</th><th class="num">Wartość</th><th>Data</th></tr></thead>
+        <tbody>${estRows}</tbody>
+      </table>
+    </div>`
+
+  // ── Umowy ──────────────────────────────────────────────────────────────────
+  const conRows = contracts.length === 0
+    ? '<tr><td colspan="4" style="text-align:center;color:#888;">Brak umów</td></tr>'
+    : contracts.map(c => {
+        return `<tr><td>${escapeHtml(c.number ?? '—')}</td><td>${escapeHtml(CON_STATUS_PR[c.status] ?? c.status)}</td><td class="num">${fmt(c.value)}</td><td>${escapeHtml(c.created_at?.slice(0, 10) ?? '—')}</td></tr>`
+      }).join('')
+  const contractsSection = `
+    <div class="section">
+      <h2>Umowy (${contracts.length})</h2>
+      <table>
+        <thead><tr><th>Numer</th><th>Status</th><th class="num">Wartość</th><th>Data</th></tr></thead>
+        <tbody>${conRows}</tbody>
+      </table>
+    </div>`
+
+  // ── Faktury ────────────────────────────────────────────────────────────────
+  const invRows = invoices.length === 0
+    ? '<tr><td colspan="5" style="text-align:center;color:#888;">Brak faktur</td></tr>'
+    : invoices.map(i => {
+        return `<tr><td>${escapeHtml(i.number ?? '—')}</td><td>${escapeHtml(INVOICE_STATUS_PR[i.status] ?? i.status)}</td><td class="num">${fmt(i.total_gross)}</td><td>${escapeHtml(i.issue_date ?? '—')}</td><td>${i.due_date ? escapeHtml(i.due_date) : '—'}</td></tr>`
+      }).join('')
+  const totalInvoiced = invoices.reduce((s, i) => s + (i.total_gross ?? 0), 0)
+  const totalPaid = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total_gross ?? 0), 0)
+  const invoicesSection = `
+    <div class="section">
+      <h2>Faktury (${invoices.length})</h2>
+      <table>
+        <thead><tr><th>Numer</th><th>Status</th><th class="num">Kwota brutto</th><th>Wystawiona</th><th>Termin</th></tr></thead>
+        <tbody>${invRows}</tbody>
+        ${invoices.length > 0 ? `<tfoot><tr><td colspan="2"><strong>Suma</strong></td><td class="num"><strong>${fmt(totalInvoiced)}</strong></td><td colspan="2"></td></tr><tr><td colspan="2">Opłacone</td><td class="num">${fmt(totalPaid)}</td><td colspan="2"></td></tr></tfoot>` : ''}
+      </table>
+    </div>`
+
+  // ── Strona ─────────────────────────────────────────────────────────────────
+  const page = `<section class="page">
+    <div class="topbar"><div class="topbar__title">RAPORT PROJEKTU</div>${logoMark(company ?? {})}</div>
+    <div class="content">
+      <div class="doc-title">RAPORT PROJEKTU</div>
+      <div class="doc-number">${escapeHtml(project.number ?? '')} · ${escapeHtml(project.name)}</div>
+      <div class="meta">Wygenerowano: ${escapeHtml(today)}</div>
+      ${company?.name ? `<div class="meta">Firma: ${escapeHtml(company.name)}</div>` : ''}
+      ${headerSection}
+      ${estimatesSection}
+      ${contractsSection}
+      ${invoicesSection}
+      <div class="signature-grid" style="margin-top:40px;">
+        <div class="signature">Sporządził(a)</div>
+        <div class="signature">Zatwierdził(a)</div>
+      </div>
+    </div>
+    ${footer(company)}
+  </section>`
+
+  return pageShell(`Raport projektu — ${project.number ?? project.id}`, project.name, page)
 }
 
 function escapeXml(value: string) {
