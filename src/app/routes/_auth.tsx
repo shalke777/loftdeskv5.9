@@ -60,17 +60,11 @@ const mainNavItems: MainNavItem[] = [
 ]
 
 const mobileNav: MainNavItem[] = [
-  { to: '/dashboard',  label: 'Tablica',       icon: LayoutDashboard },
-  { to: '/projects',   label: 'Projekty',      icon: FolderKanban },
-  { to: '/chat',       label: 'Chat',          icon: MessageSquare },
-  { to: '/notes',      label: 'Notatki',       icon: Mic },
-  { to: '/expenses',   label: 'Koszty',        icon: Wallet },
-  { to: '/invoices',   label: 'Faktura',       icon: Receipt },
-  { to: '/clients',    label: 'Kontrahenci',   icon: Users },
-  { to: '/estimates',  label: 'Wycena',        icon: Calculator },
-  { to: '/contracts',  label: 'Umowa',         icon: FileText },
-  { to: '/settings',   label: 'Ustawienia',    icon: Settings },
-  { to: '/ksef',       label: 'KSeF',          icon: Shield, feature: 'ksef' },
+  { to: '/dashboard',  label: 'Tablica',  icon: LayoutDashboard },
+  { to: '/projects',   label: 'Projekty', icon: FolderKanban },
+  { to: '/invoices',   label: 'Faktura',  icon: Receipt },
+  { to: '/estimates',  label: 'Wycena',   icon: Calculator },
+  { to: '/settings',   label: 'Więcej',   icon: Settings },
 ]
 
 function isActive(pathname: string, item: MainNavItem) {
@@ -276,7 +270,7 @@ export function AuthLayout() {
               title={theme === 'dark' ? 'Przełącz na jasny motyw' : 'Przełącz na ciemny motyw'}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 34, height: 34, borderRadius: 8, border: 'none',
+                width: 44, height: 44, borderRadius: 8, border: 'none',
                 background: 'transparent', cursor: 'pointer',
                 color: 'var(--color-text-secondary)',
                 transition: 'background 0.15s, color 0.15s',

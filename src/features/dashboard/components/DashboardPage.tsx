@@ -44,7 +44,7 @@ function BudgetBar({ invoiced, total }: { invoiced: number; total: number }) {
   const over = invoiced > total
   return (
     <div style={{ marginTop: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--color-text-secondary)', marginBottom: 3 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 3 }}>
         <span>Fakturacja</span>
         <span style={{ fontWeight: 600, color: over ? 'var(--color-error)' : 'var(--color-text-secondary)' }}>
           {pct}%
@@ -170,7 +170,7 @@ export function DashboardPage() {
                 </div>
                 <div style={{ textAlign: 'left' }}>
                   <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{action.title}</div>
-                  <div className="field__label" style={{ fontSize: '0.72rem', marginTop: 1 }}>{action.sub}</div>
+                  <div className="field__label" style={{ marginTop: 1 }}>{action.sub}</div>
                 </div>
               </div>
             </button>
@@ -179,7 +179,7 @@ export function DashboardPage() {
       </div>
 
       {/* ── Stats row — 3 columns ────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+      <div className="dash-stats-grid">
         {[
           { icon: FolderKanban, label: 'Projekty', value: String(data.activeProjects) },
           { icon: Users,        label: 'Klienci',  value: String(data.clientsCount) },
@@ -190,7 +190,7 @@ export function DashboardPage() {
             <Card key={s.label} style={{ padding: '14px 12px', textAlign: 'center' }}>
               <SIcon size={16} style={{ color: 'var(--color-text-muted)', margin: '0 auto 6px' }} />
               <div style={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1 }}>{s.value}</div>
-              <div className="field__label" style={{ fontSize: '0.68rem', marginTop: 4 }}>{s.label}</div>
+              <div className="field__label" style={{ fontSize: '0.75rem', marginTop: 4 }}>{s.label}</div>
             </Card>
           )
         })}
