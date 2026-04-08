@@ -18,7 +18,7 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -38,3 +38,11 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run E2E smoke tests
+        run: npx playwright test --project=chromium
+        env:
+          CI: true
