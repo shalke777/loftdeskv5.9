@@ -1103,6 +1103,40 @@ export const handler: Handler = async (event) => {
     })
   }
 
+  // ── Fetch project memory context (L1 summary + L2 recent entries) ────────
+  let memoryContextBlock = ''
+  if (projectId) {
+    try {
+      const [{ data: projMem }, { data: memEntries }] = await Promise.all([
+        sbService
+          .from('projects')
+          .select('name, ai_context_summary')
+          .eq('id', projectId)
+          .single(),
+        sbService
+          .from('project_memory_entries')
+          .select('memory_type, topic, content')
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: false })
+          .limit(10),
+      ])
+
+      const lines: string[] = []
+      if (projMem?.ai_context_summary) {
+        lines.push(`Podsumowanie projektu: ${projMem.ai_context_summary}`)
+      }
+      if (memEntries && memEntries.length > 0) {
+        lines.push('Ostatnie ustalenia i decyzje:')
+        for (const e of memEntries) {
+          lines.push(`  [${e.memory_type.toUpperCase()}] ${e.topic}: ${e.content}`)
+        }
+      }
+      if (lines.length > 0) {
+        memoryContextBlock = `📋 KONTEKST PROJEKTU Z HISTORII (uwzględnij przy analizie):\n${lines.join('\n')}\n\n`
+      }
+    } catch { /* non-fatal — proceed without memory */ }
+  }
+
   // ── Build dynamic system instructions (market type override) ────────────
   let systemInstructions = INSTRUCTIONS
   if (marketType === 'developer') {
@@ -1123,6 +1157,11 @@ building_type MUSI być "remont ze stanu wtórnego".
 WYMAGANE: demontaże starych elementów, wywóz gruzu, ocena stanu instalacji.
 
 ` + INSTRUCTIONS
+  }
+
+  // Append memory context (after market type block, before INSTRUCTIONS body)
+  if (memoryContextBlock) {
+    systemInstructions = systemInstructions + '\n\n' + memoryContextBlock
   }
 
   // ── Call OpenAI (with retry) ─────────────────────────────────────────────
