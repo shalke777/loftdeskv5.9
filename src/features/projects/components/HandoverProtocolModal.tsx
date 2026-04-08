@@ -129,9 +129,8 @@ export function HandoverProtocolModal({
 
   async function uploadSignature(dataUrl: string, name: string): Promise<string | null> {
     if (!supabase) return null
-    // dataUrl → Blob
-    const res  = await fetch(dataUrl)
-    const blob = await res.blob()
+    // Convert data URL → Blob without fetch() — fetch(data:) is blocked on iOS Safari
+    const blob = dataUrlToBlob(dataUrl)
     const path = `${companyId}/signatures/${projectId}/${name}_${Date.now()}.png`
     const { error } = await supabase.storage
       .from('company-files')
@@ -407,4 +406,21 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--color-text)',
   width: '100%',
   boxSizing: 'border-box',
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Convert a base64 data URL to Blob without using fetch().
+ * fetch(data:) is blocked on iOS Safari — use atob + Uint8Array instead.
+ */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, base64] = dataUrl.split(',')
+  const mime = header.match(/:(.*?);/)?.[1] ?? 'image/png'
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return new Blob([bytes], { type: mime })
 }
