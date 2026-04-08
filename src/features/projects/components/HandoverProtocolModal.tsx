@@ -199,9 +199,10 @@ export function HandoverProtocolModal({
 
   return (
     <>
-      <Modal open={open && step !== 'sig_operator' && step !== 'sig_client'} onClose={handleClose} title={title}>
+      {/* Main modal always open — SigPadModal overlays on top when sigPadOpen=true */}
+      <Modal open={open && !sigPadOpen} onClose={handleClose} title={title}>
         {/* ── STEP: details ── */}
-        {(step === 'details' || step === 'saving' || step === 'error') && (
+        {(step === 'details' || step === 'error') && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Meta fields */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -312,7 +313,7 @@ export function HandoverProtocolModal({
             {sigOperator && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Podpis wykonawcy ({operatorName})</span>
-                <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)', padding: 4 }}>
+                <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: '#1a1a2e', padding: 4 }}>
                   <img src={sigOperator} alt="Podpis wykonawcy" style={{ maxHeight: 80, display: 'block', margin: '0 auto' }} />
                 </div>
               </div>
@@ -326,7 +327,7 @@ export function HandoverProtocolModal({
               {sigClient ? (
                 <>
                   <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Podpis klienta</span>
-                  <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)', padding: 4 }}>
+                  <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: '#1a1a2e', padding: 4 }}>
                     <img src={sigClient} alt="Podpis klienta" style={{ maxHeight: 80, display: 'block', margin: '0 auto' }} />
                   </div>
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>

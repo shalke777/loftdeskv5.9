@@ -34,9 +34,9 @@ export function SignaturePadModal({ open, title = 'Podpis', label, onSave, onClo
       // Resize canvas to physical pixels for crisp rendering on HiDPI/Retina
       resizeCanvas(canvas)
       padRef.current = new SignaturePad(canvas, {
-        // CSS variables are NOT reliably resolved by canvas 2D — use explicit hex color
-        penColor:        '#1a1a1a',
-        backgroundColor: 'rgba(0,0,0,0)',
+        // White pen on dark background — always legible, professional look
+        penColor:        '#ffffff',
+        backgroundColor: '#1a1a2e',
         minWidth: 1.5,
         maxWidth: 3,
       })
@@ -88,13 +88,13 @@ export function SignaturePadModal({ open, title = 'Podpis', label, onSave, onClo
         {/* Canvas area */}
         <div style={{
           position: 'relative',
-          border: '2px dashed var(--color-border)',
+          border: '1px solid var(--color-border)',
           borderRadius: 'var(--radius-md, 8px)',
-          background: '#ffffff',  // explicit white — ensures pen #1a1a1a is always visible
+          background: '#1a1a2e',  // dark navy — white pen always visible
           overflow: 'hidden',
           cursor: 'crosshair',
-          touchAction: 'none', // prevent page scroll while drawing
-          height: 200,           // explicit px height so offsetHeight is correct before paint
+          touchAction: 'none',
+          height: 200,
         }}>
           <canvas
             ref={canvasRef}
