@@ -30,7 +30,18 @@ export function useUpsertPrice() {
   })
 }
 
-/** Mutation: bulk upsert prices from an estimate save */
+/** Mutation: delete a single price entry */
+export function useDeletePrice() {
+  const companyId = useCompanyId()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (catalogItemId: string) =>
+      companyPriceListApi.deletePrice(companyId, catalogItemId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: priceListKey(companyId) })
+    },
+  })
+}
 export function useUpsertManyPrices() {
   const companyId = useCompanyId()
   const qc = useQueryClient()

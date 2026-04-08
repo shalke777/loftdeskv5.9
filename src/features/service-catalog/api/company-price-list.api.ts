@@ -65,4 +65,17 @@ export const companyPriceListApi = {
 
     if (error) throw error
   },
+
+  /** Delete a single price entry */
+  async deletePrice(companyId: string, catalogItemId: string): Promise<void> {
+    if (isDemoMode || !supabase) return
+
+    const { error } = await supabase
+      .from('company_price_list')
+      .delete()
+      .eq('company_id', companyId)
+      .eq('catalog_item_id', catalogItemId)
+
+    if (error) throw error
+  },
 }

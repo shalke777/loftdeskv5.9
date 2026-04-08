@@ -18,6 +18,7 @@ import { WorkspaceLimitsCard } from '@/features/settings/components/WorkspaceLim
 import { downloadBlob } from '@/shared/lib/downloads'
 import { LegalCenterCard } from '@/features/legal/components/LegalCenterCard'
 import { DocNumberingCard } from '@/features/settings/components/DocNumberingCard'
+import { CompanyPriceListCard } from '@/features/settings/components/CompanyPriceListCard'
 import { useTheme } from '@/shared/hooks/useTheme'
 
 function HelperCard({ icon, title, text, href }: { icon: ReactNode; title: string; text: string; href: string }) {
@@ -140,6 +141,7 @@ export function SettingsPage() {
         <WorkspaceReadinessCard />
         <WorkspaceLimitsCard />
         <DocNumberingCard />
+        <CompanyPriceListCard />
         <TeamMembersCard />
 
         <LegalCenterCard />
