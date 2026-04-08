@@ -34,7 +34,8 @@ export function SignaturePadModal({ open, title = 'Podpis', label, onSave, onClo
       // Resize canvas to physical pixels for crisp rendering on HiDPI/Retina
       resizeCanvas(canvas)
       padRef.current = new SignaturePad(canvas, {
-        penColor:        'var(--color-text, #111)',
+        // CSS variables are NOT reliably resolved by canvas 2D — use explicit hex color
+        penColor:        '#1a1a1a',
         backgroundColor: 'rgba(0,0,0,0)',
         minWidth: 1.5,
         maxWidth: 3,
@@ -43,7 +44,7 @@ export function SignaturePadModal({ open, title = 'Podpis', label, onSave, onClo
         setIsEmpty(padRef.current?.isEmpty() ?? true)
       })
       setIsEmpty(true)
-    }, 80)
+    }, 200) // 200ms — wait for modal animation before reading canvas dimensions
 
     return () => {
       clearTimeout(tid)
@@ -89,14 +90,15 @@ export function SignaturePadModal({ open, title = 'Podpis', label, onSave, onClo
           position: 'relative',
           border: '2px dashed var(--color-border)',
           borderRadius: 'var(--radius-md, 8px)',
-          background: 'var(--color-surface)',
+          background: '#ffffff',  // explicit white — ensures pen #1a1a1a is always visible
           overflow: 'hidden',
           cursor: 'crosshair',
           touchAction: 'none', // prevent page scroll while drawing
+          height: 200,           // explicit px height so offsetHeight is correct before paint
         }}>
           <canvas
             ref={canvasRef}
-            style={{ display: 'block', width: '100%', height: 180 }}
+            style={{ display: 'block', width: '100%', height: 200 }}
           />
           {isEmpty && (
             <div style={{
@@ -138,8 +140,11 @@ export function SignaturePadModal({ open, title = 'Podpis', label, onSave, onClo
 function resizeCanvas(canvas: HTMLCanvasElement) {
   const ratio  = Math.max(window.devicePixelRatio || 1, 1)
   const rect   = canvas.getBoundingClientRect()
-  canvas.width  = rect.width  * ratio
-  canvas.height = rect.height * ratio
+  // fallback to offsetWidth in case getBoundingClientRect returns 0 (modal animation)
+  const w = rect.width  || canvas.offsetWidth  || 400
+  const h = rect.height || canvas.offsetHeight || 180
+  canvas.width  = w * ratio
+  canvas.height = h * ratio
   const ctx = canvas.getContext('2d')
   if (ctx) ctx.scale(ratio, ratio)
 }
