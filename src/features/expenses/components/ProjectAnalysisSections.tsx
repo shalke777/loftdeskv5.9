@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import type {
   ProjectAnalysisResult,
   ProjectRoom,
@@ -117,8 +118,13 @@ export function ProjectRoomsSection({ rooms }: { rooms: ProjectRoom[] }) {
                 style={{
                   width: '100%', textAlign: 'left',
                   display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 12px', background: 'none', border: 'none',
+                  padding: '9px 12px',
+                  background: isOpen
+                    ? 'var(--color-surface-hover, rgba(99,102,241,0.07))'
+                    : 'var(--color-surface-soft, rgba(0,0,0,0.03))',
+                  border: 'none',
                   cursor: 'pointer', fontSize: 13,
+                  transition: 'background 0.15s',
                 }}
               >
                 <span style={{ fontWeight: 600, flex: 1 }}>{room.name}</span>
@@ -132,9 +138,10 @@ export function ProjectRoomsSection({ rooms }: { rooms: ProjectRoom[] }) {
                     h={room.height_m} m
                   </span>
                 )}
-                <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                  {isOpen ? '▲' : '▼'}
-                </span>
+                {isOpen
+                  ? <ChevronUp size={14} color="var(--color-text-muted)" />
+                  : <ChevronDown size={14} color="var(--color-text-muted)" />
+                }
               </button>
 
               {isOpen && (

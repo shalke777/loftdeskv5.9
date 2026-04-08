@@ -12,6 +12,7 @@
 
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { ProjectComparisonResult, ComparisonDiff, ProjectScopeItem } from '@/services/ai/engines/project.types'
 import { computeComparisonReliability } from '@/services/ai/engines/reliability'
 import type { ReliabilityReport } from '@/services/ai/engines/reliability'
@@ -62,11 +63,21 @@ function DiffRow({ diff }: DiffRowProps) {
             type="button"
             onClick={() => setExpanded(e => !e)}
             style={{
-              border: 'none', background: 'none', cursor: 'pointer',
-              padding: '0 4px', fontSize: 11, color: 'var(--color-text-muted)',
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              border: 'none',
+              background: expanded
+                ? 'var(--color-surface-hover, rgba(99,102,241,0.08))'
+                : 'var(--color-surface-soft, rgba(0,0,0,0.04))',
+              borderRadius: 5,
+              cursor: 'pointer',
+              padding: '2px 7px', fontSize: 11, color: 'var(--color-text-muted)',
+              transition: 'background 0.15s',
             }}
           >
-            {expanded ? '▲' : '▼ szczegóły'}
+            {expanded
+              ? <><ChevronUp size={11} />ukryj</>
+              : <><ChevronDown size={11} />szczegóły</>
+            }
           </button>
         )}
       </div>

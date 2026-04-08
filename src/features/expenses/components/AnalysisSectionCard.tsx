@@ -6,26 +6,20 @@
 // without requiring form restructuring.
 
 import { useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 
 interface Props {
-  title:       string
-  count?:      number
-  icon?:       string
+  title:        string
+  count?:       number
+  icon?:        string
   defaultOpen?: boolean
-  children:    React.ReactNode
-}
-
-const headerStyle: React.CSSProperties = {
-  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  padding: '10px 14px', border: 'none', background: 'none', cursor: 'pointer',
-  fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
-  color: 'var(--color-text-muted)',
+  children:     React.ReactNode
 }
 
 const wrapStyle: React.CSSProperties = {
   border: '1px solid var(--color-border)',
-  borderRadius: 8, overflow: 'hidden',
-  background: 'var(--color-surface-soft, rgba(0,0,0,0.02))',
+  borderRadius: 10, overflow: 'hidden',
+  background: 'var(--color-surface-card, var(--color-surface-soft))',
 }
 
 export function AnalysisSectionCard({ title, count, icon, defaultOpen = false, children }: Props) {
@@ -33,16 +27,43 @@ export function AnalysisSectionCard({ title, count, icon, defaultOpen = false, c
 
   return (
     <div style={wrapStyle}>
-      <button type="button" onClick={() => setOpen(v => !v)} style={headerStyle}>
-        <span>
-          {icon && <span style={{ marginRight: 6 }}>{icon}</span>}
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '11px 14px', border: 'none', cursor: 'pointer',
+          background: open
+            ? 'var(--color-surface-hover, rgba(99,102,241,0.06))'
+            : 'var(--color-surface-soft, rgba(0,0,0,0.03))',
+          fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+          color: 'var(--color-text-secondary)',
+          transition: 'background 0.15s',
+          borderBottom: open ? '1px solid var(--color-border)' : 'none',
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {icon && <span>{icon}</span>}
           {title}
-          {count != null && count > 0 && ` (${count})`}
+          {count != null && count > 0 && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              minWidth: 20, height: 18, padding: '0 5px',
+              borderRadius: 9, fontSize: 10, fontWeight: 700,
+              background: 'var(--color-primary-soft, rgba(99,102,241,0.12))',
+              color: 'var(--color-primary)',
+            }}>
+              {count}
+            </span>
+          )}
         </span>
-        <span style={{ fontSize: 14 }}>{open ? '▲' : '▼'}</span>
+        {open
+          ? <ChevronUp size={15} color="var(--color-text-muted)" />
+          : <ChevronDown size={15} color="var(--color-text-muted)" />
+        }
       </button>
       {open && (
-        <div style={{ padding: '0 14px 12px' }}>
+        <div style={{ padding: '12px 14px 14px' }}>
           {children}
         </div>
       )}
