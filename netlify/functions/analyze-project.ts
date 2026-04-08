@@ -107,6 +107,155 @@ interface ProjectAnalysisResult {
   clarification_questions?: ClarificationQuestion[]
 }
 
+// ── Material → Work Inference Engine ─────────────────────────────────────────
+// Deterministic fallback: if AI extracted finish_materials but omitted
+// the corresponding installation work items, inject them automatically.
+// This covers the most common gap: materials list present but scope = only equipment mounting.
+
+interface MaterialWorkMapping {
+  /** regex patterns to match material name (case-insensitive) */
+  patterns: RegExp[]
+  /** work items to inject per material match */
+  works: Array<{
+    description: string
+    category: string
+    unit: string
+    priority: 'required' | 'likely'
+    confidence: number
+  }>
+}
+
+const MATERIAL_WORK_MAPPINGS: MaterialWorkMapping[] = [
+  // Tiles / gres / ceramics
+  {
+    patterns: [/gres/i, /płytk/i, /ceramicz/i, /mozaik/i, /kafel/i, /terakot/i],
+    works: [
+      { description: 'Układanie płytek podłogowych', category: 'tiling',     unit: 'm2', priority: 'required', confidence: 85 },
+      { description: 'Układanie płytek ściennych',   category: 'tiling',     unit: 'm2', priority: 'likely',   confidence: 75 },
+      { description: 'Fugowanie',                    category: 'tiling',     unit: 'm2', priority: 'required', confidence: 85 },
+      { description: 'Silikonowanie naroży i styków',category: 'finishing',  unit: 'mb', priority: 'required', confidence: 80 },
+      { description: 'Gruntowanie podłoża pod płytki', category: 'substrate', unit: 'm2', priority: 'required', confidence: 80 },
+    ],
+  },
+  // Vinyl / laminate / wood panels / flooring
+  {
+    patterns: [/panel.*winy/i, /winy.*panel/i, /panel.*podłog/i, /podłog.*panel/i, /panel.*lamin/i, /lamin.*panel/i, /deska podłog/i, /parkiet/i, /wykładzin/i],
+    works: [
+      { description: 'Układanie paneli winylowych',        category: 'flooring', unit: 'm2', priority: 'required', confidence: 85 },
+      { description: 'Montaż listew przypodłogowych',     category: 'flooring', unit: 'mb', priority: 'required', confidence: 80 },
+      { description: 'Montaż progów',                     category: 'flooring', unit: 'szt', priority: 'likely',  confidence: 70 },
+      { description: 'Wykonywanie wylewek samopoziomujących', category: 'substrate', unit: 'm2', priority: 'likely', confidence: 70 },
+    ],
+  },
+  // Paint / farba
+  {
+    patterns: [/farba/i, /emulsj/i, /lakie/i, /impregnat/i],
+    works: [
+      { description: 'Gruntowanie ścian i sufitów', category: 'substrate', unit: 'm2', priority: 'required', confidence: 85 },
+      { description: 'Gładzie gipsowe',             category: 'substrate', unit: 'm2', priority: 'likely',   confidence: 75 },
+      { description: 'Malowanie ścian',             category: 'painting',  unit: 'm2', priority: 'required', confidence: 90 },
+      { description: 'Malowanie sufitów',           category: 'painting',  unit: 'm2', priority: 'required', confidence: 85 },
+    ],
+  },
+  // Tapeta / wallpaper
+  {
+    patterns: [/tapeta/i, /tapetow/i],
+    works: [
+      { description: 'Gruntowanie i szpachlowanie pod tapetę', category: 'substrate', unit: 'm2', priority: 'required', confidence: 85 },
+      { description: 'Tapetowanie ścian',                     category: 'painting',  unit: 'm2', priority: 'required', confidence: 90 },
+    ],
+  },
+  // Tynk / gładź / szpachla
+  {
+    patterns: [/tynk/i, /gładź/i, /gladz/i, /szpachl/i],
+    works: [
+      { description: 'Tynkowanie maszynowe',  category: 'substrate', unit: 'm2', priority: 'required', confidence: 85 },
+      { description: 'Gładzie gipsowe',       category: 'substrate', unit: 'm2', priority: 'required', confidence: 85 },
+      { description: 'Gruntowanie ścian',     category: 'substrate', unit: 'm2', priority: 'required', confidence: 80 },
+    ],
+  },
+  // Hydroizolacja / folia / uszczelnienie
+  {
+    patterns: [/hydroizolacj/i, /foli.*uszczelniaj/i, /izolacj.*podpłytk/i, /uszczel.*łazienk/i, /foli.*łazienk/i],
+    works: [
+      { description: 'Hydroizolacja łazienki',      category: 'waterproofing', unit: 'm2', priority: 'required', confidence: 90 },
+      { description: 'Hydroizolacja strefy prysznica', category: 'waterproofing', unit: 'm2', priority: 'required', confidence: 85 },
+    ],
+  },
+  // Wylewka / masa samopoziomująca
+  {
+    patterns: [/wylewka/i, /masa.*poziomuj/i, /poziomuj.*masa/i, /jastrych/i],
+    works: [
+      { description: 'Wykonywanie wylewek samopoziomujących', category: 'substrate', unit: 'm2', priority: 'required', confidence: 85 },
+    ],
+  },
+  // Płyty GK / regipsy / drywall
+  {
+    patterns: [/płyt.*gk/i, /gk/i, /regips/i, /sufit.*podwieszany/i, /ścianka.*działow/i],
+    works: [
+      { description: 'Ścianki działowe z płyt GK',      category: 'drywall', unit: 'm2', priority: 'likely', confidence: 75 },
+      { description: 'Sufity podwieszane jednopoziomowe', category: 'drywall', unit: 'm2', priority: 'likely', confidence: 70 },
+    ],
+  },
+  // Drzwi / stolarka
+  {
+    patterns: [/drzwi/i, /ościeżnic/i, /stolark.*drzw/i],
+    works: [
+      { description: 'Montaż drzwi wewnętrznych',     category: 'joinery', unit: 'szt', priority: 'required', confidence: 85 },
+      { description: 'Montaż ościeżnic regulowanych', category: 'joinery', unit: 'szt', priority: 'required', confidence: 85 },
+    ],
+  },
+]
+
+function inferMaterialWork(result: ProjectAnalysisResult): void {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9ąćęłóśźża-z]/g, '')
+
+  const existingScope = new Set(result.work_scope_from_project.map(s => normalize(s.description)))
+  const existingEstimate = new Set(result.suggested_estimate_items.map(e => normalize(e.name)))
+
+  for (const material of result.finish_materials) {
+    for (const mapping of MATERIAL_WORK_MAPPINGS) {
+      const matches = mapping.patterns.some(p => p.test(material.name) || p.test(material.specification ?? ''))
+      if (!matches) continue
+
+      for (const work of mapping.works) {
+        const normDesc = normalize(work.description)
+
+        // Inject into work_scope if missing
+        if (!existingScope.has(normDesc)) {
+          existingScope.add(normDesc)
+          result.work_scope_from_project.push({
+            room:        material.room,
+            description: work.description,
+            category:    work.category,
+            unit:        work.unit,
+            quantity:    material.quantity,  // carry over qty from material if available
+            priority:    work.priority,
+            confidence:  work.confidence,
+            notes:       `Wynika z materiału: ${material.name}`,
+            provenance:  'dependency_inferred',
+          })
+        }
+
+        // Inject into estimate if missing
+        if (!existingEstimate.has(normDesc)) {
+          existingEstimate.add(normDesc)
+          result.suggested_estimate_items.push({
+            name:       work.description,
+            unit:       work.unit,
+            quantity:   material.quantity ?? 0,
+            unit_price: null,
+            confidence: work.confidence,
+            source:     'dependency_inferred',
+            provenance: 'dependency_inferred',
+            notes:      `Wynika z materiału: ${material.name}`,
+          })
+        }
+      }
+    }
+  }
+}
+
 // ── Infra ────────────────────────────────────────────────────────────────────
 
 const CORS_HEADERS = {
@@ -321,6 +470,22 @@ GATE WYKOŃCZENIE: Dla każdego pomieszczenia sprawdź:
 → stolarka: drzwi (szt), listwy (mb)
 → silikonowanie (mb)
 
+GATE MATERIAŁY → PRACE (KRYTYCZNE — najczęstszy błąd):
+Każdy materiał w finish_materials[] MUSI generować co najmniej 1 pracę wykonawczą w work_scope_from_project[] i suggested_estimate_items[]:
+→ gres / płytki ceramiczne / mozaika → "Układanie płytek podłogowych" (m2) + "Układanie płytek ściennych" (m2) + "Fugowanie" (m2)
+→ panele winylowe / panele podłogowe / deska / parkiet → "Układanie paneli winylowych/podłogowych" (m2) + "Montaż listew przypodłogowych" (mb)
+→ farba wewnętrzna → "Malowanie ścian" (m2) + "Malowanie sufitów" (m2) + wcześniej "Gruntowanie ścian i sufitów" (m2) + "Gładzie gipsowe" (m2)
+→ tapeta → "Tapetowanie ścian" (m2) + wcześniej "Gruntowanie i szpachlowanie pod tapetę" (m2)
+→ tynk / gładź → "Tynkowanie maszynowe" (m2) lub "Gładzie gipsowe" (m2) + "Gruntowanie" (m2)
+→ folia hydroizolacyjna / uszczelnienie → "Hydroizolacja łazienki" (m2)
+→ wylewka / masa samopoziomująca → "Wykonywanie wylewek samopoziomujących" (m2)
+ZASADA: jeśli widzisz materiał w projekcie — muszą być odpowiadające mu roboty. Brak roboty przy materiale = BŁĄD.
+
+GATE KOMPLETNOŚĆ PRAC: Zakres prac NIE może ograniczać się tylko do montażu sprzętu (AGD, armatury, osprzętu).
+Prace montażowe są OSTATNIM KROKIEM — PRZED NIMI zawsze są:
+1. Demontaż (jeśli wtórne) → 2. Podkłady/wylewki → 3. Tynki/gładzie → 4. Hydroizolacja → 5. Glazura/podłogi → 6. Malowanie → 7. Stolarka → 8. Instalacje → 9. Biały montaż/sprzęt
+Jeśli w work_scope_from_project[] dominują tylko prace montażu sprzętu → uzupełnij o wszystkie poprzedzające etapy.
+
 MINIMA ADAPTACYJNE — sprawdź przed finalizacją:
 - 1 pomieszczenie (pokój/korytarz): min. 10 pozycji
 - łazienka lub kuchnia: min. 20 pozycji
@@ -335,6 +500,8 @@ SELF-CHECK PRZED ZWRÓCENIEM JSON:
 4. Czy building_type deweloperski NIE ma pełnych demontaży? Jeśli MA → usuń.
 5. Czy suggested_estimate_items.length >= minimum adaptacyjne? Jeśli NIE → uzupełnij brakujące kategorie.
 6. Czy quantity i unit są wypełnione wszędzie? Jeśli NIE → oszacuj.
+7. Czy KAŻDY materiał z finish_materials[] ma odpowiadającą pracę w work_scope i estimate? Jeśli NIE → DODAJ.
+8. Czy zakres prac zawiera tylko montaż sprzętu bez podkładów/wykończenia? Jeśli TAK → to BŁĄD, dodaj etapy 1-8.
 
 TRANSPARENTNOŚĆ: Wypełnij assumptions[], missing_information[], project_notes[], warnings[].
 CONFIDENCE: 90–100 kompletny, 70–89 dobry, 50–69 częściowy, 30–49 niekompletny, 0–29 nieczytelny.
@@ -913,6 +1080,12 @@ export const handler: Handler = async (event) => {
     }
   }
   // ── End bathroom dependency injection ─────────────────────────────────────
+
+  // ── Material → Work Inference Engine ──────────────────────────────────────
+  // Deterministic post-processing: if AI extracted a material but forgot the
+  // corresponding installation work, inject it here.
+  inferMaterialWork(result)
+  // ── End material → work inference ─────────────────────────────────────────
 
   console.info('ANALYZE_PROJECT_DONE', JSON.stringify({
     endpoint:    'analyze-project',
