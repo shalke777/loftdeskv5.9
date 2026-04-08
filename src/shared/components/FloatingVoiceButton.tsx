@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { Mic, MicOff } from 'lucide-react'
+import { Mic, MicOff, FileText, Sparkles } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 import { voiceNotesApi } from '@/features/notes/api/voice-notes.api'
 
-type VoiceMode = 'idle' | 'recording' | 'processing'
+type VoiceMode = 'idle' | 'menu' | 'recording' | 'processing'
+type RecordTarget = 'note' | 'estimate'
 
 function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [onClose])
@@ -21,11 +22,13 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
 
 export function FloatingVoiceButton() {
   const [voiceMode, setVoiceMode] = useState<VoiceMode>('idle')
+  const [recordTarget, setRecordTarget] = useState<RecordTarget>('note')
   const [seconds, setSeconds] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef   = useRef<Blob[]>([])
   const timerRef         = useRef<ReturnType<typeof setInterval> | null>(null)
+  const menuRef          = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (voiceMode === 'recording') {
@@ -37,7 +40,19 @@ export function FloatingVoiceButton() {
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [voiceMode])
 
-  async function startRecording() {
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (voiceMode !== 'menu') return
+    function handleOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setVoiceMode('idle')
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [voiceMode])
+
+  async function startRecording(target: RecordTarget) {
     // Transcription requires network — inform user gracefully
     if (!navigator.onLine) {
       setToast('⚠ Nagrywanie głosowe wymaga internetu (transkrypcja AI offline niedostępna)')
@@ -71,10 +86,11 @@ export function FloatingVoiceButton() {
         stream.getTracks().forEach(t => t.stop())
         setVoiceMode('processing')
         const blob = new Blob(audioChunksRef.current, { type: usedMime })
-        await processRecording(blob, usedMime)
+        await processRecording(blob, usedMime, target)
       }
       mediaRecorderRef.current = recorder
       recorder.start()
+      setRecordTarget(target)
       setVoiceMode('recording')
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -86,7 +102,7 @@ export function FloatingVoiceButton() {
     mediaRecorderRef.current?.stop()
   }
 
-  async function processRecording(blob: Blob, mimeType: string) {
+  async function processRecording(blob: Blob, mimeType: string, target: RecordTarget) {
     if (!supabase) {
       setToast('⚠ Brak połączenia')
       setVoiceMode('idle')
@@ -103,24 +119,70 @@ export function FloatingVoiceButton() {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token ?? ''
 
-      const res = await fetch('/.netlify/functions/voice-to-note', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ audio_base64: base64, audio_type: mimeType }),
-      })
-      if (!res.ok) throw new Error(`Whisper HTTP ${res.status}`)
-      const { transcript } = await res.json() as { transcript: string }
-      if (!transcript?.trim()) throw new Error('Pusty transkrypt')
+      if (target === 'estimate') {
+        // ── A4: Voice → Estimate draft ─────────────────────────────────────
+        const res = await fetch('/.netlify/functions/voice-to-estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ audio_base64: base64, audio_type: mimeType }),
+        })
+        if (!res.ok) throw new Error(`voice-to-estimate HTTP ${res.status}`)
+        const data = await res.json() as {
+          title?: string
+          items?: Array<{ description: string; quantity?: number; unit?: string; unit_price?: number; vat_rate?: number }>
+          extraction_confidence?: number
+          transcript?: string
+        }
 
-      const match = window.location.pathname.match(/\/projects\/([^/?#]+)/)
-      const projectId = match ? match[1] : null
+        const items = (data.items ?? []).map((item, idx) => ({
+          id: crypto.randomUUID(),
+          name: item.description || `Pozycja ${idx + 1}`,
+          description: '',
+          unit: item.unit ?? 'm²',
+          quantity: item.quantity ?? 1,
+          unit_price: item.unit_price ?? 0,
+          vat_rate: item.vat_rate ?? 8,
+          sort_order: idx,
+          catalog_item_id: null,
+        }))
 
-      const now = new Date()
-      const title = `Notatka ${now.toLocaleDateString('pl-PL')} ${now.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
-      await voiceNotesApi.create({ project_id: projectId, title, transcript })
+        const draft = {
+          name: data.title ?? 'Wycena głosowa',
+          notes: data.transcript ? `Transkrypt: ${data.transcript.slice(0, 300)}` : '',
+          clientId: '',
+          status: 'draft',
+          validUntil: '',
+          projectId: '',
+          items,
+          _source: 'voice_whisper',
+        }
+        sessionStorage.setItem('estimate_form_draft', JSON.stringify(draft))
+        setVoiceMode('idle')
+        setToast(`✓ Wycena gotowa (${items.length} pozycji) — otwieram…`)
+        // Small delay so toast is visible, then navigate
+        setTimeout(() => { window.location.href = '/estimates' }, 800)
 
-      setVoiceMode('idle')
-      setToast('✓ Notatka zapisana — otwórz AI hub żeby ekstraktować')
+      } else {
+        // ── Default: Voice note ─────────────────────────────────────────────
+        const res = await fetch('/.netlify/functions/voice-to-note', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ audio_base64: base64, audio_type: mimeType }),
+        })
+        if (!res.ok) throw new Error(`Whisper HTTP ${res.status}`)
+        const { transcript } = await res.json() as { transcript: string }
+        if (!transcript?.trim()) throw new Error('Pusty transkrypt')
+
+        const match = window.location.pathname.match(/\/projects\/([^/?#]+)/)
+        const projectId = match ? match[1] : null
+
+        const now = new Date()
+        const title = `Notatka ${now.toLocaleDateString('pl-PL')} ${now.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
+        await voiceNotesApi.create({ project_id: projectId, title, transcript })
+
+        setVoiceMode('idle')
+        setToast('✓ Notatka zapisana — otwórz AI hub żeby ekstraktować')
+      }
     } catch (err) {
       setVoiceMode('idle')
       const msg = err instanceof Error ? err.message
@@ -133,36 +195,94 @@ export function FloatingVoiceButton() {
   }
 
   function handleClick() {
-    if (voiceMode === 'idle') startRecording()
+    if (voiceMode === 'idle') setVoiceMode('menu')
+    else if (voiceMode === 'menu') setVoiceMode('idle')
     else if (voiceMode === 'recording') stopRecording()
   }
 
-  const isRecording = voiceMode === 'recording'
+  const isRecording  = voiceMode === 'recording'
   const isProcessing = voiceMode === 'processing'
+  const isMenu       = voiceMode === 'menu'
 
   return (
-    <>
+    <div ref={menuRef} style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000 }}>
+
+      {/* ── Mode picker popup ── */}
+      {isMenu && (
+        <div style={{
+          position: 'absolute', bottom: 68, right: 0,
+          background: 'var(--color-surface-elevated, #1e1e2e)',
+          border: '1px solid var(--color-border, #333)',
+          borderRadius: 12,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
+          overflow: 'hidden',
+          minWidth: 200,
+          animation: 'fadeInUp 0.15s ease',
+        }}>
+          <button
+            type="button"
+            onClick={() => startRecording('note')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              width: '100%', padding: '14px 18px', border: 'none',
+              background: 'none', cursor: 'pointer', textAlign: 'left',
+              color: 'var(--color-text, #f0f0f0)',
+              fontSize: 14, fontWeight: 500,
+              borderBottom: '1px solid var(--color-border, #333)',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-soft, rgba(255,255,255,0.05))')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+          >
+            <FileText size={18} style={{ color: 'var(--color-brand, #6366f1)', flexShrink: 0 }} />
+            <div>
+              <div>Notatka głosowa</div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted, #888)', marginTop: 1 }}>Zapisz jako notatkę projektu</div>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => startRecording('estimate')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              width: '100%', padding: '14px 18px', border: 'none',
+              background: 'none', cursor: 'pointer', textAlign: 'left',
+              color: 'var(--color-text, #f0f0f0)',
+              fontSize: 14, fontWeight: 500,
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-soft, rgba(255,255,255,0.05))')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+          >
+            <Sparkles size={18} style={{ color: '#f59e0b', flexShrink: 0 }} />
+            <div>
+              <div>Szybka wycena</div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted, #888)', marginTop: 1 }}>Dyktuj pozycje → draft kosztorysu</div>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* ── FAB button ── */}
       <button
         type="button"
         onClick={handleClick}
         disabled={isProcessing}
-        title={isRecording ? 'Zatrzymaj nagrywanie' : 'Nagraj notatkę głosową'}
+        title={
+          isRecording ? `Zatrzymaj nagrywanie (${recordTarget === 'estimate' ? 'wycena' : 'notatka'})`
+          : isMenu ? 'Zamknij menu'
+          : 'Nagraj notatkę lub wycenę głosową'
+        }
         style={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          zIndex: 1000,
-          width: 56,
-          height: 56,
+          width: 56, height: 56,
           borderRadius: '50%',
-          border: 'none',
+          border: isMenu ? '2px solid var(--color-brand)' : 'none',
           cursor: isProcessing ? 'default' : 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'column',
-          gap: 2,
-          background: isRecording ? '#dc2626' : isProcessing ? 'var(--color-border, #555)' : 'var(--color-brand)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexDirection: 'column', gap: 2,
+          background: isRecording
+            ? (recordTarget === 'estimate' ? '#d97706' : '#dc2626')
+            : isProcessing ? 'var(--color-border, #555)'
+            : isMenu ? 'var(--color-surface-elevated, #1e1e2e)'
+            : 'var(--color-brand)',
           color: '#fff',
           boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
           animation: isRecording ? 'fab-pulse 1.2s ease-in-out infinite' : 'none',
@@ -180,8 +300,12 @@ export function FloatingVoiceButton() {
             {String(Math.floor(seconds / 60)).padStart(2, '0')}:{String(seconds % 60).padStart(2, '0')}
           </span>
         )}
+        {isRecording && recordTarget === 'estimate' && (
+          <span style={{ fontSize: 8, lineHeight: 1, color: '#fde68a' }}>WYC</span>
+        )}
       </button>
+
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-    </>
+    </div>
   )
 }
