@@ -88,25 +88,37 @@ export const companyPriceListApi = {
   ): Promise<void> {
     if (isDemoMode || !supabase) return
 
-    const catalogRows = entries
-      .filter((e) => e.catalog_item_id && e.unit_price > 0)
-      .map((e) => ({
-        company_id: companyId,
-        catalog_item_id: e.catalog_item_id!,
-        custom_label: null,
-        unit_price: e.unit_price,
-        updated_at: new Date().toISOString(),
-      }))
+    const now = new Date().toISOString()
 
-    const customRows = entries
-      .filter((e) => !e.catalog_item_id && e.custom_label && e.unit_price > 0)
-      .map((e) => ({
-        company_id: companyId,
-        catalog_item_id: null,
-        custom_label: e.custom_label!,
-        unit_price: e.unit_price,
-        updated_at: new Date().toISOString(),
-      }))
+    // Deduplicate by catalog_item_id (last wins) to avoid ON CONFLICT affecting same row twice
+    const catalogMap = new Map<string, number>()
+    for (const e of entries) {
+      if (e.catalog_item_id && e.unit_price > 0) {
+        catalogMap.set(e.catalog_item_id, e.unit_price)
+      }
+    }
+    const catalogRows = Array.from(catalogMap.entries()).map(([id, price]) => ({
+      company_id: companyId,
+      catalog_item_id: id,
+      custom_label: null,
+      unit_price: price,
+      updated_at: now,
+    }))
+
+    // Deduplicate by custom_label (last wins)
+    const customMap = new Map<string, number>()
+    for (const e of entries) {
+      if (!e.catalog_item_id && e.custom_label && e.unit_price > 0) {
+        customMap.set(e.custom_label, e.unit_price)
+      }
+    }
+    const customRows = Array.from(customMap.entries()).map(([label, price]) => ({
+      company_id: companyId,
+      catalog_item_id: null,
+      custom_label: label,
+      unit_price: price,
+      updated_at: now,
+    }))
 
     if (catalogRows.length > 0) {
       const { error } = await supabase
