@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Mic, MicOff, FileText, Sparkles } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 import { voiceNotesApi } from '@/features/notes/api/voice-notes.api'
+import { useCompanyId } from '@/features/auth/hooks/useAuth'
 
 type VoiceMode = 'idle' | 'menu' | 'recording' | 'processing'
 type RecordTarget = 'note' | 'estimate'
@@ -21,6 +22,7 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
 }
 
 export function FloatingVoiceButton() {
+  const companyId = useCompanyId()
   const [voiceMode, setVoiceMode] = useState<VoiceMode>('idle')
   const [recordTarget, setRecordTarget] = useState<RecordTarget>('note')
   const [seconds, setSeconds] = useState(0)
@@ -124,7 +126,7 @@ export function FloatingVoiceButton() {
         const res = await fetch('/.netlify/functions/voice-to-estimate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ audio_base64: base64, audio_type: mimeType }),
+          body: JSON.stringify({ audio_base64: base64, audio_type: mimeType, company_id: companyId || undefined }),
         })
         if (!res.ok) throw new Error(`voice-to-estimate HTTP ${res.status}`)
         const data = await res.json() as {

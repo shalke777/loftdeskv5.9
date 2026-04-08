@@ -54,14 +54,14 @@ export const handler: Handler = async (event) => {
   const openaiKey = process.env.OPENAI_API_KEY
   if (!openaiKey) return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'OpenAI not configured' }) }
 
-  let body: { audio_base64?: string; audio_type?: string }
+  let body: { audio_base64?: string; audio_type?: string; company_id?: string }
   try {
     body = JSON.parse(event.body ?? '{}')
   } catch {
     return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Invalid JSON' }) }
   }
 
-  const { audio_base64, audio_type = 'audio/webm' } = body
+  const { audio_base64, audio_type = 'audio/webm', company_id } = body
   if (!audio_base64) return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'audio_base64 required' }) }
 
   // ── Step 1: Whisper transcription ──────────────────────────────────────────
@@ -101,6 +101,56 @@ export const handler: Handler = async (event) => {
     return { statusCode: 502, headers: corsHeaders, body: JSON.stringify({ error: 'Transcription exception' }) }
   }
 
+  // ── Step 1.5: Fetch company price list for price hints ──────────────────────
+
+  let priceHintsText = ''
+  if (company_id) {
+    try {
+      const sbUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
+      const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      if (sbUrl && sbKey) {
+        const sb = createClient(sbUrl, sbKey, { auth: { persistSession: false } })
+
+        // Catalog items with names (via join)
+        const { data: catalogRows } = await sb
+          .from('company_price_list')
+          .select('unit_price, service_catalog!inner(name)')
+          .eq('company_id', company_id)
+          .not('catalog_item_id', 'is', null)
+          .limit(120)
+
+        // Custom label items
+        const { data: customRows } = await sb
+          .from('company_price_list')
+          .select('custom_label, unit_price')
+          .eq('company_id', company_id)
+          .is('catalog_item_id', null)
+          .limit(120)
+
+        const lines: string[] = []
+        for (const row of catalogRows ?? []) {
+          const r = row as { unit_price: number; service_catalog: { name: string } }
+          if (r.service_catalog?.name && r.unit_price > 0) {
+            lines.push(`- ${r.service_catalog.name}: ${r.unit_price} zł`)
+          }
+        }
+        for (const row of customRows ?? []) {
+          const r = row as { custom_label: string | null; unit_price: number }
+          if (r.custom_label && r.unit_price > 0) {
+            lines.push(`- ${r.custom_label}: ${r.unit_price} zł`)
+          }
+        }
+
+        if (lines.length > 0) {
+          priceHintsText = `\n\nCennik firmy (przypisz unit_price gdy opis pozycji pasuje semantycznie, nawet częściowo):\n${lines.join('\n')}`
+        }
+      }
+    } catch (err) {
+      // Non-fatal — continue without price hints
+      console.warn('[voice-to-estimate] Failed to fetch price list:', err)
+    }
+  }
+
   // ── Step 2: GPT-4o-mini estimate extraction ────────────────────────────────
 
   const systemPrompt = `Jesteś asystentem wyceny dla polskiej firmy budowlano-wykończeniowej.
@@ -119,7 +169,7 @@ Wyciągnij pozycje kosztorysowe z transkrypcji i zwróć JSON:
 }
 Typowe jednostki: glazura=m², malowanie=m², instalacja=kpl, robocizna=h, okno=szt.
 Typowe VAT: usługi budowlane=8%, materiały=23%.
-Jeśli cena nie podana, wstaw 0 i użytkownik uzupełni.`
+Jeśli cena nie podana i nie ma w cenniku, wstaw 0 i użytkownik uzupełni.${priceHintsText}`
 
   try {
     const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
