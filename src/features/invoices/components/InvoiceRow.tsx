@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, Mail, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, Mail, Trash2, Bell } from 'lucide-react'
 import type { Invoice } from '@/entities/invoice/model'
 import { Button } from '@/shared/ui/Button/Button'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
@@ -57,6 +57,19 @@ export function InvoiceRow({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
+
+  // Compute days overdue from due_date (client-side, for display only)
+  const daysOverdue = useMemo(() => {
+    if (!invoice.due_date || invoice.status === 'paid' || invoice.status === 'draft') return null
+    const due = new Date(invoice.due_date)
+    const now = new Date()
+    due.setHours(0, 0, 0, 0)
+    now.setHours(0, 0, 0, 0)
+    const diff = Math.floor((now.getTime() - due.getTime()) / 86_400_000)
+    return diff > 0 ? diff : null
+  }, [invoice.due_date, invoice.status])
+
+  const reminderCount = (invoice as any).reminder_count as number | undefined
 
   const { data: clients = [] } = useClients()
   const { user } = useAuth()
@@ -124,6 +137,25 @@ export function InvoiceRow({
             </span>
           )}
           <span className={STATUS_CLASS[invoice.status]}>{STATUS_LABEL[invoice.status]}</span>
+          {daysOverdue !== null && (
+            <span style={{
+              fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+              background: daysOverdue >= 14 ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)',
+              color: daysOverdue >= 14 ? 'var(--color-error, #ef4444)' : 'var(--color-warning, #f59e0b)',
+              whiteSpace: 'nowrap',
+            }}>
+              +{daysOverdue}d
+            </span>
+          )}
+          {reminderCount !== undefined && reminderCount > 0 && (
+            <span title={`Wysłano ${reminderCount}/3 przypomnień`} style={{
+              display: 'flex', alignItems: 'center', gap: 3,
+              fontSize: 11, color: 'var(--color-text-secondary)',
+            }}>
+              <Bell size={11} />
+              {reminderCount}/3
+            </span>
+          )}
           <div className="proj-row__actions">
             {!isDraft && (
               <button

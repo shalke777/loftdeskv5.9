@@ -25,6 +25,9 @@
 [functions."check-missing-costs"]
   schedule = "0 8 * * *"
 
+[functions."check-overdue-invoices"]
+  schedule = "30 8 * * *"
+
 [functions."voice-to-expense"]
   timeout = 26
 
