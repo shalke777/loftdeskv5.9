@@ -132,7 +132,12 @@ function ScopeItemRow({
   }
 
   function accept() {
-    reviewAction.mutate({ ...buildBase(), action_type: 'accepted' })
+    reviewAction.mutate({
+      ...buildBase(),
+      action_type: 'accepted',
+      // Persist catalog price so mapAiScopeToEstimate can use it
+      ...(catalogPrice != null ? { review_payload: { price_confirmed_by_operator: catalogPrice } } : {}),
+    })
   }
 
   function reject() {

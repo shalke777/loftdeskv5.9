@@ -218,12 +218,23 @@ export async function insertReviewAction(
 
   if (actionErr) throw actionErr
 
-  // Update scope item review_status (denormalized read helper) only for scope actions
+  // Update scope item review_status + price/qty from review_payload (denormalized helpers)
   const isScopeAction = (['accepted', 'modified', 'rejected'] as AiReviewActionInsert['action_type'][]).includes(action.action_type)
   if (isScopeAction && action.scope_item_id) {
+    const updatePayload: Record<string, unknown> = { review_status: action.action_type }
+
+    if (action.review_payload) {
+      const rp = action.review_payload as { quantity_final?: number | null; price_confirmed_by_operator?: number | null }
+      if (rp.quantity_final !== undefined) updatePayload.quantity_final = rp.quantity_final
+      if (rp.price_confirmed_by_operator !== undefined && rp.price_confirmed_by_operator !== null) {
+        updatePayload.price_confirmed_by_operator = rp.price_confirmed_by_operator
+        updatePayload.missing_price = false
+      }
+    }
+
     const { error: itemErr } = await sb
       .from('ai_scope_items')
-      .update({ review_status: action.action_type })
+      .update(updatePayload)
       .eq('id', action.scope_item_id)
 
     if (itemErr) throw itemErr
