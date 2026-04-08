@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarCheck, QrCode } from 'lucide-react'
+import { CalendarCheck, QrCode, ClipboardCheck } from 'lucide-react'
 import type { Project } from '@/entities/project/model'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Card } from '@/shared/ui/Card/Card'
@@ -19,6 +19,7 @@ import { BudgetComparisonTab } from '@/features/projects/components/BudgetCompar
 import { ProjectMemoryPanel } from '@/features/projects/components/ProjectMemoryPanel'
 import { ProjectWeatherWidget } from '@/features/projects/components/ProjectWeatherWidget'
 import { ProjectQRCodeModal } from '@/features/projects/components/ProjectQRCodeModal'
+import { HandoverProtocolModal } from '@/features/projects/components/HandoverProtocolModal'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useCreateEstimate, useEstimates } from '@/features/estimates/hooks/useEstimates'
 import { EstimateForm, clearDraft as clearEstimateDraft } from '@/features/estimates/components/EstimateModal/EstimateForm'
@@ -46,6 +47,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
   const [reportStatus, setReportStatus] = useState<'idle' | 'confirm' | 'sending' | 'done' | 'error'>('idle')
   const [htmlReportLoading, setHtmlReportLoading] = useState(false)
   const [showQR, setShowQR] = useState(false)
+  const [showHandover, setShowHandover] = useState(false)
   const { data: clients } = useClients()
   const linkedClient = clients?.find(c => c.id === project?.client_id)
   const companyId = useCompanyId()
@@ -156,6 +158,11 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
           <Button variant="secondary" onClick={() => setShowQR(true)}>
             <QrCode size={14} style={{ marginRight: 4 }} />
             Kod QR
+          </Button>
+          {/* Protokół odbioru */}
+          <Button variant="secondary" onClick={() => setShowHandover(true)}>
+            <ClipboardCheck size={14} style={{ marginRight: 4 }} />
+            Protokół odbioru
           </Button>
           {/* Raport dzienny — widoczny gdy projekt ma klienta z e-mailem */}
           {linkedClient?.email && reportStatus === 'idle' && (
@@ -310,6 +317,13 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
         projectId={project.id}
         projectName={project.name}
         projectNumber={project.number}
+      />
+      <HandoverProtocolModal
+        open={showHandover}
+        onClose={() => setShowHandover(false)}
+        projectId={project.id}
+        projectName={project.name}
+        companyId={companyId ?? ''}
       />
     </div>
   )
