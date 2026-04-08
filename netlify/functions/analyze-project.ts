@@ -208,10 +208,17 @@ const MATERIAL_WORK_MAPPINGS: MaterialWorkMapping[] = [
 ]
 
 function inferMaterialWork(result: ProjectAnalysisResult): void {
-  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9ąćęłóśźża-z]/g, '')
+  // Normalize: keep all Polish letters + alphanumeric, strip rest
+  const normalize = (s: string) => s.toLowerCase()
+    .replace(/[^a-z0-9ąćęłńóśźż]/g, '')
 
-  const existingScope = new Set(result.work_scope_from_project.map(s => normalize(s.description)))
-  const existingEstimate = new Set(result.suggested_estimate_items.map(e => normalize(e.name)))
+  // Use substring dedup: check if any existing item CONTAINS the work description
+  // (avoids misses like "Układanie płytek podłogowych" vs "Układanie płytek gresowych")
+  const scopeWords = result.work_scope_from_project.map(s => normalize(s.description))
+  const estimateWords = result.suggested_estimate_items.map(e => normalize(e.name))
+
+  const scopeContains  = (desc: string) => { const n = normalize(desc); return scopeWords.some(w => w.includes(n) || n.includes(w)) }
+  const estimContains  = (desc: string) => { const n = normalize(desc); return estimateWords.some(w => w.includes(n) || n.includes(w)) }
 
   for (const material of result.finish_materials) {
     for (const mapping of MATERIAL_WORK_MAPPINGS) {
@@ -219,17 +226,15 @@ function inferMaterialWork(result: ProjectAnalysisResult): void {
       if (!matches) continue
 
       for (const work of mapping.works) {
-        const normDesc = normalize(work.description)
-
-        // Inject into work_scope if missing
-        if (!existingScope.has(normDesc)) {
-          existingScope.add(normDesc)
+        // Inject into work_scope if missing (no substring overlap)
+        if (!scopeContains(work.description)) {
+          scopeWords.push(normalize(work.description))
           result.work_scope_from_project.push({
             room:        material.room,
             description: work.description,
             category:    work.category,
             unit:        work.unit,
-            quantity:    material.quantity,  // carry over qty from material if available
+            quantity:    material.quantity,
             priority:    work.priority,
             confidence:  work.confidence,
             notes:       `Wynika z materiału: ${material.name}`,
@@ -238,8 +243,8 @@ function inferMaterialWork(result: ProjectAnalysisResult): void {
         }
 
         // Inject into estimate if missing
-        if (!existingEstimate.has(normDesc)) {
-          existingEstimate.add(normDesc)
+        if (!estimContains(work.description)) {
+          estimateWords.push(normalize(work.description))
           result.suggested_estimate_items.push({
             name:       work.description,
             unit:       work.unit,
@@ -252,6 +257,56 @@ function inferMaterialWork(result: ProjectAnalysisResult): void {
           })
         }
       }
+    }
+  }
+
+  // ── Narożniki zewnętrzne pass ──────────────────────────────────────────────
+  // Scan ALL text (scope + materials) for external corners → tile mitering at 45°
+  const allText = [
+    ...result.work_scope_from_project.map(s => s.description + ' ' + (s.notes ?? '')),
+    ...result.finish_materials.map(m => m.name + ' ' + (m.specification ?? '')),
+    ...(result.project_notes ?? []),
+  ].join(' ').toLowerCase()
+
+  const hasCorners = /narożnik\s*zewnętrzny|naroż.*zewn|zewn.*naroż|krawędź.*narożn|narożn.*glazur|cięcie.*45|45.*cięcie|krawędziowanie|profil.*narożn/i.test(allText)
+
+  if (hasCorners) {
+    // Try to estimate mb from scope items mentioning narożniki
+    const cornerScope = result.work_scope_from_project.find(s =>
+      /narożnik|naroże|narożn/i.test(s.description) && s.unit === 'mb'
+    )
+    const cornerMb = cornerScope?.quantity ?? 0
+
+    const miteringDesc = 'Krawędziowanie płytek / cięcie narożników 45°'
+    if (!estimContains(miteringDesc)) {
+      estimateWords.push(normalize(miteringDesc))
+      result.suggested_estimate_items.push({
+        name:       miteringDesc,
+        unit:       'mb',
+        quantity:   cornerMb > 0 ? cornerMb * 2 : 0,  // ×2: 2 tiles per corner
+        unit_price: null,
+        confidence: 70,
+        source:     'dependency_inferred',
+        provenance: 'dependency_inferred',
+        notes:      cornerMb > 0
+          ? `Narożnik zewnętrzny ${cornerMb}mb × 2 płytki = ${cornerMb * 2}mb`
+          : 'Wykryto narożniki zewnętrzne — podaj długość do przeliczenia ilości',
+      })
+    }
+
+    const profileDesc = 'Narożniki aluminiowe (profile ochronne)'
+    if (!estimContains(profileDesc)) {
+      estimateWords.push(normalize(profileDesc))
+      result.suggested_estimate_items.push({
+        name:       profileDesc,
+        unit:       'mb',
+        quantity:   cornerMb > 0 ? cornerMb : 0,
+        unit_price: null,
+        confidence: 65,
+        source:     'dependency_inferred',
+        provenance: 'dependency_inferred',
+        notes:      'Profile aluminiowe na narożniki zewnętrzne płytek',
+      })
     }
   }
 }
@@ -472,7 +527,12 @@ GATE WYKOŃCZENIE: Dla każdego pomieszczenia sprawdź:
 
 GATE MATERIAŁY → PRACE (KRYTYCZNE — najczęstszy błąd):
 Każdy materiał w finish_materials[] MUSI generować co najmniej 1 pracę wykonawczą w work_scope_from_project[] i suggested_estimate_items[]:
-→ gres / płytki ceramiczne / mozaika → "Układanie płytek podłogowych" (m2) + "Układanie płytek ściennych" (m2) + "Fugowanie" (m2)
+→ gres / płytki ceramiczne / mozaika / terakota → OBOWIĄZKOWO:
+   • "Układanie płytek podłogowych" (m2) — jeśli podłoga
+   • "Układanie płytek ściennych" (m2) — jeśli ściana
+   • "Fugowanie płytek" (m2) — ZAWSZE przy płytkach
+   • "Gruntowanie podłoża pod płytki" (m2) — ZAWSZE przed płytkami
+   Jeśli te pozycje NIE SĄ w zakresie → DODAJ. To nie jest opcjonalne.
 → panele winylowe / panele podłogowe / deska / parkiet → "Układanie paneli winylowych/podłogowych" (m2) + "Montaż listew przypodłogowych" (mb)
 → farba wewnętrzna → "Malowanie ścian" (m2) + "Malowanie sufitów" (m2) + wcześniej "Gruntowanie ścian i sufitów" (m2) + "Gładzie gipsowe" (m2)
 → tapeta → "Tapetowanie ścian" (m2) + wcześniej "Gruntowanie i szpachlowanie pod tapetę" (m2)
@@ -480,6 +540,12 @@ Każdy materiał w finish_materials[] MUSI generować co najmniej 1 pracę wykon
 → folia hydroizolacyjna / uszczelnienie → "Hydroizolacja łazienki" (m2)
 → wylewka / masa samopoziomująca → "Wykonywanie wylewek samopoziomujących" (m2)
 ZASADA: jeśli widzisz materiał w projekcie — muszą być odpowiadające mu roboty. Brak roboty przy materiale = BŁĄD.
+
+GATE NAROŻNIKI ZEWNĘTRZNE (ważne dla glazury):
+Jeśli w projekcie lub na rysunkach są narożniki zewnętrzne z płytkami (np. naroże ściany, krawędź filaru, ościeżnica z płytką) — narożniki te wymagają cięcia płytek pod kątem 45°:
+→ "Krawedziowanie płytek / cięcie narożników 45°" (mb) — ilość = długość_narożników_mb × 2 (dwie płytki na każdy narożnik — po jednej z każdej strony krawędzi)
+→ "Narożniki aluminiowe / profile ochronne narożników" (mb) — jeśli wskazane w projekcie lub oczywiste (zewnętrzne narożniki GK/mur)
+Jeśli w projekcie są wyrazy: narożnik zewnętrzny / naroże / zewnętrzna krawędź płytki / listwa narożna / kąt 45° — DODAJ te pozycje.
 
 GATE KOMPLETNOŚĆ PRAC: Zakres prac NIE może ograniczać się tylko do montażu sprzętu (AGD, armatury, osprzętu).
 Prace montażowe są OSTATNIM KROKIEM — PRZED NIMI zawsze są:
@@ -816,14 +882,36 @@ export const handler: Handler = async (event) => {
     })
   }
 
+  // ── Build dynamic system instructions (market type override) ────────────
+  let systemInstructions = INSTRUCTIONS
+  if (marketType === 'developer') {
+    // Prepend a hard override that explicitly replaces the default "wtórny" assumption
+    systemInstructions = `⚠️ BEZWZGLĘDNE NADPISANIE TYPU BUDYNKU — WYŻSZY PRIORYTET NIŻ COKOLWIEK PONIŻEJ:
+Użytkownik potwierdził: obiekt jest DEWELOPERSKI / STAN DEWELOPERSKI (nowe budownictwo, nigdy nieużywane).
+building_type MUSI być "wykończenie ze stanu deweloperskiego".
+ZAKAZ zakładania remontu stanu wtórnego.
+ZAKAZ pytania "Czy [element] zastępuje istniejący?" — nie ma istniejących elementów.
+ZAKAZ demontaży starych płytek, armatury, podłóg — obiektu nie trzeba wyburzać.
+Brakujące dane do uzupełnienia dotyczą TYLKO wyboru wariantów (kolor, model, producent), NIE demontażu.
+Typical scope: tynki maszynowe, gładzie, wylewki, hydroizolacja, płytki, malowanie, podłogi, biały montaż, stolarka.
+
+` + INSTRUCTIONS
+  } else if (marketType === 'secondary') {
+    systemInstructions = `⚠️ NADPISANIE TYPU BUDYNKU: obiekt z RYNKU WTÓRNEGO (do remontu/modernizacji, wcześniej używany).
+building_type MUSI być "remont ze stanu wtórnego".
+WYMAGANE: demontaże starych elementów, wywóz gruzu, ocena stanu instalacji.
+
+` + INSTRUCTIONS
+  }
+
   // ── Call OpenAI (with retry) ─────────────────────────────────────────────
 
   let aiRaw: string
   try {
-    console.info('PROVIDER_REQUEST_START', JSON.stringify({ model, isPdf, usedTextPath, contentItems: content.length, elapsed_ms: Date.now() - t0 }))
+    console.info('PROVIDER_REQUEST_START', JSON.stringify({ model, isPdf, usedTextPath, contentItems: content.length, marketType: marketType ?? null, elapsed_ms: Date.now() - t0 }))
     const { callOpenAIWithRetry } = await import('./shared/openai-retry')
     const resp = await callOpenAIWithRetry({
-      apiKey, model, instructions: INSTRUCTIONS,
+      apiKey, model, instructions: systemInstructions,
       input: [{ role: 'user', content }],
       text: { format: PROJECT_ANALYSIS_SCHEMA },
       max_output_tokens: 8_000,

@@ -493,19 +493,24 @@ export function ProjectEstimateSection({
           disabled={transferring || isBlocked}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            width: '100%', padding: '12px 20px', fontSize: 14, fontWeight: 700,
-            color: isBlocked ? 'var(--color-text-muted)' : transferring ? 'var(--color-text-muted)' : '#fff',
-            background: isBlocked ? 'var(--color-surface-soft)' : transferring ? 'var(--color-surface-soft)' : 'var(--color-primary)',
-            border: `1px solid ${isBlocked || transferring ? 'var(--color-border)' : 'var(--color-primary)'}`,
+            width: '100%', padding: '13px 20px', fontSize: 14, fontWeight: 700,
+            color: (isBlocked || transferring) ? 'rgba(100,100,120,0.7)' : '#ffffff',
+            background: (isBlocked || transferring)
+              ? 'rgba(100,100,120,0.08)'
+              : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+            border: `1.5px solid ${(isBlocked || transferring) ? 'rgba(100,100,120,0.2)' : '#6366f1'}`,
             borderRadius: 10,
-            cursor: (transferring || isBlocked) ? 'not-allowed' : 'pointer', transition: 'background 0.15s',
-            opacity: (transferring || isBlocked) ? 0.55 : 1,
+            cursor: (transferring || isBlocked) ? 'not-allowed' : 'pointer',
+            transition: 'opacity 0.15s, filter 0.15s',
+            opacity: (transferring || isBlocked) ? 0.6 : 1,
+            boxShadow: (isBlocked || transferring) ? 'none' : '0 2px 8px rgba(99,102,241,0.30)',
+            letterSpacing: '0.01em',
           }}
           title={isBlocked ? 'Analiza zablokowana — popraw błędy przed przeniesieniem' : undefined}
-          onMouseEnter={e => { if (!transferring && !isBlocked) e.currentTarget.style.opacity = '0.9' }}
-          onMouseLeave={e => { if (!transferring && !isBlocked) e.currentTarget.style.opacity = '1' }}
+          onMouseEnter={e => { if (!transferring && !isBlocked) (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(1.1)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.filter = '' }}
         >
-          {isBlocked ? '⛔ Analiza zablokowana' : transferring ? '⏳ Przenoszenie…' : '📋 Przenieś do wyceny →'}
+          {isBlocked ? '⛔ Analiza zablokowana' : transferring ? '⏳ Zapisywanie wyceny…' : '📋 Zapisz jako nową wycenę →'}
         </button>
       </div>
     </AnalysisSectionCard>
