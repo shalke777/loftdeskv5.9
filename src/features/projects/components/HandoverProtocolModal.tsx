@@ -127,17 +127,27 @@ export function HandoverProtocolModal({
 
   // ── Upload helper ──────────────────────────────────────────────────────────
 
-  async function uploadSignature(dataUrl: string, name: string): Promise<string | null> {
-    if (!supabase) return null
-    // Convert data URL → Blob without fetch() — fetch(data:) is blocked on iOS Safari
-    const blob = dataUrlToBlob(dataUrl)
-    const path = `${companyId}/signatures/${projectId}/${name}_${Date.now()}.png`
-    const { error } = await supabase.storage
-      .from('company-files')
-      .upload(path, blob, { contentType: 'image/png', upsert: false })
-    if (error) throw error
-    const { data } = supabase.storage.from('company-files').getPublicUrl(path)
-    return data?.publicUrl ?? null
+  async function uploadSignature(dataUrl: string, name: string): Promise<string> {
+    // If no supabase or no companyId — store inline as base64 (fallback)
+    if (!supabase || !companyId) return dataUrl
+
+    try {
+      const blob = dataUrlToBlob(dataUrl)
+      const path = `${companyId}/signatures/${projectId}/${name}_${Date.now()}.png`
+      const { error } = await supabase.storage
+        .from('company-files')
+        .upload(path, blob, { contentType: 'image/png', upsert: false })
+      if (error) {
+        // Storage upload failed — fall back to inline base64 (always works)
+        console.warn('[HandoverProtocol] storage upload failed, using inline base64:', error.message)
+        return dataUrl
+      }
+      const { data } = supabase.storage.from('company-files').getPublicUrl(path)
+      return data?.publicUrl ?? dataUrl
+    } catch (err) {
+      console.warn('[HandoverProtocol] upload error, using inline base64:', err)
+      return dataUrl
+    }
   }
 
   // ── Save ───────────────────────────────────────────────────────────────────
