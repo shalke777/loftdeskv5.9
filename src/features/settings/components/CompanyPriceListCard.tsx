@@ -258,7 +258,7 @@ export function CompanyPriceListCard() {
         <h3 style={{ margin: 0 }}>Cennik usług</h3>
         {!addMode && (
           <div style={{ display: 'flex', gap: 6 }}>
-            <Button variant="outline" onClick={() => csvInputRef.current?.click()} title="Importuj ceny z pliku CSV">
+            <Button variant="secondary" onClick={() => csvInputRef.current?.click()} title="Importuj ceny z pliku CSV">
               <Upload size={14} style={{ marginRight: 5 }} />
               Importuj CSV
             </Button>
