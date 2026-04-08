@@ -8,6 +8,7 @@
 
 import { useRef, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
+import { Camera, FileText, FolderOpen, Image, Lightbulb, RefreshCw, Search } from 'lucide-react'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useAnalyzeProject } from '@/features/expenses/hooks/useAnalyzeProject'
 import { useAnalyzeRoomPhotos } from '@/features/expenses/hooks/useAnalyzeRoomPhoto'
@@ -323,8 +324,8 @@ export function ProjectAnalysisPage() {
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {[
-                { value: 'secondary', label: '🏚 Rynek wtórny', desc: 'Remont / modernizacja' },
-                { value: 'developer', label: '🏗 Deweloperski', desc: 'Stan deweloperski / nowy' },
+                { value: 'secondary', label: 'Rynek wtórny', desc: 'Remont / modernizacja' },
+                { value: 'developer', label: 'Deweloperski', desc: 'Stan deweloperski / nowy' },
               ].map(opt => (
                 <button
                   key={opt.value}
@@ -354,7 +355,8 @@ export function ProjectAnalysisPage() {
               fontSize: 12, color: 'var(--color-accent)',
             }}>
               <span style={{ flex: 1, lineHeight: 1.5 }}>
-                💡 Nazwa pliku sugeruje fakturę lub paragon — to może być dokument kosztowy.
+                <Lightbulb size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                Nazwa pliku sugeruje fakturę lub paragon — to może być dokument kosztowy.
                 Jeśli tak, użyj{' '}
                 <button
                   type="button"
@@ -404,8 +406,11 @@ export function ProjectAnalysisPage() {
             />
             {file ? (
               <div>
-                <div style={{ fontSize: 28, marginBottom: 8 }}>
-                  {isPdf ? '📄' : '🖼️'}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                  {isPdf
+                    ? <FileText size={28} color="var(--color-text-secondary)" />
+                    : <Image size={28} color="var(--color-text-secondary)" />
+                  }
                 </div>
                 <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, wordBreak: 'break-all' }}>
                   {fileLabel(file)}
@@ -416,7 +421,9 @@ export function ProjectAnalysisPage() {
               </div>
             ) : (
               <div>
-                <div style={{ fontSize: 32, marginBottom: 10 }}>📂</div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
+                  <FolderOpen size={32} color="var(--color-text-secondary)" />
+                </div>
                 <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>
                   Przeciągnij plik lub kliknij, żeby wybrać
                 </div>
@@ -546,8 +553,8 @@ export function ProjectAnalysisPage() {
                 fontSize: 12,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <span style={{ color: 'var(--color-info)', fontWeight: 600 }}>
-                    🔄 Przywrócona analiza z{' '}
+                  <span style={{ color: 'var(--color-info)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <RefreshCw size={12} /> Przywrócona analiza z{' '}
                     {new Date(restoredAt).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   </span>
                   <button
@@ -571,7 +578,7 @@ export function ProjectAnalysisPage() {
                 background: 'rgba(212,150,10,0.08)', border: '1px solid rgba(212,150,10,0.3)',
                 fontSize: 12, color: 'var(--color-accent)',
               }}>
-                {result.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
+                {result.warnings.map((w, i) => <div key={i}>[!] {w}</div>)}
               </div>
             )}
             <ProjectRoomsSection rooms={result.rooms_detected} />
@@ -608,7 +615,8 @@ export function ProjectAnalysisPage() {
                     onClick={() => setShowCompare(true)}
                     style={{ fontSize: 13 }}
                   >
-                    🔍 Porównaj z rzeczywistością → wgraj zdjęcia pomieszczenia
+                    <Search size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                    Porównaj z rzeczywistością → wgraj zdjęcia pomieszczenia
                   </button>
                 </div>
               )}
@@ -658,7 +666,9 @@ export function ProjectAnalysisPage() {
                     />
                     {compareFiles.length > 0 ? (
                       <div>
-                        <div style={{ fontSize: 24, marginBottom: 6 }}>📸</div>
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
+                          <Camera size={24} color="var(--color-text-secondary)" />
+                        </div>
                         <div style={{ fontWeight: 600, fontSize: 13 }}>
                           {compareFiles.length} {compareFiles.length === 1 ? 'zdjęcie' : 'zdjęcia'} gotowe
                         </div>
@@ -668,7 +678,9 @@ export function ProjectAnalysisPage() {
                       </div>
                     ) : (
                       <div>
-                        <div style={{ fontSize: 28, marginBottom: 8 }}>📷</div>
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                          <Camera size={28} color="var(--color-text-secondary)" />
+                        </div>
                         <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
                           Przeciągnij zdjęcia lub kliknij
                         </div>
@@ -767,7 +779,8 @@ export function ProjectAnalysisPage() {
                       }}
                       style={{ fontSize: 12 }}
                     >
-                      🔄 Porównaj z innymi zdjęciami
+                      <RefreshCw size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                      Porównaj z innymi zdjęciami
                     </button>
                   </div>
                 </div>
@@ -778,7 +791,7 @@ export function ProjectAnalysisPage() {
             {/* Next action bar */}
             {result.suggested_estimate_items.length > 0 && (
               <AiNextActionBar
-                primaryLabel="📋 Przenieś do wyceny"
+                primaryLabel="Przenieś do wyceny"
                 primaryOnClick={() => navigate({ to: '/estimates' as any, search: { create: '1' } as any })}
                 secondaryLabel={selectedProjectId ? 'Wróć do projektu' : undefined}
                 secondaryOnClick={selectedProjectId ? () => navigate({ to: '/projects' as any }) : undefined}

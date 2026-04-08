@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { FolderOpen, InboxIcon, MapPin } from 'lucide-react'
 import type { CSSProperties } from 'react'
 
 interface Project {
@@ -56,7 +57,7 @@ export function ProjectPickerCard({
       <div style={cardStyle}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-          <span style={{ fontSize: 22 }}>📂</span>
+          <FolderOpen size={22} color="var(--color-brand)" />
           <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--color-text-primary, #111)' }}>
             Wybierz projekt
           </h3>
@@ -73,7 +74,7 @@ export function ProjectPickerCard({
           </div>
         ) : projects.length === 0 ? (
           <div style={emptyStyle}>
-            <span style={{ fontSize: 28, opacity: 0.5 }}>📭</span>
+            <InboxIcon size={28} color="var(--color-text-muted)" style={{ opacity: 0.5 }} />
             <p style={{ color: 'var(--color-text-muted)', fontSize: 13, margin: '4px 0 0', textAlign: 'center' }}>
               Brak projektów.<br />
               <span style={{ fontSize: 12 }}>Utwórz projekt w zakładce <strong>Projekty</strong>, aby korzystać z analizy AI.</span>
@@ -131,8 +132,9 @@ export function ProjectPickerCard({
                           {p.name}
                         </div>
                         {addr && (
-                          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            📍 {addr}
+                          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <MapPin size={9} style={{ flexShrink: 0 }} />
+                            {addr}
                           </div>
                         )}
                       </div>

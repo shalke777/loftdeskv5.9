@@ -5,7 +5,7 @@
 // Each section is independently renderable — renders null if no data.
 
 import { useState } from 'react'
-import { BarChart2, Building2, ChevronDown, ChevronUp, ClipboardList, FileText, HelpCircle, Home, Layers, Palette, Ruler, StickyNote, Wrench } from 'lucide-react'
+import { AlertTriangle, BarChart2, BookOpen, Building2, ChevronDown, ChevronUp, ClipboardList, FileText, HelpCircle, Home, Layers, Palette, PenLine, Ruler, StickyNote, Wrench } from 'lucide-react'
 import type {
   ProjectAnalysisResult,
   ProjectRoom,
@@ -276,7 +276,7 @@ export function ProjectScopeSection({ items }: { items: ProjectScopeItem[] }) {
                     </span>
                   )}
                   {item.provenance === 'dependency_inferred' && (
-                    <div style={{ fontSize: 9, color: 'var(--color-info)', marginTop: 2, fontStyle: 'italic' }}>⚙ wynika z zależności</div>
+                    <div style={{ fontSize: 9, color: 'var(--color-info)', marginTop: 2, fontStyle: 'italic' }}>wynika z zależności</div>
                   )}
                   {item.provenance === 'confirmation_needed' && (
                     <div style={{ fontSize: 9, color: 'var(--color-accent)', marginTop: 2, fontStyle: 'italic' }}>? wymaga potwierdzenia</div>
@@ -392,9 +392,9 @@ export function ProjectEstimateSection({
       </div>
 
       {[
-        { label: '📐 Z zakresu projektu', items: mergedItems.filter(e => e.source === 'project_derived'), show: mergedItems.filter(e => e.source === 'project_derived').length > 0 },
-        { label: '🤖 Uzupełnione przez AI', items: mergedItems.filter(e => e.source === 'ai_suggestion'), show: mergedItems.filter(e => e.source === 'ai_suggestion').length > 0 },
-        { label: '⚙ Z zależności materiałowych', items: mergedItems.filter(e => e.provenance === 'dependency_inferred'), show: mergedItems.filter(e => e.provenance === 'dependency_inferred').length > 0 },
+        { label: 'Z zakresu projektu', items: mergedItems.filter(e => e.source === 'project_derived'), show: mergedItems.filter(e => e.source === 'project_derived').length > 0 },
+        { label: 'Uzupełnione przez AI', items: mergedItems.filter(e => e.source === 'ai_suggestion'), show: mergedItems.filter(e => e.source === 'ai_suggestion').length > 0 },
+        { label: 'Z zależności materiałowych', items: mergedItems.filter(e => e.provenance === 'dependency_inferred'), show: mergedItems.filter(e => e.provenance === 'dependency_inferred').length > 0 },
       ].filter(g => g.show).map(group => (
         <div key={group.label} style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--color-text-secondary)' }}>
@@ -422,20 +422,20 @@ export function ProjectEstimateSection({
                             if (!catalog?.length) return null
                             const matchResult = matchCatalogItem(item.name, catalog)
                             if (matchResult.best && matchResult.best.tier === 'strong') {
-                              return <span title={`Katalog: ${matchResult.best.canonical_name} (${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft)', color: 'var(--color-success)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
+                              return <span title={`Katalog: ${matchResult.best.canonical_name} (${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft)', color: 'var(--color-success)', fontWeight: 600, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}><BookOpen size={8} /></span>
                             }
                             if (matchResult.best && matchResult.best.tier === 'partial') {
                               return (
                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                  <span title={`Częściowe: ${matchResult.best.canonical_name} (${matchResult.best.confidence}%, ${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: 'var(--color-accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
+                                  <span title={`Częściowe: ${matchResult.best.canonical_name} (${matchResult.best.confidence}%, ${matchResult.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: 'var(--color-accent)', fontWeight: 600, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 1 }}><BookOpen size={8} /><span style={{ fontSize: 7 }}>?</span></span>
                                   {matchResult.alternatives.length > 0 && <span title={`Alternatywy: ${matchResult.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 8, padding: '0 3px', borderRadius: 3, background: 'rgba(212,150,10,0.06)', color: 'var(--color-accent)', cursor: 'help', whiteSpace: 'nowrap' }}>+{matchResult.alternatives.length}</span>}
                                 </span>
                               )
                             }
                             if (matchResult.alternatives.length > 0) {
-                              return <span title={`Brak dopasowania. Sugestie: ${matchResult.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(229,115,115,0.08)', color: 'var(--color-error)', fontWeight: 600, whiteSpace: 'nowrap' }}>❌ uzupełnij</span>
+                              return <span title={`Brak dopasowania. Sugestie: ${matchResult.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(229,115,115,0.08)', color: 'var(--color-error)', fontWeight: 600, whiteSpace: 'nowrap' }}>uzupełnij</span>
                             }
-                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft)', color: 'var(--color-text-tertiary)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️ własna</span>
+                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft)', color: 'var(--color-text-tertiary)', fontWeight: 500, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 2 }}><PenLine size={8} /> własna</span>
                           })()}
                         </span>
                         {item.notes && (
@@ -472,8 +472,8 @@ export function ProjectEstimateSection({
           background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.3)',
           fontSize: 12,
         }}>
-          <p style={{ margin: '0 0 8px', fontWeight: 600, color: 'var(--color-error)' }}>
-            ⚠ Pewność analizy jest niska — pozycje wymagają ręcznej weryfikacji.
+          <p style={{ margin: '0 0 8px', fontWeight: 600, color: 'var(--color-error)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <AlertTriangle size={13} /> Pewność analizy jest niska — pozycje wymagają ręcznej weryfikacji.
           </p>
           <p style={{ margin: '0 0 10px', color: 'var(--color-text-secondary)' }}>
             Sprawdź ilości i ceny po przeniesieniu. Czy kontynuować?
@@ -521,7 +521,7 @@ export function ProjectEstimateSection({
           onMouseEnter={e => { if (!transferring && !isBlocked) (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(1.1)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.filter = '' }}
         >
-          {isBlocked ? '⛔ Analiza zablokowana' : transferring ? '⏳ Zapisywanie wyceny…' : '📋 Zapisz jako nową wycenę →'}
+          {isBlocked ? 'Analiza zablokowana' : transferring ? 'Zapisywanie wyceny…' : 'Zapisz jako nową wycenę →'}
         </button>
       </div>
     </AnalysisSectionCard>
@@ -545,14 +545,14 @@ export function ProjectTransparencySection({
   if (!hasContent) return null
 
   return (
-    <AnalysisSectionCard title="Założenia i brakujące dane" icon="⚠️">
+    <AnalysisSectionCard title="Założenia i brakujące dane" icon={<AlertTriangle size={13} />}>
       {warnings.length > 0 && (
         <div style={{
           marginBottom: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12,
           background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
           color: 'var(--color-danger)',
         }}>
-          {warnings.map((w, i) => <div key={i}>⚠️ {w}</div>)}
+          {warnings.map((w, i) => <div key={i}>[!] {w}</div>)}
         </div>
       )}
 

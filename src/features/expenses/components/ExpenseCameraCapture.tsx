@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Droplets, DoorOpen, FileText, Home, Image, Layers, PenLine, Ruler, Search, Sofa, Utensils } from 'lucide-react'
+import { Camera, Droplets, DoorOpen, FileText, GalleryHorizontal, Home, Layers, PenLine, Ruler, Search, Sofa, Utensils } from 'lucide-react'
 import type { ExpenseSourceType } from '@/features/expenses/api/expenses.api'
 import { ROOM_TYPES } from '@/services/ai/room-types'
 import type { RoomTypeId } from '@/services/ai/room-types'
@@ -155,8 +155,8 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
     const roomInfo = ROOM_TYPES.find(r => r.id === selectedRoomType)
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 24, maxWidth: 440, margin: '0 auto' }}>
-        <p style={{ margin: 0, fontSize: 15, fontWeight: 600, textAlign: 'center' }}>
-          {roomInfo?.icon ?? '🏠'} Zdjęcia — {roomInfo?.name ?? 'Pomieszczenie'}
+        <p style={{ margin: 0, fontSize: 15, fontWeight: 600, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <RoomIcon id={selectedRoomType} size={18} /> Zdjęcia — {roomInfo?.name ?? 'Pomieszczenie'}
         </p>
         <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }}>
           Dodaj 1–{MAX_ROOM_PHOTOS} zdjęć z różnych kątów. Im więcej, tym lepsza analiza. Maks. 8 MB / zdjęcie.
@@ -168,7 +168,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
             background: 'rgba(212,150,10,0.1)', border: '1px solid rgba(212,150,10,0.2)',
             textAlign: 'center',
           }}>
-            ⚠ {oversizeWarning}
+            [!] {oversizeWarning}
           </div>
         )}
 
@@ -318,7 +318,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
         onClick={() => cameraRef.current?.click()}
         style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', fontSize: 15, padding: '14px 20px' }}
       >
-        <span>📷</span> Zrób zdjęcie
+        <Camera size={18} style={{ flexShrink: 0 }} /> Zrób zdjęcie
       </button>
 
       {/* Gallery — mobile: photo picker; desktop: file open dialog */}
@@ -329,7 +329,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
         onClick={() => galleryRef.current?.click()}
         style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', fontSize: 15, padding: '14px 20px' }}
       >
-        <span><Image size={16} /></span> Wybierz z galerii
+        <span><GalleryHorizontal size={16} /></span> Wybierz z galerii
       </button>
 
       {/* PDF */}
