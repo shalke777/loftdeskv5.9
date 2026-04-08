@@ -5,7 +5,6 @@
 // Each section is independently renderable — renders null if no data.
 
 import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import type {
   ProjectAnalysisResult,
@@ -295,8 +294,6 @@ export function ProjectScopeSection({ items }: { items: ProjectScopeItem[] }) {
 
 // ── Suggested estimate items ─────────────────────────────────────────────────
 
-const ESTIMATE_DRAFT_KEY = 'estimate_form_draft'
-
 function projectItemsToEstimate(items: ProjectEstimateItem[], catalog?: import('@/entities/service_catalog/model').ServiceCatalogItem[]): EstimateItem[] {
   return items.map((e, i) => {
     const result = catalog?.length ? matchCatalogItem(e.name, catalog) : { best: null, alternatives: [] }
@@ -334,15 +331,18 @@ export function ProjectEstimateSection({
   scopeItems = [],
   projectName,
   reliabilityReport,
+  onTransfer,
+  isTransferring,
 }: {
   items:             ProjectEstimateItem[]
   scopeItems?:       ProjectScopeItem[]
   projectName:       string | null
   reliabilityReport?: ReliabilityReport
+  onTransfer?:       (items: EstimateItem[]) => void
+  isTransferring?:   boolean
 }) {
-  const navigate = useNavigate()
   const { data: catalog } = useServiceCatalog()
-  const [transferring, setTransferring] = useState(false)
+  const transferring = isTransferring ?? false
   const [awaitingConfirm, setAwaitingConfirm] = useState(false)
 
   // Merge scope items + estimate items, deduplicating by name (estimate items win on collision)
@@ -360,19 +360,9 @@ export function ProjectEstimateSection({
 
   function doTransfer() {
     if (transferring) return
-    setTransferring(true)
     setAwaitingConfirm(false)
     const estimateItems = projectItemsToEstimate(mergedItems, catalog)
-    const draft = {
-      name: projectName
-        ? `Wycena — ${projectName}`
-        : `Wycena z projektu — ${new Date().toLocaleDateString('pl-PL')}`,
-      notes: 'Pozycje wygenerowane z analizy projektu AI. Uzupełnij ceny jednostkowe.',
-      items: estimateItems,
-      _source: 'project_analysis' as const,
-    }
-    try { sessionStorage.setItem(ESTIMATE_DRAFT_KEY, JSON.stringify(draft)) } catch { /* ignore */ }
-    navigate({ to: '/estimates', search: { create: true } })
+    onTransfer?.(estimateItems)
   }
 
   function handleTransfer() {

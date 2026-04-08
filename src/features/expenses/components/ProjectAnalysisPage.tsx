@@ -17,7 +17,8 @@ import { AiErrorState, AiQualityBadge, AiReliabilityBanner, AiUploadRules, AiPro
 import { computeProjectReliability } from '@/services/ai/engines/reliability'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { useProjects } from '@/features/projects/hooks/useProjects'
-import { ProjectPickerCard } from '@/shared/ui/ProjectPickerCard/ProjectPickerCard'
+import { useCreateEstimate } from '@/features/estimates/hooks/useEstimates'
+import type { EstimateItem } from '@/entities/estimate/model'
 import {
   ProjectSummaryBar,
   ProjectRoomsSection,
@@ -28,7 +29,7 @@ import {
 } from './ProjectAnalysisSections'
 import { ComparisonResultView } from './ComparisonResultView'
 
-type Step = 'project' | 'upload' | 'processing' | 'results'
+type Step = 'upload' | 'processing' | 'results'
 
 const ACCEPTED_EXTENSIONS = '.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif'
 
@@ -103,23 +104,25 @@ export function ProjectAnalysisPage() {
   const analyze     = useAnalyzeProject()
   const analyzeRoom = useAnalyzeRoomPhotos()
   const navigate    = useNavigate()
-  const { data: projects = [], isLoading: projectsLoading } = useProjects()
+  const createEstimate = useCreateEstimate()
+  const { data: projects = [] } = useProjects()
   const { projectId: urlProjectId } = useSearch({ strict: false }) as { projectId?: string }
 
   // Restore persisted analysis on first render
   const persisted = loadAnalysis()
 
-  // If projectId comes from URL (via type chooser), skip picker step
-  const initialStep: Step = (persisted && !urlProjectId) ? 'results' : (urlProjectId ? 'upload' : 'project')
+  const initialStep: Step = persisted ? 'results' : 'upload'
   const [step, setStep]       = useState<Step>(initialStep)
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
     urlProjectId ?? persisted?.projectId ?? ''
   )
   const [file, setFile]       = useState<File | null>(null)
   const [context, setContext] = useState('')
+  const [marketType, setMarketType] = useState<'secondary' | 'developer' | null>(null)
   const [result, setResult]   = useState<ProjectAnalysisResult | null>(persisted?.result ?? null)
   const [error, setError]     = useState<string | null>(null)
   const [restoredAt, setRestoredAt] = useState<string | null>(persisted?.analyzedAt ?? null)
+  const [transferring, setTransferring] = useState(false)
 
   const reliabilityReport = result ? computeProjectReliability(result) : null
   const [fileHint, setFileHint]           = useState<'document' | null>(null)
@@ -137,10 +140,11 @@ export function ProjectAnalysisPage() {
 
   function reset() {
     clearAnalysis()
-    setStep('project')
+    setStep('upload')
     setSelectedProjectId('')
     setFile(null)
     setContext('')
+    setMarketType(null)
     setResult(null)
     setError(null)
     setRestoredAt(null)
@@ -151,10 +155,39 @@ export function ProjectAnalysisPage() {
     setComparingRoom(false)
     setComparisonResult(null)
     setComparisonError(null)
+    setTransferring(false)
     analyze.reset()
     analyzeRoom.reset()
     if (inputRef.current) inputRef.current.value = ''
     if (compareInputRef.current) compareInputRef.current.value = ''
+  }
+
+  function handleTransferToEstimate(items: EstimateItem[]) {
+    if (!companyId || transferring) return
+    setTransferring(true)
+    createEstimate.mutate(
+      {
+        name: result?.project_name
+          ? `Wycena — ${result.project_name}`
+          : `Wycena z projektu — ${new Date().toLocaleDateString('pl-PL')}`,
+        notes: 'Pozycje wygenerowane z analizy projektu AI. Uzupełnij ceny jednostkowe.',
+        company_id: companyId,
+        client_id: null,
+        project_id: selectedProjectId || null,
+        status: 'draft',
+        valid_until: null,
+        items,
+      },
+      {
+        onSuccess: () => {
+          setTransferring(false)
+          navigate({ to: '/estimates' as any })
+        },
+        onError: () => {
+          setTransferring(false)
+        },
+      }
+    )
   }
 
   function handleCompareFiles(files: FileList | null) {
@@ -228,7 +261,7 @@ export function ProjectAnalysisPage() {
       return
     }
     setStep('processing')
-    analyze.mutate({ file, context: context.trim() || undefined, projectId: selectedProjectId, companyId }, {
+    analyze.mutate({ file, context: context.trim() || undefined, projectId: selectedProjectId || undefined, companyId, marketType: marketType ?? undefined }, {
       onSuccess: (res) => {
         setResult(res)
         setError(null)
@@ -245,26 +278,6 @@ export function ProjectAnalysisPage() {
   }
 
   const isPdf = file?.type === 'application/pdf' || file?.name.toLowerCase().endsWith('.pdf')
-
-  // ── Project selection ──
-  if (step === 'project') {
-    return (
-      <div>
-        <PageHeader title="AI Analiza projektu" />
-        <ProjectPickerCard
-          projects={projects}
-          loading={projectsLoading}
-          selectedId={selectedProjectId}
-          onSelect={setSelectedProjectId}
-          onNext={() => setStep('upload')}
-          nextLabel="Dalej — wgraj materiały"
-          onBack={() => navigate({ to: '/ai' as any })}
-          backLabel="← Tryb pomieszczenia"
-        />
-      </div>
-    )
-  }
-
 
   // ── Upload step ──────────────────────────────────────────────────────────
   if (step === 'upload') {
@@ -297,6 +310,35 @@ export function ProjectAnalysisPage() {
             Wgraj PDF projektu, rzut architektoniczny lub wizualizację wnętrza.<br />
             AI wyciągnie zakres prac, materiały i draft wyceny.
           </p>
+
+          {/* Market type selector */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--color-text-secondary)' }}>
+              Typ rynku / stan obiektu
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[
+                { value: 'secondary', label: '🏚 Rynek wtórny', desc: 'Remont / modernizacja' },
+                { value: 'developer', label: '🏗 Deweloperski', desc: 'Stan deweloperski / nowy' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setMarketType(opt.value as 'secondary' | 'developer')}
+                  style={{
+                    flex: 1, padding: '10px 12px', borderRadius: 9, cursor: 'pointer',
+                    border: `2px solid ${marketType === opt.value ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    background: marketType === opt.value ? 'var(--color-primary-soft, rgba(99,102,241,0.08))' : 'var(--color-surface-soft)',
+                    transition: 'border-color 0.15s, background 0.15s',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{opt.label}</div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>{opt.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Smart routing hint — only shown when filename looks like an invoice */}
           {fileHint === 'document' && !fileHintDismissed && (
@@ -533,6 +575,8 @@ export function ProjectAnalysisPage() {
               scopeItems={result.work_scope_from_project}
               projectName={result.project_name}
               reliabilityReport={reliabilityReport ?? undefined}
+              onTransfer={handleTransferToEstimate}
+              isTransferring={transferring}
             />
             <ProjectTransparencySection
               assumptions={result.assumptions}

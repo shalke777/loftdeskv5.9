@@ -585,17 +585,17 @@ export const handler: Handler = async (event) => {
   const context      = typeof body.context       === 'string' ? body.context.slice(0, 2000) : ''
   const projectId    = typeof body.project_id    === 'string' && body.project_id.trim()
     ? body.project_id.trim() : null
+  const marketType   = typeof body.market_type   === 'string' ? body.market_type.trim() : null  // 'secondary' | 'developer'
 
-  console.info('BODY_PARSED', JSON.stringify({ fileType, fileName, hasContext: !!context, projectId: projectId ?? null, hasStoragePath: !!storagePath, hasBase64: !!fileBase64, elapsed_ms: Date.now() - t0 }))
+  console.info('BODY_PARSED', JSON.stringify({ fileType, fileName, hasContext: !!context, projectId: projectId ?? null, marketType: marketType ?? null, hasStoragePath: !!storagePath, hasBase64: !!fileBase64, elapsed_ms: Date.now() - t0 }))
 
   if (!fileBase64 && !storagePath) return err(400, 'missing_file', 'Brak danych pliku — wymagany file_base64 lub storage_path.')
   if (!fileType)   return err(400, 'missing_type', 'file_type is required')
-  if (!projectId)  return err(400, 'missing_project_id', 'project_id is required')
 
   // ── Resolve file data: storage path (large files) or inline base64 ──────
   let resolvedBase64 = fileBase64
 
-  // ── Verify project access and resolve company_id ────────────────────────
+  // ── Verify access and resolve company_id ─────────────────────────────────
   const sbUrl         = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? ''
   const sbServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
   if (!sbServiceRole) {
@@ -604,35 +604,48 @@ export const handler: Handler = async (event) => {
   }
   const sbService = createClient(sbUrl, sbServiceRole, { auth: { persistSession: false } })
 
-  const { data: project, error: projErr } = await sbService
-    .from('projects')
-    .select('company_id')
-    .eq('id', projectId)
-    .maybeSingle()
+  let companyId: string
 
-  if (projErr) {
-    console.error('[analyze-project] Project lookup failed:', projErr.message)
-    return err(500, 'access_check_failed', 'Could not verify project access')
-  }
-  if (!project || !(project as { company_id?: string }).company_id) {
-    return err(403, 'project_access_denied', 'Project not found or access denied')
-  }
-  const companyId = (project as { company_id: string }).company_id
+  if (projectId) {
+    // Project-scoped: look up company from project, then verify membership
+    const { data: project, error: projErr } = await sbService
+      .from('projects')
+      .select('company_id')
+      .eq('id', projectId)
+      .maybeSingle()
 
-  // Confirm user is a member of this company
-  const { data: member, error: memberErr } = await sbService
-    .from('company_members')
-    .select('user_id')
-    .eq('company_id', companyId)
-    .eq('user_id', userId)
-    .maybeSingle()
+    if (projErr) {
+      console.error('[analyze-project] Project lookup failed:', projErr.message)
+      return err(500, 'access_check_failed', 'Could not verify project access')
+    }
+    if (!project || !(project as { company_id?: string }).company_id) {
+      return err(403, 'project_access_denied', 'Project not found or access denied')
+    }
+    companyId = (project as { company_id: string }).company_id
 
-  if (memberErr) {
-    console.error('[analyze-project] Member lookup failed:', memberErr.message)
-    return err(500, 'access_check_failed', 'Could not verify project access')
-  }
-  if (!member) {
-    return err(403, 'project_access_denied', 'Project not found or access denied')
+    const { data: member, error: memberErr } = await sbService
+      .from('company_members')
+      .select('user_id')
+      .eq('company_id', companyId)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (memberErr) {
+      console.error('[analyze-project] Member lookup failed:', memberErr.message)
+      return err(500, 'access_check_failed', 'Could not verify project access')
+    }
+    if (!member) {
+      return err(403, 'project_access_denied', 'Project not found or access denied')
+    }
+  } else {
+    // No project provided: resolve company directly from user's membership
+    const { data: memberRow } = await sbService
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (!memberRow?.company_id) return err(403, 'no_company', 'User has no company')
+    companyId = memberRow.company_id
   }
 
   // ── ASYNC PATH: large files go through background job ─────────────────
@@ -760,6 +773,11 @@ export const handler: Handler = async (event) => {
   let instructionText = 'Zanalizuj ten materiał projektowy i wydobądź wszystkie dostępne dane projektowe.'
   if (context) {
     instructionText += `\n\nKontekst od użytkownika: ${context}`
+  }
+  if (marketType === 'secondary') {
+    instructionText += '\n\nKONTEKST: To jest mieszkanie/dom z RYNKU WTÓRNEGO (do remontu/modernizacji). Może wymagać demontażu, wyburzeń, wywozu gruzu, renowacji instalacji.'
+  } else if (marketType === 'developer') {
+    instructionText += '\n\nKONTEKST: To jest mieszkanie/dom DEWELOPERSKI / STAN DEWELOPERSKI (nowe budownictwo). Brak wykończeń, tynki surowe, brak podłóg, sanitariatów. Typowy zakres: tynki, gładzie, wylewki, malowanie, podłogi, płytki, biały montaż, drzwi wewnętrzne, oświetlenie.'
   }
 
   if (isPdf) {

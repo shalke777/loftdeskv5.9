@@ -122,6 +122,7 @@ export async function callAnalyzeProject(
   context?: string,
   projectId?: string,
   companyId?: string,
+  marketType?: 'secondary' | 'developer',
 ): Promise<ProjectAnalysisResult> {
   const validationError = validateProjectFile(file)
   if (validationError) {
@@ -153,6 +154,7 @@ export async function callAnalyzeProject(
     context:           context ?? undefined,
     project_type_hint: fileType === 'application/pdf' ? 'pdf' : 'visualization',
     project_id:        projectId || undefined,
+    market_type:       marketType ?? undefined,
   }
 
   if (useLargeFilePath) {
@@ -231,8 +233,8 @@ export async function callAnalyzeProject(
 
 export function useAnalyzeProject() {
   return useMutation({
-    mutationFn: ({ file, context, projectId, companyId }: { file: File; context?: string; projectId?: string; companyId?: string }) =>
-      callAnalyzeProject(file, context, projectId, companyId),
+    mutationFn: ({ file, context, projectId, companyId, marketType }: { file: File; context?: string; projectId?: string; companyId?: string; marketType?: 'secondary' | 'developer' }) =>
+      callAnalyzeProject(file, context, projectId, companyId, marketType),
     retry: (failureCount, error) => {
       if (failureCount >= 1) return false
       const msg = error instanceof Error ? error.message : ''
