@@ -11,7 +11,7 @@
 
 import { useState, useRef, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { BookOpen, Pencil } from 'lucide-react'
+import { BookOpen, Pencil, RefreshCw, Check, X, Calendar } from 'lucide-react'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
@@ -738,10 +738,13 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
             <span>⏱ {(run.request_duration_ms / 1000).toFixed(1)}s</span>
           )}
           {(run.started_at && run.completed_at) && (
-            <span>📅 {new Date(run.started_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })} → {new Date(run.completed_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</span>
+            <span>
+              <Calendar size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />
+              {new Date(run.started_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })} → {new Date(run.completed_at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}
+            </span>
           )}
           {run.retry_count != null && run.retry_count > 0 && (
-            <span style={{ color: 'var(--color-warning)' }}>🔄 {run.retry_count}× retry</span>
+            <span style={{ color: 'var(--color-warning)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><RefreshCw size={11} /> {run.retry_count}× retry</span>
           )}
           {run.timeout_occurred && (
             <span style={{ color: 'var(--color-danger)' }}>[!] timeout</span>
@@ -849,16 +852,16 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
               fontSize:      12,
             }}
           >
-            <span style={{ color: 'var(--color-success)' }}>
-              ✓ {acceptedN + modifiedN} zaakceptowanych
+            <span style={{ color: 'var(--color-success)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <Check size={12} /> {acceptedN + modifiedN} zaakceptowanych
               {modifiedN > 0 && (
                 <span style={{ color: 'var(--color-warning)', marginLeft: 4 }}>
                   ({modifiedN} zmodyfikowanych)
                 </span>
               )}
             </span>
-            <span style={{ color: 'var(--color-danger)' }}>
-              ✗ {rejectedN} odrzuconych
+            <span style={{ color: 'var(--color-danger)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <X size={12} /> {rejectedN} odrzuconych
             </span>
             {missingN > 0 && (
               <span style={{ color: 'var(--color-warning)' }}>
@@ -963,7 +966,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
               ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <p style={{ fontSize: 13, color: 'var(--color-success)', margin: 0 }}>
-                    ✓ Wycena robocza <strong>{createdEstimate.number}</strong> utworzona ({createdEstimate.itemCount} pozycji).
+                    <Check size={13} style={{ marginRight: 4 }} /> Wycena robocza <strong>{createdEstimate.number}</strong> utworzona ({createdEstimate.itemCount} pozycji).
                   </p>
                   <button
                     type="button"

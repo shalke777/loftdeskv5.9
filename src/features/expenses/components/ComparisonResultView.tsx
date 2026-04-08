@@ -12,7 +12,7 @@
 
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Search, AlertTriangle, Ban, Loader2, ArrowRight, BarChart2 } from 'lucide-react'
 import type { ProjectComparisonResult, ComparisonDiff, ProjectScopeItem } from '@/services/ai/engines/project.types'
 import { computeComparisonReliability } from '@/services/ai/engines/reliability'
 import type { ReliabilityReport } from '@/services/ai/engines/reliability'
@@ -235,7 +235,7 @@ function ScopeAdditionsSection({ items, projectName, reliabilityReport }: ScopeA
           fontSize: 12,
         }}>
           <p style={{ margin: '0 0 8px', fontWeight: 600, color: 'var(--color-error)' }}>
-            ⚠ Pewność analizy jest niska — przekazanie może wymagać poprawek.
+            <AlertTriangle size={14} style={{ flexShrink: 0 }} /> Pewność analizy jest niska — przekazanie może wymagać poprawek.
           </p>
           <p style={{ margin: '0 0 10px', color: 'var(--color-text-secondary)' }}>
             Uzupełnij ceny i sprawdź pozycje po przeniesieniu. Czy kontynuować?
@@ -285,7 +285,12 @@ function ScopeAdditionsSection({ items, projectName, reliabilityReport }: ScopeA
           }}
           title={isBlocked ? 'Analiza zablokowana — popraw błędy przed przeniesieniem' : undefined}
         >
-          {isBlocked ? '⛔ Analiza zablokowana' : transferring ? '⏳ Przenoszenie…' : '📋 Dodaj do wyceny'}
+          {isBlocked
+            ? <><Ban size={14} /> Analiza zablokowana</>
+            : transferring
+              ? <><Loader2 size={14} /> Przenoszenie…</>
+              : <><ArrowRight size={14} /> Dodaj do wyceny</>
+          }
         </button>
       </div>
     </AnalysisSectionCard>
@@ -312,8 +317,8 @@ export function ComparisonResultView({ result, projectName }: Props) {
         background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)',
         fontSize: 12,
       }}>
-        <span style={{ fontWeight: 700, color: 'var(--color-text-secondary)', flex: 1 }}>
-          🔍 Porównanie projekt vs rzeczywistość
+        <span style={{ fontWeight: 700, color: 'var(--color-text-secondary)', flex: 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Search size={13} /> Porównanie projekt vs rzeczywistość
         </span>
         <AiReliabilityBanner report={reliabilityReport} compact />
       </div>
@@ -343,7 +348,7 @@ export function ComparisonResultView({ result, projectName }: Props) {
           background: 'rgba(212,150,10,0.08)', border: '1px solid rgba(212,150,10,0.25)',
           color: 'var(--color-accent)', lineHeight: 1.7,
         }}>
-          {result.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
+          {result.warnings.map((w, i) => <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}><AlertTriangle size={12} style={{ flexShrink: 0, marginTop: 1 }} />{w}</div>)}
         </div>
       )}
 
@@ -354,7 +359,7 @@ export function ComparisonResultView({ result, projectName }: Props) {
           color: 'var(--color-text-muted)', fontSize: 13,
           border: '2px dashed var(--color-border)', borderRadius: 8,
         }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>📊</div>
+          <BarChart2 size={28} style={{ marginBottom: 10, color: 'var(--color-text-muted)' }} />
           <p style={{ margin: 0 }}>
             Zbyt mało danych do porównania. Dodaj więcej zdjęć pomieszczenia z różnych kątów.
           </p>

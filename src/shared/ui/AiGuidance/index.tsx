@@ -12,6 +12,7 @@
 //   AiUploadRules          — compact upload-rules microcopy card (expandable tips)
 
 import { useState } from 'react'
+import { Bot, AlertTriangle, FolderOpen, Check } from 'lucide-react'
 
 // ── Smart file-intent sniff (filename heuristic, conservative) ────────────────
 // Returns a suggested engine type when the filename strongly implies a mismatch.
@@ -183,7 +184,7 @@ export function AiErrorState({
       border: '1px solid rgba(229,115,115,0.28)',
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-        <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+        <AlertTriangle size={18} style={{ lineHeight: 1, flexShrink: 0, marginTop: 1, color: 'var(--color-danger)' }} />
         <div style={{ flex: 1 }}>
           <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: 'var(--color-danger)' }}>
             {cat.title}
@@ -318,7 +319,7 @@ export function AiUploadRules({ config }: AiUploadRulesProps) {
         }}>
           {config.tips.map((t, i) => (
             <div key={i} style={{ color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>
-              <span style={{ color: 'var(--color-brand)', marginRight: 5 }}>✓</span>{t}
+              <Check size={13} style={{ color: 'var(--color-brand)', marginRight: 5, flexShrink: 0 }} />{t}
             </div>
           ))}
         </div>
@@ -471,7 +472,7 @@ export function AiDraftDisclaimer() {
       border: '1px solid rgba(37,99,235,0.15)',
       fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5,
     }}>
-      <span style={{ fontSize: 15, flexShrink: 0 }}>🤖</span>
+      <Bot size={15} style={{ flexShrink: 0 }} />
       <span>
         <strong style={{ color: 'var(--color-text-primary)' }}>Sugestia AI</strong>
         {' — wyniki wymagają weryfikacji. Sprawdź pozycje, ilości i ceny przed użyciem.'}
@@ -498,7 +499,7 @@ export function AiProjectContextBadge({ projectNumber, projectName, onChangeProj
       border: '1px solid rgba(37,99,235,0.2)',
       fontSize: 12, color: 'var(--color-text-secondary)',
     }}>
-      <span style={{ fontSize: 14, flexShrink: 0 }}>📂</span>
+      <FolderOpen size={14} style={{ flexShrink: 0 }} />
       <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
         {projectNumber} · {projectName}
       </span>

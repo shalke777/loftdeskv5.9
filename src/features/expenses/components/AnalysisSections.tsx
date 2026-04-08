@@ -4,6 +4,10 @@
 // v2: quantity hints, coverage engine (missing tasks), professional estimator layout.
 
 import { useState, useMemo } from 'react'
+import {
+  FileText, Layers, Wrench, BarChart2, BookOpen, PenLine,
+  AlertTriangle, Ban, Loader2, ArrowRight, Settings, Check, XCircle,
+} from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import type {
   DocumentLineItem,
@@ -32,7 +36,7 @@ export function LineItemsSection({ items: rawItems }: { items: DocumentLineItem[
   if (items.length === 0) return null
 
   return (
-    <AnalysisSectionCard title="Pozycje dokumentu" count={items.length} icon="📋">
+    <AnalysisSectionCard title="Pozycje dokumentu" count={items.length} icon={<FileText size={14} />}>
       <div style={{ overflowX: 'auto' }}>
         <table className="exp-items-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
@@ -73,7 +77,7 @@ export function DetectedMaterialsSection({ items }: { items: DetectedMaterial[] 
   if (!items || items.length === 0) return null
 
   return (
-    <AnalysisSectionCard title="Wykryte materiały" count={items.length} icon="🧱">
+    <AnalysisSectionCard title="Wykryte materiały" count={items.length} icon={<Layers size={14} />}>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
@@ -108,7 +112,7 @@ export function WorkScopeSection({ items }: { items: WorkScopeItem[] }) {
   if (!items || items.length === 0) return null
 
   return (
-    <AnalysisSectionCard title="Proponowany zakres prac" count={items.length} icon="🔧">
+    <AnalysisSectionCard title="Proponowany zakres prac" count={items.length} icon={<Wrench size={14} />}>
       <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.8 }}>
         {items.map((w, i) => (
           <li key={i} style={{ marginBottom: 4 }}>
@@ -238,9 +242,9 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
   const rest     = enriched.filter(e => !e.task || (e.task.priority !== 'required' && e.task.priority !== 'likely'))
 
   const groups = [
-    { label: '✅ Pozycje obowiązkowe', items: required, show: required.length > 0 },
-    { label: '📋 Pozycje prawdopodobne', items: likely, show: likely.length > 0 },
-    { label: '🔍 Pozycje warunkowe / dodatkowe', items: rest, show: rest.length > 0 },
+    { label: 'Pozycje obowiązkowe', items: required, show: required.length > 0 },
+    { label: 'Pozycje prawdopodobne', items: likely, show: likely.length > 0 },
+    { label: 'Pozycje warunkowe / dodatkowe', items: rest, show: rest.length > 0 },
   ]
 
   // Coverage engine — check what's missing
@@ -255,7 +259,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
   const coverage = useMemo(() => checkCoverage(presentIds), [presentIds])
 
   return (
-    <AnalysisSectionCard title="Proponowane pozycje wyceny" count={items.length} icon="📊">
+    <AnalysisSectionCard title="Proponowane pozycje wyceny" count={items.length} icon={<BarChart2 size={14} />}>
       <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8, fontStyle: 'italic' }}>
         Draft — propozycja AI dopasowana do biblioteki pozycji łazienkowych. Ilości i pozycje wymagają potwierdzenia.
       </div>
@@ -271,9 +275,9 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
         return (
           <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 8, flexWrap: 'wrap' }}>
             <span>Dopasowanie do katalogu:</span>
-            {strong > 0 && <span style={{ color: 'var(--color-success)' }}>📚 {strong} pewnych</span>}
-            {partial > 0 && <span style={{ color: 'var(--color-accent)' }}>📚? {partial} częściowych</span>}
-            {unmatched > 0 && <span style={{ color: 'var(--color-text-muted)' }}>✍️ {unmatched} własnych</span>}
+            {strong > 0 && <span style={{ color: 'var(--color-success)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><BookOpen size={10} /> {strong} pewnych</span>}
+            {partial > 0 && <span style={{ color: 'var(--color-accent)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><BookOpen size={10} /> {partial} częściowych</span>}
+            {unmatched > 0 && <span style={{ color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><PenLine size={10} /> {unmatched} własnych</span>}
           </div>
         )
       })()}
@@ -307,19 +311,19 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                           {(() => {
                             const globalIdx = items.indexOf(item)
                             const mr = matchResults.get(globalIdx)
-                            if (mr?.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name} (${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft)', color: 'var(--color-success)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚</span>
+                            if (mr?.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name} (${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft)', color: 'var(--color-success)', fontWeight: 600, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 2 }}><BookOpen size={8} /></span>
                             if (mr?.best?.tier === 'partial') return (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%, ${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: 'var(--color-accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>📚?</span>
+                                <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%, ${mr.best.match_reason})`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: 'var(--color-accent)', fontWeight: 600, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 2 }}><BookOpen size={8} />?</span>
                                 {mr.alternatives.length > 0 && <span title={`Alternatywy: ${mr.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 8, padding: '0 3px', borderRadius: 3, background: 'rgba(212,150,10,0.06)', color: 'var(--color-accent)', cursor: 'help', whiteSpace: 'nowrap' }}>+{mr.alternatives.length}</span>}
                               </span>
                             )
                             if (mr?.alternatives && mr.alternatives.length > 0) return (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                <span title={`Brak dopasowania. Sugestie: ${mr.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(229,115,115,0.08)', color: 'var(--color-error)', fontWeight: 600, whiteSpace: 'nowrap' }}>❌ uzupełnij</span>
+                                <span title={`Brak dopasowania. Sugestie: ${mr.alternatives.map(a => a.canonical_name).join(', ')}`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(229,115,115,0.08)', color: 'var(--color-error)', fontWeight: 600, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 2 }}><XCircle size={8} /> uzupełnij</span>
                               </span>
                             )
-                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft)', color: 'var(--color-text-tertiary)', fontWeight: 500, whiteSpace: 'nowrap' }}>✍️ własna</span>
+                            return <span title="Pozycja własna — uzupełnij ręcznie" style={{ fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft)', color: 'var(--color-text-tertiary)', fontWeight: 500, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 2 }}><PenLine size={8} />własna</span>
                           })()}
                         </span>
                         {catName && (
@@ -329,7 +333,7 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
                           <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{item.notes}</div>
                         )}
                         {item.provenance === 'dependency_inferred' && (
-                          <div style={{ fontSize: 9, color: 'var(--color-info)', marginTop: 2, fontStyle: 'italic' }}>⚙ wynika z zależności</div>
+                          <div style={{ fontSize: 9, color: 'var(--color-info)', marginTop: 2, fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 3 }}><Settings size={8} /> wynika z zależności</div>
                         )}
                         {item.provenance === 'confirmation_needed' && (
                           <div style={{ fontSize: 9, color: 'var(--color-accent)', marginTop: 2, fontStyle: 'italic' }}>? wymaga potwierdzenia</div>
@@ -378,8 +382,8 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
           background: 'rgba(229,115,115,0.08)', border: '1px solid rgba(229,115,115,0.3)',
           fontSize: 12,
         }}>
-          <p style={{ margin: '0 0 8px', fontWeight: 600, color: 'var(--color-error)' }}>
-            ⚠ Pewność analizy jest niska — pozycje wymagają ręcznej weryfikacji.
+          <p style={{ margin: '0 0 8px', fontWeight: 600, color: 'var(--color-error)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <AlertTriangle size={14} /> Pewność analizy jest niska — pozycje wymagają ręcznej weryfikacji.
           </p>
           <p style={{ margin: '0 0 10px', color: 'var(--color-text-secondary)' }}>
             Sprawdź ilości i ceny po przeniesieniu. Czy kontynuować?
@@ -422,7 +426,12 @@ export function SuggestedEstimateSection({ items, reliabilityReport }: { items: 
           onMouseEnter={e => { if (!transferring && !isBlocked) e.currentTarget.style.opacity = '0.9' }}
           onMouseLeave={e => { if (!transferring && !isBlocked) e.currentTarget.style.opacity = '1' }}
         >
-          {isBlocked ? '⛔ Analiza zablokowana' : transferring ? '⏳ Przenoszenie…' : '📋 Przenieś do wyceny →'}
+          {isBlocked
+            ? <><Ban size={14} /> Analiza zablokowana</>
+            : transferring
+              ? <><Loader2 size={14} className="spin" /> Przenoszenie…</>
+              : <><ArrowRight size={14} /> Przenieś do wyceny</>
+          }
         </button>
       </div>
     </AnalysisSectionCard>
@@ -448,8 +457,8 @@ function CoverageBar({ coverage }: { coverage: CoverageResult }) {
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2, transition: 'width 0.3s' }} />
       </div>
       {coverage.brokenDependencies.length > 0 && (
-        <div style={{ marginTop: 4, fontSize: 10, color: 'var(--color-accent)' }}>
-          ⚠️ {coverage.brokenDependencies.length} pozycja(e) bez wymaganej zależności
+        <div style={{ marginTop: 4, fontSize: 10, color: 'var(--color-accent)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <AlertTriangle size={10} /> {coverage.brokenDependencies.length} pozycja(e) bez wymaganej zależności
         </div>
       )}
     </div>
@@ -464,8 +473,8 @@ function MissingTasksSection({ coverage }: { coverage: CoverageResult }) {
 
   return (
     <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, background: 'rgba(212,150,10,0.06)', border: '1px solid rgba(212,150,10,0.2)' }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-accent)', marginBottom: 6 }}>
-        ⚠️ Brakujące pozycje
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-accent)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <AlertTriangle size={13} /> Brakujące pozycje
       </div>
 
       {coverage.missingRequired.length > 0 && (
@@ -593,7 +602,7 @@ function QuestionAnswerRow({
         </span>
         {isAnswered && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: labelColor }}>✓ {answerLabel}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: labelColor, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Check size={11} /> {answerLabel}</span>
             <button type="button" onClick={startEdit}
               style={{ fontSize: 10, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontFamily: 'inherit' }}>
               zmień
@@ -708,15 +717,15 @@ export function ClarificationQuestionsSection({
   const remaining     = questions.length - totalAnswered
 
   return (
-    <AnalysisSectionCard title="Pytania wymagające doprecyzowania" count={remaining > 0 ? remaining : undefined} icon="❓">
+    <AnalysisSectionCard title="Pytania wymagające doprecyzowania" count={remaining > 0 ? remaining : undefined} icon={<FileText size={14} />}>
       {remaining > 0 && (
         <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8, fontStyle: 'italic' }}>
           Odpowiedzi ulepszają zakres prac i wycenę. Krytyczne pytania mają największy wpływ.
         </div>
       )}
       {remaining === 0 && (
-        <div style={{ fontSize: 12, color: CONFIRMED_GREEN, marginBottom: 10, fontWeight: 600 }}>
-          ✓ Wszystkie pytania zostały odpowiedziane.
+        <div style={{ fontSize: 12, color: CONFIRMED_GREEN, marginBottom: 10, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Check size={13} /> Wszystkie pytania zostały odpowiedziane.
         </div>
       )}
 
