@@ -181,10 +181,15 @@ export function ProjectAnalysisPage() {
       {
         onSuccess: () => {
           setTransferring(false)
+          clearAnalysis()   // Clean up localStorage — estimate saved, no longer needed
+          setResult(null)   // Reset page so user can start a new analysis
+          setRestoredAt(null)
+          setStep('upload')
           navigate({ to: '/estimates' as any })
         },
-        onError: () => {
+        onError: (e) => {
           setTransferring(false)
+          console.error('[analysis transfer] createEstimate failed:', e)
         },
       }
     )
@@ -536,24 +541,26 @@ export function ProjectAnalysisPage() {
             {/* Restored-from-storage banner */}
             {restoredAt && (
               <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '7px 12px', marginBottom: 10, borderRadius: 7,
-                background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.25)',
-                fontSize: 12, color: 'var(--color-info)',
-                gap: 8,
+                padding: '9px 14px', marginBottom: 10, borderRadius: 8,
+                background: 'rgba(96,165,250,0.07)', border: '1px solid rgba(96,165,250,0.25)',
+                fontSize: 12,
               }}>
-                <span>
-                  🔄 Przywrócono wyniki z{' '}
-                  {new Date(restoredAt).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                  {' '}— analiza jest zapisana lokalnie
-                </span>
-                <button
-                  type="button"
-                  onClick={reset}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', padding: '2px 0' }}
-                >
-                  Wyczyść →
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ color: 'var(--color-info)', fontWeight: 600 }}>
+                    🔄 Przywrócona analiza z{' '}
+                    {new Date(restoredAt).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={reset}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', padding: '2px 0' }}
+                  >
+                    Usuń →
+                  </button>
+                </div>
+                <div style={{ color: 'var(--color-text-muted)', marginTop: 3, lineHeight: 1.5 }}>
+                  Analiza jest zapisana w pamięci przeglądarki — widoczna tylko tutaj. Kliknij „Zapisz jako nową wycenę" aby przenieść pozycje do wycen.
+                </div>
               </div>
             )}
 

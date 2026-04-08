@@ -37,9 +37,22 @@ export const estimatesApi = {
     const { data, error } = await supabase.from('cost_estimates').insert(payload).select('*').single()
     if (error) throw error
     if (items.length > 0) {
-      const itemRows = items.map((item, index) => ({ cost_estimate_id: data.id, name: item.name ?? item.description ?? '', description: item.description ?? item.name ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index, catalog_item_id: item.catalog_item_id ?? null }))
+      const itemRows = items.map((item, index) => ({
+        cost_estimate_id: data.id,
+        name: item.name ?? item.description ?? '',
+        description: item.description ?? item.name ?? '',
+        unit: item.unit ?? 'm²',
+        quantity: (typeof item.quantity === 'number' && item.quantity > 0) ? item.quantity : 1,
+        unit_price: item.unit_price ?? 0,
+        vat_rate: item.vat_rate ?? 8,
+        sort_order: item.sort_order ?? index,
+        catalog_item_id: item.catalog_item_id ?? null,
+      }))
       const { error: itemsError } = await supabase.from('cost_estimate_items').insert(itemRows)
-      if (itemsError) throw itemsError
+      if (itemsError) {
+        console.error('[estimates.create] items insert failed:', itemsError)
+        throw itemsError
+      }
     }
     if (input.project_id) { try { await projectDocumentsApi.link(input.company_id, input.project_id, 'estimate', data.id, { manual: true }) } catch (err) { console.warn('[estimates] project doc link failed on create:', err) } }
     return { id: data.id, company_id: data.company_id ?? input.company_id, client_id: data.client_id, number: data.number, name: data.name, status: data.status, total_net: totals.net, total_gross: totals.gross, notes: data.notes ?? '', valid_until: data.valid_until ?? null, created_at: data.created_at, items }

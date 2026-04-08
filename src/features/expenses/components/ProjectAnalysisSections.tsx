@@ -298,12 +298,14 @@ function projectItemsToEstimate(items: ProjectEstimateItem[], catalog?: import('
   return items.map((e, i) => {
     const result = catalog?.length ? matchCatalogItem(e.name, catalog) : { best: null, alternatives: [] }
     const match = result.best
+    // Never insert quantity=0 — use 1 as safe default (user adjusts after)
+    const safeQty = (typeof e.quantity === 'number' && e.quantity > 0) ? e.quantity : 1
     return {
       id: crypto.randomUUID(),
       name: match?.canonical_name ?? e.name,
       description: e.notes ?? '',
-      unit: e.unit,
-      quantity: e.quantity,
+      unit: e.unit || 'm²',
+      quantity: safeQty,
       unit_price: 0,
       vat_rate: 8,
       sort_order: i + 1,
