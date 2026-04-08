@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bot, ChevronRight, DollarSign, FileText, FolderKanban, Mic, Receipt, Sparkles, TrendingUp, Users } from 'lucide-react'
+import { Bot, ChevronRight, DollarSign, FileText, FolderKanban, Mic, Receipt, Sparkles, TrendingUp, Users, AlertTriangle } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { Modal } from '@/shared/ui/Modal/Modal'
@@ -26,6 +26,42 @@ const quickActions = [
   { icon: Bot,          title: 'AI Asystent',        sub: 'Asystent projektu',    href: '__ai_assistant__' },
 ]
 
+const STATUS_LABEL: Record<string, string> = {
+  active: 'W realizacji', done: 'Zakończony', offer: 'Oferta', cancelled: 'Anulowany',
+}
+const STATUS_BG: Record<string, string> = {
+  active: 'var(--color-success-soft)', done: 'var(--color-muted)',
+  offer:  'var(--color-warning-soft)', cancelled: 'var(--color-error-soft)',
+}
+const STATUS_COLOR: Record<string, string> = {
+  active: 'var(--color-success)', done: 'var(--color-text-secondary)',
+  offer:  'var(--color-warning)', cancelled: 'var(--color-error)',
+}
+
+function BudgetBar({ invoiced, total }: { invoiced: number; total: number }) {
+  if (total <= 0) return null
+  const pct  = Math.min(100, Math.round((invoiced / total) * 100))
+  const over = invoiced > total
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--color-text-secondary)', marginBottom: 3 }}>
+        <span>Fakturacja</span>
+        <span style={{ fontWeight: 600, color: over ? 'var(--color-error)' : 'var(--color-text-secondary)' }}>
+          {pct}%
+        </span>
+      </div>
+      <div style={{ height: 4, borderRadius: 2, background: 'var(--color-border)', overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', borderRadius: 2,
+          width: `${Math.min(100, pct)}%`,
+          background: over ? 'var(--color-error)' : pct >= 75 ? 'var(--color-success)' : 'var(--color-brand)',
+          transition: 'width 0.4s ease',
+        }} />
+      </div>
+    </div>
+  )
+}
+
 export function DashboardPage() {
   const navigate = useNavigate()
   const companyId = useCompanyId()
@@ -45,6 +81,14 @@ export function DashboardPage() {
   const showChecklist = onboarding && !onboarding.isEmpty && !onboarding.isComplete
 
   const pipelineProjects: { id: string; name: string; number: string; status: string; clientName: string; contractValue: number; estimateValue: number; invoicedTotal: number; paidTotal: number; completeness_score?: number | null }[] = (data as any).pipelineProjects ?? []
+  const attentionProjects: { id: string; name: string; number: string; status: string; issues: string[] }[] = (data as any).attentionProjects ?? []
+
+  const activeProjects  = pipelineProjects.filter(p => p.status === 'active')
+  const otherProjects   = pipelineProjects.filter(p => p.status !== 'active')
+
+  function goToProject(id: string) {
+    navigate({ to: '/projects' as any, search: { open: id } as any })
+  }
 
   return (
     <div>
@@ -152,15 +196,135 @@ export function DashboardPage() {
         })}
       </div>
 
-      {/* ── Pipeline ─────────────────────────────────────────────── */}
-      {pipelineProjects.length > 0 && (
+      {/* ── Wymaga uwagi ─────────────────────────────────────────── */}
+      {attentionProjects.length > 0 && (
+        <Card style={{ marginBottom: 16, borderLeft: '3px solid var(--color-warning, #f59e0b)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <AlertTriangle size={16} style={{ color: 'var(--color-warning, #f59e0b)', flexShrink: 0 }} />
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-secondary)' }}>
+              Wymaga uwagi ({attentionProjects.length})
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {attentionProjects.map(p => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => goToProject(p.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '8px 10px', borderRadius: 8, border: 'none',
+                  background: 'var(--color-surface-soft, rgba(0,0,0,0.03))',
+                  cursor: 'pointer', textAlign: 'left', width: '100%',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-warning-soft, rgba(245,158,11,0.08))')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-surface-soft, rgba(0,0,0,0.03))')}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, display: 'block', lineHeight: 1.3 }}>{p.name}</span>
+                  <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                    {p.issues.join(' · ')}
+                  </span>
+                </div>
+                <ChevronRight size={14} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Aktywne projekty (karty z budżetem) ──────────────────── */}
+      {activeProjects.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-secondary)' }}>
+              Aktywne projekty ({activeProjects.length})
+            </span>
+            <button
+              type="button"
+              onClick={() => navigate({ to: '/projects' as any })}
+              style={{ fontSize: 12, color: 'var(--color-brand)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+            >
+              Wszystkie →
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
+            {activeProjects.map(proj => {
+              const value   = proj.contractValue || proj.estimateValue
+              const sc      = proj.completeness_score
+              const scColor = sc == null ? 'var(--color-text-muted)' : sc >= 80 ? 'var(--color-success)' : sc >= 50 ? 'var(--color-warning)' : 'var(--color-error)'
+              return (
+                <button
+                  key={proj.id}
+                  type="button"
+                  onClick={() => goToProject(proj.id)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', gap: 0,
+                    padding: '14px 16px', borderRadius: 12,
+                    border: '1px solid var(--color-border)',
+                    background: 'var(--color-surface-elevated)',
+                    cursor: 'pointer', textAlign: 'left', width: '100%',
+                    transition: 'border-color 0.15s, box-shadow 0.15s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-brand)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.1)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none' }}
+                >
+                  {/* Top row: name + status */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3, marginBottom: 1 }}>{proj.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                        {proj.number}{proj.clientName ? ` · ${proj.clientName}` : ''}
+                      </div>
+                    </div>
+                    <span style={{
+                      flexShrink: 0, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                      background: STATUS_BG[proj.status] ?? 'var(--color-muted)',
+                      color: STATUS_COLOR[proj.status] ?? 'var(--color-text-secondary)',
+                    }}>
+                      {STATUS_LABEL[proj.status] ?? proj.status}
+                    </span>
+                  </div>
+
+                  {/* Values */}
+                  <div style={{ display: 'flex', gap: 16, fontSize: 12, marginBottom: 4 }}>
+                    <div>
+                      <div style={{ color: 'var(--color-text-secondary)', fontSize: 10 }}>Wartość</div>
+                      <div style={{ fontWeight: 700 }}>{value > 0 ? formatCurrency(value) : '—'}</div>
+                    </div>
+                    <div>
+                      <div style={{ color: 'var(--color-text-secondary)', fontSize: 10 }}>Opłacono</div>
+                      <div style={{ fontWeight: 700, color: proj.paidTotal > 0 ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>
+                        {proj.paidTotal > 0 ? formatCurrency(proj.paidTotal) : '—'}
+                      </div>
+                    </div>
+                    {sc != null && (
+                      <div style={{ marginLeft: 'auto' }}>
+                        <div style={{ color: 'var(--color-text-secondary)', fontSize: 10 }}>Kompletność</div>
+                        <div style={{ fontWeight: 700, color: scColor }}>{sc}%</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Budget bar */}
+                  <BudgetBar invoiced={proj.invoicedTotal} total={value} />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Pipeline (pozostałe — oferty, zakończone) ────────────── */}
+      {otherProjects.length > 0 && (
         <Card className="pipeline-section" style={{ marginBottom: 16 }}>
           <div className="toolbar" style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <TrendingUp size={20} />
               <h3 style={{ margin: 0 }}>Pipeline</h3>
             </div>
-            <span className="field__label">{pipelineProjects.length} {pipelineProjects.length === 1 ? 'pozycja' : 'pozycji'}</span>
+            <span className="field__label">{otherProjects.length} {otherProjects.length === 1 ? 'pozycja' : 'pozycji'}</span>
           </div>
 
           {/* Desktop: table */}
@@ -178,13 +342,19 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {pipelineProjects.map((proj) => (
-                  <tr key={proj.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                {otherProjects.map((proj) => (
+                  <tr
+                    key={proj.id}
+                    style={{ borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer', transition: 'background 0.1s' }}
+                    onClick={() => goToProject(proj.id)}
+                    onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'var(--color-surface-soft, rgba(0,0,0,0.03))')}
+                    onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+                  >
                     <td style={{ padding: '10px 12px' }}><strong>{proj.name}</strong><div className="field__label">{proj.number}</div></td>
                     <td style={{ padding: '10px 12px' }}>{proj.clientName || '—'}</td>
                     <td style={{ padding: '10px 12px' }}>
-                      <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: proj.status === 'active' ? 'var(--color-success-soft)' : proj.status === 'done' ? 'var(--color-muted)' : proj.status === 'offer' ? 'var(--color-warning-soft)' : 'var(--color-error-soft)', color: proj.status === 'active' ? 'var(--color-success)' : proj.status === 'done' ? 'var(--color-text-secondary)' : proj.status === 'offer' ? 'var(--color-warning)' : 'var(--color-error)' }}>
-                        {proj.status === 'active' ? 'W realizacji' : proj.status === 'done' ? 'Zakończony' : proj.status === 'offer' ? 'Oferta' : proj.status === 'cancelled' ? 'Anulowany' : proj.status}
+                      <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: STATUS_BG[proj.status] ?? 'var(--color-muted)', color: STATUS_COLOR[proj.status] ?? 'var(--color-text-secondary)' }}>
+                        {STATUS_LABEL[proj.status] ?? proj.status}
                       </span>
                       {proj.completeness_score != null && (() => {
                         const sc = proj.completeness_score
@@ -211,15 +381,21 @@ export function DashboardPage() {
 
           {/* Mobile: cards */}
           <div className="pipeline-cards">
-            {pipelineProjects.map((proj) => (
-              <div key={proj.id} className="pipeline-card">
+            {otherProjects.map((proj) => (
+              <button
+                key={proj.id}
+                type="button"
+                onClick={() => goToProject(proj.id)}
+                className="pipeline-card"
+                style={{ cursor: 'pointer', border: 'none', background: 'none', textAlign: 'left', width: '100%', padding: 0 }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                   <div style={{ minWidth: 0 }}>
                     <strong style={{ fontSize: 14, display: 'block', lineHeight: 1.3 }}>{proj.name}</strong>
                     <span className="field__label" style={{ fontSize: 12 }}>{proj.number}{proj.clientName ? ` · ${proj.clientName}` : ''}</span>
                   </div>
-                  <span style={{ flexShrink: 0, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: proj.status === 'active' ? 'var(--color-success-soft)' : proj.status === 'done' ? 'var(--color-muted)' : proj.status === 'offer' ? 'var(--color-warning-soft)' : 'var(--color-error-soft)', color: proj.status === 'active' ? 'var(--color-success)' : proj.status === 'done' ? 'var(--color-text-secondary)' : proj.status === 'offer' ? 'var(--color-warning)' : 'var(--color-error)' }}>
-                    {proj.status === 'active' ? 'Realizacja' : proj.status === 'done' ? 'Zakończony' : proj.status === 'offer' ? 'Oferta' : proj.status === 'cancelled' ? 'Anulowany' : proj.status}
+                  <span style={{ flexShrink: 0, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: STATUS_BG[proj.status] ?? 'var(--color-muted)', color: STATUS_COLOR[proj.status] ?? 'var(--color-text-secondary)' }}>
+                    {STATUS_LABEL[proj.status] ?? proj.status}
                   </span>
                 </div>
                 {proj.completeness_score != null && (() => {
@@ -239,7 +415,7 @@ export function DashboardPage() {
                   <div><span className="field__label">Zafakturowano</span><span>{formatCurrency(proj.invoicedTotal)}</span></div>
                   <div><span className="field__label">Opłacono</span><span style={{ color: proj.paidTotal > 0 ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{formatCurrency(proj.paidTotal)}</span></div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
 
