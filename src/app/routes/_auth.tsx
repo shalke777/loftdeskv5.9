@@ -270,6 +270,22 @@ export function AuthLayout() {
               )}
             </div>
             <InstallAppButton compact />
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Przełącz na jasny motyw' : 'Przełącz na ciemny motyw'}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 34, height: 34, borderRadius: 8, border: 'none',
+                background: 'transparent', cursor: 'pointer',
+                color: 'var(--color-text-secondary)',
+                transition: 'background 0.15s, color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-surface-soft, rgba(0,0,0,0.06))'; e.currentTarget.style.color = 'var(--color-text-primary)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-secondary)' }}
+            >
+              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
           </div>
         </header>
         <main className="shell-content"><Outlet /></main>
