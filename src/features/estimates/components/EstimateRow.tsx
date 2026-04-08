@@ -102,10 +102,10 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
             {formatCurrency(estimate.total_gross)}
           </span>
           <span className={STATUS_CLASS[estimate.status]}>{STATUS_LABEL[estimate.status]}</span>
-          <SignatureStatusBadge documentType="estimate" documentId={estimate.id} />
+          <span className="proj-row__sig-badge"><SignatureStatusBadge documentType="estimate" documentId={estimate.id} /></span>
           <div className="proj-row__actions">
             <button
-              className="proj-action-btn"
+              className="proj-action-btn proj-action-btn--mobile-hidden"
               title="Wyślij do akceptacji"
               onClick={e => { e.stopPropagation(); setApprovalOpen(true) }}
             >
@@ -119,7 +119,7 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
               <Mail size={14} />
             </button>
             <button
-              className="proj-action-btn"
+              className="proj-action-btn proj-action-btn--mobile-hidden"
               title="Podgląd PDF"
               onClick={e => { e.stopPropagation(); setPreviewOpen(true) }}
             >
@@ -203,6 +203,7 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
         documentType="estimate"
         documentName={estimate.number}
         defaultEmail={client?.email}
+        pdfHtml={tabs[0]?.content}
         portalUrl={estimate.project_id ? `${getAppOrigin()}/client/project/${estimate.project_id}` : undefined}
       />
 
