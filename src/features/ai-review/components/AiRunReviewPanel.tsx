@@ -17,6 +17,7 @@ import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { useToast } from '@/shared/hooks/useToast'
 import { useServiceCatalog, matchCatalogItem } from '@/features/service-catalog'
+import { useCompanyPriceList } from '@/features/service-catalog/hooks/useCompanyPriceList'
 import { computeConfidenceBand } from '@/shared/lib/confidence-model'
 import { AiAssistantPanel } from './AiAssistantPanel'
 import {
@@ -76,6 +77,7 @@ function ScopeItemRow({
   item,
   runId, projectId, companyId, userId,
   catalog,
+  priceMap,
 }: {
   item:      AiScopeItem
   runId:     string
@@ -83,10 +85,30 @@ function ScopeItemRow({
   companyId: string
   userId:    string
   catalog?:  import('@/entities/service_catalog/model').ServiceCatalogItem[]
+  priceMap?: Map<string, number>
 }) {
+  // Resolve catalog match + price list suggestion
+  const catalogMatch = useMemo(() => {
+    if (!catalog?.length) return null
+    const name = item.title ?? item.description ?? ''
+    const mr = matchCatalogItem(name, catalog)
+    return mr.best ?? null
+  }, [catalog, item.title, item.description])
+
+  const catalogPrice = useMemo(() => {
+    if (!catalogMatch?.catalog_item_id || !priceMap) return null
+    const p = priceMap.get(catalogMatch.catalog_item_id)
+    return (p && p > 0) ? p : null
+  }, [catalogMatch, priceMap])
+
+  // Use catalog price as default when AI has no price suggestion
+  const initialPrice = item.price_suggested_by_ai
+    ? String(item.price_suggested_by_ai)
+    : (catalogPrice ? String(catalogPrice) : '')
+
   const [editing,     setEditing]     = useState(false)
   const [qtyFinal,    setQtyFinal]    = useState(String(item.quantity_suggested ?? ''))
-  const [priceFinal,  setPriceFinal]  = useState(String(item.price_suggested_by_ai ?? ''))
+  const [priceFinal,  setPriceFinal]  = useState(initialPrice)
   const [reason,      setReason]      = useState('')
 
   const reviewAction = useInsertReviewAction(runId, projectId)
@@ -157,11 +179,9 @@ function ScopeItemRow({
           </span>
           {/* Catalog match badge */}
           {(() => {
-            if (!catalog?.length) return null
-            const name = item.title ?? item.description ?? ''
-            const mr = matchCatalogItem(name, catalog)
-            if (mr.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name}`} style={{ marginLeft: 4, display: 'inline-flex', alignItems: 'center', padding: '1px 4px', borderRadius: 3, background: 'var(--color-success-soft)', color: 'var(--color-success)', fontWeight: 600 }}><BookOpen size={9} /></span>
-            if (mr.best?.tier === 'partial') return <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%)`} style={{ marginLeft: 4, display: 'inline-flex', alignItems: 'center', gap: 1, padding: '1px 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: 'var(--color-accent)', fontWeight: 600 }}><BookOpen size={9} /><span style={{ fontSize: 8 }}>?</span></span>
+            if (!catalogMatch) return null
+            if (catalogMatch.tier === 'strong') return <span title={`Katalog: ${catalogMatch.canonical_name}`} style={{ marginLeft: 4, display: 'inline-flex', alignItems: 'center', padding: '1px 4px', borderRadius: 3, background: 'var(--color-success-soft)', color: 'var(--color-success)', fontWeight: 600 }}><BookOpen size={9} /></span>
+            if (catalogMatch.tier === 'partial') return <span title={`Częściowe: ${catalogMatch.canonical_name} (${catalogMatch.confidence}%)`} style={{ marginLeft: 4, display: 'inline-flex', alignItems: 'center', gap: 1, padding: '1px 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: 'var(--color-accent)', fontWeight: 600 }}><BookOpen size={9} /><span style={{ fontSize: 8 }}>?</span></span>
             return <span title="Brak dopasowania do katalogu" style={{ marginLeft: 4, display: 'inline-flex', alignItems: 'center', padding: '1px 4px', borderRadius: 3, background: 'var(--color-surface-soft)', color: 'var(--color-text-tertiary)', fontWeight: 500 }}><Pencil size={9} /></span>
           })()}
           {item.scope_layer === 'HIDDEN_PROBABLE_SCOPE' && (
@@ -184,7 +204,17 @@ function ScopeItemRow({
         {item.price_suggested_by_ai != null && (
           <span>Cena AI: {item.price_suggested_by_ai} zł</span>
         )}
-        {item.missing_price && (
+        {catalogPrice != null && item.price_suggested_by_ai == null && (
+          <span style={{ color: 'var(--color-brand)', fontWeight: 600 }}>
+            z cennika: {catalogPrice.toFixed(2)} zł
+          </span>
+        )}
+        {catalogPrice != null && item.price_suggested_by_ai != null && (
+          <span style={{ color: 'var(--color-text-secondary)' }}>
+            cennik: {catalogPrice.toFixed(2)} zł
+          </span>
+        )}
+        {item.missing_price && !catalogPrice && (
           <span style={{ color: 'var(--color-warning)' }}>brak ceny</span>
         )}
       </div>
@@ -203,7 +233,9 @@ function ScopeItemRow({
               />
             </label>
             <label>
-              <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>Cena (zł)</span>
+              <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 2 }}>
+                Cena (zł){catalogPrice != null ? <span style={{ color: 'var(--color-brand)', marginLeft: 6 }}>cennik: {catalogPrice.toFixed(2)} zł</span> : null}
+              </span>
               <input
                 type="number"
                 value={priceFinal}
@@ -546,6 +578,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
   const toast       = useToast()
   const navigate    = useNavigate()
   const { data: catalog } = useServiceCatalog()
+  const { data: priceMap } = useCompanyPriceList()
 
   const { data: scope     = [], isLoading: lScope }  = useAiScopeItems(run.id)
   const { data: questions = [], isLoading: lQ }      = useAiQuestions(run.id)
@@ -582,7 +615,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
         </p>
         {hint && (
           <p style={{ color: 'var(--color-text-secondary)', fontSize: 12, marginTop: 4 }}>
-            💡 {hint}
+            [i] {hint}
           </p>
         )}
       </div>
@@ -621,7 +654,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
         border: '1px solid rgba(37,99,235,0.15)',
         fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5,
       }}>
-        <span style={{ fontSize: 15, flexShrink: 0 }}>🤖</span>
+        <span style={{ fontSize: 13, flexShrink: 0, color: 'var(--color-text-secondary)' }}>[AI]</span>
         <span>
           <strong style={{ color: 'var(--color-text-primary)' }}>Sugestia AI</strong>
           {' — przejrzyj każdą pozycję przed utworzeniem wyceny.'}
@@ -711,17 +744,17 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
             <span style={{ color: 'var(--color-warning)' }}>🔄 {run.retry_count}× retry</span>
           )}
           {run.timeout_occurred && (
-            <span style={{ color: 'var(--color-danger)' }}>⚠ timeout</span>
+            <span style={{ color: 'var(--color-danger)' }}>[!] timeout</span>
           )}
           {run.parse_path && (
             <span>📎 {run.parse_path}</span>
           )}
           {(run.input_token_count || run.output_token_count) && (
-            <span>🔢 ~{((run.input_token_count ?? 0) + (run.output_token_count ?? 0)).toLocaleString()} tok</span>
+            <span>tok: ~{((run.input_token_count ?? 0) + (run.output_token_count ?? 0)).toLocaleString()}</span>
           )}
           {run.input_file_size_bytes != null && run.input_file_size_bytes > 0 && (
             <span style={run.input_file_size_bytes > 5242880 ? { color: 'var(--color-warning)', fontWeight: 600 } : undefined}>
-              📦 {(run.input_file_size_bytes / 1024 / 1024).toFixed(1)} MB{run.input_file_size_bytes > 5242880 ? ' (heavy)' : ''}
+              {(run.input_file_size_bytes / 1024 / 1024).toFixed(1)} MB{run.input_file_size_bytes > 5242880 ? ' (heavy)' : ''}
             </span>
           )}
         </div>
@@ -735,8 +768,8 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
           const rate = Math.round((matched / scope.length) * 100)
           return (
             <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 6, display: 'flex', gap: 10 }}>
-              <span>📚 Katalog: {matched}/{scope.length} ({rate}%)</span>
-              {rate < 50 && <span style={{ color: 'var(--color-warning)' }}>⚠ niska pokrywalność</span>}
+              <span>Katalog: {matched}/{scope.length} ({rate}%)</span>
+              {rate < 50 && <span style={{ color: 'var(--color-warning)' }}>[!] niska pokrywalność</span>}
             </div>
           )
         })()}
@@ -749,6 +782,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
             companyId={companyId}
             userId={userId}
             catalog={catalog}
+            priceMap={priceMap}
           />
         ))}
       </Section>
@@ -828,7 +862,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
             </span>
             {missingN > 0 && (
               <span style={{ color: 'var(--color-warning)' }}>
-                ⚠ {missingN} {missingN === 1 ? 'pozycja bez ceny' : 'pozycji bez ceny'}
+                [!] {missingN} {missingN === 1 ? 'pozycja bez ceny' : 'pozycji bez ceny'}
               </span>
             )}
           </div>
@@ -900,7 +934,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
                 fontSize:      12,
                 color:        'var(--color-warning)',
               }}>
-                ⚠ {missingPrices} {missingPrices === 1 ? 'pozycja wymaga ceny' : 'pozycji wymaga ceny'} — wycena zostanie utworzona z ceną 0 zł. Uzupełnij ceny w edytorze wyceny przed wysłaniem do klienta.
+                [!] {missingPrices} {missingPrices === 1 ? 'pozycja wymaga ceny' : 'pozycji wymaga ceny'} — wycena zostanie utworzona z ceną 0 zł. Uzupełnij ceny w edytorze wyceny przed wysłaniem do klienta.
               </div>
             )}
 
@@ -1042,7 +1076,7 @@ export function AiRunReviewPanel({ run, projectId }: Props) {
           border: '1px solid rgba(16,185,129,0.2)',
           fontSize: 13, color: 'var(--color-success)',
         }}>
-          <span style={{ fontSize: 20 }}>✅</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-success)' }}>[OK]</span>
           <span>
             <strong>Przegląd zakończony</strong> — wszystkie pozycje zostały sprawdzone.
             {scope.some(s => s.review_status === 'accepted' || s.review_status === 'modified')
