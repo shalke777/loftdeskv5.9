@@ -61,22 +61,27 @@ export const companyPriceListApi = {
     if (error) throw error
   },
 
-  /** Upsert a single custom (non-catalog) price entry */
+  /** Upsert a single custom (non-catalog) price entry (delete+insert to avoid partial index issue) */
   async upsertCustomPrice(companyId: string, customLabel: string, unitPrice: number): Promise<void> {
     if (isDemoMode || !supabase || unitPrice <= 0) return
 
+    // Partial indexes not supported by PostgREST onConflict — use delete+insert
+    await supabase
+      .from('company_price_list')
+      .delete()
+      .eq('company_id', companyId)
+      .eq('custom_label', customLabel)
+      .is('catalog_item_id', null)
+
     const { error } = await supabase
       .from('company_price_list')
-      .upsert(
-        {
-          company_id: companyId,
-          catalog_item_id: null,
-          custom_label: customLabel,
-          unit_price: unitPrice,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'company_id,custom_label' }
-      )
+      .insert({
+        company_id: companyId,
+        catalog_item_id: null,
+        custom_label: customLabel,
+        unit_price: unitPrice,
+        updated_at: new Date().toISOString(),
+      })
 
     if (error) throw error
   },
@@ -128,9 +133,18 @@ export const companyPriceListApi = {
     }
 
     if (customRows.length > 0) {
+      // Partial indexes not supported by PostgREST onConflict — use delete+insert
+      const labels = customRows.map((r) => r.custom_label!)
+      await supabase
+        .from('company_price_list')
+        .delete()
+        .eq('company_id', companyId)
+        .in('custom_label', labels)
+        .is('catalog_item_id', null)
+
       const { error } = await supabase
         .from('company_price_list')
-        .upsert(customRows, { onConflict: 'company_id,custom_label' })
+        .insert(customRows)
       if (error) throw error
     }
   },
