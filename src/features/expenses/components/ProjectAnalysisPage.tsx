@@ -72,6 +72,32 @@ function inferRoomType(r: ProjectAnalysisResult): string {
   return MAP[rt] ?? 'other'
 }
 
+// ── Analysis persistence helpers ─────────────────────────────────────────────
+const ANALYSIS_PERSIST_KEY = 'loftdesk_project_analysis_last'
+
+interface PersistedAnalysis {
+  result:           ProjectAnalysisResult
+  comparisonResult: ProjectComparisonResult | null
+  projectId:        string
+  analyzedAt:       string   // ISO string
+}
+
+function saveAnalysis(data: PersistedAnalysis) {
+  try { localStorage.setItem(ANALYSIS_PERSIST_KEY, JSON.stringify(data)) } catch { /* quota */ }
+}
+
+function loadAnalysis(): PersistedAnalysis | null {
+  try {
+    const raw = localStorage.getItem(ANALYSIS_PERSIST_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as PersistedAnalysis
+  } catch { return null }
+}
+
+function clearAnalysis() {
+  try { localStorage.removeItem(ANALYSIS_PERSIST_KEY) } catch { /* ignore */ }
+}
+
 export function ProjectAnalysisPage() {
   const companyId   = useCompanyId()
   const analyze     = useAnalyzeProject()
@@ -80,14 +106,20 @@ export function ProjectAnalysisPage() {
   const { data: projects = [], isLoading: projectsLoading } = useProjects()
   const { projectId: urlProjectId } = useSearch({ strict: false }) as { projectId?: string }
 
+  // Restore persisted analysis on first render
+  const persisted = loadAnalysis()
+
   // If projectId comes from URL (via type chooser), skip picker step
-  const initialStep: Step = urlProjectId ? 'upload' : 'project'
+  const initialStep: Step = (persisted && !urlProjectId) ? 'results' : (urlProjectId ? 'upload' : 'project')
   const [step, setStep]       = useState<Step>(initialStep)
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(urlProjectId ?? '')
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(
+    urlProjectId ?? persisted?.projectId ?? ''
+  )
   const [file, setFile]       = useState<File | null>(null)
   const [context, setContext] = useState('')
-  const [result, setResult]   = useState<ProjectAnalysisResult | null>(null)
+  const [result, setResult]   = useState<ProjectAnalysisResult | null>(persisted?.result ?? null)
   const [error, setError]     = useState<string | null>(null)
+  const [restoredAt, setRestoredAt] = useState<string | null>(persisted?.analyzedAt ?? null)
 
   const reliabilityReport = result ? computeProjectReliability(result) : null
   const [fileHint, setFileHint]           = useState<'document' | null>(null)
@@ -97,19 +129,21 @@ export function ProjectAnalysisPage() {
   const [showCompare, setShowCompare]             = useState(false)
   const [compareFiles, setCompareFiles]           = useState<File[]>([])
   const [comparingRoom, setComparingRoom]         = useState(false)
-  const [comparisonResult, setComparisonResult]   = useState<ProjectComparisonResult | null>(null)
+  const [comparisonResult, setComparisonResult]   = useState<ProjectComparisonResult | null>(persisted?.comparisonResult ?? null)
   const [comparisonError, setComparisonError]     = useState<string | null>(null)
 
   const inputRef        = useRef<HTMLInputElement>(null)
   const compareInputRef = useRef<HTMLInputElement>(null)
 
   function reset() {
+    clearAnalysis()
     setStep('project')
     setSelectedProjectId('')
     setFile(null)
     setContext('')
     setResult(null)
     setError(null)
+    setRestoredAt(null)
     setFileHint(null)
     setFileHintDismissed(false)
     setShowCompare(false)
@@ -140,6 +174,13 @@ export function ProjectAnalysisPage() {
           const comparison = compareProjectToReality(result, roomResult)
           setComparisonResult(comparison)
           setComparingRoom(false)
+          // Update persist with comparison result
+          saveAnalysis({
+            result,
+            comparisonResult: comparison,
+            projectId: selectedProjectId,
+            analyzedAt: persisted?.analyzedAt ?? new Date().toISOString(),
+          })
         },
         onError: (err) => {
           setComparisonError(
@@ -191,6 +232,9 @@ export function ProjectAnalysisPage() {
       onSuccess: (res) => {
         setResult(res)
         setError(null)
+        setRestoredAt(null)
+        const analyzedAt = new Date().toISOString()
+        saveAnalysis({ result: res, comparisonResult: null, projectId: selectedProjectId, analyzedAt })
         setStep('results')
       },
       onError: (err) => {
@@ -447,6 +491,30 @@ export function ProjectAnalysisPage() {
             {/* Trust disclaimer */}
             <AiDraftDisclaimer />
 
+            {/* Restored-from-storage banner */}
+            {restoredAt && (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '7px 12px', marginBottom: 10, borderRadius: 7,
+                background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.25)',
+                fontSize: 12, color: 'var(--color-info)',
+                gap: 8,
+              }}>
+                <span>
+                  🔄 Przywrócono wyniki z{' '}
+                  {new Date(restoredAt).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  {' '}— analiza jest zapisana lokalnie
+                </span>
+                <button
+                  type="button"
+                  onClick={reset}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', padding: '2px 0' }}
+                >
+                  Wyczyść →
+                </button>
+              </div>
+            )}
+
             <ProjectSummaryBar result={result} />
             {result.warnings.length > 0 && !error && (
               <div style={{
@@ -460,7 +528,12 @@ export function ProjectAnalysisPage() {
             <ProjectRoomsSection rooms={result.rooms_detected} />
             <ProjectMaterialsSection materials={result.finish_materials} />
             <ProjectScopeSection items={result.work_scope_from_project} />
-            <ProjectEstimateSection items={result.suggested_estimate_items} projectName={result.project_name} reliabilityReport={reliabilityReport ?? undefined} />
+            <ProjectEstimateSection
+              items={result.suggested_estimate_items}
+              scopeItems={result.work_scope_from_project}
+              projectName={result.project_name}
+              reliabilityReport={reliabilityReport ?? undefined}
+            />
             <ProjectTransparencySection
               assumptions={result.assumptions}
               missingInfo={result.missing_information}

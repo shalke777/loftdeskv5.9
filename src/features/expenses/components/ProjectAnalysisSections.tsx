@@ -315,13 +315,45 @@ function projectItemsToEstimate(items: ProjectEstimateItem[], catalog?: import('
   })
 }
 
-export function ProjectEstimateSection({ items, projectName, reliabilityReport }: { items: ProjectEstimateItem[]; projectName: string | null; reliabilityReport?: ReliabilityReport }) {
+/** Convert work_scope_from_project items to ProjectEstimateItem shape so they can be merged into the transfer. */
+function scopeToEstimateItems(scope: ProjectScopeItem[]): ProjectEstimateItem[] {
+  return scope.map(s => ({
+    name:       s.description,
+    unit:       s.unit ?? 'ryczałt',
+    quantity:   s.quantity ?? 1,
+    unit_price: null,
+    confidence: s.confidence,
+    source:     'project_derived' as const,
+    notes:      s.notes ?? null,
+    provenance: s.provenance,
+  }))
+}
+
+export function ProjectEstimateSection({
+  items,
+  scopeItems = [],
+  projectName,
+  reliabilityReport,
+}: {
+  items:             ProjectEstimateItem[]
+  scopeItems?:       ProjectScopeItem[]
+  projectName:       string | null
+  reliabilityReport?: ReliabilityReport
+}) {
   const navigate = useNavigate()
   const { data: catalog } = useServiceCatalog()
   const [transferring, setTransferring] = useState(false)
   const [awaitingConfirm, setAwaitingConfirm] = useState(false)
 
-  if (items.length === 0) return null
+  // Merge scope items + estimate items, deduplicating by name (estimate items win on collision)
+  const mergedItems: ProjectEstimateItem[] = (() => {
+    const estimateNames = new Set(items.map(e => e.name.toLowerCase().trim()))
+    const scopeConverted = scopeToEstimateItems(scopeItems)
+      .filter(s => !estimateNames.has(s.name.toLowerCase().trim()))
+    return [...scopeConverted, ...items]
+  })()
+
+  if (mergedItems.length === 0) return null
 
   const isBlocked    = reliabilityReport?.state === 'blocked'
   const needsConfirm = reliabilityReport?.requires_confirmation ?? false
@@ -330,7 +362,7 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
     if (transferring) return
     setTransferring(true)
     setAwaitingConfirm(false)
-    const estimateItems = projectItemsToEstimate(items, catalog)
+    const estimateItems = projectItemsToEstimate(mergedItems, catalog)
     const draft = {
       name: projectName
         ? `Wycena — ${projectName}`
@@ -352,18 +384,16 @@ export function ProjectEstimateSection({ items, projectName, reliabilityReport }
     doTransfer()
   }
 
-  const projectDerived = items.filter(e => e.source === 'project_derived')
-  const aiSuggested    = items.filter(e => e.source === 'ai_suggestion')
-
   return (
-    <AnalysisSectionCard title="Proponowane pozycje wyceny" count={items.length} icon="📊">
+    <AnalysisSectionCard title="Proponowane pozycje wyceny" count={mergedItems.length} icon="📊">
       <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8, fontStyle: 'italic' }}>
-        Draft na podstawie projektu. Uzupełnij ceny jednostkowe przed wysłaniem oferty.
+        Draft na podstawie projektu — zakres prac i pozycje AI. Uzupełnij ceny jednostkowe przed wysłaniem oferty.
       </div>
 
       {[
-        { label: '📐 Z danych projektu', items: projectDerived, show: projectDerived.length > 0 },
-        { label: '🤖 Uzupełnione przez AI', items: aiSuggested, show: aiSuggested.length > 0 },
+        { label: '📐 Z zakresu projektu', items: mergedItems.filter(e => e.source === 'project_derived'), show: mergedItems.filter(e => e.source === 'project_derived').length > 0 },
+        { label: '🤖 Uzupełnione przez AI', items: mergedItems.filter(e => e.source === 'ai_suggestion'), show: mergedItems.filter(e => e.source === 'ai_suggestion').length > 0 },
+        { label: '⚙ Z zależności materiałowych', items: mergedItems.filter(e => e.provenance === 'dependency_inferred'), show: mergedItems.filter(e => e.provenance === 'dependency_inferred').length > 0 },
       ].filter(g => g.show).map(group => (
         <div key={group.label} style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--color-text-secondary)' }}>
