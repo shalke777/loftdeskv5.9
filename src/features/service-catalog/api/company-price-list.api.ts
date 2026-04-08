@@ -1,5 +1,20 @@
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 
+export { normalizeLabel }
+
+const DIACRITICS: Record<string, string> = {
+  'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n',
+  'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
+}
+
+function normalizeLabel(s: string): string {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/[ąćęłńóśźż]/g, ch => DIACRITICS[ch] ?? ch)
+    .replace(/\s+/g, ' ')
+}
+
 export interface CompanyPriceEntry {
   id?: string
   catalog_item_id: string | null
@@ -23,6 +38,27 @@ export const companyPriceListApi = {
     for (const row of data ?? []) {
       if (row.catalog_item_id) {
         map.set(row.catalog_item_id, Number(row.unit_price))
+      }
+    }
+    return map
+  },
+
+  /** Fetch custom (non-catalog) price entries as Map<normalized_label, unit_price> */
+  async getCustomMapByCompany(companyId: string): Promise<Map<string, number>> {
+    if (isDemoMode || !supabase) return new Map()
+
+    const { data, error } = await supabase
+      .from('company_price_list')
+      .select('custom_label, unit_price')
+      .eq('company_id', companyId)
+      .is('catalog_item_id', null)
+      .not('custom_label', 'is', null)
+
+    if (error) throw error
+    const map = new Map<string, number>()
+    for (const row of data ?? []) {
+      if (row.custom_label && row.unit_price > 0) {
+        map.set(normalizeLabel(row.custom_label), Number(row.unit_price))
       }
     }
     return map

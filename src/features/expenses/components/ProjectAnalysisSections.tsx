@@ -18,7 +18,7 @@ import { AiReliabilityBanner } from '@/shared/ui/AiGuidance'
 import type { ReliabilityReport } from '@/services/ai/engines/reliability'
 import { AnalysisSectionCard } from './AnalysisSectionCard'
 import { useServiceCatalog, matchCatalogItem } from '@/features/service-catalog'
-import { useCompanyPriceList } from '@/features/service-catalog/hooks/useCompanyPriceList'
+import { useCompanyPriceList, useCompanyCustomPriceMap, normalizeLabel } from '@/features/service-catalog/hooks/useCompanyPriceList'
 
 const colStyle:   React.CSSProperties = { padding: '6px 4px' }
 const rightCol:   React.CSSProperties = { ...colStyle, textAlign: 'right' }
@@ -300,6 +300,7 @@ function projectItemsToEstimate(
   items: ProjectEstimateItem[],
   catalog?: import('@/entities/service_catalog/model').ServiceCatalogItem[],
   priceMap?: Map<string, number>,
+  customPriceMap?: Map<string, number>,
 ): EstimateItem[] {
   return items.map((e, i) => {
     const result = catalog?.length ? matchCatalogItem(e.name, catalog) : { best: null, alternatives: [] }
@@ -307,7 +308,42 @@ function projectItemsToEstimate(
     // Never insert quantity=0 — use 1 as safe default (user adjusts after)
     const safeQty = (typeof e.quantity === 'number' && e.quantity > 0) ? e.quantity : 1
     const catalogItemId = match?.catalog_item_id ?? null
-    const unitPrice = (catalogItemId && priceMap?.get(catalogItemId)) || 0
+
+    // Tier 1: catalog price lookup
+    let unitPrice = (catalogItemId && priceMap?.get(catalogItemId)) || 0
+
+    // Tier 2: custom label fuzzy lookup (for CSV-imported prices without catalog match)
+    if (unitPrice === 0 && customPriceMap && customPriceMap.size > 0) {
+      const normName = normalizeLabel(e.name)
+      // Exact match first
+      if (customPriceMap.has(normName)) {
+        unitPrice = customPriceMap.get(normName)!
+      } else {
+        // Substring match: label is contained in item name or vice versa
+        for (const [label, price] of customPriceMap) {
+          if (normName.includes(label) || label.includes(normName)) {
+            unitPrice = price
+            break
+          }
+        }
+        // Word overlap fallback: ≥2 shared words
+        if (unitPrice === 0) {
+          const nameWords = normName.split(' ').filter(w => w.length > 2)
+          let bestScore = 0
+          let bestPrice = 0
+          for (const [label, price] of customPriceMap) {
+            const labelWords = label.split(' ').filter(w => w.length > 2)
+            const shared = nameWords.filter(w => labelWords.includes(w)).length
+            if (shared >= 2 && shared > bestScore) {
+              bestScore = shared
+              bestPrice = price
+            }
+          }
+          if (bestPrice > 0) unitPrice = bestPrice
+        }
+      }
+    }
+
     return {
       id: crypto.randomUUID(),
       name: match?.canonical_name ?? e.name,
@@ -353,6 +389,7 @@ export function ProjectEstimateSection({
 }) {
   const { data: catalog } = useServiceCatalog()
   const { data: priceMap } = useCompanyPriceList()
+  const { data: customPriceMap } = useCompanyCustomPriceMap()
   const transferring = isTransferring ?? false
   const [awaitingConfirm, setAwaitingConfirm] = useState(false)
 
@@ -372,7 +409,7 @@ export function ProjectEstimateSection({
   function doTransfer() {
     if (transferring) return
     setAwaitingConfirm(false)
-    const estimateItems = projectItemsToEstimate(mergedItems, catalog, priceMap)
+    const estimateItems = projectItemsToEstimate(mergedItems, catalog, priceMap, customPriceMap)
     onTransfer?.(estimateItems)
   }
 

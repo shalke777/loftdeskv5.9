@@ -1,9 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
-import { companyPriceListApi } from '../api/company-price-list.api'
+import { companyPriceListApi, normalizeLabel } from '../api/company-price-list.api'
 import type { CompanyPriceEntry } from '../api/company-price-list.api'
 
 export type { CompanyPriceEntry }
+export { normalizeLabel }
 
 function priceListKey(companyId: string) {
   return ['company_price_list', companyId] as const
@@ -19,6 +20,17 @@ export function useCompanyPriceList() {
   return useQuery({
     queryKey: priceListKey(companyId),
     queryFn: () => companyPriceListApi.getByCompany(companyId),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!companyId,
+  })
+}
+
+/** Returns a Map<normalized_custom_label, unit_price> for fallback fuzzy lookup */
+export function useCompanyCustomPriceMap() {
+  const companyId = useCompanyId()
+  return useQuery({
+    queryKey: ['company_price_list_custom', companyId],
+    queryFn: () => companyPriceListApi.getCustomMapByCompany(companyId),
     staleTime: 5 * 60 * 1000,
     enabled: !!companyId,
   })
