@@ -311,6 +311,227 @@ function inferMaterialWork(result: ProjectAnalysisResult): void {
   }
 }
 
+// ── Hybrid Geometry Engine ────────────────────────────────────────────────────
+// Fills in m2 quantities for tiling, painting, flooring by computing room geometry
+// from AI-extracted room data.
+//
+// Approach (inspired by hybrid estimation design):
+//   IF full dimensions known (a × b, height) → exact calculation
+//   ELSE IF area_m2 known → generate 3 layout variants, use average
+//   ELSE → skip (no data)
+//
+// Room logic:
+//   bathroom/kitchen  → full wall tiling (height 2.6m default)
+//   others            → painting (height 2.6m default)
+//   all rooms         → floor area for flooring
+//
+// Confidence labels:
+//   HIGH   (85)  — exact dimensions
+//   MEDIUM (65)  — area-only inference
+//   LOW    (40)  — no geometry data
+// =============================================================================
+
+interface RoomGeometry {
+  floor_m2:     number
+  wall_m2:      number   // gross (no deductions)
+  wall_net_m2:  number   // minus doors + windows
+  perimeter_m:  number
+  confidence:   'HIGH' | 'MEDIUM' | 'LOW'
+  basis:        string   // human-readable explanation
+}
+
+const DEFAULT_CEILING_H  = 2.6
+const DEFAULT_DOOR_AREA  = 2.0   // 1 door per room
+const DEFAULT_WINDOW_AREA = 1.5  // ~1 window per room (living/bedroom)
+const BATHROOM_WINDOW_AREA = 0.5 // small bathroom window
+
+function estimateRoomGeometry(room: ProjectRoom): RoomGeometry | null {
+  const h = room.height_m ?? DEFAULT_CEILING_H
+  const area = room.area_m2
+
+  if (!area || area <= 0) return null
+
+  const isBathroom = /łazienk|lazienk|wc|toalet|prysznic/i.test(room.name + ' ' + room.room_type)
+  const isKitchen  = /kuchn|aneks.*kuch|kitch/i.test(room.name + ' ' + room.room_type)
+
+  // Try to detect explicit dimensions from notes (e.g. "2.5x3.8")
+  const dimMatch = [...(room.notes ?? [])].join(' ').match(/(\d+[.,]\d+)\s*[xX×]\s*(\d+[.,]\d+)/)
+  if (dimMatch) {
+    const a = parseFloat(dimMatch[1].replace(',', '.'))
+    const b = parseFloat(dimMatch[2].replace(',', '.'))
+    const perimeter = 2 * (a + b)
+    const wall_m2 = perimeter * h
+    const doorArea = DEFAULT_DOOR_AREA
+    const winArea = (isBathroom ? BATHROOM_WINDOW_AREA : isKitchen ? 1.0 : DEFAULT_WINDOW_AREA)
+    const wall_net_m2 = Math.max(0, wall_m2 - doorArea - winArea)
+    return {
+      floor_m2: a * b,
+      wall_m2,
+      wall_net_m2,
+      perimeter_m: perimeter,
+      confidence: 'HIGH',
+      basis: `Wymiary z notatki: ${a}×${b}m, h=${h}m`,
+    }
+  }
+
+  // Area-only: generate 3 layout variants, use average
+  // Variant 1: square (min perimeter for given area)
+  const sqSide = Math.sqrt(area)
+  const sqPerim = 4 * sqSide
+
+  // Variant 2: typical ratio 2:3
+  const a2 = Math.sqrt(area * (2 / 3))
+  const b2 = area / a2
+  const typPerim = 2 * (a2 + b2)
+
+  // Variant 3: elongated 1:2
+  const a3 = Math.sqrt(area / 2)
+  const b3 = area / a3
+  const elPerim = 2 * (a3 + b3)
+
+  const avgPerim = (sqPerim + typPerim + elPerim) / 3
+  const wall_m2 = avgPerim * h
+  const doorArea = DEFAULT_DOOR_AREA
+  const winArea = (isBathroom ? BATHROOM_WINDOW_AREA : isKitchen ? 1.0 : DEFAULT_WINDOW_AREA)
+  const wall_net_m2 = Math.max(0, wall_m2 - doorArea - winArea)
+
+  return {
+    floor_m2:    area,
+    wall_m2,
+    wall_net_m2,
+    perimeter_m: avgPerim,
+    confidence:  'MEDIUM',
+    basis: `Szacowanie z pola ${area}m² — warianty: ${sqPerim.toFixed(1)} / ${typPerim.toFixed(1)} / ${elPerim.toFixed(1)} m obwodu, śr. ${avgPerim.toFixed(1)}m, h=${h}m`,
+  }
+}
+
+/**
+ * Geometry-based quantity refinement.
+ * Sets quantities for tiling / painting / flooring scope items and estimate items
+ * that currently have quantity 0 or null.
+ * Never reduces a quantity set by AI — only fills in zeros.
+ */
+function refineQuantitiesWithGeometry(result: ProjectAnalysisResult): void {
+  const normStr = (s: string) => s.toLowerCase().replace(/[^a-z0-9ąćęłńóśźż]/g, '')
+
+  // Build room geometry map
+  const geoMap = new Map<string, RoomGeometry>()
+  for (const room of result.rooms_detected) {
+    const geo = estimateRoomGeometry(room)
+    if (geo) geoMap.set(normStr(room.name), geo)
+  }
+
+  // If no per-room geometry but total_area_m2 known, create a synthetic "all" entry
+  if (geoMap.size === 0 && result.total_area_m2) {
+    const syntheticRoom: ProjectRoom = {
+      name:           'całe mieszkanie',
+      room_type:      'apartment',
+      area_m2:        result.total_area_m2,
+      height_m:       DEFAULT_CEILING_H,
+      floor_finish:   null,
+      wall_finish:    null,
+      ceiling_finish: null,
+      fixtures:       [],
+      installations:  [],
+      notes:          [],
+    }
+    const geo = estimateRoomGeometry(syntheticRoom)
+    if (geo) geoMap.set('całemieszkanie', geo)
+  }
+
+  if (geoMap.size === 0) return  // no geometry data — nothing to refine
+
+  // Compute totals across all rooms
+  let totalFloor = 0
+  let totalWall = 0
+  let totalWallNet = 0
+  let totalBathroomWall = 0
+  let totalLivingWall = 0
+
+  for (const room of result.rooms_detected) {
+    const geo = geoMap.get(normStr(room.name))
+    if (!geo) continue
+    totalFloor    += geo.floor_m2
+    totalWall     += geo.wall_m2
+    totalWallNet  += geo.wall_net_m2
+
+    const isBath = /łazienk|lazienk|wc|toalet|prysznic/i.test(room.name + ' ' + room.room_type)
+    const isKitch = /kuchn|aneks.*kuch|kitch/i.test(room.name + ' ' + room.room_type)
+    if (isBath || isKitch) {
+      totalBathroomWall += geo.wall_net_m2
+    } else {
+      totalLivingWall += geo.wall_net_m2
+    }
+  }
+
+  // If only synthetic total, estimate room breakdown by typical split
+  if (geoMap.has('całemieszkanie') && result.rooms_detected.length === 0) {
+    const geo = geoMap.get('całemieszkanie')!
+    totalFloor       = geo.floor_m2
+    totalWall        = geo.wall_m2
+    totalWallNet     = geo.wall_net_m2
+    totalBathroomWall = geo.wall_net_m2 * 0.15  // ~15% bathroom
+    totalLivingWall  = geo.wall_net_m2 * 0.85
+  }
+
+  // ── Update quantities ──────────────────────────────────────────────────────
+
+  const TILING_KEYWORDS   = /układanie płytek|flizowanie|glazura/i
+  const WALL_TILE_KEYWORDS = /ściennych|ściany|ścian/i
+  const FLOOR_TILE_KEYWORDS = /podłogowych|podłoga|podłog/i
+  const FUGE_KEYWORDS      = /fugowanie/i
+  const PAINTING_KEYWORDS  = /malowanie ścian|malowanie sufitów|malowanie sufit/i
+  const FLOOR_KEYWORDS     = /układanie paneli|układanie parkiet|układanie deski|podłogi drewniane/i
+  const GRUNTOWANIE_KEYWORDS = /gruntowanie/i
+
+  function fillIfZero(item: { quantity: number | null; unit: string; notes: string | null }, newQty: number, basis: string) {
+    if ((item.quantity === null || item.quantity === 0) && item.unit === 'm2') {
+      item.quantity = Math.round(newQty * 10) / 10
+      item.notes = (item.notes ? item.notes + ' | ' : '') + `[Geometria] ${basis}`
+    }
+  }
+
+  // Work scope items
+  for (const item of result.work_scope_from_project) {
+    const desc = item.description
+    if (TILING_KEYWORDS.test(desc)) {
+      if (WALL_TILE_KEYWORDS.test(desc))  fillIfZero(item, totalBathroomWall, `Ściany łazienki+kuchni ${totalBathroomWall.toFixed(1)}m²`)
+      else if (FLOOR_TILE_KEYWORDS.test(desc)) fillIfZero(item, totalFloor * 0.3, `Szacowane podłogi płytkowe ~30% = ${(totalFloor*0.3).toFixed(1)}m²`)
+      else                                fillIfZero(item, totalBathroomWall, `Powierzchnia flizowania ${totalBathroomWall.toFixed(1)}m²`)
+    }
+    if (FUGE_KEYWORDS.test(desc))         fillIfZero(item, totalBathroomWall + totalFloor * 0.3, `Fugowanie: ściany+podłogi ${(totalBathroomWall + totalFloor*0.3).toFixed(1)}m²`)
+    if (PAINTING_KEYWORDS.test(desc))     fillIfZero(item, totalLivingWall, `Malowanie ścian non-płytkowych ${totalLivingWall.toFixed(1)}m²`)
+    if (FLOOR_KEYWORDS.test(desc))        fillIfZero(item, totalFloor, `Podłoga całkowita ${totalFloor.toFixed(1)}m²`)
+    if (GRUNTOWANIE_KEYWORDS.test(desc))  fillIfZero(item, totalWallNet, `Gruntowanie ścian ${totalWallNet.toFixed(1)}m²`)
+  }
+
+  // Estimate items
+  for (const item of result.suggested_estimate_items) {
+    const desc = item.name
+    if (TILING_KEYWORDS.test(desc)) {
+      if (WALL_TILE_KEYWORDS.test(desc))  fillIfZero(item, totalBathroomWall, `Ściany łazienki+kuchni ${totalBathroomWall.toFixed(1)}m²`)
+      else if (FLOOR_TILE_KEYWORDS.test(desc)) fillIfZero(item, totalFloor * 0.3, `Szacowane podłogi płytkowe ~30% = ${(totalFloor*0.3).toFixed(1)}m²`)
+      else                                fillIfZero(item, totalBathroomWall, `Powierzchnia flizowania ${totalBathroomWall.toFixed(1)}m²`)
+    }
+    if (FUGE_KEYWORDS.test(desc))         fillIfZero(item, totalBathroomWall + totalFloor * 0.3, `Fugowanie: ściany+podłogi ${(totalBathroomWall + totalFloor*0.3).toFixed(1)}m²`)
+    if (PAINTING_KEYWORDS.test(desc))     fillIfZero(item, totalLivingWall, `Malowanie ścian non-płytkowych ${totalLivingWall.toFixed(1)}m²`)
+    if (FLOOR_KEYWORDS.test(desc))        fillIfZero(item, totalFloor, `Podłoga całkowita ${totalFloor.toFixed(1)}m²`)
+    if (GRUNTOWANIE_KEYWORDS.test(desc))  fillIfZero(item, totalWallNet, `Gruntowanie ścian ${totalWallNet.toFixed(1)}m²`)
+  }
+
+  // Inject geometry summary note into project_notes for transparency
+  const geoNotes: string[] = []
+  for (const [roomKey, geo] of geoMap.entries()) {
+    if (roomKey !== 'całemieszkanie') {
+      geoNotes.push(`${roomKey}: podłoga=${geo.floor_m2.toFixed(1)}m², ściany(netto)=${geo.wall_net_m2.toFixed(1)}m², pewność=${geo.confidence} — ${geo.basis}`)
+    }
+  }
+  if (geoNotes.length > 0) {
+    result.project_notes.push('📐 Geometria (szacowana):')
+    result.project_notes.push(...geoNotes)
+  }
+}
+
 // ── Infra ────────────────────────────────────────────────────────────────────
 
 const CORS_HEADERS = {
@@ -1192,6 +1413,12 @@ WYMAGANE: demontaże starych elementów, wywóz gruzu, ocena stanu instalacji.
   // corresponding installation work, inject it here.
   inferMaterialWork(result)
   // ── End material → work inference ─────────────────────────────────────────
+
+  // ── Hybrid Geometry Engine ────────────────────────────────────────────────
+  // Refines tiling/painting quantities based on room geometry.
+  // Runs after all inference passes so all items exist before quantity fix.
+  refineQuantitiesWithGeometry(result)
+  // ── End geometry engine ───────────────────────────────────────────────────
 
   console.info('ANALYZE_PROJECT_DONE', JSON.stringify({
     endpoint:    'analyze-project',
