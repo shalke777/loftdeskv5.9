@@ -7,7 +7,9 @@ import { isDemoMode } from '@/shared/lib/supabase'
 import { useServiceCatalog } from '@/features/service-catalog/hooks/useServiceCatalog'
 import {
   useCompanyPriceList,
+  useCompanyPriceListDetail,
   useDeletePrice,
+  useDeleteCustomPrice,
   useUpsertManyPrices,
   useUpsertPrice,
 } from '@/features/service-catalog/hooks/useCompanyPriceList'
@@ -20,8 +22,10 @@ function displayUnit(unit: string) { return UNIT_DISPLAY[unit] ?? unit }
 export function CompanyPriceListCard() {
   const { data: catalog = [], isLoading: catLoading } = useServiceCatalog()
   const { data: priceMap = new Map(), isLoading: pricesLoading } = useCompanyPriceList()
+  const { data: priceDetailList = [] } = useCompanyPriceListDetail()
   const upsertPrice = useUpsertPrice()
   const deletePrice = useDeletePrice()
+  const deleteCustomPrice = useDeleteCustomPrice()
   const upsertMany = useUpsertManyPrices()
 
   const [editId, setEditId] = useState<string | null>(null)
@@ -34,10 +38,14 @@ export function CompanyPriceListCard() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
-  // CSV import state
+  // CSV import state — includes custom (non-catalog) entries
   const csvInputRef = useRef<HTMLInputElement>(null)
-  const [csvPreview, setCsvPreview] = useState<Array<{ catalogItemId: string; name: string; price: number }> | null>(null)
-  const [csvUnmatched, setCsvUnmatched] = useState<string[]>([])
+  const [csvPreview, setCsvPreview] = useState<Array<{
+    catalogItemId: string | null;
+    customLabel: string | null;
+    name: string;
+    price: number
+  }> | null>(null)
   const [csvImporting, setCsvImporting] = useState(false)
 
   const isLoading = catLoading || pricesLoading
@@ -52,13 +60,20 @@ export function CompanyPriceListCard() {
     setTimeout(() => setErrorMsg(null), 5000)
   }
 
-  // Items with stored prices
+  // Items with stored prices (catalog-linked)
   const savedItems = useMemo(() => {
     return catalog.filter((item) => {
       const p = priceMap.get(item.id) ?? 0
       return p > 0
     })
   }, [catalog, priceMap])
+
+  // Custom (non-catalog) items from detail list
+  const customItems = useMemo(() => {
+    return priceDetailList.filter((e) => !e.catalog_item_id && e.custom_label)
+  }, [priceDetailList])
+
+  const totalSaved = savedItems.length + customItems.length
 
   // Filter saved items by search
   const filteredSaved = useMemo(() => {
@@ -69,6 +84,12 @@ export function CompanyPriceListCard() {
       (CATEGORY_LABELS[item.category as keyof typeof CATEGORY_LABELS] ?? item.category).toLowerCase().includes(q)
     )
   }, [savedItems, search])
+
+  const filteredCustom = useMemo(() => {
+    if (!search.trim()) return customItems
+    const q = search.toLowerCase()
+    return customItems.filter((e) => (e.custom_label ?? '').toLowerCase().includes(q))
+  }, [customItems, search])
 
   // Catalog items for add-search (exclude already saved)
   const addSuggestions = useMemo(() => {
@@ -148,8 +169,7 @@ export function CompanyPriceListCard() {
     reader.onload = (ev) => {
       const text = ev.target?.result as string
       const lines = text.split(/\r?\n/).filter((l) => l.trim())
-      const matched: Array<{ catalogItemId: string; name: string; price: number }> = []
-      const unmatched: string[] = []
+      const result: Array<{ catalogItemId: string | null; customLabel: string | null; name: string; price: number }> = []
       for (const line of lines) {
         const sep = line.includes(';') ? ';' : line.includes('\t') ? '\t' : ','
         const parts = line.split(sep)
@@ -157,7 +177,9 @@ export function CompanyPriceListCard() {
         const rawPrice = (parts[1] ?? '').trim().replace(/^"|"$/g, '').replace(',', '.')
         if (!rawName) continue
         const price = parseFloat(rawPrice)
-        if (isNaN(price) || price <= 0) { unmatched.push(`${rawName} (brak ceny)`); continue }
+        if (isNaN(price) || price <= 0) continue
+        // Skip header row
+        if (rawName.toLowerCase().startsWith('usługa') || rawName.toLowerCase().startsWith('usluga') || rawName.toLowerCase() === 'nazwa') continue
         const norm = rawName.toLowerCase()
         const found = catalog.find(
           (c) => c.name.toLowerCase() === norm ||
@@ -165,15 +187,15 @@ export function CompanyPriceListCard() {
                  norm.includes(c.name.toLowerCase())
         )
         if (found) {
-          matched.push({ catalogItemId: found.id, name: found.name, price })
+          result.push({ catalogItemId: found.id, customLabel: null, name: found.name, price })
         } else {
-          unmatched.push(rawName)
+          // Save as custom entry — name preserved as-is
+          result.push({ catalogItemId: null, customLabel: rawName, name: rawName, price })
         }
       }
-      setCsvPreview(matched)
-      setCsvUnmatched(unmatched)
+      setCsvPreview(result)
     }
-    reader.readAsText(file)
+    reader.readAsText(file, 'UTF-8')
     e.target.value = ''
   }
 
@@ -181,12 +203,16 @@ export function CompanyPriceListCard() {
     if (!csvPreview || csvPreview.length === 0) return
     setCsvImporting(true)
     upsertMany.mutate(
-      csvPreview.map((r) => ({ catalog_item_id: r.catalogItemId, unit_price: r.price })),
+      csvPreview.map((r) => ({ catalog_item_id: r.catalogItemId, custom_label: r.customLabel, unit_price: r.price })),
       {
         onSuccess: () => {
-          showSuccess(`Zaimportowano ${csvPreview.length} cen z pliku CSV`)
+          const customCount = csvPreview.filter(r => !r.catalogItemId).length
+          const catalogCount = csvPreview.filter(r => !!r.catalogItemId).length
+          const msg = customCount > 0
+            ? `Zaimportowano ${catalogCount} z katalogu + ${customCount} własnych pozycji`
+            : `Zaimportowano ${csvPreview.length} cen z pliku CSV`
+          showSuccess(msg)
           setCsvPreview(null)
-          setCsvUnmatched([])
         },
         onError: (e) => showError(`Błąd importu: ${(e as Error).message ?? 'nieznany błąd'}`),
         onSettled: () => setCsvImporting(false),
@@ -271,9 +297,9 @@ export function CompanyPriceListCard() {
       </div>
       <p style={{ margin: '0 0 16px', fontSize: '0.83rem', color: 'var(--color-text-secondary)' }}>
         Domyślne ceny usług — automatycznie wstawiane do nowych wycen.
-        {savedItems.length > 0 && (
+        {totalSaved > 0 && (
           <span style={{ marginLeft: 6, fontWeight: 600, color: 'var(--color-brand)' }}>
-            {savedItems.length} {savedItems.length === 1 ? 'pozycja' : savedItems.length < 5 ? 'pozycje' : 'pozycji'}
+            {totalSaved} {totalSaved === 1 ? 'pozycja' : totalSaved < 5 ? 'pozycje' : 'pozycji'}
           </span>
         )}
       </p>
@@ -380,26 +406,24 @@ export function CompanyPriceListCard() {
           marginBottom: 14,
         }}>
           <div style={{ fontWeight: 600, fontSize: '0.82rem', marginBottom: 8 }}>
-            Podgląd importu CSV — {csvPreview.length} dopasowanych pozycji
-            {csvUnmatched.length > 0 && (
-              <span style={{ color: 'var(--color-warning, #B8742A)', marginLeft: 8 }}>
-                · {csvUnmatched.length} nierozpoznanych
+            Podgląd importu CSV — {csvPreview.length} pozycji
+            {csvPreview.filter(r => !r.catalogItemId).length > 0 && (
+              <span style={{ color: 'var(--color-accent)', marginLeft: 8, fontWeight: 400 }}>
+                ({csvPreview.filter(r => !r.catalogItemId).length} własnych — spoza katalogu)
               </span>
             )}
           </div>
           {csvPreview.length > 0 && (
-            <div style={{ maxHeight: 160, overflowY: 'auto', marginBottom: 10 }}>
-              {csvPreview.map((r) => (
-                <div key={r.catalogItemId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', padding: '3px 0', borderBottom: '1px solid var(--color-border)' }}>
-                  <span>{r.name}</span>
-                  <span style={{ fontWeight: 600 }}>{r.price.toFixed(2)} zł</span>
+            <div style={{ maxHeight: 200, overflowY: 'auto', marginBottom: 10 }}>
+              {csvPreview.map((r, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', padding: '3px 0', borderBottom: '1px solid var(--color-border)' }}>
+                  <span style={{ color: r.catalogItemId ? 'inherit' : 'var(--color-accent)' }}>
+                    {r.name}
+                    {!r.catalogItemId && <span style={{ fontSize: '0.68rem', marginLeft: 6, color: 'var(--color-text-muted)' }}>(własna)</span>}
+                  </span>
+                  <span style={{ fontWeight: 600, flexShrink: 0 }}>{r.price.toFixed(2)} zł</span>
                 </div>
               ))}
-            </div>
-          )}
-          {csvUnmatched.length > 0 && (
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 8 }}>
-              Nierozpoznane: {csvUnmatched.join(', ')}
             </div>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
@@ -407,7 +431,7 @@ export function CompanyPriceListCard() {
               <Check size={13} style={{ marginRight: 4 }} />
               Importuj {csvPreview.length} cen
             </Button>
-            <Button variant="ghost" onClick={() => { setCsvPreview(null); setCsvUnmatched([]) }}>
+            <Button variant="ghost" onClick={() => setCsvPreview(null)}>
               Anuluj
             </Button>
           </div>
@@ -416,7 +440,7 @@ export function CompanyPriceListCard() {
 
       {isLoading ? (
         <div style={{ textAlign: 'center', padding: 24 }}><Spinner /></div>
-      ) : savedItems.length === 0 ? (
+      ) : totalSaved === 0 ? (
         <div style={{
           textAlign: 'center',
           padding: '24px 16px',
@@ -431,7 +455,7 @@ export function CompanyPriceListCard() {
       ) : (
         <>
           {/* Search filter */}
-          {savedItems.length >= 5 && (
+          {totalSaved >= 5 && (
             <input
               className="input"
               placeholder="Szukaj w cenniku…"
@@ -441,7 +465,7 @@ export function CompanyPriceListCard() {
             />
           )}
 
-          {/* Price rows */}
+          {/* Price rows — catalog items */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {filteredSaved.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 16, color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
@@ -555,6 +579,60 @@ export function CompanyPriceListCard() {
               })
             )}
           </div>
+
+          {/* Custom (non-catalog) price rows */}
+          {filteredCustom.length > 0 && (
+            <>
+              {savedItems.length > 0 && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '10px 0 6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Własne pozycje cennika
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {filteredCustom.map((entry, i) => (
+                  <div
+                    key={entry.custom_label ?? i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      padding: '8px 12px',
+                      background: 'var(--color-surface-soft)',
+                      borderRadius: 8,
+                      fontSize: '0.82rem',
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {entry.custom_label}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 1 }}>
+                        własna pozycja
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.88rem', minWidth: 72, textAlign: 'right' }}>
+                        {Number(entry.unit_price).toFixed(2)} zł
+                      </span>
+                      <button
+                        onClick={() => deleteCustomPrice.mutate(entry.custom_label!)}
+                        disabled={deleteCustomPrice.isPending}
+                        title="Usuń cenę"
+                        style={{
+                          width: 28, height: 28, borderRadius: 6, border: '1px solid var(--color-border)',
+                          cursor: 'pointer', background: 'var(--color-surface)', color: 'var(--color-error)',
+                          display: 'grid', placeItems: 'center',
+                        }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </>
       )}
 

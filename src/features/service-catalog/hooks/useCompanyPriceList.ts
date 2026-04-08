@@ -1,9 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { companyPriceListApi } from '../api/company-price-list.api'
+import type { CompanyPriceEntry } from '../api/company-price-list.api'
+
+export type { CompanyPriceEntry }
 
 function priceListKey(companyId: string) {
   return ['company_price_list', companyId] as const
+}
+
+function priceListDetailKey(companyId: string) {
+  return ['company_price_list_detail', companyId] as const
 }
 
 /** Returns a Map<catalog_item_id, unit_price> for quick lookup in pickers */
@@ -17,7 +24,18 @@ export function useCompanyPriceList() {
   })
 }
 
-/** Mutation: upsert a single price entry */
+/** Returns full list of entries including custom ones (for settings display) */
+export function useCompanyPriceListDetail() {
+  const companyId = useCompanyId()
+  return useQuery({
+    queryKey: priceListDetailKey(companyId),
+    queryFn: () => companyPriceListApi.listByCompany(companyId),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!companyId,
+  })
+}
+
+/** Mutation: upsert a single catalog price entry */
 export function useUpsertPrice() {
   const companyId = useCompanyId()
   const qc = useQueryClient()
@@ -26,11 +44,12 @@ export function useUpsertPrice() {
       companyPriceListApi.upsertPrice(companyId, catalogItemId, unitPrice),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: priceListKey(companyId) })
+      qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
     },
   })
 }
 
-/** Mutation: delete a single price entry */
+/** Mutation: delete a catalog price entry */
 export function useDeletePrice() {
   const companyId = useCompanyId()
   const qc = useQueryClient()
@@ -39,17 +58,35 @@ export function useDeletePrice() {
       companyPriceListApi.deletePrice(companyId, catalogItemId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: priceListKey(companyId) })
+      qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
     },
   })
 }
+
+/** Mutation: delete a custom price entry */
+export function useDeleteCustomPrice() {
+  const companyId = useCompanyId()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (customLabel: string) =>
+      companyPriceListApi.deleteCustomPrice(companyId, customLabel),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: priceListKey(companyId) })
+      qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
+    },
+  })
+}
+
+/** Mutation: bulk upsert — supports catalog and custom entries */
 export function useUpsertManyPrices() {
   const companyId = useCompanyId()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (entries: Array<{ catalog_item_id: string; unit_price: number }>) =>
+    mutationFn: (entries: Array<{ catalog_item_id?: string | null; custom_label?: string | null; unit_price: number }>) =>
       companyPriceListApi.upsertMany(companyId, entries),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: priceListKey(companyId) })
+      qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
     },
   })
 }

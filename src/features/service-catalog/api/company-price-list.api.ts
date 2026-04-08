@@ -1,13 +1,15 @@
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 
 export interface CompanyPriceEntry {
-  catalog_item_id: string
+  id?: string
+  catalog_item_id: string | null
+  custom_label: string | null
   unit_price: number
   updated_at: string
 }
 
 export const companyPriceListApi = {
-  /** Fetch all price entries for a company (returns Map for O(1) lookup) */
+  /** Fetch all price entries for a company (returns Map for O(1) lookup by catalog_item_id) */
   async getByCompany(companyId: string): Promise<Map<string, number>> {
     if (isDemoMode || !supabase) return new Map()
 
@@ -19,12 +21,28 @@ export const companyPriceListApi = {
     if (error) throw error
     const map = new Map<string, number>()
     for (const row of data ?? []) {
-      map.set(row.catalog_item_id, Number(row.unit_price))
+      if (row.catalog_item_id) {
+        map.set(row.catalog_item_id, Number(row.unit_price))
+      }
     }
     return map
   },
 
-  /** Upsert a single price entry (insert or update) */
+  /** Fetch all price entries with full details (for settings display) */
+  async listByCompany(companyId: string): Promise<CompanyPriceEntry[]> {
+    if (isDemoMode || !supabase) return []
+
+    const { data, error } = await supabase
+      .from('company_price_list')
+      .select('id, catalog_item_id, custom_label, unit_price, updated_at')
+      .eq('company_id', companyId)
+      .order('updated_at', { ascending: false })
+
+    if (error) throw error
+    return (data ?? []) as CompanyPriceEntry[]
+  },
+
+  /** Upsert a single catalog price entry */
   async upsertPrice(companyId: string, catalogItemId: string, unitPrice: number): Promise<void> {
     if (isDemoMode || !supabase || unitPrice <= 0) return
 
@@ -43,30 +61,69 @@ export const companyPriceListApi = {
     if (error) throw error
   },
 
-  /** Bulk upsert — call after saving estimate to record all used prices */
-  async upsertMany(
-    companyId: string,
-    entries: Array<{ catalog_item_id: string; unit_price: number }>
-  ): Promise<void> {
-    if (isDemoMode || !supabase) return
-    const rows = entries
-      .filter((e) => e.unit_price > 0)
-      .map((e) => ({
-        company_id: companyId,
-        catalog_item_id: e.catalog_item_id,
-        unit_price: e.unit_price,
-        updated_at: new Date().toISOString(),
-      }))
-    if (rows.length === 0) return
+  /** Upsert a single custom (non-catalog) price entry */
+  async upsertCustomPrice(companyId: string, customLabel: string, unitPrice: number): Promise<void> {
+    if (isDemoMode || !supabase || unitPrice <= 0) return
 
     const { error } = await supabase
       .from('company_price_list')
-      .upsert(rows, { onConflict: 'company_id,catalog_item_id' })
+      .upsert(
+        {
+          company_id: companyId,
+          catalog_item_id: null,
+          custom_label: customLabel,
+          unit_price: unitPrice,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'company_id,custom_label' }
+      )
 
     if (error) throw error
   },
 
-  /** Delete a single price entry */
+  /** Bulk upsert — supports both catalog and custom entries */
+  async upsertMany(
+    companyId: string,
+    entries: Array<{ catalog_item_id?: string | null; custom_label?: string | null; unit_price: number }>
+  ): Promise<void> {
+    if (isDemoMode || !supabase) return
+
+    const catalogRows = entries
+      .filter((e) => e.catalog_item_id && e.unit_price > 0)
+      .map((e) => ({
+        company_id: companyId,
+        catalog_item_id: e.catalog_item_id!,
+        custom_label: null,
+        unit_price: e.unit_price,
+        updated_at: new Date().toISOString(),
+      }))
+
+    const customRows = entries
+      .filter((e) => !e.catalog_item_id && e.custom_label && e.unit_price > 0)
+      .map((e) => ({
+        company_id: companyId,
+        catalog_item_id: null,
+        custom_label: e.custom_label!,
+        unit_price: e.unit_price,
+        updated_at: new Date().toISOString(),
+      }))
+
+    if (catalogRows.length > 0) {
+      const { error } = await supabase
+        .from('company_price_list')
+        .upsert(catalogRows, { onConflict: 'company_id,catalog_item_id' })
+      if (error) throw error
+    }
+
+    if (customRows.length > 0) {
+      const { error } = await supabase
+        .from('company_price_list')
+        .upsert(customRows, { onConflict: 'company_id,custom_label' })
+      if (error) throw error
+    }
+  },
+
+  /** Delete a price entry by catalog_item_id */
   async deletePrice(companyId: string, catalogItemId: string): Promise<void> {
     if (isDemoMode || !supabase) return
 
@@ -75,6 +132,20 @@ export const companyPriceListApi = {
       .delete()
       .eq('company_id', companyId)
       .eq('catalog_item_id', catalogItemId)
+
+    if (error) throw error
+  },
+
+  /** Delete a custom price entry by label */
+  async deleteCustomPrice(companyId: string, customLabel: string): Promise<void> {
+    if (isDemoMode || !supabase) return
+
+    const { error } = await supabase
+      .from('company_price_list')
+      .delete()
+      .eq('company_id', companyId)
+      .eq('custom_label', customLabel)
+      .is('catalog_item_id', null)
 
     if (error) throw error
   },
