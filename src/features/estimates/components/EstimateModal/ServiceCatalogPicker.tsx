@@ -11,11 +11,12 @@ interface Props {
   onClose: () => void
   onAdd: (items: EstimateItem[]) => void
   existingCount: number
+  priceMap?: Map<string, number>
 }
 
 const DEFAULT_VAT = 8
 
-export function ServiceCatalogPicker({ open, onClose, onAdd, existingCount }: Props) {
+export function ServiceCatalogPicker({ open, onClose, onAdd, existingCount, priceMap }: Props) {
   const { data: catalog = [], isLoading } = useServiceCatalog()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
@@ -57,17 +58,20 @@ export function ServiceCatalogPicker({ open, onClose, onAdd, existingCount }: Pr
     const items: EstimateItem[] = Array.from(selected)
       .map((id) => catalog.find((c) => c.id === id))
       .filter(Boolean)
-      .map((item, idx) => ({
-        id: generateId(),
-        name: item!.name,
-        description: '',
-        unit: item!.unit === 'm2' ? 'm²' : item!.unit,
-        quantity: 1,
-        unit_price: 0,
-        vat_rate: DEFAULT_VAT,
-        sort_order: existingCount + idx + 1,
-        catalog_item_id: item!.id,
-      }))
+      .map((item, idx) => {
+        const storedPrice = priceMap?.get(item!.id) ?? 0
+        return {
+          id: generateId(),
+          name: item!.name,
+          description: '',
+          unit: item!.unit === 'm2' ? 'm²' : item!.unit,
+          quantity: 1,
+          unit_price: storedPrice,
+          vat_rate: DEFAULT_VAT,
+          sort_order: existingCount + idx + 1,
+          catalog_item_id: item!.id,
+        }
+      })
 
     onAdd(items)
     setSelected(new Set())
@@ -191,6 +195,7 @@ export function ServiceCatalogPicker({ open, onClose, onAdd, existingCount }: Pr
                 {/* Items in category */}
                 {items.map((item) => {
                   const isSelected = selected.has(item.id)
+                  const storedPrice = priceMap?.get(item.id)
                   return (
                     <label
                       key={item.id}
@@ -220,6 +225,17 @@ export function ServiceCatalogPicker({ open, onClose, onAdd, existingCount }: Pr
                       <span style={{ flex: 1, fontSize: 13, color: 'var(--color-text-primary)' }}>
                         {item.name}
                       </span>
+                      {storedPrice && storedPrice > 0 ? (
+                        <span
+                          title="Twoja cena z cennika"
+                          style={{
+                            fontSize: 11, fontWeight: 600, color: 'var(--color-success)',
+                            background: 'var(--color-success-soft)', padding: '2px 7px', borderRadius: 4, flexShrink: 0,
+                          }}
+                        >
+                          {storedPrice.toFixed(2)} zł
+                        </span>
+                      ) : null}
                       <span
                         style={{
                           fontSize: 11,

@@ -1,11 +1,13 @@
 
-import { Fragment, type CSSProperties, useState } from 'react'
+import { Fragment, type CSSProperties, useState, useRef, useEffect, useMemo } from 'react'
 import { Button } from '@/shared/ui/Button/Button'
 import { Select } from '@/shared/ui/Select/Select'
 import { generateId } from '@/shared/lib/generateId'
 import { calcItemGross } from '@/features/estimates/lib/estimate.calculations'
 import type { EstimateItem } from '@/entities/estimate/model'
 import { ServiceCatalogPicker } from './ServiceCatalogPicker'
+import { useServiceCatalog } from '@/features/service-catalog/hooks/useServiceCatalog'
+import { useCompanyPriceList, useUpsertPrice } from '@/features/service-catalog/hooks/useCompanyPriceList'
 
 const DEFAULT_UNIT = 'm²'
 const DEFAULT_VAT = 8
@@ -29,9 +31,48 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
   const [fastQty, setFastQty] = useState(1)
   const [fastNet, setFastNet] = useState('')
   const [fastVat, setFastVat] = useState(DEFAULT_VAT)
+  const [fastCatalogItemId, setFastCatalogItemId] = useState<string | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<Partial<EstimateItem>>({})
   const [catalogOpen, setCatalogOpen] = useState(false)
+
+  // Autocomplete
+  const [acOpen, setAcOpen] = useState(false)
+  const acRef = useRef<HTMLDivElement>(null)
+
+  const { data: catalog = [] } = useServiceCatalog()
+  const { data: priceMap } = useCompanyPriceList()
+  const upsertPrice = useUpsertPrice()
+
+  const suggestions = useMemo(() => {
+    const q = fastName.toLowerCase().trim()
+    if (!q || q.length < 2) return []
+    return catalog
+      .filter((c) => c.name.toLowerCase().includes(q) || c.tags.some((t) => t.toLowerCase().includes(q)))
+      .slice(0, 8)
+  }, [catalog, fastName])
+
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (acRef.current && !acRef.current.contains(e.target as Node)) setAcOpen(false)
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [])
+
+  function selectSuggestion(item: typeof catalog[number]) {
+    const storedPrice = priceMap?.get(item.id)
+    setFastName(item.name)
+    setFastUnit(item.unit === 'm2' ? 'm²' : item.unit)
+    if (storedPrice && storedPrice > 0) setFastNet(String(storedPrice))
+    setFastCatalogItemId(item.id)
+    setAcOpen(false)
+    setTimeout(() => {
+      const el = document.getElementById('fast-add-price')
+      if (el) (el as HTMLInputElement).focus()
+    }, 50)
+  }
+
   function startEdit(item: EstimateItem) {
     setEditId(item.id)
     setEditValues({ ...item })
@@ -72,14 +113,20 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
         unit_price: net,
         vat_rate: fastVat,
         sort_order: items.length + 1,
+        catalog_item_id: fastCatalogItemId ?? undefined,
       },
     ])
+    // Auto-save price to company price list
+    if (fastCatalogItemId && net > 0) {
+      upsertPrice.mutate({ catalogItemId: fastCatalogItemId, unitPrice: net })
+    }
     setFastName('')
     setFastDescription('')
     setFastUnit(DEFAULT_UNIT)
     setFastQty(1)
     setFastNet('')
     setFastVat(DEFAULT_VAT)
+    setFastCatalogItemId(null)
   }
 
   return (
@@ -91,7 +138,7 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
         </div>
         {/* Row 1: Nazwa + Cena netto + j.m. + Ilość + VAT + Dodaj */}
         <div className="items-fast-add-row" style={{ display: 'grid', gridTemplateColumns: '1fr 100px 60px 60px 64px auto', gap: 8, alignItems: 'flex-end' }}>
-          <div>
+          <div ref={acRef} style={{ position: 'relative' }}>
             <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>
               Nazwa <span style={{ color: 'var(--color-error)' }}>*</span>
             </label>
@@ -99,17 +146,56 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
               className="input"
               placeholder="np. Montaż drzwi"
               value={fastName}
-              onChange={e => setFastName(e.target.value)}
+              onChange={e => { setFastName(e.target.value); setFastCatalogItemId(null); setAcOpen(true) }}
               style={{ ...baseInput, fontWeight: 600 }}
-              onKeyDown={(e) => e.key === 'Enter' && fastAdd()}
+              onKeyDown={(e) => { if (e.key === 'Enter') { setAcOpen(false); fastAdd() } if (e.key === 'Escape') setAcOpen(false) }}
+              onFocus={() => { if (fastName.length >= 2) setAcOpen(true) }}
+              autoComplete="off"
             />
+            {acOpen && suggestions.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                background: 'var(--color-card)', border: '1px solid var(--color-border)',
+                borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                marginTop: 2, maxHeight: 280, overflowY: 'auto',
+              }}>
+                {suggestions.map((item) => {
+                  const storedPrice = priceMap?.get(item.id)
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); selectSuggestion(item) }}
+                      style={{
+                        width: '100%', textAlign: 'left', border: 'none', background: 'none',
+                        padding: '9px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center',
+                        gap: 8, borderBottom: '1px solid var(--color-border)',
+                        fontSize: 13, color: 'var(--color-text-primary)',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-soft)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = '')}
+                    >
+                      <span style={{ flex: 1 }}>{item.name}</span>
+                      <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', background: 'var(--color-surface-soft)', padding: '2px 6px', borderRadius: 4, flexShrink: 0 }}>
+                        {item.unit === 'm2' ? 'm²' : item.unit}
+                      </span>
+                      {storedPrice && storedPrice > 0 && (
+                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-success)', background: 'var(--color-success-soft)', padding: '2px 6px', borderRadius: 4, flexShrink: 0 }}>
+                          {storedPrice.toFixed(2)} zł
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-primary)', marginBottom: 3, fontWeight: 500 }}>
               Cena netto
             </label>
             <input
-              className="input"
+              id="fast-add-price"
               type="number"
               min={0}
               step="any"
