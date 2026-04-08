@@ -11,6 +11,7 @@
 
 import { useState, useRef, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { BookOpen, Pencil } from 'lucide-react'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
@@ -159,9 +160,9 @@ function ScopeItemRow({
             if (!catalog?.length) return null
             const name = item.title ?? item.description ?? ''
             const mr = matchCatalogItem(name, catalog)
-            if (mr.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name}`} style={{ marginLeft: 4, fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-success-soft)', color: 'var(--color-success)', fontWeight: 600 }}>📚</span>
-            if (mr.best?.tier === 'partial') return <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%)`} style={{ marginLeft: 4, fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: 'var(--color-accent)', fontWeight: 600 }}>📚?</span>
-            return <span title="Brak dopasowania do katalogu" style={{ marginLeft: 4, fontSize: 9, padding: '0 4px', borderRadius: 3, background: 'var(--color-surface-soft)', color: 'var(--color-text-tertiary)', fontWeight: 500 }}>✍️</span>
+            if (mr.best?.tier === 'strong') return <span title={`Katalog: ${mr.best.canonical_name}`} style={{ marginLeft: 4, display: 'inline-flex', alignItems: 'center', padding: '1px 4px', borderRadius: 3, background: 'var(--color-success-soft)', color: 'var(--color-success)', fontWeight: 600 }}><BookOpen size={9} /></span>
+            if (mr.best?.tier === 'partial') return <span title={`Częściowe: ${mr.best.canonical_name} (${mr.best.confidence}%)`} style={{ marginLeft: 4, display: 'inline-flex', alignItems: 'center', gap: 1, padding: '1px 4px', borderRadius: 3, background: 'rgba(212,150,10,0.1)', color: 'var(--color-accent)', fontWeight: 600 }}><BookOpen size={9} /><span style={{ fontSize: 8 }}>?</span></span>
+            return <span title="Brak dopasowania do katalogu" style={{ marginLeft: 4, display: 'inline-flex', alignItems: 'center', padding: '1px 4px', borderRadius: 3, background: 'var(--color-surface-soft)', color: 'var(--color-text-tertiary)', fontWeight: 500 }}><Pencil size={9} /></span>
           })()}
           {item.scope_layer === 'HIDDEN_PROBABLE_SCOPE' && (
           <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-warning)' }}>

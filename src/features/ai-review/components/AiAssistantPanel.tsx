@@ -12,6 +12,7 @@
 // =============================================================================
 
 import { useState, useMemo, useCallback } from 'react'
+import { Lightbulb } from 'lucide-react'
 import type { AiAnalysisRun, AiScopeItem, AiQuestion, AiRisk } from '../api/ai-review.api'
 import type { ServiceCatalogItem } from '@/entities/service_catalog/model'
 import { matchCatalogItem } from '@/features/service-catalog'
@@ -39,12 +40,12 @@ interface AssistantAnswer {
 // ── Preset question chips ────────────────────────────────────────────────────
 
 const PRESET_CHIPS = [
-  { id: 'summary',    label: '🔍 Co AI wykryło?',                    icon: '🔍' },
-  { id: 'risks',      label: '⚠️ Jakie są ryzyka?',                  icon: '⚠️' },
-  { id: 'missing',    label: '📋 Czego brakuje do wyceny?',          icon: '📋' },
-  { id: 'uncertain',  label: '❓ Które pozycje są niepewne?',         icon: '❓' },
-  { id: 'catalog',    label: '📚 Dlaczego pozycje nie dopasowały się?', icon: '📚' },
-  { id: 'checklist',  label: '✅ Co poprawić przed draftem?',         icon: '✅' },
+  { id: 'summary',    label: 'Co AI wykryło?'               },
+  { id: 'risks',      label: 'Jakie są ryzyka?'             },
+  { id: 'missing',    label: 'Czego brakuje do wyceny?'     },
+  { id: 'uncertain',  label: 'Niepewne pozycje?'            },
+  { id: 'catalog',    label: 'Dopasowanie do katalogu?'     },
+  { id: 'checklist',  label: 'Checklist draftu'             },
 ] as const
 
 type PresetId = typeof PRESET_CHIPS[number]['id']
@@ -94,14 +95,14 @@ function buildSummary(run: AiAnalysisRun, scope: AiScopeItem[], questions: AiQue
   }
 
   if (run.missing_data) {
-    lines.push('', '⚠ AI sygnalizuje brakujące dane wejściowe — odpowiedzi na pytania mogą poprawić jakość.')
+    lines.push('', '[!] AI sygnalizuje brakujące dane wejściowe — odpowiedzi na pytania mogą poprawić jakość.')
   }
 
   return lines.join('\n')
 }
 
 function buildRisksAnswer(risks: AiRisk[]): string {
-  if (risks.length === 0) return 'AI nie wykryło istotnych ryzyk w tym zakresie. ✅'
+  if (risks.length === 0) return 'AI nie wykryło istotnych ryzyk w tym zakresie. [OK]'
 
   const high   = risks.filter(r => r.severity === 'high')
   const medium = risks.filter(r => r.severity === 'medium')
@@ -110,21 +111,21 @@ function buildRisksAnswer(risks: AiRisk[]): string {
   const lines: string[] = [`Wykryto **${risks.length}** ryzyk:`]
 
   if (high.length > 0) {
-    lines.push('', '🔴 **Wysokie:**')
+    lines.push('', '[WYSOKI]:')
     high.forEach(r => lines.push(`• ${r.title}${r.description ? ` — ${r.description}` : ''}`))
   }
   if (medium.length > 0) {
-    lines.push('', '🟡 **Średnie:**')
+    lines.push('', '[ŚREDNI]:')
     medium.forEach(r => lines.push(`• ${r.title}${r.description ? ` — ${r.description}` : ''}`))
   }
   if (low.length > 0) {
-    lines.push('', '🟢 **Niskie:**')
+    lines.push('', '[NISKI]:')
     low.forEach(r => lines.push(`• ${r.title}`))
   }
 
   const open = risks.filter(r => r.status === 'open').length
   if (open > 0) {
-    lines.push('', `⏳ ${open} z ${risks.length} ryzyk wymaga jeszcze potwierdzenia.`)
+    lines.push('', `[oczekuje] ${open} z ${risks.length} ryzyk wymaga jeszcze potwierdzenia.`)
   }
 
   return lines.join('\n')
@@ -142,15 +143,15 @@ function buildMissingAnswer(scope: AiScopeItem[], questions: AiQuestion[]): stri
   const pending = scope.filter(s => s.review_status === 'pending')
 
   if (missingPrice.length === 0 && unanswered.length === 0 && pending.length === 0) {
-    return 'Wszystko wygląda kompletnie — możesz utworzyć draft wyceny. ✅'
+    return 'Wszystko wygląda kompletnie — możesz utworzyć draft wyceny. [OK]'
   }
 
   if (pending.length > 0) {
-    lines.push(`📌 **${pending.length}** pozycji czeka na przegląd (zaakceptuj, zmodyfikuj lub odrzuć).`)
+    lines.push(`[!] **${pending.length}** pozycji czeka na przegląd (zaakceptuj, zmodyfikuj lub odrzuć).`)
   }
 
   if (missingPrice.length > 0) {
-    lines.push(`💰 **${missingPrice.length}** zaakceptowanych pozycji nie ma ceny:`)
+    lines.push(`[cena] **${missingPrice.length}** zaakceptowanych pozycji nie ma ceny:`)
     missingPrice.slice(0, 5).forEach(s => lines.push(`• ${s.description}`))
     if (missingPrice.length > 5) lines.push(`• …i ${missingPrice.length - 5} więcej`)
     lines.push('Uzupełnij ceny po utworzeniu draftu wyceny.')
@@ -158,7 +159,7 @@ function buildMissingAnswer(scope: AiScopeItem[], questions: AiQuestion[]): stri
 
   if (unanswered.length > 0) {
     const critical = unanswered.filter(q => q.severity === 'critical_for_scope')
-    lines.push(`❓ **${unanswered.length}** pytań bez odpowiedzi${critical.length > 0 ? ` (${critical.length} krytycznych)` : ''}.`)
+    lines.push(`[?] **${unanswered.length}** pytań bez odpowiedzi${critical.length > 0 ? ` (${critical.length} krytycznych)` : ''}.`)
     critical.slice(0, 3).forEach(q => lines.push(`• ${q.text}`))
     lines.push('Odpowiedzi zwiększą dokładność wyceny.')
   }
@@ -171,13 +172,13 @@ function buildUncertainAnswer(scope: AiScopeItem[]): string {
   const medConf = scope.filter(s => s.confidence != null && s.confidence >= 60 && s.confidence < 80)
 
   if (lowConf.length === 0 && medConf.length === 0) {
-    return 'Wszystkie pozycje mają dobrą pewność (≥80%). ✅'
+    return 'Wszystkie pozycje mają dobrą pewność (≥80%). [OK]'
   }
 
   const lines: string[] = []
 
   if (lowConf.length > 0) {
-    lines.push(`🔴 **Niska pewność (<60%)** — ${lowConf.length} pozycji:`)
+    lines.push(`[NISKA pewność <60%] — ${lowConf.length} pozycji:`)
     lowConf.slice(0, 5).forEach(s =>
       lines.push(`• ${s.description} — ${s.confidence}%`),
     )
@@ -186,7 +187,7 @@ function buildUncertainAnswer(scope: AiScopeItem[]): string {
   }
 
   if (medConf.length > 0) {
-    lines.push('', `🟡 **Średnia pewność (60-79%)** — ${medConf.length} pozycji:`)
+    lines.push('', `[ŚREDNIA pewność 60-79%] — ${medConf.length} pozycji:`)
     medConf.slice(0, 3).forEach(s =>
       lines.push(`• ${s.description} — ${s.confidence}%`),
     )
@@ -225,9 +226,9 @@ function buildCatalogAnswer(scope: AiScopeItem[], catalog?: ServiceCatalogItem[]
 
   const lines = [
     `Dopasowanie do katalogu usług (${catalog.length} pozycji):`,
-    `• ✅ **${strong}** pewnych dopasowań`,
-    `• ⚠️ **${partial}** częściowych`,
-    `• ❌ **${none}** bez dopasowania`,
+    `• [OK] **${strong}** pewnych dopasowań`,
+    `• [!] **${partial}** częściowych`,
+    `• [-] **${none}** bez dopasowania`,
   ]
 
   if (partial > 0 || none > 0) {
@@ -257,47 +258,47 @@ function buildChecklist(scope: AiScopeItem[], questions: AiQuestion[], risks: Ai
 
   const pending = scope.filter(s => s.review_status === 'pending').length
   if (pending > 0) {
-    checks.push(`❌ Przejrzyj ${pending} pozycji oczekujących na decyzję`)
+    checks.push(`[BŁĄD] Przejrzyj ${pending} pozycji oczekujących na decyzję`)
     allGood = false
   } else {
-    checks.push('✅ Wszystkie pozycje przejrzane')
+    checks.push('[OK] Wszystkie pozycje przejrzane')
   }
 
   const unanswered = questions.filter(q => q.status === 'unanswered')
   const critical = unanswered.filter(q => q.severity === 'critical_for_scope')
   if (critical.length > 0) {
-    checks.push(`❌ Odpowiedz na ${critical.length} krytycznych pytań`)
+    checks.push(`[BŁĄD] Odpowiedz na ${critical.length} krytycznych pytań`)
     allGood = false
   } else if (unanswered.length > 0) {
-    checks.push(`⚠️ ${unanswered.length} pytań opcjonalnych bez odpowiedzi (nie blokuje draftu)`)
+    checks.push(`[!] ${unanswered.length} pytań opcjonalnych bez odpowiedzi (nie blokuje draftu)`)
   } else {
-    checks.push('✅ Wszystkie pytania odpowiedziane')
+    checks.push('[OK] Wszystkie pytania odpowiedziane')
   }
 
   const openRisks = risks.filter(r => r.status === 'open' && r.severity === 'high')
   if (openRisks.length > 0) {
-    checks.push(`⚠️ ${openRisks.length} wysokich ryzyk do potwierdzenia`)
+    checks.push(`[!] ${openRisks.length} wysokich ryzyk do potwierdzenia`)
   } else {
-    checks.push('✅ Ryzyka potwierdzone')
+    checks.push('[OK] Ryzyka potwierdzone')
   }
 
   const accepted = scope.filter(s => s.review_status === 'accepted' || s.review_status === 'modified')
   const missingPrice = accepted.filter(s => s.missing_price && !s.price_confirmed_by_operator)
   if (missingPrice.length > 0) {
-    checks.push(`⚠️ ${missingPrice.length} pozycji bez ceny — uzupełnisz w edytorze wyceny`)
+    checks.push(`[!] ${missingPrice.length} pozycji bez ceny — uzupełnisz w edytorze wyceny`)
   }
 
   if (accepted.length === 0 && scope.length > 0) {
-    checks.push('❌ Brak zaakceptowanych pozycji — draft wyceny będzie pusty')
+    checks.push('[BŁĄD] Brak zaakceptowanych pozycji — draft wyceny będzie pusty')
     allGood = false
   }
 
   const lines = ['**Checklist przed utworzeniem draftu:**', '', ...checks]
 
   if (allGood) {
-    lines.push('', '🟢 Możesz utworzyć draft wyceny.')
+    lines.push('', '[GOTOWE] Możesz utworzyć draft wyceny.')
   } else {
-    lines.push('', '🟡 Popraw powyższe punkty, aby draft był kompletny.')
+    lines.push('', '[UWAGA] Popraw powyższe punkty, aby draft był kompletny.')
   }
 
   return lines.join('\n')
@@ -353,8 +354,8 @@ async function askCustomQuestion(
 
   if (!resp.ok) {
     const body = await resp.text().catch(() => '')
-    if (resp.status === 429) return '⚠ Limit zapytań do asystenta wyczerpany. Spróbuj za chwilę.'
-    return `⚠ Błąd asystenta (${resp.status}). Spróbuj ponownie.`
+    if (resp.status === 429) return '[!] Limit zapytań do asystenta wyczerpany. Spróbuj za chwilę.'
+    return `[!] Błąd asystenta (${resp.status}). Spróbuj ponownie.`
   }
 
   const data = await resp.json()
@@ -410,13 +411,13 @@ export function AiAssistantPanel({ run, scope, questions, risks, catalog, projec
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 16 }}>💡</span>
+          <Lightbulb size={16} color="var(--color-brand)" />
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
             Asystent AI — zapytaj o tę analizę
           </span>
         </div>
         <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-          {expanded ? '▲ zwiń' : '▼ rozwiń'}
+          {expanded ? '↑ zwiń' : '↓ rozwiń'}
         </span>
       </div>
 
@@ -482,7 +483,7 @@ export function AiAssistantPanel({ run, scope, questions, risks, catalog, projec
                 border: 'none', transition: 'background 0.15s',
               }}
             >
-              {loading ? '⏳' : 'Zapytaj'}
+              {loading ? '…' : 'Zapytaj'}
             </button>
           </div>
 

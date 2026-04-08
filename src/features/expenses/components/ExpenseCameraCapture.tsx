@@ -1,8 +1,21 @@
 import { useRef, useState } from 'react'
-import { FileText, Home, Image, PenLine, Search } from 'lucide-react'
+import { Droplets, DoorOpen, FileText, Home, Image, Layers, PenLine, Ruler, Search, Sofa, Utensils } from 'lucide-react'
 import type { ExpenseSourceType } from '@/features/expenses/api/expenses.api'
 import { ROOM_TYPES } from '@/services/ai/room-types'
 import type { RoomTypeId } from '@/services/ai/room-types'
+
+const ROOM_ICON_MAP: Record<string, React.ElementType> = {
+  bathroom: Droplets,
+  kitchen:  Utensils,
+  room:     Sofa,
+  hallway:  DoorOpen,
+  facade:   Home,
+  other:    Ruler,
+}
+function RoomIcon({ id, size = 24 }: { id: string; size?: number }) {
+  const Icon = ROOM_ICON_MAP[id] ?? Layers
+  return <Icon size={size} />
+}
 
 const MAX_ROOM_PHOTOS = 10
 const MIN_ROOM_PHOTOS = 1
@@ -80,7 +93,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 24, maxWidth: 440, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 15, fontWeight: 600, textAlign: 'center' }}>
-          📐 Typ pomieszczenia
+          Typ pomieszczenia
         </p>
         <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }}>
           Wybierz typ — dostosujemy analizę i bibliotekę pozycji.
@@ -107,7 +120,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.background = 'var(--color-primary-soft, rgba(59,130,246,.08))' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border, rgba(30,29,24,0.15))'; e.currentTarget.style.background = 'var(--color-bg-input)' }}
             >
-              <span style={{ fontSize: 24 }}>{rt.icon}</span>
+              <RoomIcon id={rt.id} size={24} />
               <span>{rt.name}</span>
               <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textAlign: 'center' }}>{rt.description}</span>
               {rt.hasLibrary && (
@@ -243,7 +256,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 24, maxWidth: 440, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 15, fontWeight: 600, textAlign: 'center' }}>
-          📐 Typ pomieszczenia
+          Typ pomieszczenia
         </p>
         <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }}>
           Wybierz typ — dostosujemy analizę i bibliotekę pozycji.
@@ -270,7 +283,7 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.background = 'var(--color-primary-soft, rgba(59,130,246,.08))' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border, rgba(30,29,24,0.15))'; e.currentTarget.style.background = 'var(--color-bg-input)' }}
             >
-              <span style={{ fontSize: 24 }}>{rt.icon}</span>
+              <RoomIcon id={rt.id} size={24} />
               <span>{rt.name}</span>
               <span style={{ fontSize: 10, color: 'var(--color-text-muted)', textAlign: 'center' }}>{rt.description}</span>
               {rt.hasLibrary && (

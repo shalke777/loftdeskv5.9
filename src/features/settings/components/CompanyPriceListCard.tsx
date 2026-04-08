@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react'
-import { Pencil, Trash2, Plus, Check, X } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { Check, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
+import { isDemoMode } from '@/shared/lib/supabase'
 import { useServiceCatalog } from '@/features/service-catalog/hooks/useServiceCatalog'
 import {
   useCompanyPriceList,
-  useUpsertPrice,
   useDeletePrice,
+  useUpsertManyPrices,
+  useUpsertPrice,
 } from '@/features/service-catalog/hooks/useCompanyPriceList'
 import { CATEGORY_LABELS } from '@/entities/service_catalog/model'
 import type { ServiceCatalogItem } from '@/entities/service_catalog/model'
@@ -20,6 +22,7 @@ export function CompanyPriceListCard() {
   const { data: priceMap = new Map(), isLoading: pricesLoading } = useCompanyPriceList()
   const upsertPrice = useUpsertPrice()
   const deletePrice = useDeletePrice()
+  const upsertMany = useUpsertManyPrices()
 
   const [editId, setEditId] = useState<string | null>(null)
   const [editVal, setEditVal] = useState('')
@@ -28,8 +31,26 @@ export function CompanyPriceListCard() {
   const [addMode, setAddMode] = useState(false)
   const [addItemId, setAddItemId] = useState<string | null>(null)
   const [addPrice, setAddPrice] = useState('')
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  // CSV import state
+  const csvInputRef = useRef<HTMLInputElement>(null)
+  const [csvPreview, setCsvPreview] = useState<Array<{ catalogItemId: string; name: string; price: number }> | null>(null)
+  const [csvUnmatched, setCsvUnmatched] = useState<string[]>([])
+  const [csvImporting, setCsvImporting] = useState(false)
 
   const isLoading = catLoading || pricesLoading
+
+  function showSuccess(msg: string) {
+    setSuccessMsg(msg)
+    setTimeout(() => setSuccessMsg(null), 3000)
+  }
+
+  function showError(msg: string) {
+    setErrorMsg(msg)
+    setTimeout(() => setErrorMsg(null), 5000)
+  }
 
   // Items with stored prices
   const savedItems = useMemo(() => {
@@ -75,7 +96,13 @@ export function CompanyPriceListCard() {
   function saveEdit(catalogItemId: string) {
     const price = parseFloat(editVal.replace(',', '.'))
     if (!isNaN(price) && price > 0) {
-      upsertPrice.mutate({ catalogItemId, unitPrice: price })
+      upsertPrice.mutate(
+        { catalogItemId, unitPrice: price },
+        {
+          onSuccess: () => showSuccess('Cena zapisana'),
+          onError: (e) => showError(`Błąd zapisu: ${(e as Error).message ?? 'nieznany błąd'}`),
+        }
+      )
     }
     setEditId(null)
     setEditVal('')
@@ -96,7 +123,13 @@ export function CompanyPriceListCard() {
     if (!addItemId) return
     const price = parseFloat(addPrice.replace(',', '.'))
     if (!isNaN(price) && price > 0) {
-      upsertPrice.mutate({ catalogItemId: addItemId, unitPrice: price })
+      upsertPrice.mutate(
+        { catalogItemId: addItemId, unitPrice: price },
+        {
+          onSuccess: () => showSuccess('Cena dodana do cennika'),
+          onError: (e) => showError(`Błąd zapisu: ${(e as Error).message ?? 'nieznany błąd'}`),
+        }
+      )
     }
     cancelAdd()
   }
@@ -108,15 +141,132 @@ export function CompanyPriceListCard() {
     setAddPrice('')
   }
 
+  function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string
+      const lines = text.split(/\r?\n/).filter((l) => l.trim())
+      const matched: Array<{ catalogItemId: string; name: string; price: number }> = []
+      const unmatched: string[] = []
+      for (const line of lines) {
+        const sep = line.includes(';') ? ';' : line.includes('\t') ? '\t' : ','
+        const parts = line.split(sep)
+        const rawName = (parts[0] ?? '').trim().replace(/^"|"$/g, '')
+        const rawPrice = (parts[1] ?? '').trim().replace(/^"|"$/g, '').replace(',', '.')
+        if (!rawName) continue
+        const price = parseFloat(rawPrice)
+        if (isNaN(price) || price <= 0) { unmatched.push(`${rawName} (brak ceny)`); continue }
+        const norm = rawName.toLowerCase()
+        const found = catalog.find(
+          (c) => c.name.toLowerCase() === norm ||
+                 c.name.toLowerCase().includes(norm) ||
+                 norm.includes(c.name.toLowerCase())
+        )
+        if (found) {
+          matched.push({ catalogItemId: found.id, name: found.name, price })
+        } else {
+          unmatched.push(rawName)
+        }
+      }
+      setCsvPreview(matched)
+      setCsvUnmatched(unmatched)
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  function confirmCsvImport() {
+    if (!csvPreview || csvPreview.length === 0) return
+    setCsvImporting(true)
+    upsertMany.mutate(
+      csvPreview.map((r) => ({ catalog_item_id: r.catalogItemId, unit_price: r.price })),
+      {
+        onSuccess: () => {
+          showSuccess(`Zaimportowano ${csvPreview.length} cen z pliku CSV`)
+          setCsvPreview(null)
+          setCsvUnmatched([])
+        },
+        onError: (e) => showError(`Błąd importu: ${(e as Error).message ?? 'nieznany błąd'}`),
+        onSettled: () => setCsvImporting(false),
+      }
+    )
+  }
+
   return (
     <Card>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+      {/* Demo mode warning */}
+      {isDemoMode && (
+        <div style={{
+          background: 'rgba(184,116,42,0.1)',
+          border: '1px solid rgba(184,116,42,0.3)',
+          borderRadius: 8,
+          padding: '8px 12px',
+          marginBottom: 12,
+          fontSize: '0.8rem',
+          color: 'var(--color-warning, #B8742A)',
+        }}>
+          Tryb demo — zmiany w cenniku nie są zapisywane. Połącz z Supabase, aby zapisywać ceny.
+        </div>
+      )}
+
+      {/* Error / success feedback */}
+      {errorMsg && (
+        <div style={{
+          background: 'rgba(168,50,40,0.1)',
+          border: '1px solid rgba(168,50,40,0.3)',
+          borderRadius: 8,
+          padding: '8px 12px',
+          marginBottom: 12,
+          fontSize: '0.8rem',
+          color: 'var(--color-error, #A83228)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <span>{errorMsg}</span>
+          <button onClick={() => setErrorMsg(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0 }}>
+            <X size={13} />
+          </button>
+        </div>
+      )}
+      {successMsg && (
+        <div style={{
+          background: 'rgba(26,92,50,0.1)',
+          border: '1px solid rgba(26,92,50,0.3)',
+          borderRadius: 8,
+          padding: '8px 12px',
+          marginBottom: 12,
+          fontSize: '0.8rem',
+          color: 'var(--color-brand, #1A5C32)',
+        }}>
+          {successMsg}
+        </div>
+      )}
+
+      {/* Hidden CSV file input */}
+      <input
+        ref={csvInputRef}
+        type="file"
+        accept=".csv,.txt"
+        style={{ display: 'none' }}
+        onChange={handleCsvFile}
+      />
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
         <h3 style={{ margin: 0 }}>Cennik usług</h3>
         {!addMode && (
-          <Button variant="secondary" onClick={() => setAddMode(true)}>
-            <Plus size={14} style={{ marginRight: 5 }} />
-            Dodaj pozycję
-          </Button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Button variant="ghost" onClick={() => csvInputRef.current?.click()} title="Importuj ceny z pliku CSV">
+              <Upload size={14} style={{ marginRight: 5 }} />
+              Importuj CSV
+            </Button>
+            <Button variant="secondary" onClick={() => setAddMode(true)}>
+              <Plus size={14} style={{ marginRight: 5 }} />
+              Dodaj pozycję
+            </Button>
+          </div>
         )}
       </div>
       <p style={{ margin: '0 0 16px', fontSize: '0.83rem', color: 'var(--color-text-secondary)' }}>
@@ -217,6 +367,50 @@ export function CompanyPriceListCard() {
               Anuluj
             </Button>
           )}
+        </div>
+      )}
+
+      {/* CSV import preview */}
+      {csvPreview !== null && (
+        <div style={{
+          background: 'rgba(26,92,50,0.05)',
+          border: '1px solid rgba(26,92,50,0.2)',
+          borderRadius: 10,
+          padding: '12px 14px',
+          marginBottom: 14,
+        }}>
+          <div style={{ fontWeight: 600, fontSize: '0.82rem', marginBottom: 8 }}>
+            Podgląd importu CSV — {csvPreview.length} dopasowanych pozycji
+            {csvUnmatched.length > 0 && (
+              <span style={{ color: 'var(--color-warning, #B8742A)', marginLeft: 8 }}>
+                · {csvUnmatched.length} nierozpoznanych
+              </span>
+            )}
+          </div>
+          {csvPreview.length > 0 && (
+            <div style={{ maxHeight: 160, overflowY: 'auto', marginBottom: 10 }}>
+              {csvPreview.map((r) => (
+                <div key={r.catalogItemId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', padding: '3px 0', borderBottom: '1px solid var(--color-border)' }}>
+                  <span>{r.name}</span>
+                  <span style={{ fontWeight: 600 }}>{r.price.toFixed(2)} zł</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {csvUnmatched.length > 0 && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+              Nierozpoznane: {csvUnmatched.join(', ')}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button onClick={confirmCsvImport} loading={csvImporting} disabled={csvPreview.length === 0}>
+              <Check size={13} style={{ marginRight: 4 }} />
+              Importuj {csvPreview.length} cen
+            </Button>
+            <Button variant="ghost" onClick={() => { setCsvPreview(null); setCsvUnmatched([]) }}>
+              Anuluj
+            </Button>
+          </div>
         </div>
       )}
 

@@ -11,7 +11,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 interface Props {
   title:        string
   count?:       number
-  icon?:        string
+  icon?:        React.ReactNode
   defaultOpen?: boolean
   children:     React.ReactNode
 }

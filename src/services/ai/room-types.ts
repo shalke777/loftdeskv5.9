@@ -13,12 +13,12 @@ export interface RoomType {
 }
 
 export const ROOM_TYPES: RoomType[] = [
-  { id: 'bathroom', name: 'Łazienka',          icon: '🚿', description: 'Remont łazienki / WC',           hasLibrary: true },
-  { id: 'kitchen',  name: 'Kuchnia',           icon: '🍳', description: 'Remont kuchni',                  hasLibrary: false },
-  { id: 'room',     name: 'Pokój / Salon',     icon: '🛋️', description: 'Wykończenie pokoju lub salonu',   hasLibrary: false },
-  { id: 'hallway',  name: 'Korytarz / Hol',    icon: '🚪', description: 'Korytarz, hol, przedpokój',      hasLibrary: false },
-  { id: 'facade',   name: 'Elewacja / Taras',  icon: '🏠', description: 'Elewacja, balkon, taras',        hasLibrary: false },
-  { id: 'other',    name: 'Inne',              icon: '📐', description: 'Inne pomieszczenie lub obiekt',   hasLibrary: false },
+  { id: 'bathroom', name: 'Łazienka',          icon: 'Droplets',  description: 'Remont łazienki / WC',           hasLibrary: true },
+  { id: 'kitchen',  name: 'Kuchnia',           icon: 'Utensils',  description: 'Remont kuchni',                  hasLibrary: false },
+  { id: 'room',     name: 'Pokój / Salon',     icon: 'Sofa',      description: 'Wykończenie pokoju lub salonu',   hasLibrary: false },
+  { id: 'hallway',  name: 'Korytarz / Hol',    icon: 'DoorOpen',  description: 'Korytarz, hol, przedpokój',      hasLibrary: false },
+  { id: 'facade',   name: 'Elewacja / Taras',  icon: 'Home',      description: 'Elewacja, balkon, taras',        hasLibrary: false },
+  { id: 'other',    name: 'Inne',              icon: 'Ruler',     description: 'Inne pomieszczenie lub obiekt',   hasLibrary: false },
 ]
 
 export function getRoomType(id: RoomTypeId): RoomType | undefined {

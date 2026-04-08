@@ -6,47 +6,48 @@
 
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { Camera, FileText, FolderOpen, Ruler } from 'lucide-react'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { ProjectPickerCard } from '@/shared/ui/ProjectPickerCard/ProjectPickerCard'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 
 interface AiMode {
-  emoji: string
-  accent: string
-  title: string
+  Icon:     React.ElementType
+  accent:   string
+  title:    string
   subtitle: string
   description: string
-  href: string
-  cta: string
+  href:     string
+  cta:      string
 }
 
 const AI_MODES: AiMode[] = [
   {
-    emoji: '🧾',
-    accent: 'var(--color-info)',
-    title: 'Dokument kosztowy',
+    Icon:    FileText,
+    accent:  'var(--color-info)',
+    title:   'Dokument kosztowy',
     subtitle: 'Faktura · Paragon · Nota',
     description: 'AI odczytuje dane z dokumentu finansowego — numer, sprzedawcę, kwoty, termin płatności.',
-    href: '/expenses',
-    cta: 'Skanuj dokument',
+    href:    '/expenses',
+    cta:     'Skanuj dokument',
   },
   {
-    emoji: '📸',
-    accent: 'var(--color-brand)',
-    title: 'Zdjęcia pomieszczenia',
+    Icon:    Camera,
+    accent:  'var(--color-brand)',
+    title:   'Zdjęcia pomieszczenia',
     subtitle: 'Łazienka · Kuchnia · Salon · Budowa',
     description: 'AI analizuje stan pomieszczenia — rozpoznaje materiały, generuje zakres prac i draft wyceny.',
-    href: '/room-analysis',
-    cta: 'Analizuj pomieszczenie',
+    href:    '/room-analysis',
+    cta:     'Analizuj pomieszczenie',
   },
   {
-    emoji: '📐',
-    accent: 'var(--color-accent)',
-    title: 'Projekt / wizualizacja',
+    Icon:    Ruler,
+    accent:  'var(--color-accent)',
+    title:   'Projekt / wizualizacja',
     subtitle: 'PDF · Rzut · Render wnętrza',
     description: 'AI czyta projekt — wyodrębnia pomieszczenia, materiały wykończenia, zakres prac i draft wyceny.',
-    href: '/project-analysis',
-    cta: 'Analizuj projekt',
+    href:    '/project-analysis',
+    cta:     'Analizuj projekt',
   },
 ]
 
@@ -98,7 +99,7 @@ export function AiTypeChooserPage() {
             border: '1px solid var(--color-primary)',
             fontSize: 13,
           }}>
-            <span>📂</span>
+          <FolderOpen size={14} style={{ flexShrink: 0 }} />
             <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
               {selectedProject.number} · {selectedProject.name}
             </span>
@@ -135,7 +136,7 @@ export function AiTypeChooserPage() {
 
             <div style={{ padding: '18px 18px 14px', flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 28, lineHeight: 1 }}>{mode.emoji}</span>
+                <span style={{ color: mode.accent, lineHeight: 1 }}><mode.Icon size={26} /></span>
                 <div>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: 'var(--color-text-primary)' }}>
                     {mode.title}

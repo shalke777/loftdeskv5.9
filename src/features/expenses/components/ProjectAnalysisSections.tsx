@@ -5,7 +5,7 @@
 // Each section is independently renderable — renders null if no data.
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { BarChart2, Building2, ChevronDown, ChevronUp, ClipboardList, FileText, HelpCircle, Home, Layers, Palette, Ruler, StickyNote, Wrench } from 'lucide-react'
 import type {
   ProjectAnalysisResult,
   ProjectRoom,
@@ -18,6 +18,7 @@ import { AiReliabilityBanner } from '@/shared/ui/AiGuidance'
 import type { ReliabilityReport } from '@/services/ai/engines/reliability'
 import { AnalysisSectionCard } from './AnalysisSectionCard'
 import { useServiceCatalog, matchCatalogItem } from '@/features/service-catalog'
+import { useCompanyPriceList } from '@/features/service-catalog/hooks/useCompanyPriceList'
 
 const colStyle:   React.CSSProperties = { padding: '6px 4px' }
 const rightCol:   React.CSSProperties = { ...colStyle, textAlign: 'right' }
@@ -54,12 +55,12 @@ export function ProjectSummaryBar({ result }: { result: ProjectAnalysisResult })
   const conf = result.confidence
   const confColor = conf >= 70 ? 'var(--color-brand)' : conf >= 40 ? 'var(--color-accent)' : 'var(--color-error)'
 
-  const typeLabel: Record<string, string> = {
-    architectural_drawing: '📐 Rzut architektoniczny',
-    design_visualization:  '🎨 Wizualizacja',
-    technical_spec:        '📋 Specyfikacja techniczna',
-    mixed:                 '📄 Dokument mieszany',
-    unknown:               '❓ Nieznany typ',
+  const typeLabel: Record<string, React.ReactNode> = {
+    architectural_drawing: <><Ruler size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />Rzut architektoniczny</>,
+    design_visualization:  <><Palette size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />Wizualizacja</>,
+    technical_spec:        <><ClipboardList size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />Specyfikacja techniczna</>,
+    mixed:                 <><FileText size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />Dokument mieszany</>,
+    unknown:               <><HelpCircle size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />Nieznany typ</>,
   }
 
   return (
@@ -77,7 +78,8 @@ export function ProjectSummaryBar({ result }: { result: ProjectAnalysisResult })
       )}
       {result.total_area_m2 !== null && (
         <span style={{ color: 'var(--color-text-muted)' }}>
-          🏗 {result.total_area_m2} m² łącznie
+          <Building2 size={12} style={{ verticalAlign: 'middle', marginRight: 3 }} />
+          {result.total_area_m2} m² łącznie
         </span>
       )}
       {result.building_type && (
@@ -97,7 +99,7 @@ export function ProjectRoomsSection({ rooms }: { rooms: ProjectRoom[] }) {
   const [expanded, setExpanded] = useState<number | null>(null)
 
   return (
-    <AnalysisSectionCard title="Pomieszczenia z projektu" count={rooms.length} icon="🏠">
+    <AnalysisSectionCard title="Pomieszczenia z projektu" count={rooms.length} icon={<Home size={13} />}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {rooms.map((room, i) => {
           const isOpen = expanded === i
@@ -181,7 +183,7 @@ export function ProjectRoomsSection({ rooms }: { rooms: ProjectRoom[] }) {
                   )}
                   {room.notes.length > 0 && (
                     <div style={{ marginTop: 4, padding: '6px 10px', borderRadius: 5, background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', color: 'var(--color-text-secondary)' }}>
-                      {room.notes.map((n, ni) => <div key={ni}>📝 {n}</div>)}
+                      {room.notes.map((n, ni) => <div key={ni}><StickyNote size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />{n}</div>)}
                     </div>
                   )}
                 </div>
@@ -200,7 +202,7 @@ export function ProjectMaterialsSection({ materials }: { materials: ProjectMater
   if (materials.length === 0) return null
 
   return (
-    <AnalysisSectionCard title="Materiały wykończeniowe" count={materials.length} icon="🧱">
+    <AnalysisSectionCard title="Materiały wykończeniowe" count={materials.length} icon={<Layers size={13} />}>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
@@ -245,7 +247,7 @@ export function ProjectScopeSection({ items }: { items: ProjectScopeItem[] }) {
   }
 
   return (
-    <AnalysisSectionCard title="Zakres prac z projektu" count={items.length} icon="🔧">
+    <AnalysisSectionCard title="Zakres prac z projektu" count={items.length} icon={<Wrench size={13} />}>
       {Array.from(byRoom.entries()).map(([room, roomItems]) => (
         <div key={room} style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -294,22 +296,28 @@ export function ProjectScopeSection({ items }: { items: ProjectScopeItem[] }) {
 
 // ── Suggested estimate items ─────────────────────────────────────────────────
 
-function projectItemsToEstimate(items: ProjectEstimateItem[], catalog?: import('@/entities/service_catalog/model').ServiceCatalogItem[]): EstimateItem[] {
+function projectItemsToEstimate(
+  items: ProjectEstimateItem[],
+  catalog?: import('@/entities/service_catalog/model').ServiceCatalogItem[],
+  priceMap?: Map<string, number>,
+): EstimateItem[] {
   return items.map((e, i) => {
     const result = catalog?.length ? matchCatalogItem(e.name, catalog) : { best: null, alternatives: [] }
     const match = result.best
     // Never insert quantity=0 — use 1 as safe default (user adjusts after)
     const safeQty = (typeof e.quantity === 'number' && e.quantity > 0) ? e.quantity : 1
+    const catalogItemId = match?.catalog_item_id ?? null
+    const unitPrice = (catalogItemId && priceMap?.get(catalogItemId)) || 0
     return {
       id: crypto.randomUUID(),
       name: match?.canonical_name ?? e.name,
       description: e.notes ?? '',
       unit: e.unit || 'm²',
       quantity: safeQty,
-      unit_price: 0,
+      unit_price: unitPrice,
       vat_rate: 8,
       sort_order: i + 1,
-      catalog_item_id: match?.catalog_item_id ?? null,
+      catalog_item_id: catalogItemId,
     }
   })
 }
@@ -344,6 +352,7 @@ export function ProjectEstimateSection({
   isTransferring?:   boolean
 }) {
   const { data: catalog } = useServiceCatalog()
+  const { data: priceMap } = useCompanyPriceList()
   const transferring = isTransferring ?? false
   const [awaitingConfirm, setAwaitingConfirm] = useState(false)
 
@@ -363,7 +372,7 @@ export function ProjectEstimateSection({
   function doTransfer() {
     if (transferring) return
     setAwaitingConfirm(false)
-    const estimateItems = projectItemsToEstimate(mergedItems, catalog)
+    const estimateItems = projectItemsToEstimate(mergedItems, catalog, priceMap)
     onTransfer?.(estimateItems)
   }
 
@@ -377,7 +386,7 @@ export function ProjectEstimateSection({
   }
 
   return (
-    <AnalysisSectionCard title="Proponowane pozycje wyceny" count={mergedItems.length} icon="📊">
+    <AnalysisSectionCard title="Proponowane pozycje wyceny" count={mergedItems.length} icon={<BarChart2 size={13} />}>
       <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8, fontStyle: 'italic' }}>
         Draft na podstawie projektu — zakres prac i pozycje AI. Uzupełnij ceny jednostkowe przed wysłaniem oferty.
       </div>
