@@ -132,13 +132,13 @@ export function InvoiceRow({
             {formatCurrency(invoice.total_gross)}
           </span>
           {invoice.ksef_status && (
-            <span className={KSEF_CLASS[invoice.ksef_status]} style={{ fontSize: 11 }}>
+            <span className={`${KSEF_CLASS[invoice.ksef_status]} invoice-row__ksef`} style={{ fontSize: 11 }}>
               {KSEF_LABEL[invoice.ksef_status]}
             </span>
           )}
           <span className={STATUS_CLASS[invoice.status]}>{STATUS_LABEL[invoice.status]}</span>
           {daysOverdue !== null && (
-            <span style={{
+            <span className="invoice-row__overdue" style={{
               fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
               background: daysOverdue >= 14 ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)',
               color: daysOverdue >= 14 ? 'var(--color-error, #ef4444)' : 'var(--color-warning, #f59e0b)',
@@ -148,11 +148,12 @@ export function InvoiceRow({
             </span>
           )}
           {reminderCount !== undefined && reminderCount > 0 && (
-            <span title={`Wysłano ${reminderCount}/3 przypomnień`} style={{
-              display: 'flex', alignItems: 'center', gap: 3,
-              fontSize: 11, color: 'var(--color-text-secondary)',
+            <span className="invoice-row__reminder" title={`Wysłano ${reminderCount}/3 przypomnień`} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3, minHeight: 28,
+              padding: '4px 6px', borderRadius: 4, fontSize: 11,
+              color: 'var(--color-text-secondary)',
             }}>
-              <Bell size={11} />
+              <Bell size={14} />
               {reminderCount}/3
             </span>
           )}
@@ -236,7 +237,15 @@ export function InvoiceRow({
             {invoice.due_date && (
               <div>
                 <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Termin płatności</span>
-                <br />{invoice.due_date}
+                <br />
+                {invoice.due_date}
+                {daysOverdue !== null && (
+                  <span style={{
+                    marginLeft: 6, fontSize: 11, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
+                    background: daysOverdue >= 14 ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)',
+                    color: daysOverdue >= 14 ? 'var(--color-error, #ef4444)' : 'var(--color-warning, #f59e0b)',
+                  }}>+{daysOverdue}d</span>
+                )}
               </div>
             )}
             {invoice.payment_method && (
@@ -251,6 +260,16 @@ export function InvoiceRow({
                 <br />
                 {invoice.ksef_status}
                 {invoice.ksef_ref && <span style={{ color: 'var(--color-text-muted)' }}> · {invoice.ksef_ref}</span>}
+              </div>
+            )}
+            {reminderCount !== undefined && reminderCount > 0 && (
+              <div>
+                <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Przypomnienia</span>
+                <br />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+                  <Bell size={13} style={{ color: 'var(--color-text-secondary)' }} />
+                  {reminderCount}/3 wysłane
+                </span>
               </div>
             )}
           </div>

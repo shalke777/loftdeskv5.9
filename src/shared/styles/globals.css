@@ -3442,6 +3442,11 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .proj-row__actions { gap: 4px; }
   .proj-action-btn { padding: 11px; min-width: 44px; min-height: 44px; }
 
+  /* InvoiceRow: hide secondary badges on mobile (visible in expanded detail) */
+  .invoice-row__ksef,
+  .invoice-row__overdue,
+  .invoice-row__reminder { display: none; }
+
   /* Expanded detail: reduce paddings */
   .proj-row__detail { padding: 12px; }
   .proj-row__detail .actions-row { gap: 6px; }
