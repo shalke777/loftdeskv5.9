@@ -220,7 +220,7 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
         {tab === 'overview'   && <ProjectTimeline project={project} />}
         {tab === 'threads'    && <ProjectThreadsTab  projectId={project.id} />}
         {tab === 'expenses'   && <ProjectExpensesTab projectId={project.id} />}
-        {tab === 'budget'     && <BudgetComparisonTab projectId={project.id} />}
+        {tab === 'budget'     && <BudgetComparisonTab projectId={project.id} projectName={project.name} projectNumber={project.number} />}
         {tab === 'approvals'  && <ProjectApprovalsTab projectId={project.id} />}
         {tab === 'photos'     && <ProjectPhotosSection project={project} />}
         {tab === 'timeline'   && <ProjectTimelineTab  projectId={project.id} onRequestInvoice={() => setShowInvoiceModal(true)} />}

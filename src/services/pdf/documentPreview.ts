@@ -651,6 +651,167 @@ export function buildProtocolPreview(protocol: HandoverProtocol, clientName?: st
   return pageShell(protocol.title, 'Protokół odbioru', page)
 }
 
+// ─── Budget Report ────────────────────────────────────────────────────────────
+
+export interface BudgetReportData {
+  projectName:  string
+  projectNumber: string
+  /** Reference source label, e.g. "umowa podpisana", "wycena (draft)" */
+  source:        string | null
+  plannedGross:  number
+  plannedNet:    number
+  actualGross:   number
+  actualNet:     number
+  diff:          number
+  diffPct:       number | null
+  overBudget:    boolean
+  revenue:       number
+  margin:        number | null
+  marginPct:     number | null
+  byCategory:    Record<string, number>
+  byApproval:    Record<string, number>
+  tranches:      Array<{ label: string; amount: number; status: string; due_date?: string | null }>
+  expenseCount:  number
+  generatedAt:   string
+}
+
+const COST_TYPE_LABEL_PDF: Record<string, string> = {
+  material:  'Materiały',
+  service:   'Usługi',
+  equipment: 'Sprzęt',
+  labor:     'Robocizna',
+  transport: 'Transport',
+  other:     'Inne',
+}
+
+const APPROVAL_LABEL_PDF: Record<string, string> = {
+  accepted:       'Zaakceptowane',
+  not_sent:       'Nierozesłane',
+  pending_client: 'Oczekuje na zatwierdzenie',
+  questioned:     'Zakwestionowane',
+  rejected:       'Odrzucone',
+}
+
+export function buildBudgetReportPreview(data: BudgetReportData, companyInput?: CompanyMeta): string {
+  const company = defaultCompany(companyInput)
+
+  const fmt = (n: number) => formatCurrency(n)
+  const pct = (n: number | null) => n !== null ? `${n}%` : '—'
+
+  // Status badge
+  const budgetStatus = data.overBudget
+    ? `<span style="background:#fee2e2;color:#991b1b;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;">⚠ Budżet przekroczony</span>`
+    : data.diffPct !== null && data.diffPct < 15
+      ? `<span style="background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;">Uwaga: niski bufor (${data.diffPct}%)</span>`
+      : `<span style="background:#d1fae5;color:#065f46;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;">✓ Budżet zachowany (${pct(data.diffPct)} wolne)</span>`
+
+  // Main summary rows
+  const summaryRows = [
+    ['Plan (brutto)',       fmt(data.plannedGross), ''],
+    ['Plan (netto)',        fmt(data.plannedNet),   ''],
+    ['Wykonanie (brutto)', fmt(data.actualGross),  data.overBudget ? 'color:#991b1b' : ''],
+    ['Wykonanie (netto)',  fmt(data.actualNet),     ''],
+    ['Różnica',            (data.overBudget ? '-' : '+') + fmt(Math.abs(data.diff)), data.overBudget ? 'color:#991b1b' : 'color:#065f46'],
+  ].map(([label, value, style]) =>
+    `<tr><td>${escapeHtml(label as string)}</td><td class="num" style="${style}">${escapeHtml(value as string)}</td></tr>`
+  ).join('')
+
+  // Margin section
+  const marginSection = data.margin !== null ? `
+    <div class="section">
+      <h2>Marża projektu</h2>
+      <table>
+        <thead><tr><th>Pozycja</th><th class="num">Wartość</th></tr></thead>
+        <tbody>
+          <tr><td>Przychód (umowa)</td><td class="num">${fmt(data.revenue)}</td></tr>
+          <tr><td>Koszty łączne</td><td class="num">${fmt(data.actualGross)}</td></tr>
+          <tr><td><strong>Marża brutto</strong></td><td class="num"><strong style="${data.margin < 0 ? 'color:#991b1b' : data.margin < data.revenue * 0.1 ? 'color:#92400e' : 'color:#065f46'}">${fmt(data.margin)} (${pct(data.marginPct)})</strong></td></tr>
+        </tbody>
+      </table>
+    </div>` : ''
+
+  // Categories
+  const sortedCats = Object.entries(data.byCategory).sort(([, a], [, b]) => b - a)
+  const categoryRows = sortedCats.map(([cat, amount]) => {
+    const pctOfTotal = data.actualGross > 0 ? Math.round((amount / data.actualGross) * 100) : 0
+    return `<tr><td>${escapeHtml(COST_TYPE_LABEL_PDF[cat] ?? cat)}</td><td class="num">${fmt(amount)}</td><td class="num">${pctOfTotal}%</td></tr>`
+  }).join('')
+
+  const categoriesSection = sortedCats.length > 0 ? `
+    <div class="section">
+      <h2>Koszty wg kategorii</h2>
+      <table>
+        <thead><tr><th>Kategoria</th><th class="num">Kwota brutto</th><th class="num">Udział</th></tr></thead>
+        <tbody>${categoryRows}<tr><td><strong>Łącznie (${data.expenseCount} poz.)</strong></td><td class="num"><strong>${fmt(data.actualGross)}</strong></td><td class="num"><strong>100%</strong></td></tr></tbody>
+      </table>
+    </div>` : ''
+
+  // Approvals
+  const approvalEntries = Object.entries(data.byApproval).filter(([k]) => k !== 'not_sent' || data.byApproval['not_sent'] > 0)
+  const approvalRows = approvalEntries
+    .sort(([a], [b]) => ['accepted','pending_client','questioned','rejected','not_sent'].indexOf(a) - ['accepted','pending_client','questioned','rejected','not_sent'].indexOf(b))
+    .map(([status, amount]) =>
+      `<tr><td>${escapeHtml(APPROVAL_LABEL_PDF[status] ?? status)}</td><td class="num">${fmt(amount)}</td></tr>`
+    ).join('')
+
+  const approvalsSection = approvalEntries.length > 1 ? `
+    <div class="section">
+      <h2>Status zatwierdzeń kosztów</h2>
+      <table>
+        <thead><tr><th>Status</th><th class="num">Kwota brutto</th></tr></thead>
+        <tbody>${approvalRows}</tbody>
+      </table>
+    </div>` : ''
+
+  // Tranches
+  const trancheRows = data.tranches.map(t =>
+    `<tr><td>${escapeHtml(t.label)}</td><td class="num">${fmt(t.amount)}</td><td>${t.status === 'paid' ? '✓ Opłacona' : t.status === 'invoiced' ? 'Zafakturowana' : t.due_date ? `Termin: ${t.due_date}` : 'Oczekuje'}</td></tr>`
+  ).join('')
+
+  const tranchesSection = data.tranches.length > 0 ? `
+    <div class="section">
+      <h2>Transze umowy</h2>
+      <table>
+        <thead><tr><th>Transza</th><th class="num">Kwota</th><th>Status</th></tr></thead>
+        <tbody>${trancheRows}</tbody>
+      </table>
+    </div>` : ''
+
+  const page = `<section class="page">
+    <div class="topbar"><div class="topbar__title">RAPORT BUDŻETOWY</div>${logoMark(company)}</div>
+    <div class="content">
+      <div class="doc-title">RAPORT BUDŻETOWY</div>
+      <div class="doc-number">${escapeHtml(data.projectNumber)} · ${escapeHtml(data.projectName)}</div>
+      <div class="meta">
+        ${data.source ? `Podstawa: ${escapeHtml(data.source)}<br/>` : ''}
+        Wygenerowano: ${escapeHtml(data.generatedAt)}
+      </div>
+      <div style="text-align:center;margin:12px 0 20px;">${budgetStatus}</div>
+
+      <div class="section">
+        <h2>Podsumowanie budżetu</h2>
+        <table>
+          <thead><tr><th>Pozycja</th><th class="num">Wartość</th></tr></thead>
+          <tbody>${summaryRows}</tbody>
+        </table>
+      </div>
+
+      ${marginSection}
+      ${categoriesSection}
+      ${approvalsSection}
+      ${tranchesSection}
+
+      <div class="signature-grid" style="margin-top:40px;">
+        <div class="signature">Sporządził(a)</div>
+        <div class="signature">Zatwierdził(a)</div>
+      </div>
+    </div>
+    ${footer(company)}
+  </section>`
+
+  return pageShell(`Raport budżetowy — ${data.projectNumber}`, data.projectName, page)
+}
+
 function escapeXml(value: string) {
   return replaceEvery(replaceEvery(replaceEvery(replaceEvery(replaceEvery(value, '&', '&amp;'), '<', '&lt;'), '>', '&gt;'), '"', '&quot;'), "'", '&apos;')
 }

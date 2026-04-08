@@ -1,10 +1,12 @@
-import { useMemo } from 'react'
-import { TrendingDown, TrendingUp, Minus, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { TrendingDown, TrendingUp, Minus, AlertCircle, CheckCircle, Clock, XCircle, FileDown } from 'lucide-react'
 import { useProjectExpenses } from '@/features/expenses/hooks/useProjectExpenses'
 import { useEstimates } from '@/features/estimates/hooks/useEstimates'
 import { useContracts } from '@/features/contracts/hooks/useContracts'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
+import { Button } from '@/shared/ui/Button/Button'
+import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 
 const COST_TYPE_LABEL: Record<string, string> = {
   material:  'Materiały',
@@ -62,10 +64,12 @@ function pickBestEstimate(estimates: ReturnType<typeof useEstimates>['data'], pr
   return forProject.length > 0 ? forProject[forProject.length - 1] : undefined
 }
 
-export function BudgetComparisonTab({ projectId }: { projectId: string }) {
+export function BudgetComparisonTab({ projectId, projectName, projectNumber }: { projectId: string; projectName?: string; projectNumber?: string }) {
+  const [exporting, setExporting] = useState(false)
   const { data: expenses = [], isLoading: expLoading } = useProjectExpenses(projectId)
   const { data: estimates = [], isLoading: estLoading } = useEstimates()
   const { data: contracts = [], isLoading: conLoading } = useContracts()
+  const companyMeta = useCompanyMeta()
 
   const isLoading = expLoading || estLoading || conLoading
 
@@ -119,6 +123,49 @@ export function BudgetComparisonTab({ projectId }: { projectId: string }) {
 
   const hasData = stats.plannedGross > 0 || stats.actualGross > 0
 
+  async function handleExportPdf() {
+    setExporting(true)
+    try {
+      const { buildBudgetReportPreview } = await import('@/services/pdf/documentPreview')
+      const { generatePdfBlob } = await import('@/services/pdf/pdfGenerator')
+      const { downloadBlob } = await import('@/shared/lib/downloads')
+      const reportData = {
+        projectName:  projectName ?? 'Projekt',
+        projectNumber: projectNumber ?? '',
+        source:       stats.source,
+        plannedGross: stats.plannedGross,
+        plannedNet:   stats.plannedNet,
+        actualGross:  stats.actualGross,
+        actualNet:    stats.actualNet,
+        diff:         stats.diff,
+        diffPct:      stats.diffPct,
+        overBudget:   stats.overBudget,
+        revenue:      stats.revenue,
+        margin:       stats.margin,
+        marginPct:    stats.marginPct,
+        byCategory:   stats.byCategory,
+        byApproval:   stats.byApproval,
+        tranches:     stats.contract?.tranches ?? [],
+        expenseCount: stats.expenseCount,
+        generatedAt:  new Date().toLocaleDateString('pl-PL'),
+      }
+      const html = buildBudgetReportPreview(reportData, {
+        name: companyMeta.name,
+        nip: companyMeta.nip,
+        address: companyMeta.address,
+        postalCity: companyMeta.postalCity,
+        email: companyMeta.email,
+        phone: companyMeta.phone,
+        logoUrl: companyMeta.logoUrl,
+      })
+      const blob = await generatePdfBlob(html)
+      const filename = `Raport_budzetu_${(projectNumber ?? 'projekt').replace(/[/\\:*?"<>|]/g, '_')}.pdf`
+      downloadBlob(filename, blob)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   if (!hasData) {
     return (
       <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
@@ -137,7 +184,14 @@ export function BudgetComparisonTab({ projectId }: { projectId: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 24 }}>
 
-      {/* Główna karta podsumowania */}
+      {hasData && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={handleExportPdf} loading={exporting}>
+            <FileDown size={14} style={{ marginRight: 5 }} />
+            Pobierz PDF
+          </Button>
+        </div>
+      )}
       <div style={{ background: 'var(--color-surface-elevated)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <span style={{ fontSize: '0.78rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-secondary)' }}>
