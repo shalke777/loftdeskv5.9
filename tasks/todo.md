@@ -1,3 +1,27 @@
+# Sprint R6 — Final Token Cleanup + Mobile UX + AI Extraction improvements
+
+## Klasyfikacja
+TYPE: polish | RISK: MEDIUM | SCOPE: cross-module | AREA: UI/tokens + ai-extraction + onboarding
+
+## Plan
+
+### Wyniki eksploracji
+- **Task 1a** ✅ Znaleziono: CompanyPriceListCard.tsx:364 `rgba(0,0,0,0.12)` → do zmiany
+- **Task 1b** SKIP (modal overlay — zostawiamy ciemny)
+- **Task 1c** ✅ Znaleziono: ProjectAnalysisSections.tsx:545-554 — 4 tokeny do zmiany
+- **Task 1d** SKIP (camera overlays — poprawne UX)
+- **Task 2** ✅ SettingsPage.tsx i WorkspaceReadinessCard.tsx — już czyste, brak poprawek
+- **Task 3** ✅ AI extraction — ExpenseConfirmForm.tsx ma w pełni edytowalny formularz, SKIP
+- **Task 4** ✅ OnboardingChecklist.tsx — ma useNavigate + step.href, SKIP
+
+### Implementacja
+- [ ] 1a. CompanyPriceListCard.tsx:364 — shadow token
+- [ ] 1c. ProjectAnalysisSections.tsx:545-554 — 4 tokeny disabled/brand
+- [ ] Quality gates: tsc 0 + build clean
+- [ ] git commit + push
+
+---
+
 # Sprint LP+KSeF — Landing Copy Polish + KSeF UX
 
 ## Klasyfikacja
@@ -5,13 +29,13 @@ TYPE: polish | RISK: MEDIUM | SCOPE: cross-module | AREA: marketing + ksef
 
 ## Plan
 
-### [ ] 1. LandingPage.tsx — zmień CTA href z `/login` → `/app` (3 miejsca)
-### [ ] 2. LandingPage.tsx — stare gradienty (#0E2A1A, #163C24) — NIE ZNALEZIONO, skip
-### [ ] 3. LandingPage.tsx — copy + KSeF badge + efekty — już poprawne, skip
-### [ ] 4. KsefPage.tsx — empty state: ikona + "Brak faktur do wysłania" (wymiana prostego `<p>`)
-### [ ] 5. KsefPage.tsx — inline ksef_error hint w wierszu tabeli (brak pola error_message w modelu — static hint)
-### [ ] 6. Quality gates: tsc 0 + build clean
-### [ ] 7. git commit + push
+### [x] 1. LandingPage.tsx — zmień CTA href z `/login` → `/app` (3 miejsca)
+### [x] 2. LandingPage.tsx — stare gradienty (#0E2A1A, #163C24) — NIE ZNALEZIONO, skip
+### [x] 3. LandingPage.tsx — copy + KSeF badge + efekty — już poprawne, skip
+### [x] 4. KsefPage.tsx — empty state: ikona + "Brak faktur do wysłania" (wymiana prostego `<p>`)
+### [x] 5. KsefPage.tsx — inline ksef_error hint w wierszu tabeli (brak pola error_message w modelu — static hint)
+### [x] 6. Quality gates: tsc 0 + build clean
+### [x] 7. git commit + push — b71a12f3
 
 ---
 

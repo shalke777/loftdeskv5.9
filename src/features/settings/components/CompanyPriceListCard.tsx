@@ -361,7 +361,7 @@ export function CompanyPriceListCard() {
                 background: 'var(--color-surface-elevated)',
                 border: '1px solid var(--color-border)',
                 borderRadius: 8,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                boxShadow: '0 8px 24px rgba(30,29,24,0.12)',
                 maxHeight: 220,
                 overflowY: 'auto',
               }}>

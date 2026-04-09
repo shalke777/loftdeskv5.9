@@ -542,11 +542,11 @@ export function ProjectEstimateSection({
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             width: '100%', padding: '13px 20px', fontSize: 14, fontWeight: 700,
-            color: (isBlocked || transferring) ? 'rgba(100,100,120,0.7)' : '#ffffff',
+            color: (isBlocked || transferring) ? 'var(--color-text-secondary)' : '#ffffff',
             background: (isBlocked || transferring)
-              ? 'rgba(100,100,120,0.08)'
-              : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-            border: `1.5px solid ${(isBlocked || transferring) ? 'rgba(100,100,120,0.2)' : '#6366f1'}`,
+              ? 'var(--color-surface-soft)'
+              : 'var(--color-brand)',
+            border: `1.5px solid ${(isBlocked || transferring) ? 'var(--color-border)' : 'var(--color-brand)'}`,
             borderRadius: 10,
             cursor: (transferring || isBlocked) ? 'not-allowed' : 'pointer',
             transition: 'opacity 0.15s, filter 0.15s',
