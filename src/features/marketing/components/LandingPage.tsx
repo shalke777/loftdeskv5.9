@@ -214,7 +214,7 @@ function Navbar({ t, variant, setVariant }: { t: typeof T.minimal; variant: Vari
 
         <div className="lp2-nav__ctas">
           <a href="#how" className="lp2-nav__link lp2-nav__link--desktop" style={{ color: t.dim, fontSize: "0.875rem" }}>Jak to działa</a>
-          <a href="/app"
+          <a href="/login"
             className="lp2-nav__cta-btn"
             style={{ background: t.accent, color: "#fff", fontSize: "0.875rem", borderRadius: t.r }}>
             Wypróbuj za darmo
@@ -287,7 +287,7 @@ function HeroSection({ t, variant }: { t: typeof T.minimal; variant: Variant }) 
             transition={{ duration: 0.6, delay: 0.3 }}
             className="lp2-hero__ctas"
           >
-            <a href="/app"
+            <a href="/login"
               className="lp2-btn"
               style={{ background: t.accent, color: "#fff", borderRadius: t.r, boxShadow: `0 8px 24px ${t.accentGlow}` }}>
               Wejdź i zobacz
@@ -693,7 +693,7 @@ function FinalCTA({ t, variant }: { t: typeof T.minimal; variant: Variant }) {
 
         <FadeUp delay={0.15}>
           <div className="lp2-cta-btns">
-            <a href="/app"
+            <a href="/login"
               className="lp2-btn"
               style={{ background: t.accent, color: "#fff", borderRadius: t.r, boxShadow: `0 12px 32px ${t.accentGlow}`, justifyContent: "center" }}>
               Wejdź i zobacz za darmo

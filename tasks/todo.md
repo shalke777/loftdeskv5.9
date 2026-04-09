@@ -15,10 +15,10 @@ TYPE: polish | RISK: MEDIUM | SCOPE: cross-module | AREA: UI/tokens + ai-extract
 - **Task 4** ✅ OnboardingChecklist.tsx — ma useNavigate + step.href, SKIP
 
 ### Implementacja
-- [ ] 1a. CompanyPriceListCard.tsx:364 — shadow token
-- [ ] 1c. ProjectAnalysisSections.tsx:545-554 — 4 tokeny disabled/brand
-- [ ] Quality gates: tsc 0 + build clean
-- [ ] git commit + push
+- [x] 1a. CompanyPriceListCard.tsx:364 — shadow token
+- [x] 1c. ProjectAnalysisSections.tsx:545-554 — 4 tokeny disabled/brand
+- [x] Quality gates: tsc 0 + build clean
+- [x] git commit 909220e3 + push
 
 ---
 
