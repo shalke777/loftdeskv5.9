@@ -83,7 +83,12 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
   }
   function saveEdit() {
     if (!editId) return;
-    onChange(items.map((item) => item.id === editId ? { ...item, ...editValues } as EstimateItem : item))
+    const updated = { ...items.find(i => i.id === editId)!, ...editValues } as EstimateItem
+    onChange(items.map((item) => item.id === editId ? updated : item))
+    // Auto-save updated price back to company price list if it's a catalog item
+    if (updated.catalog_item_id && updated.unit_price > 0) {
+      upsertPrice.mutate({ catalogItemId: updated.catalog_item_id, unitPrice: updated.unit_price })
+    }
     setEditId(null)
     setEditValues({})
   }

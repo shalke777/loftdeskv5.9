@@ -61,6 +61,20 @@ export function useUpsertPrice() {
   })
 }
 
+/** Mutation: upsert a single custom (non-catalog) price entry */
+export function useUpsertCustomPrice() {
+  const companyId = useCompanyId()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ customLabel, unitPrice }: { customLabel: string; unitPrice: number }) =>
+      companyPriceListApi.upsertCustomPrice(companyId, customLabel, unitPrice),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: priceListKey(companyId) })
+      qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
+    },
+  })
+}
+
 /** Mutation: delete a catalog price entry */
 export function useDeletePrice() {
   const companyId = useCompanyId()

@@ -82,7 +82,9 @@ export const companyPriceListApi = {
 
   /** Upsert a single catalog price entry */
   async upsertPrice(companyId: string, catalogItemId: string, unitPrice: number): Promise<void> {
-    if (isDemoMode || !supabase || unitPrice <= 0) return
+    if (isDemoMode) { console.warn('[company-price-list] Demo mode — price save skipped'); return }
+    if (!supabase) throw new Error('Brak połączenia z bazą danych')
+    if (unitPrice <= 0) throw new Error('Cena musi być większa niż 0')
 
     const { error } = await supabase
       .from('company_price_list')
@@ -101,7 +103,9 @@ export const companyPriceListApi = {
 
   /** Upsert a single custom (non-catalog) price entry (delete+insert to avoid partial index issue) */
   async upsertCustomPrice(companyId: string, customLabel: string, unitPrice: number): Promise<void> {
-    if (isDemoMode || !supabase || unitPrice <= 0) return
+    if (isDemoMode) { console.warn('[company-price-list] Demo mode — custom price save skipped'); return }
+    if (!supabase) throw new Error('Brak połączenia z bazą danych')
+    if (unitPrice <= 0) throw new Error('Cena musi być większa niż 0')
 
     // Partial indexes not supported by PostgREST onConflict — use delete+insert
     await supabase
