@@ -5093,3 +5093,54 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 @media (min-width: 640px) {
   .lp2-cta-btns { flex-direction: row; }
 }
+
+/* ── R2: Dashboard – Quick Actions pill row ───────────────────────── */
+.quick-actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.quick-actions-row::-webkit-scrollbar { display: none; }
+
+.quick-action-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: var(--radius-lg, 10px);
+  border: 1px solid var(--color-border);
+  background: var(--color-card, #ffffff);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s;
+}
+.quick-action-pill:hover {
+  border-color: var(--color-brand);
+  background: rgba(26, 92, 50, 0.04);
+}
+.quick-action-pill svg { color: var(--color-brand); flex-shrink: 0; }
+
+.dark .quick-action-pill { background: var(--color-surface, #1A1D17); }
+.dark .quick-action-pill:hover { background: rgba(62, 168, 90, 0.08); }
+
+@media (max-width: 600px) {
+  .quick-actions-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    overflow-x: visible;
+  }
+  .quick-action-pill {
+    flex-shrink: unset;
+    justify-content: flex-start;
+  }
+}

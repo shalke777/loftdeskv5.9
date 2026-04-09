@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bot, ChevronRight, DollarSign, FileText, FolderKanban, Mic, Receipt, Sparkles, TrendingUp, Users, AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Bot, ChevronRight, FileText, FolderKanban, Mic, Receipt, Sparkles, TrendingUp } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { Modal } from '@/shared/ui/Modal/Modal'
@@ -111,51 +111,90 @@ export function DashboardPage() {
 
       {/* ── Hero money card ──────────────────────────────────────── */}
       <div className="hero-card" style={{
-        background: 'linear-gradient(135deg, #0E2A1A 0%, #163C24 60%, #0A1E12 100%)',
+        background: 'var(--color-card, #ffffff)',
         borderRadius: 'var(--radius-xl, 14px)',
         padding: '20px 24px',
         marginBottom: 16,
-        position: 'relative',
+        border: '1px solid var(--color-border)',
+        boxShadow: 'var(--shadow-xs)',
         overflow: 'hidden',
-        border: '1px solid rgba(62,168,90,0.2)',
       }}>
-        <div style={{
-          position: 'absolute', right: -32, top: -32, width: 160, height: 160,
-          borderRadius: '50%', pointerEvents: 'none',
-          background: 'radial-gradient(circle, rgba(62,168,90,0.15) 0%, transparent 70%)',
-        }} />
-        <p style={{ color: 'rgba(237,232,221,0.55)', fontSize: '0.78rem', marginBottom: 2 }}>Pipeline</p>
-        <p style={{ color: '#EDE8DD', fontWeight: 800, fontSize: '2.1rem', lineHeight: 1, letterSpacing: '-0.02em', margin: 0 }}>
-          {formatCurrency(data.pipeline)}
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-          {data.activeProjects > 0 && (
-            <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'rgba(62,168,90,0.2)', color: '#4DB871' }}>
-              {data.activeProjects} {data.activeProjects === 1 ? 'aktywny' : 'aktywne'}
-            </span>
-          )}
-          {data.overdueCount > 0 && (
-            <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'rgba(192,64,46,0.25)', color: '#E05A4A' }}>
-              {data.overdueCount} {data.overdueCount === 1 ? 'przeterminowana' : 'przeterminowane'}
-            </span>
-          )}
-          {data.invoicesCount > 0 && (
-            <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'rgba(237,232,221,0.1)', color: 'rgba(237,232,221,0.6)' }}>
-              {data.invoicesCount} {data.invoicesCount === 1 ? 'faktura' : 'faktur'}
-            </span>
-          )}
-          <ChevronRight size={16} style={{ marginLeft: 'auto', color: 'rgba(237,232,221,0.4)' }} />
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          {/* Left: pipeline value */}
+          <div>
+            <p style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--color-text-secondary)', margin: '0 0 6px' }}>
+              Wartość pipeline
+            </p>
+            <p style={{ fontWeight: 800, fontSize: '2.1rem', lineHeight: 1, letterSpacing: '-0.02em', margin: 0, color: 'var(--color-text-primary)' }}>
+              {formatCurrency(data.pipeline)}
+            </p>
+            {data.activeProjects > 0 && (
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '6px 0 0' }}>
+                aktywne projekty: <strong style={{ color: 'var(--color-text-primary)' }}>{data.activeProjects}</strong>
+              </p>
+            )}
+          </div>
+          {/* Right: CTAs */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button
+              onClick={() => navigate({ to: '/projects' as any })}
+              style={{
+                padding: '9px 18px', borderRadius: 8, border: 'none',
+                background: 'var(--color-brand, #1A5C32)', color: '#fff',
+                fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-brand-hover, #155226)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-brand, #1A5C32)')}
+            >
+              <FolderKanban size={14} />
+              Nowy projekt
+            </button>
+            <button
+              onClick={() => navigate({ to: '/estimates' as any })}
+              style={{
+                padding: '9px 18px', borderRadius: 8,
+                border: '1px solid var(--color-border)',
+                background: 'transparent', color: 'var(--color-text-primary)',
+                fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                transition: 'border-color 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-brand)')}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}
+            >
+              <FileText size={14} />
+              Nowa wycena
+            </button>
+          </div>
         </div>
+        {/* Overdue warning strip */}
+        {data.overdueCount > 0 && (
+          <div style={{
+            margin: '16px -24px -20px',
+            padding: '8px 24px',
+            background: 'rgba(184,116,42,0.08)',
+            borderTop: '1px solid rgba(184,116,42,0.15)',
+            display: 'flex', alignItems: 'center', gap: 6,
+            borderRadius: '0 0 var(--radius-xl, 14px) var(--radius-xl, 14px)',
+          }}>
+            <AlertTriangle size={13} style={{ color: 'var(--color-warning, #B8742A)', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-warning, #B8742A)' }}>
+              {data.overdueCount} {data.overdueCount === 1 ? 'zaległa faktura wymaga' : 'zaległych faktur wymaga'} uwagi
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* ── Quick actions — 2-column compact grid ────────────────── */}
-      <div className="quick-actions-grid" style={{ marginBottom: 16 }}>
+      {/* ── Quick actions — compact pill row ─────────────────────── */}
+      <div className="quick-actions-row" style={{ marginBottom: 16 }}>
         {quickActions.map((action) => {
           const Icon = action.icon
           return (
             <button
               key={action.title}
-              className="quick-action quick-action--highlight"
+              className="quick-action-pill"
               onClick={() => {
                 if (action.href === '__ai_assistant__') {
                   setShowAiModal(true)
@@ -164,34 +203,9 @@ export function DashboardPage() {
                 }
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div className="quick-action__icon">
-                  <Icon size={16} />
-                </div>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{action.title}</div>
-                  <div className="field__label" style={{ marginTop: 1 }}>{action.sub}</div>
-                </div>
-              </div>
+              <Icon size={18} />
+              <span>{action.title}</span>
             </button>
-          )
-        })}
-      </div>
-
-      {/* ── Stats row — 3 columns ────────────────────────────────── */}
-      <div className="dash-stats-grid">
-        {[
-          { icon: FolderKanban, label: 'Projekty', value: String(data.activeProjects) },
-          { icon: Users,        label: 'Klienci',  value: String(data.clientsCount) },
-          { icon: DollarSign,   label: 'Przychód', value: formatCurrency(data.paidRevenue) },
-        ].map((s) => {
-          const SIcon = s.icon
-          return (
-            <Card key={s.label} style={{ padding: '14px 12px', textAlign: 'center' }}>
-              <SIcon size={16} style={{ color: 'var(--color-text-muted)', margin: '0 auto 6px' }} />
-              <div style={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1 }}>{s.value}</div>
-              <div className="field__label" style={{ fontSize: '0.75rem', marginTop: 4 }}>{s.label}</div>
-            </Card>
           )
         })}
       </div>
