@@ -2996,11 +2996,11 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
+  padding: 5px 14px;
   border-radius: 999px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
-  font-size: 13px;
+  font-size: 0.8rem;
   font-weight: 500;
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -3037,16 +3037,18 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   display: flex;
   flex-direction: column;
   gap: 0;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
 /* Single row */
 .proj-row {
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-card, var(--color-text-primary));
-  transition: background 0.1s;
+  background: var(--color-surface);
+  transition: background 0.15s;
 }
 .proj-row:last-child {
   border-bottom: none;
@@ -3066,10 +3068,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   min-height: 60px;
 }
 .proj-row__header:hover {
-  background: rgba(26,92,50,0.05);
+  background: var(--color-surface-soft);
 }
 .proj-row--open .proj-row__header {
-  background: rgba(26,92,50,0.08);
+  background: var(--color-surface-soft);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -3136,19 +3138,19 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   white-space: nowrap;
 }
 .proj-signal--warn {
-  background: rgba(212,150,10,0.12);
-  color: var(--color-accent);
-  border: 1px solid rgba(212,150,10,0.3);
+  background: rgba(184,116,42,0.1);
+  color: var(--color-warning);
+  border: 1px solid rgba(184,116,42,0.3);
 }
 .proj-signal--danger {
-  background: var(--color-error-soft);
+  background: rgba(168,50,40,0.1);
   color: var(--color-error);
-  border: 1px solid rgba(212,69,58,0.3);
+  border: 1px solid rgba(168,50,40,0.3);
 }
 .proj-signal--ok {
-  background: rgba(76,175,114,0.12);
+  background: rgba(26,92,50,0.12);
   color: var(--color-brand);
-  border: 1px solid rgba(76,175,114,0.3);
+  border: 1px solid rgba(26,92,50,0.3);
 }
 
 /* ── Dashboard: Wymaga uwagi card ────────────────────────────────────────── */
@@ -3270,10 +3272,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   border-radius: 999px;
   white-space: nowrap;
 }
-.proj-status--offer     { background: rgba(91,155,213,0.12); color: var(--color-info); border: 1px solid rgba(91,155,213,0.3); }
-.proj-status--active    { background: rgba(76,175,114,0.12); color: var(--color-brand); border: 1px solid rgba(76,175,114,0.3); }
-.proj-status--done      { background: rgba(71,85,105,0.15); color: var(--color-text-muted); border: 1px solid var(--color-border-dark, rgba(30,29,24,0.15)); }
-.proj-status--cancelled { background: var(--color-error-soft); color: var(--color-error); border: 1px solid rgba(212,69,58,0.3); }
+.proj-status--offer     { background: rgba(62,140,88,0.1);  color: var(--color-info);           border: 1px solid rgba(62,140,88,0.3); }
+.proj-status--active    { background: rgba(26,92,50,0.12);  color: var(--color-brand);          border: 1px solid rgba(26,92,50,0.3); }
+.proj-status--done      { background: var(--color-muted);   color: var(--color-text-secondary); border: 1px solid var(--color-border); }
+.proj-status--cancelled { background: rgba(168,50,40,0.1);  color: var(--color-error);          border: 1px solid rgba(168,50,40,0.3); }
 /* Estimate */
 .proj-status--draft    { background: rgba(71,85,105,0.15); color: var(--color-text-muted); border: 1px solid var(--color-border-dark, rgba(30,29,24,0.15)); }
 .proj-status--sent     { background: rgba(91,155,213,0.12); color: var(--color-info); border: 1px solid rgba(91,155,213,0.3); }
@@ -3329,7 +3331,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 /* Expanded detail area */
 .proj-row__detail {
-  padding: 20px 20px 24px;
+  background: var(--color-bg);
+  padding: 20px;
   border-top: 1px solid var(--color-border);
   animation: accordion-open 180ms ease;
 }
@@ -3378,6 +3381,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .proj-timeline-legend { display: flex; gap: 10px; font-size: 11px; flex-wrap: wrap; }
 
 .proj-detail-tabs {
+  border-bottom: 1px solid var(--color-border);
   scrollbar-width: none;   /* Firefox */
   -ms-overflow-style: none;
 }
