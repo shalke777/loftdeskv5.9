@@ -1,3 +1,20 @@
+# Sprint LP+KSeF — Landing Copy Polish + KSeF UX
+
+## Klasyfikacja
+TYPE: polish | RISK: MEDIUM | SCOPE: cross-module | AREA: marketing + ksef
+
+## Plan
+
+### [ ] 1. LandingPage.tsx — zmień CTA href z `/login` → `/app` (3 miejsca)
+### [ ] 2. LandingPage.tsx — stare gradienty (#0E2A1A, #163C24) — NIE ZNALEZIONO, skip
+### [ ] 3. LandingPage.tsx — copy + KSeF badge + efekty — już poprawne, skip
+### [ ] 4. KsefPage.tsx — empty state: ikona + "Brak faktur do wysłania" (wymiana prostego `<p>`)
+### [ ] 5. KsefPage.tsx — inline ksef_error hint w wierszu tabeli (brak pola error_message w modelu — static hint)
+### [ ] 6. Quality gates: tsc 0 + build clean
+### [ ] 7. git commit + push
+
+---
+
 # A7 — Pełny system Voice Notes (notatek głosowych)
 
 ## Klasyfikacja

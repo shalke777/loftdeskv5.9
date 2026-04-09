@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
+import { Inbox } from 'lucide-react'
 import { useToast } from '@/shared/hooks/useToast'
 import { Card } from '@/shared/ui/Card/Card'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
@@ -392,10 +393,15 @@ export function KsefPage() {
             <div>
               {!session && <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Zaloguj się do KSeF powyżej, aby zarządzać kolejką wysyłki.</p>}
               {pending.length === 0 ? (
-                <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>
-                  Kolejka jest pusta.<br />
-                  <span style={{ fontSize: 12 }}>Otwórz dowolną fakturę i użyj akcji „Wyślij do KSeF”, aby dodać ją do kolejki.</span>
-                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', gap: 12, textAlign: 'center' }}>
+                  <Inbox style={{ width: 40, height: 40, color: 'var(--color-text-muted)', opacity: 0.5 }} />
+                  <p style={{ color: 'var(--color-text-muted)', fontSize: 15, fontWeight: 600, margin: 0 }}>
+                    Brak faktur do wysłania
+                  </p>
+                  <p style={{ color: 'var(--color-text-muted)', fontSize: 13, margin: 0, maxWidth: 320 }}>
+                    Otwórz dowolną fakturę i użyj akcji „Wyślij do KSeF”, aby dodać ją do kolejki.
+                  </p>
+                </div>
               ) : (
                 <div>
                   <table className="table" style={{ fontSize: 13, width: '100%' }}>
@@ -407,7 +413,14 @@ export function KsefPage() {
                         <tr key={inv.id}>
                           <td>{inv.number}</td>
                           <td className="num">{formatCurrency(inv.total_gross)}</td>
-                          <td><KsefStatusBadge status={inv.ksef_status} /></td>
+                          <td>
+                            <KsefStatusBadge status={inv.ksef_status} />
+                            {inv.ksef_status === 'ksef_error' && (
+                              <div style={{ fontSize: 11, color: 'var(--color-error)', marginTop: 3 }}>
+                                Poprzednia wysyłka nie powiodła się — spróbuj ponownie.
+                              </div>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
