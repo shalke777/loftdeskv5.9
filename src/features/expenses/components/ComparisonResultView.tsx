@@ -67,7 +67,7 @@ function DiffRow({ diff }: DiffRowProps) {
               border: 'none',
               background: expanded
                 ? 'var(--color-surface-hover, rgba(99,102,241,0.08))'
-                : 'var(--color-surface-soft, rgba(0,0,0,0.04))',
+                : 'var(--color-surface-soft)',
               borderRadius: 5,
               cursor: 'pointer',
               padding: '2px 7px', fontSize: 11, color: 'var(--color-text-muted)',

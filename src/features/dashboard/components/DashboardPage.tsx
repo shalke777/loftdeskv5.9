@@ -228,12 +228,12 @@ export function DashboardPage() {
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '8px 10px', borderRadius: 8, border: 'none',
-                  background: 'var(--color-surface-soft, rgba(0,0,0,0.03))',
+                  background: 'var(--color-surface-soft)',
                   cursor: 'pointer', textAlign: 'left', width: '100%',
                   transition: 'background 0.15s',
                 }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-warning-soft, rgba(245,158,11,0.08))')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-surface-soft, rgba(0,0,0,0.03))')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-surface-soft)')}
               >
                 <div style={{ minWidth: 0 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, display: 'block', lineHeight: 1.3 }}>{p.name}</span>
@@ -281,7 +281,7 @@ export function DashboardPage() {
                     cursor: 'pointer', textAlign: 'left', width: '100%',
                     transition: 'border-color 0.15s, box-shadow 0.15s',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-brand)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.1)' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-brand)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(30,29,24,0.08)' }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none' }}
                 >
                   {/* Top row: name + status */}
@@ -361,7 +361,7 @@ export function DashboardPage() {
                     key={proj.id}
                     style={{ borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer', transition: 'background 0.1s' }}
                     onClick={() => goToProject(proj.id)}
-                    onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'var(--color-surface-soft, rgba(0,0,0,0.03))')}
+                    onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'var(--color-surface-soft)')}
                     onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
                   >
                     <td style={{ padding: '10px 12px' }}><strong>{proj.name}</strong><div className="field__label">{proj.number}</div></td>

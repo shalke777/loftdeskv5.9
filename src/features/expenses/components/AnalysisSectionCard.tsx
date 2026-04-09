@@ -35,7 +35,7 @@ export function AnalysisSectionCard({ title, count, icon, defaultOpen = false, c
           padding: '11px 14px', border: 'none', cursor: 'pointer',
           background: open
             ? 'var(--color-surface-hover, rgba(99,102,241,0.06))'
-            : 'var(--color-surface-soft, rgba(0,0,0,0.03))',
+            : 'var(--color-surface-soft)',
           fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
           color: 'var(--color-text-secondary)',
           transition: 'background 0.15s',

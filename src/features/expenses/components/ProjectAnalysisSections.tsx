@@ -122,7 +122,7 @@ export function ProjectRoomsSection({ rooms }: { rooms: ProjectRoom[] }) {
                   padding: '9px 12px',
                   background: isOpen
                     ? 'var(--color-surface-hover, rgba(99,102,241,0.07))'
-                    : 'var(--color-surface-soft, rgba(0,0,0,0.03))',
+                    : 'var(--color-surface-soft)',
                   border: 'none',
                   cursor: 'pointer', fontSize: 13,
                   transition: 'background 0.15s',

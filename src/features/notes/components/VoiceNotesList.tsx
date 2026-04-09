@@ -251,9 +251,9 @@ export function VoiceNotesList({ projectId }: { projectId?: string }) {
       {toast.message && (
         <div style={{
           position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
-          background: toast.message.type === 'error' ? '#dc2626' : '#059669',
+          background: toast.message.type === 'error' ? 'var(--color-error)' : 'var(--color-success)',
           color: '#fff', padding: '10px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-          zIndex: 2000, maxWidth: 320, textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+          zIndex: 2000, maxWidth: 320, textAlign: 'center', boxShadow: '0 4px 12px rgba(30,29,24,0.15)',
         }}>
           {toast.message.text}
         </div>

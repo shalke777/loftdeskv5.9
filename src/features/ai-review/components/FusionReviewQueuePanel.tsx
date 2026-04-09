@@ -112,7 +112,7 @@ function ReviewItemRow({ item, defaultExpanded }: { item: ReviewQueueItem; defau
                 <span
                   key={i}
                   style={{
-                    background:   'rgba(0,0,0,0.07)',
+                    background:   'var(--color-surface-soft)',
                     borderRadius:  4,
                     padding:      '1px 6px',
                     fontSize:      10,

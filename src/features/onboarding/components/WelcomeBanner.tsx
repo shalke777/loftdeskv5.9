@@ -25,7 +25,7 @@ export function WelcomeBanner({ companyName, onDismiss }: Props) {
   return (
     <Card
       style={{
-        background: 'linear-gradient(135deg, #0E2A1A 0%, #163C24 60%, #0A1E12 100%)',
+        background: 'linear-gradient(135deg, var(--color-brand) 0%, #2A7A48 100%)',
         color: 'white',
         marginBottom: 16,
         position: 'relative',
