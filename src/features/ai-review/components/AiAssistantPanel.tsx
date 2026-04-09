@@ -316,7 +316,7 @@ async function askCustomQuestion(
   projectId: string,
 ): Promise<string> {
   // Build compact context summary for the backend
-  const context = {
+  const context: Record<string, unknown> = {
     room_type: run.room_type,
     confidence: run.confidence_summary,
     scope_count: scope.length,
@@ -339,6 +339,22 @@ async function askCustomQuestion(
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.access_token) authHeaders['Authorization'] = `Bearer ${session.access_token}`
   }
+
+  // Fetch project memory (L1 summary + L2 recent entries) and inject into context
+  try {
+    const memResp = await fetch(netlifyFn('memory-context'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
+      body: JSON.stringify({ project_id: projectId }),
+    })
+    if (memResp.ok) {
+      const mem = await memResp.json() as { summary?: string; recent?: Array<{ memory_type: string; topic: string; content: string }> }
+      if (mem.summary) context.memory_summary = mem.summary
+      if (mem.recent?.length) {
+        context.memory_recent = mem.recent.map(e => `[${e.memory_type.toUpperCase()}] ${e.topic}: ${e.content}`).join('\n')
+      }
+    }
+  } catch { /* memory context is optional — proceed without it */ }
 
   const resp = await fetch(netlifyFn('ai-project-assistant'), {
     method: 'POST',
