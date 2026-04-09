@@ -766,33 +766,125 @@ function ApprovalsTab({ projectId, projectName, companyId, onSwitchToChat }: { p
 
 // ── Zakładka Oś czasu ─────────────────────────────────────────────────────────
 
+const CATEGORY_LABELS: Record<string, string> = {
+  before:   'Przed',
+  progress: 'W trakcie',
+  after:    'Po',
+  issue:    'Problem',
+  handover: 'Odbiór',
+}
+
+function PhotoCarousel({ projectId }: { projectId: string }) {
+  const { data: photos } = useClientPhotoDocs(projectId)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [lightbox, setLightbox] = useState<string | null>(null)
+
+  if (!photos?.length) return null
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary, #aaa)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        Dokumentacja zdjęciowa
+      </div>
+      <div
+        ref={scrollRef}
+        style={{
+          display: 'flex', gap: 8, overflowX: 'auto',
+          paddingBottom: 4, scrollbarWidth: 'none',
+        }}
+      >
+        {photos.map(photo => (
+          <div
+            key={photo.id}
+            onClick={() => photo.image_url && setLightbox(photo.image_url)}
+            style={{
+              flexShrink: 0, width: 100, cursor: photo.image_url ? 'pointer' : 'default',
+              borderRadius: 8, overflow: 'hidden', position: 'relative',
+              background: 'var(--color-surface-soft, #1a1a2e)',
+              border: '1px solid var(--color-border, #333)',
+            }}
+          >
+            {photo.image_url ? (
+              <img
+                src={photo.image_url}
+                alt={photo.title || 'Zdjęcie'}
+                loading="lazy"
+                style={{ width: '100%', height: 80, objectFit: 'cover', display: 'block' }}
+              />
+            ) : (
+              <div style={{ width: '100%', height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted, #666)', fontSize: 11 }}>
+                Brak zdjęcia
+              </div>
+            )}
+            <div style={{ padding: '4px 6px' }}>
+              <div style={{ fontSize: 9, color: 'var(--color-text-muted, #888)', fontWeight: 600, textTransform: 'uppercase' }}>
+                {CATEGORY_LABELS[photo.category] ?? photo.category}
+              </div>
+              {photo.title && (
+                <div style={{ fontSize: 10, color: 'var(--color-text-secondary, #ccc)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {photo.title}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.92)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <img
+            src={lightbox}
+            alt="Podgląd"
+            style={{ maxWidth: '95vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8 }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TimelineTab({ projectId }: { projectId: string }) {
   const { data: events, isLoading, isError } = useClientTimeline(projectId)
 
   if (isLoading) return <div className="client-tab-loading">Ładowanie historii projektu...</div>
   if (isError)   return <div className="client-tab-empty"><p>Nie udało się załadować historii.</p><p className="client-tab-empty__hint">Odśwież stronę lub skontaktuj się z wykonawcą.</p></div>
-  if (!events?.length) return <div className="client-tab-empty"><p>Historia projektu jest pusta.</p><p className="client-tab-empty__hint">Pierwsze wpisy pojawią się, gdy zaczną się prace.</p></div>
 
   return (
-    <ul className="client-timeline">
-      {events.map((ev) => (
-        <li key={ev.id} className="client-timeline__item">
-          <span className="client-timeline__dot" />
-          <div className="client-timeline__content">
-            <p className="client-timeline__body">{ev.title}</p>
-            {ev.description && (
-              <p className="client-timeline__desc">{ev.description}</p>
-            )}
-            <span className="client-timeline__date">
-              {new Date(ev.created_at).toLocaleString('pl-PL', {
-                day: 'numeric', month: 'short', year: 'numeric',
-                hour: '2-digit', minute: '2-digit',
-              })}
-            </span>
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div>
+      <PhotoCarousel projectId={projectId} />
+
+      {!events?.length ? (
+        <div className="client-tab-empty"><p>Historia projektu jest pusta.</p><p className="client-tab-empty__hint">Pierwsze wpisy pojawią się, gdy zaczną się prace.</p></div>
+      ) : (
+        <ul className="client-timeline">
+          {events.map((ev) => (
+            <li key={ev.id} className="client-timeline__item">
+              <span className="client-timeline__dot" />
+              <div className="client-timeline__content">
+                <p className="client-timeline__body">{ev.title}</p>
+                {ev.description && (
+                  <p className="client-timeline__desc">{ev.description}</p>
+                )}
+                <span className="client-timeline__date">
+                  {new Date(ev.created_at).toLocaleString('pl-PL', {
+                    day: 'numeric', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit',
+                  })}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 

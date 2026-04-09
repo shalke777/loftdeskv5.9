@@ -6,6 +6,38 @@ import { sumInvoiceItems } from '@/shared/lib/legacySupabase'
 import { applyScope, getDataScope, withScope } from '@/shared/lib/dataScope'
 import { projectDocumentsApi } from '@/features/projects/api/projectDocuments.api'
 
+// ── C2: Tranche status sync ───────────────────────────────────────────────────
+// When an invoice referencing a contract tranche is created/paid,
+// update the JSONB tranches[] array in the contracts table.
+async function syncTrancheStatus(
+  contractId: string,
+  trancheId: string,
+  newStatus: 'invoiced' | 'paid',
+): Promise<void> {
+  if (!supabase || !contractId || !trancheId) return
+  try {
+    // Fetch current tranches
+    const { data: contract } = await supabase
+      .from('contracts')
+      .select('tranches')
+      .eq('id', contractId)
+      .single()
+    if (!contract?.tranches) return
+    const tranches = contract.tranches as Array<Record<string, unknown>>
+    const updated = tranches.map(t => {
+      if (t.id !== trancheId) return t
+      // Only advance status (planned→invoiced→paid), never regress
+      const current = t.status as string
+      if (newStatus === 'paid') return { ...t, status: 'paid' }
+      if (newStatus === 'invoiced' && current === 'planned') return { ...t, status: 'invoiced' }
+      return t
+    })
+    await supabase.from('contracts').update({ tranches: updated }).eq('id', contractId)
+  } catch (e) {
+    console.warn('[invoicesApi] syncTrancheStatus failed (non-fatal):', e)
+  }
+}
+
 export const invoicesApi = {
   async list(companyId: string): Promise<Invoice[]> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.invoices.list(companyId))
@@ -52,6 +84,10 @@ export const invoicesApi = {
     }
     const totals = calcInvoiceTotals(items)
     if (input.project_id) { try { await projectDocumentsApi.link(input.company_id, input.project_id, 'invoice', invoice.id, { manual: true }) } catch (err) { console.warn('[invoices] project document link failed:', err) } }
+    // C2: if invoice is linked to a contract tranche, mark it as 'invoiced'
+    if (!isDraft && invoice.contract_id && invoice.tranche_id) {
+      void syncTrancheStatus(invoice.contract_id, invoice.tranche_id, 'invoiced')
+    }
     return { id: invoice.id, company_id: invoice.company_id ?? input.company_id, client_id: invoice.client_id, project_id: invoice.project_id, contract_id: invoice.contract_id ?? null, number: invoice.number, invoice_type: invoice.invoice_type ?? 'standard', status: invoice.status, issue_date: invoice.issue_date, sale_date: invoice.sale_date ?? null, issue_place: invoice.issue_place ?? null, due_date: invoice.due_date, payment_method: invoice.payment_method ?? 'transfer', bank_account: invoice.bank_account ?? null, tranche_id: invoice.tranche_id ?? null, advance_total: invoice.advance_total ?? null, total_net: totals.totalNet, total_gross: totals.totalGross, ksef_status: invoice.ksef_status, ksef_ref: invoice.ksef_ref, notes: input.notes ?? '', created_at: invoice.created_at, items }
   },
   async update(id: string, input: Partial<Invoice>, companyId?: string) {
@@ -86,7 +122,20 @@ export const invoicesApi = {
       .is('archived_at', null)
       .then(() => {})
   },
-  async markPaid(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.invoices.markPaid(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('invoices').update({ status: 'paid' }).eq('id', id), scope); const { error } = await query; if (error) throw error },
+  async markPaid(id: string, companyId?: string) {
+    if (isDemoMode || !supabase) { demoDb.invoices.markPaid(id); return Promise.resolve() }
+    const scope = await getDataScope(companyId)
+    const query = applyScope(supabase.from('invoices').update({ status: 'paid' }).eq('id', id), scope)
+    const { error } = await query
+    if (error) throw error
+    // C2: sync tranche status to 'paid' when invoice is marked paid
+    try {
+      const { data: inv } = await supabase.from('invoices').select('contract_id, tranche_id').eq('id', id).single()
+      if (inv?.contract_id && inv?.tranche_id) {
+        void syncTrancheStatus(inv.contract_id, inv.tranche_id, 'paid')
+      }
+    } catch { /* non-fatal */ }
+  },
   async sendToKsef(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.invoices.sendToKsef(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('invoices').update({ ksef_status: 'ksef_pending', ksef_ref: null }).eq('id', id), scope); const { error } = await query; if (error) throw error },
   async finalize(id: string, companyId: string): Promise<string> {
     // Assigns a sequential FV number to a draft invoice and transitions it to 'unpaid'.
