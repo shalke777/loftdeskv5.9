@@ -66,10 +66,10 @@
 
   /* ── Charts ── */
   --color-chart-1: #1A5C32;
-  --color-chart-2: #B8742A;
-  --color-chart-3: #3E8C58;
-  --color-chart-4: #D4A55A;
-  --color-chart-5: #A83228;
+  --color-chart-2: #3E8C58;
+  --color-chart-3: #B8742A;
+  --color-chart-4: #A83228;
+  --color-chart-5: #6E6A60;
 
   /* ── Sidebar ── */
   --color-sidebar: #FFFFFF;
@@ -107,6 +107,7 @@
   --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.14);
   --ring-brand: 0 0 0 4px rgba(26, 92, 50, 0.2);
+  --color-ring: #1A5C32;
 
   /* ── Overlays ── */
   --overlay-heavy: rgba(0, 0, 0, 0.55);
@@ -117,24 +118,24 @@
 /* ── Dark Mode: Głęboki las nocą ── */
 .dark {
   --color-brand: #3EA85A;
-  --color-brand-hover: #34944E;
-  --color-brand-2: #2A2E26;
+  --color-brand-hover: #35924E;
+  --color-brand-2: #1E2A1F;
   --color-brand-light: #5DBF7A;
   --color-brand-border: rgba(62, 168, 90, 0.2);
   --color-brand-foreground: #FFFFFF;
 
   --color-bg: #131610;
-  --color-bg-elevated: #1C2019;
-  --color-surface: #1C2019;
-  --color-surface-soft: #252820;
-  --color-border: rgba(237, 232, 221, 0.09);
+  --color-bg-elevated: #1A1D17;
+  --color-surface: #1A1D17;
+  --color-surface-soft: #1E2219;
+  --color-border: rgba(237, 232, 221, 0.1);
   --color-border-light: rgba(237, 232, 221, 0.05);
 
   --color-text-primary: #EDE8DD;
-  --color-text-secondary: #9A9488;
-  --color-text-tertiary: #9A9488;
+  --color-text-secondary: #A09880;
+  --color-text-tertiary: #A09880;
   --color-text-inverse: #131610;
-  --color-text-muted: #9A9488;
+  --color-text-muted: #A09880;
 
   --color-success: #3EA85A;
   --color-success-soft: rgba(62, 168, 90, 0.12);
@@ -142,7 +143,7 @@
   --color-warning-soft: rgba(200, 134, 60, 0.12);
   --color-error: #C0402E;
   --color-error-soft: rgba(192, 64, 46, 0.12);
-  --color-info: #5DBF7A;
+  --color-info: #5CB87A;
   --color-info-soft: rgba(93, 191, 122, 0.12);
 
   --color-danger: #C0402E;
@@ -152,11 +153,11 @@
   --color-accent-foreground: #FFFFFF;
   --color-accent-soft: rgba(200, 134, 60, 0.12);
 
-  --color-card: #1C2019;
+  --color-card: #1A1D17;
   --color-card-foreground: #EDE8DD;
 
-  --color-muted: #252820;
-  --color-muted-foreground: #9A9488;
+  --color-muted: #1E2219;
+  --color-muted-foreground: #A09880;
 
   --color-input-bg: rgba(237, 232, 221, 0.08);
   --color-switch-bg: #4A4D44;
@@ -167,11 +168,11 @@
   --color-chart-4: #DDB870;
   --color-chart-5: #C0402E;
 
-  --color-sidebar: #1C2019;
+  --color-sidebar: #1A1D17;
   --color-sidebar-foreground: #EDE8DD;
   --color-sidebar-primary: #3EA85A;
   --color-sidebar-primary-foreground: #FFFFFF;
-  --color-sidebar-accent: #252820;
+  --color-sidebar-accent: #1E2219;
   --color-sidebar-accent-foreground: #EDE8DD;
   --color-sidebar-border: rgba(237, 232, 221, 0.07);
 
@@ -180,6 +181,7 @@
   --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.45);
   --ring-brand: 0 0 0 4px rgba(62, 168, 90, 0.25);
+  --color-ring: #3EA85A;
 
   --overlay-heavy: rgba(0, 0, 0, 0.72);
   --overlay-medium: rgba(0, 0, 0, 0.55);

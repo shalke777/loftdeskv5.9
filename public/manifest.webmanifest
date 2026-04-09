@@ -4,8 +4,8 @@
   "description": "Branżowy system dla firm budowlanych i wykończeniowych: kosztorysy, umowy, faktury, KSeF, projekty i portal klienta.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#202125",
-  "theme_color": "#202125",
+  "background_color": "#F5F0E8",
+  "theme_color": "#F5F0E8",
   "lang": "pl",
   "shortcuts": [
     {
