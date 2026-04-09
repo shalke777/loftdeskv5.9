@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { Mic, MicOff, FileText, Sparkles } from 'lucide-react'
+import { Mic, MicOff, FileText, Sparkles, Receipt } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 import { voiceNotesApi } from '@/features/notes/api/voice-notes.api'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 
 type VoiceMode = 'idle' | 'menu' | 'recording' | 'processing'
-type RecordTarget = 'note' | 'estimate'
+type RecordTarget = 'note' | 'estimate' | 'expense'
 
 function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [onClose])
@@ -164,6 +164,50 @@ export function FloatingVoiceButton() {
         // Small delay so toast is visible, then navigate
         setTimeout(() => { window.location.href = '/estimates' }, 800)
 
+      } else if (target === 'expense') {
+        // ── A1: Voice → Expense(s) ─────────────────────────────────────────
+        const res = await fetch('/.netlify/functions/voice-to-expense', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ audio_base64: base64, audio_type: mimeType }),
+        })
+        if (!res.ok) throw new Error(`voice-to-expense HTTP ${res.status}`)
+        const data = await res.json() as {
+          expenses?: Array<{
+            vendor_name?: string | null
+            gross_amount?: number | null
+            net_amount?: number | null
+            currency?: string
+            description?: string
+            cost_type?: string
+          }>
+          transcript?: string
+          extraction_confidence?: number
+        }
+
+        const expenses = data.expenses ?? []
+        if (expenses.length === 0) {
+          setVoiceMode('idle')
+          setToast('⚠ Nie wykryto wydatków w nagraniu — spróbuj ponownie')
+          return
+        }
+
+        // Detect project from URL
+        const projectMatch = window.location.pathname.match(/\/projects\/([^/?#]+)/)
+        const projectId = projectMatch ? projectMatch[1] : null
+
+        // Store as sessionStorage draft — ExpensesPage reads it on load
+        const draft = {
+          _source: 'voice_expense',
+          transcript: data.transcript ?? '',
+          projectId,
+          expenses,
+        }
+        sessionStorage.setItem('expense_voice_draft', JSON.stringify(draft))
+        setVoiceMode('idle')
+        setToast(`✓ ${expenses.length} wydatek${expenses.length > 1 ? 'i' : ''} — sprawdź przed zapisem`)
+        setTimeout(() => { window.location.href = '/expenses' }, 800)
+
       } else {
         // ── Default: Voice note ─────────────────────────────────────────────
         const res = await fetch('/.netlify/functions/voice-to-note', {
@@ -221,6 +265,26 @@ export function FloatingVoiceButton() {
           minWidth: 200,
           animation: 'fadeInUp 0.15s ease',
         }}>
+          <button
+            type="button"
+            onClick={() => startRecording('expense')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              width: '100%', padding: '14px 18px', border: 'none',
+              background: 'none', cursor: 'pointer', textAlign: 'left',
+              color: 'var(--color-text, #f0f0f0)',
+              fontSize: 14, fontWeight: 500,
+              borderBottom: '1px solid var(--color-border, #333)',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-soft, rgba(255,255,255,0.05))')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+          >
+            <Receipt size={18} style={{ color: '#10b981', flexShrink: 0 }} />
+            <div>
+              <div>Szybki wydatek</div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted, #888)', marginTop: 1 }}>Powiedz co kupiłeś → koszt projektu</div>
+            </div>
+          </button>
           <button
             type="button"
             onClick={() => startRecording('note')}
@@ -281,7 +345,7 @@ export function FloatingVoiceButton() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexDirection: 'column', gap: 2,
           background: isRecording
-            ? (recordTarget === 'estimate' ? '#d97706' : '#dc2626')
+            ? (recordTarget === 'estimate' ? '#d97706' : recordTarget === 'expense' ? '#059669' : '#dc2626')
             : isProcessing ? 'var(--color-border, #555)'
             : isMenu ? 'var(--color-surface-elevated, #1e1e2e)'
             : 'var(--color-brand)',
@@ -304,6 +368,9 @@ export function FloatingVoiceButton() {
         )}
         {isRecording && recordTarget === 'estimate' && (
           <span style={{ fontSize: 8, lineHeight: 1, color: '#fde68a' }}>WYC</span>
+        )}
+        {isRecording && recordTarget === 'expense' && (
+          <span style={{ fontSize: 8, lineHeight: 1, color: '#a7f3d0' }}>KSZ</span>
         )}
       </button>
 

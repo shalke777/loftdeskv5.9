@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { useSearch } from '@tanstack/react-router'
@@ -126,7 +126,30 @@ export function ExpensesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
-  // ── Voice expense ────────────────────────────────────────────────────────
+  // ── Restore voice expense draft from FloatingVoiceButton redirect ────────
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('expense_voice_draft')
+      if (!raw) return
+      sessionStorage.removeItem('expense_voice_draft')
+      const draft = JSON.parse(raw) as {
+        expenses?: Array<{ vendor_name?: string|null; gross_amount?: number|null; net_amount?: number|null; currency?: string; description?: string }>
+        projectId?: string | null
+      }
+      const exp = draft.expenses?.[0]
+      if (!exp) return
+      const parsedData: ParsedExpenseData = {
+        vendor:       exp.vendor_name  ?? undefined,
+        amount_gross: exp.gross_amount ?? undefined,
+        amount_net:   exp.net_amount   ?? undefined,
+        currency:     exp.currency     || 'PLN',
+        description:  exp.description  || undefined,
+      }
+      setForm({ ...emptyForm(), vendor: String(parsedData.vendor ?? ''), amount_gross: parsedData.amount_gross != null ? String(parsedData.amount_gross) : '', amount_net: parsedData.amount_net != null ? String(parsedData.amount_net) : '', currency: String(parsedData.currency ?? 'PLN'), description: String(parsedData.description ?? ''), project_id: draft.projectId ?? '', status: 'review' })
+      setModal({ type: 'add', fileUrl: '', fileName: '', parsed: parsedData })
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [voiceMode, setVoiceMode] = useState<'idle' | 'recording' | 'processing'>('idle')
   const expMediaRecorderRef = useRef<MediaRecorder | null>(null)
   const expAudioChunksRef   = useRef<Blob[]>([])
