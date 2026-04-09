@@ -40,7 +40,7 @@ export interface BillingSummary {
 }
 
 function planLimits(plan: BillingPlan) {
-  if (plan === 'free') return { clients: 10, projects: 3, estimates: 5, invoices: 5, contracts: 3 }
+  if (plan === 'free') return { clients: 10, projects: 5, estimates: 20, invoices: 10, contracts: 5 }
   return { clients: '∞', projects: '∞', estimates: '∞', invoices: '∞', contracts: '∞' } as const
 }
 

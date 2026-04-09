@@ -12,7 +12,9 @@ function normalizeLabel(s: string): string {
     .toLowerCase()
     .trim()
     .replace(/[ąćęłńóśźż]/g, ch => DIACRITICS[ch] ?? ch)
+    .replace(/[()[\]{},;:!?/\\—–‑\-]/g, ' ')
     .replace(/\s+/g, ' ')
+    .trim()
 }
 
 export interface CompanyPriceEntry {

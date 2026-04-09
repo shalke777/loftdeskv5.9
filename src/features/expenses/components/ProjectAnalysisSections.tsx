@@ -393,11 +393,11 @@ export function ProjectEstimateSection({
   const transferring = isTransferring ?? false
   const [awaitingConfirm, setAwaitingConfirm] = useState(false)
 
-  // Merge scope items + estimate items, deduplicating by name (estimate items win on collision)
+  // Merge scope items + estimate items, deduplicating by normalized name (estimate items win on collision)
   const mergedItems: ProjectEstimateItem[] = (() => {
-    const estimateNames = new Set(items.map(e => e.name.toLowerCase().trim()))
+    const estimateNormNames = new Set(items.map(e => normalizeLabel(e.name)))
     const scopeConverted = scopeToEstimateItems(scopeItems)
-      .filter(s => !estimateNames.has(s.name.toLowerCase().trim()))
+      .filter(s => !estimateNormNames.has(normalizeLabel(s.name)))
     return [...scopeConverted, ...items]
   })()
 
