@@ -671,6 +671,12 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .mobile-nav__link--active { background: var(--color-sidebar-active); color: var(--color-brand); }
   /* Toast: push up above mobile nav + safe area (mobile nav ~56px + inset + gap) */
   .toast-viewport { bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 8px); }
+  /* FAB: raise above mobile-nav (68px) + safe area */
+  .floating-fab { bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important; }
+  /* Settings: single column on mobile to prevent overflow */
+  .settings-grid.grid-2 { grid-template-columns: 1fr !important; }
+  .grid-2 { min-width: 0; }
+  .grid-2 > * { min-width: 0; overflow: hidden; }
   .landing-nav { flex-direction: column; align-items: flex-start; }
   .landing-dark-section { padding: 32px 20px; }
   .hero h1 { font-size: 40px; }

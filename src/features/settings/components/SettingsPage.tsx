@@ -62,7 +62,7 @@ export function SettingsPage() {
   return (
     <div>
       <PageHeader title="Ustawienia" subtitle="Dane firmy, KSeF, zespół, billing i narzędzia dodatkowe." />
-      <div className="grid-2">
+      <div className="settings-grid grid-2">
         <Card>
           <h3>Konto i firma</h3>
           <div style={{ display: 'grid', gap: 6, fontSize: 14, marginBottom: 12 }}>

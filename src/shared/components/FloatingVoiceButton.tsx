@@ -12,7 +12,7 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   return (
     <div style={{
       position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
-      background: 'var(--color-surface-elevated, #222)', color: 'var(--color-text-primary, #fff)',
+      background: 'var(--color-surface-elevated, var(--color-surface))', color: 'var(--color-text-primary, #fff)',
       padding: '10px 20px', borderRadius: 8, fontSize: 13, fontWeight: 500,
       boxShadow: '0 4px 16px rgba(0,0,0,0.3)', zIndex: 1100, whiteSpace: 'nowrap',
     }}>
@@ -251,14 +251,14 @@ export function FloatingVoiceButton() {
   const isMenu       = voiceMode === 'menu'
 
   return (
-    <div ref={menuRef} style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000 }}>
+    <div ref={menuRef} className="floating-fab" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000 }}>
 
       {/* ── Mode picker popup ── */}
       {isMenu && (
         <div style={{
           position: 'absolute', bottom: 68, right: 0,
-          background: 'var(--color-surface-elevated, #1e1e2e)',
-          border: '1px solid var(--color-border, #333)',
+          background: 'var(--color-surface-elevated, var(--color-surface))',
+          border: '1px solid var(--color-border)',
           borderRadius: 12,
           boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
           overflow: 'hidden',
@@ -272,9 +272,9 @@ export function FloatingVoiceButton() {
               display: 'flex', alignItems: 'center', gap: 10,
               width: '100%', padding: '14px 18px', border: 'none',
               background: 'none', cursor: 'pointer', textAlign: 'left',
-              color: 'var(--color-text, #f0f0f0)',
+              color: 'var(--color-text-primary)',
               fontSize: 14, fontWeight: 500,
-              borderBottom: '1px solid var(--color-border, #333)',
+              borderBottom: '1px solid var(--color-border)',
             }}
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-soft, rgba(255,255,255,0.05))')}
             onMouseLeave={e => (e.currentTarget.style.background = 'none')}
@@ -292,9 +292,9 @@ export function FloatingVoiceButton() {
               display: 'flex', alignItems: 'center', gap: 10,
               width: '100%', padding: '14px 18px', border: 'none',
               background: 'none', cursor: 'pointer', textAlign: 'left',
-              color: 'var(--color-text, #f0f0f0)',
+              color: 'var(--color-text-primary)',
               fontSize: 14, fontWeight: 500,
-              borderBottom: '1px solid var(--color-border, #333)',
+              borderBottom: '1px solid var(--color-border)',
             }}
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-soft, rgba(255,255,255,0.05))')}
             onMouseLeave={e => (e.currentTarget.style.background = 'none')}
@@ -312,7 +312,7 @@ export function FloatingVoiceButton() {
               display: 'flex', alignItems: 'center', gap: 10,
               width: '100%', padding: '14px 18px', border: 'none',
               background: 'none', cursor: 'pointer', textAlign: 'left',
-              color: 'var(--color-text, #f0f0f0)',
+              color: 'var(--color-text-primary)',
               fontSize: 14, fontWeight: 500,
             }}
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-soft, rgba(255,255,255,0.05))')}
