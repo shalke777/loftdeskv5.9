@@ -78,7 +78,11 @@ export const estimatesApi = {
     const { data, error } = await supabase.from('cost_estimates').update(payload).eq('id', id).select('*').single()
     if (error) throw error
     if (items) {
-      await supabase.from('cost_estimate_items').delete().eq('cost_estimate_id', id)
+      const { error: deleteError } = await supabase.from('cost_estimate_items').delete().eq('cost_estimate_id', id)
+      if (deleteError) {
+        console.error('[estimates.update] items delete failed:', deleteError)
+        throw deleteError
+      }
       if (items.length > 0) {
         const itemRows = items.map((item, index) => ({ cost_estimate_id: id, name: item.name ?? item.description ?? '', description: item.description ?? item.name ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index, catalog_item_id: item.catalog_item_id ?? null }))
         const { error: itemsError } = await supabase.from('cost_estimate_items').insert(itemRows)

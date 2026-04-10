@@ -84,13 +84,9 @@ export function EstimatesPage() {
   )
 
   async function submit(input: any) {
-    try {
-      if (editing) await updateEstimate.mutateAsync({ id: editing.id, input })
-      else await createEstimate.mutateAsync(input)
-      setEditing(null); setOpen(false)
-    } catch {
-      // error displayed via onError in mutation
-    }
+    if (editing) await updateEstimate.mutateAsync({ id: editing.id, input })
+    else await createEstimate.mutateAsync(input)
+    setEditing(null); setOpen(false)
   }
 
   // ── Voice estimate handlers ────────────────────────────────────────────────

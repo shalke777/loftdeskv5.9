@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
+import { useToast } from '@/shared/hooks/useToast'
 import { companyPriceListApi, normalizeLabel } from '../api/company-price-list.api'
 import type { CompanyPriceEntry } from '../api/company-price-list.api'
 
@@ -51,12 +52,18 @@ export function useCompanyPriceListDetail() {
 export function useUpsertPrice() {
   const companyId = useCompanyId()
   const qc = useQueryClient()
+  const toast = useToast()
   return useMutation({
     mutationFn: ({ catalogItemId, unitPrice }: { catalogItemId: string; unitPrice: number }) =>
       companyPriceListApi.upsertPrice(companyId, catalogItemId, unitPrice),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: priceListKey(companyId) })
       qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
+    },
+    onError: (error: any) => {
+      const msg = error?.message ?? 'Sprawdź połączenie i spróbuj ponownie'
+      toast.error('Nie udało się zapisać ceny', msg)
+      console.error('[price-list] upsertPrice error:', error)
     },
   })
 }
@@ -65,12 +72,18 @@ export function useUpsertPrice() {
 export function useUpsertCustomPrice() {
   const companyId = useCompanyId()
   const qc = useQueryClient()
+  const toast = useToast()
   return useMutation({
     mutationFn: ({ customLabel, unitPrice }: { customLabel: string; unitPrice: number }) =>
       companyPriceListApi.upsertCustomPrice(companyId, customLabel, unitPrice),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: priceListKey(companyId) })
       qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
+    },
+    onError: (error: any) => {
+      const msg = error?.message ?? 'Sprawdź połączenie i spróbuj ponownie'
+      toast.error('Nie udało się zapisać ceny', msg)
+      console.error('[price-list] upsertCustomPrice error:', error)
     },
   })
 }
@@ -79,12 +92,17 @@ export function useUpsertCustomPrice() {
 export function useDeletePrice() {
   const companyId = useCompanyId()
   const qc = useQueryClient()
+  const toast = useToast()
   return useMutation({
     mutationFn: (catalogItemId: string) =>
       companyPriceListApi.deletePrice(companyId, catalogItemId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: priceListKey(companyId) })
       qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
+    },
+    onError: (error: any) => {
+      toast.error('Nie udało się usunąć ceny', error?.message ?? 'Spróbuj ponownie')
+      console.error('[price-list] deletePrice error:', error)
     },
   })
 }
@@ -93,12 +111,17 @@ export function useDeletePrice() {
 export function useDeleteCustomPrice() {
   const companyId = useCompanyId()
   const qc = useQueryClient()
+  const toast = useToast()
   return useMutation({
     mutationFn: (customLabel: string) =>
       companyPriceListApi.deleteCustomPrice(companyId, customLabel),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: priceListKey(companyId) })
       qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
+    },
+    onError: (error: any) => {
+      toast.error('Nie udało się usunąć ceny', error?.message ?? 'Spróbuj ponownie')
+      console.error('[price-list] deleteCustomPrice error:', error)
     },
   })
 }
@@ -107,12 +130,17 @@ export function useDeleteCustomPrice() {
 export function useUpsertManyPrices() {
   const companyId = useCompanyId()
   const qc = useQueryClient()
+  const toast = useToast()
   return useMutation({
     mutationFn: (entries: Array<{ catalog_item_id?: string | null; custom_label?: string | null; unit_price: number }>) =>
       companyPriceListApi.upsertMany(companyId, entries),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: priceListKey(companyId) })
       qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
+    },
+    onError: (error: any) => {
+      toast.error('Nie udało się zapisać cennika', error?.message ?? 'Spróbuj ponownie')
+      console.error('[price-list] upsertMany error:', error)
     },
   })
 }

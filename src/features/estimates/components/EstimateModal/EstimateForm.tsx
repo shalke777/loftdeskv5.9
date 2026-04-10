@@ -136,6 +136,8 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
     try {
       await onSubmit({ name, notes, client_id: clientId || null, project_id: projectId || null, company_id: companyId, status, valid_until: validUntil || null, items })
       clearDraft()
+    } catch {
+      // Error toast is shown by mutation onError — do NOT clear draft so user can retry
     } finally {
       setSubmitting(false)
     }
