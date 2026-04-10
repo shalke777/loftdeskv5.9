@@ -36,6 +36,7 @@ import { LegalAcceptanceGate } from '@/features/legal/components/LegalAcceptance
 import { ClientShell } from '@/features/client-portal/components/ClientShell'
 import { useTheme } from '@/shared/hooks/useTheme'
 import { FloatingVoiceButton } from '@/shared/components/FloatingVoiceButton'
+import { GlobalRefreshButton } from '@/shared/ui/GlobalRefreshButton/GlobalRefreshButton'
 
 type MainNavItem = {
   type?: 'route'
@@ -264,6 +265,7 @@ export function AuthLayout() {
               )}
             </div>
             <InstallAppButton compact />
+            <GlobalRefreshButton />
             <button
               type="button"
               onClick={toggleTheme}
