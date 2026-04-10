@@ -19,7 +19,8 @@ function useInvalidate() {
   const companyId = useCompanyId()
   const qc = useQueryClient()
   const toast = useToast()
-  const invalidate = () => qc.invalidateQueries({ queryKey: documentationKeys.overview(companyId) })
+  // Invalidate all documentation queries (overview + all project-photos)
+  const invalidate = () => qc.invalidateQueries({ queryKey: documentationKeys.all })
   return { companyId, qc, toast, invalidate }
 }
 

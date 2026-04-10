@@ -59,7 +59,7 @@ const EMPTY_DRAFT = {
 export function ProjectPhotosSection({ project }: { project: Project }) {
   const companyId   = useCompanyId()
   const qc          = useQueryClient()
-  const { data: photos = [], isLoading } = useProjectPhotos(project.id)
+  const { data: photos = [], isLoading, isError } = useProjectPhotos(project.id)
   const createPhoto = useCreatePhoto()
   const deletePhoto = useDeletePhoto()
 
@@ -547,8 +547,16 @@ export function ProjectPhotosSection({ project }: { project: Project }) {
         </div>
       )}
 
+      {/* Query error */}
+      {isError && !isLoading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-danger, #E55)', borderRadius: 6, padding: '10px 12px', background: 'rgba(220,50,50,0.08)', border: '1px solid rgba(220,50,50,0.2)' }}>
+          <AlertCircle size={14} style={{ flexShrink: 0 }} />
+          Nie udało się załadować zdjęć. Odśwież stronę.
+        </div>
+      )}
+
       {/* Empty state */}
-      {!isLoading && photos.length === 0 && addMode === null && (
+      {!isLoading && !isError && photos.length === 0 && addMode === null && (
         <div
           style={{
             textAlign:    'center',
