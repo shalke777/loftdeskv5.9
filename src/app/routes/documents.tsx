@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useSearch } from '@tanstack/react-router'
 import { Calculator, FileText, Receipt, Shield } from 'lucide-react'
 import { EstimatesPage } from '@/features/estimates/components/EstimatesPage'
 import { ContractsPage } from '@/features/contracts/components/ContractsPage'

@@ -38,7 +38,7 @@ export function EstimatesPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef   = useRef<Blob[]>([])
 
-  const { create: autoCreate } = useSearch({ from: '/_auth/estimates' as any }) as { create?: boolean }
+  const { create: autoCreate } = useSearch({ strict: false }) as { create?: boolean }
 
   const companyId = useCompanyId()
   const { data, isLoading, isError, refetch } = useEstimates()
