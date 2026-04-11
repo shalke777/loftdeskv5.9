@@ -298,6 +298,46 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
     ? `Faktura wyeksportowana do KSeF \u00b7 Ref: ${escapeHtml(invoice.ksef_ref || '\u2014')}`
     : 'Faktura oczekuje na wysy\u0142k\u0119 do KSeF'
 
+  // ── Correction: header data comparison table ─────────────────────────────────
+  const headerCorrectionHtml: string = (() => {
+    if (invoiceType !== 'correction' || !invoice.original_data) return ''
+    const od = invoice.original_data as Record<string, string | null>
+    const LABELS: Record<string, string> = {
+      client_name: 'Nabywca', client_nip: 'NIP nabywcy', client_address: 'Adres nabywcy',
+      issue_date: 'Data wystawienia', sale_date: 'Data sprzeda\u017cy',
+      due_date: 'Termin p\u0142atno\u015bci', issue_place: 'Miejsce wystawienia',
+      payment_method: 'Forma p\u0142atno\u015bci', bank_account: 'Nr rachunku bankowego',
+      notes: 'Uwagi',
+    }
+    const currentData: Record<string, string | null> = {
+      client_name: client?.name ?? null, client_nip: client?.nip ?? null,
+      client_address: client?.address ?? null,
+      issue_date: invoice.issue_date ?? null, sale_date: invoice.sale_date ?? null,
+      due_date: invoice.due_date ?? null, issue_place: invoice.issue_place ?? null,
+      payment_method: invoice.payment_method ?? null, bank_account: invoice.bank_account ?? null,
+      notes: invoice.notes ?? null,
+    }
+    const changed = Object.entries(LABELS).filter(([k]) => (od[k] ?? null) !== (currentData[k] ?? null))
+    if (changed.length === 0) return ''
+    const rows = changed.map(([k, label]) => `<tr>
+      <td style="font-size:13px;">${escapeHtml(label)}</td>
+      <td style="font-size:13px; color:#991b1b;">${escapeHtml(od[k] ?? '\u2014')}</td>
+      <td style="font-size:13px; color:#166534;">${escapeHtml(currentData[k] ?? '\u2014')}</td>
+    </tr>`).join('')
+    return `
+    <div style="margin-bottom:16px;">
+      <div style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;">Korygowane dane nag\u0142\u00f3wkowe</div>
+      <table>
+        <thead><tr>
+          <th style="width:25%;">Pole</th>
+          <th style="background:rgba(153,27,27,0.08); color:#991b1b;">Przed korekt\u0105</th>
+          <th style="background:rgba(22,101,52,0.08); color:#166534;">Po korekcie</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`
+  })()
+
   const page = `<section class="page">
     <div class="topbar">
       <div class="topbar__title">${invoiceTitle}</div>
@@ -329,6 +369,8 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
       </div>
 
       ${contractRefHtml}
+
+      ${headerCorrectionHtml}
 
       ${invoiceType === 'correction' && invoice.original_items?.length ? (() => {
         // Correction invoice: show before/after comparison table

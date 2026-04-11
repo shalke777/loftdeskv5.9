@@ -39,6 +39,8 @@ export const InvoiceSchema = z.object({
   bank_account: z.string().nullable().optional(),
   /** Pozycje oryginalne przed korektą — tylko dla faktur korygujących */
   original_items: z.array(InvoiceItemSchema).nullable().optional(),
+  /** Snapshot pól nagłówkowych przed korektą (klient, daty, płatność) */
+  original_data: z.record(z.string().nullable()).nullable().optional(),
   /** Suma wcześniejszych zaliczek – używana przy fakturze końcowej */
   advance_total: z.number().nullable().optional(),
   total_net: z.number(),
@@ -69,4 +71,5 @@ export type CreateInvoiceInput = Pick<Invoice, 'client_id' | 'project_id' | 'con
   corrected_invoice_id?: string | null
   correction_reason?: string | null
   original_items?: InvoiceItem[] | null
+  original_data?: Record<string, string | null> | null
 }

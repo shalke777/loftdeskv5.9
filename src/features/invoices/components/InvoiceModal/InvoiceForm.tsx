@@ -224,6 +224,8 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
       items,
       corrected_invoice_id: initialInvoice?.corrected_invoice_id ?? null,
       correction_reason: invoiceType === 'correction' ? correctionReason : null,
+      original_items: initialInvoice?.original_items ?? null,
+      original_data: initialInvoice?.original_data ?? null,
     }
   }
 
@@ -254,9 +256,10 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
         <div style={{ background: 'rgba(168,50,40,0.06)', border: '1px solid rgba(168,50,40,0.2)', borderRadius: 10, padding: '12px 16px', display: 'grid', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ background: '#A83228', color: '#fff', borderRadius: 6, padding: '2px 10px', fontSize: 12, fontWeight: 700, letterSpacing: '0.04em' }}>FAKTURA KORYGUJĄCA</span>
-            {initialInvoice?.corrected_invoice_id && (
+            {initialInvoice?.original_data?.invoice_number && (
               <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                Korekta do faktury
+                Korekta do: <strong>{initialInvoice.original_data.invoice_number}</strong>
+                {initialInvoice.original_data.issue_date && ` z dnia ${initialInvoice.original_data.issue_date}`}
               </span>
             )}
           </div>
@@ -267,11 +270,50 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
             <textarea
               value={correctionReason}
               onChange={(e) => setCorrectionReason(e.target.value)}
-              placeholder="np. Błędna stawka VAT, zmiana ilości, błąd w nazwie towaru…"
+              placeholder="np. Błędna stawka VAT, zmiana nabywcy, błędna data sprzedaży…"
               rows={2}
               style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 13, background: 'var(--color-bg)', color: 'var(--color-text-primary)', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
             />
           </div>
+
+          {/* Dane przed korektą — porównanie pól nagłówkowych */}
+          {initialInvoice?.original_data && (() => {
+            const od = initialInvoice.original_data!
+            const clientNow = clients.find(c => c.id === clientId)
+            const rows: Array<{ label: string; before: string | null; after: string | null }> = [
+              { label: 'Nabywca', before: od.client_name ?? od.client_id ?? null, after: clientNow?.name ?? clientId ?? null },
+              { label: 'NIP nabywcy', before: od.client_nip ?? null, after: clientNow?.nip ?? null },
+              { label: 'Adres nabywcy', before: od.client_address ?? null, after: clientNow?.address ?? null },
+              { label: 'Data wystawienia', before: od.issue_date ?? null, after: issueDate },
+              { label: 'Data sprzedaży', before: od.sale_date ?? null, after: saleDate },
+              { label: 'Termin płatności', before: od.due_date ?? null, after: dueDate },
+              { label: 'Miejsce wystawienia', before: od.issue_place ?? null, after: issuePlace || null },
+              { label: 'Forma płatności', before: od.payment_method ?? null, after: paymentMethod },
+              { label: 'Nr rachunku bankowego', before: od.bank_account ?? null, after: bankAccount || null },
+              { label: 'Uwagi', before: od.notes ?? null, after: notes || null },
+            ].filter(r => r.before !== r.after || (r.before && r.before !== r.after))
+            const changed = rows.filter(r => r.before !== r.after)
+            if (changed.length === 0) return null
+            return (
+              <div style={{ borderTop: '1px solid rgba(168,50,40,0.15)', paddingTop: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                  Dane zmienione ({changed.length})
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 1fr', gap: '4px 12px', fontSize: 12 }}>
+                  <div style={{ fontWeight: 600, color: 'var(--color-text-secondary)', fontSize: 11 }}>Pole</div>
+                  <div style={{ fontWeight: 600, color: '#991b1b', fontSize: 11 }}>Przed korektą</div>
+                  <div style={{ fontWeight: 600, color: '#166534', fontSize: 11 }}>Po korekcie</div>
+                  {changed.map((r, i) => (
+                    <Fragment key={i}>
+                      <div style={{ color: 'var(--color-text-secondary)', paddingTop: 2 }}>{r.label}</div>
+                      <div style={{ color: '#991b1b', background: 'rgba(153,27,27,0.05)', borderRadius: 4, padding: '1px 5px', wordBreak: 'break-all' }}>{r.before ?? '—'}</div>
+                      <div style={{ color: '#166534', background: 'rgba(22,101,52,0.05)', borderRadius: 4, padding: '1px 5px', wordBreak: 'break-all' }}>{r.after ?? '—'}</div>
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
