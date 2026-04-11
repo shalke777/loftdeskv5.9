@@ -96,7 +96,8 @@ export const invoicesApi = {
     const scope = await getDataScope(companyId)
     const items = input.items
     const payload: any = { ...input }
-    delete payload.items
+    // Strip fields that are not DB columns or must not be overwritten on update
+    for (const f of ['items', 'id', 'draft', 'total_net', 'total_gross', 'created_at'] as const) delete payload[f]
     const { data, error } = await supabase.from('invoices').update(payload).eq('id', id).select('*').single()
     if (error) throw error
     if (items) {
