@@ -55,7 +55,7 @@ export const estimatesApi = {
       }
     }
     if (input.project_id) { try { await projectDocumentsApi.link(input.company_id, input.project_id, 'estimate', data.id, { manual: true }) } catch (err) { console.warn('[estimates] project doc link failed on create:', err) } }
-    return { id: data.id, company_id: data.company_id ?? input.company_id, client_id: data.client_id, number: data.number, name: data.name, status: data.status, total_net: totals.net, total_gross: totals.gross, notes: data.notes ?? '', valid_until: data.valid_until ?? null, created_at: data.created_at, items }
+    return { id: data.id, company_id: data.company_id ?? input.company_id, client_id: data.client_id, project_id: data.project_id ?? null, number: data.number, name: data.name, status: data.status, total_net: totals.net, total_gross: totals.gross, notes: data.notes ?? '', valid_until: data.valid_until ?? null, created_at: data.created_at, items }
   },
   async update(id: string, input: Partial<Estimate>, companyId?: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.estimates.update(id, input))

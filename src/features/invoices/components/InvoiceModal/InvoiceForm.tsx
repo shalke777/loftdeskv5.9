@@ -317,6 +317,32 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
         </div>
       )}
 
+      {/* ── Informacja gdy user ręcznie wybrał "correction" dla nowej faktury ── */}
+      {!isCorrection && invoiceType === 'correction' && (
+        <div style={{ background: 'rgba(184,116,42,0.08)', border: '1px solid rgba(184,116,42,0.3)', borderRadius: 10, padding: '14px 16px', display: 'grid', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <span style={{ fontSize: 18, lineHeight: 1 }}>⚠️</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 4 }}>
+                Faktury korygującej nie tworzy się jako nowy dokument
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+                Aby wystawić korektę: przejdź na <strong>listę faktur</strong>, znajdź fakturę do korekty i kliknij ikonę&nbsp;
+                <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>✂️ Wystaw korektę</span> w jej wierszu.
+                Formularz automatycznie zaciągnie dane oryginału.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setInvoiceType('standard')}
+            style={{ alignSelf: 'flex-start', padding: '5px 14px', background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 13, cursor: 'pointer', color: 'var(--color-text-primary)' }}
+          >
+            Wróć do faktury standardowej
+          </button>
+        </div>
+      )}
+
       {/* ── Sekcja nagłówkowa ── */}
       <div className="form-grid">
         <Select label="Rodzaj faktury" value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)} options={INVOICE_TYPE_OPTIONS} disabled={isCorrection} />
@@ -572,9 +598,9 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
         ) : (
           <>
             {onSaveDraft !== undefined && (
-              <Button variant="secondary" loading={submitting} onClick={handleSaveDraft}>Zapisz szkic</Button>
+              <Button variant="secondary" loading={submitting} onClick={handleSaveDraft} disabled={invoiceType === 'correction' && !isCorrection}>Zapisz szkic</Button>
             )}
-            <Button loading={submitting} onClick={handleSubmit}>Wystaw fakturę</Button>
+            <Button loading={submitting} onClick={handleSubmit} disabled={invoiceType === 'correction' && !isCorrection}>Wystaw fakturę</Button>
           </>
         )}
       </div>
