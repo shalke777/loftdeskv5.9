@@ -292,7 +292,7 @@ export function AuthLayout() {
             const isStart = item.to === '/dashboard'
             if (isStart) {
               return (
-                <Link key={item.to} to={item.to} className="mobile-nav__link" style={{ position: 'relative', flex: '0 0 auto' }}>
+                <Link key={item.to} to={item.to} className="mobile-nav__link" style={{ position: 'relative' }}>
                   <span style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     width: 64, height: 64, borderRadius: '50%',
