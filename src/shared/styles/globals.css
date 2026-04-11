@@ -3767,7 +3767,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .modal { border-radius: 16px; max-height: calc(100dvh - 8px); }
   .modal__header { padding: 12px 14px; }
   .modal__header h3 { font-size: 15px; }
-  .modal__body { padding: 12px 14px; max-height: calc(100dvh - 64px); }
+  .modal__body { padding: 12px 14px; max-height: calc(100dvh - 64px); overflow-x: hidden; overflow-y: auto; }
 
   /* Form grid collapses to single column */
   .form-grid { grid-template-columns: 1fr; gap: 10px; }
@@ -3777,9 +3777,14 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .field { gap: 4px; }
   .field__label { font-size: 12px; }
 
-  /* Items editor: stack fast-add on mobile */
+  /* Items editor: stack fast-add on mobile — Name full width, then 2 col, Dodaj full width */
   .items-fast-add-row { grid-template-columns: 1fr 1fr !important; }
+  .items-fast-add-row > :first-child { grid-column: 1 / -1; }
+  .items-fast-add-row > :last-child  { grid-column: 1 / -1; }
   .items-fast-add-row--wide { grid-template-columns: 1fr !important; }
+
+  /* Items table: contain + scroll on mobile */
+  .items-table-wrap { margin-inline: -14px; border-radius: 0 !important; border-left: none !important; border-right: none !important; -webkit-overflow-scrolling: touch; }
 
   /* Toast stacking at bottom */
   .toast-viewport { right: 8px; left: 8px; }

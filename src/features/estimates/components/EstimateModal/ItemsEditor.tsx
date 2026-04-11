@@ -272,8 +272,8 @@ export function ItemsEditor({ items, onChange }: { items: EstimateItem[]; onChan
 
       {/* ── Items table ── */}
       {items.length > 0 && (
-        <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid var(--color-border)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <div className="items-table-wrap" style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid var(--color-border)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 520 }}>
             <thead>
               <tr style={{ background: 'var(--color-surface-soft)', borderBottom: '2px solid var(--color-border)' }}>
                 <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-tertiary)', fontSize: 11, width: 30 }}>#</th>
