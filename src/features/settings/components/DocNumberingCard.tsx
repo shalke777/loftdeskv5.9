@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Card } from '@/shared/ui/Card/Card'
 import { Input } from '@/shared/ui/Input/Input'
 import { Button } from '@/shared/ui/Button/Button'
-import { useDocNumberConfig, useUpdateDocNumberConfig } from '@/features/settings/hooks/useSettings'
+import { useDocNumberConfig, useUpdateDocNumberConfig, useResetDocCounter } from '@/features/settings/hooks/useSettings'
 import { useCan } from '@/features/auth/hooks/usePermissions'
 import { DOC_NUMBER_DEFAULTS, type DocNumberConfig, type DocNumberTypeConfig } from '@/features/settings/api/settings.api'
 
@@ -10,6 +10,12 @@ const DOC_TYPES = [
   { key: 'estimate' as const, label: 'Kosztorysy' },
   { key: 'contract' as const, label: 'Umowy' },
   { key: 'invoice' as const, label: 'Faktury' },
+]
+
+const RESET_DOC_TYPE_OPTIONS = [
+  { value: 'invoice',  label: 'Faktura (FV)' },
+  { value: 'estimate', label: 'Kosztorys (WY)' },
+  { value: 'contract', label: 'Umowa (UM)' },
 ]
 
 function buildPrefixPreview(cfg: DocNumberTypeConfig): string {
@@ -32,12 +38,26 @@ function buildNewSeriesPreview(cfg: DocNumberTypeConfig): string {
   return `${prefix}/${year}/${month}/${seq}`
 }
 
+function todayYearMonth() {
+  const now = new Date()
+  return { year: now.getFullYear(), month: now.getMonth() + 1 }
+}
+
 export function DocNumberingCard() {
   const { data: saved, isLoading } = useDocNumberConfig()
   const update = useUpdateDocNumberConfig()
+  const resetCounter = useResetDocCounter()
   const canEdit = useCan('settings.updateCompany')
 
   const [config, setConfig] = useState<DocNumberConfig>(DOC_NUMBER_DEFAULTS)
+
+  // Reset section state
+  const { year: currentYear, month: currentMonth } = todayYearMonth()
+  const [resetDocType, setResetDocType] = useState('invoice')
+  const [resetYear, setResetYear] = useState(currentYear)
+  const [resetMonth, setResetMonth] = useState(currentMonth)
+  const [resetValue, setResetValue] = useState(0)
+  const [confirmReset, setConfirmReset] = useState(false)
 
   useEffect(() => {
     if (saved) {
@@ -64,6 +84,18 @@ export function DocNumberingCard() {
   function handleSave() {
     update.mutate(config)
   }
+
+  function handleReset() {
+    if (!confirmReset) { setConfirmReset(true); return }
+    resetCounter.mutate({ docType: resetDocType, year: resetYear, month: resetMonth, value: resetValue })
+    setConfirmReset(false)
+  }
+
+  const resetPreview = (() => {
+    const prefix = RESET_DOC_TYPE_OPTIONS.find(o => o.value === resetDocType)?.label.match(/\((\w+)\)/)?.[1] ?? resetDocType.toUpperCase()
+    const nextNum = resetValue + 1
+    return `${prefix}/${resetYear}/${String(resetMonth).padStart(2, '0')}/${nextNum}`
+  })()
 
   return (
     <Card>
@@ -112,6 +144,82 @@ export function DocNumberingCard() {
       {canEdit && (
         <div className="actions-row" style={{ marginTop: 20 }}>
           <Button onClick={handleSave} loading={update.isPending}>Zapisz numerację</Button>
+        </div>
+      )}
+
+      {/* ── Counter reset section ─────────────────────────────────────────── */}
+      {canEdit && (
+        <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid var(--color-border)' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Resetuj licznik miesiąca</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 12 }}>
+            Użyj po usunięciu faktur testowych lub gdy licznik przeskoczył przez błąd.
+            Następny numer będzie wynosił <strong>ustawiona wartość + 1</strong>.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px', gap: 8, alignItems: 'flex-end' }}>
+            <div>
+              <div className="field__label" style={{ marginBottom: 4 }}>Typ dokumentu</div>
+              <select
+                className="input"
+                value={resetDocType}
+                onChange={e => { setResetDocType(e.target.value); setConfirmReset(false) }}
+              >
+                {RESET_DOC_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <div className="field__label" style={{ marginBottom: 4 }}>Rok</div>
+              <Input
+                type="number"
+                min={2020}
+                max={2099}
+                value={resetYear}
+                onChange={e => { setResetYear(parseInt(e.target.value, 10) || currentYear); setConfirmReset(false) }}
+              />
+            </div>
+            <div>
+              <div className="field__label" style={{ marginBottom: 4 }}>Miesiąc</div>
+              <Input
+                type="number"
+                min={1}
+                max={12}
+                value={resetMonth}
+                onChange={e => { setResetMonth(Math.min(12, Math.max(1, parseInt(e.target.value, 10) || 1))); setConfirmReset(false) }}
+              />
+            </div>
+            <div>
+              <div className="field__label" style={{ marginBottom: 4 }}>Ustaw na</div>
+              <Input
+                type="number"
+                min={0}
+                value={resetValue}
+                onChange={e => { setResetValue(Math.max(0, parseInt(e.target.value, 10) || 0)); setConfirmReset(false) }}
+              />
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 6 }}>
+            Następny numer: <span style={{ fontFamily: 'monospace', color: confirmReset ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>{resetPreview}</span>
+          </div>
+          <div className="actions-row" style={{ marginTop: 10 }}>
+            {confirmReset
+              ? (
+                <>
+                  <Button
+                    variant="danger"
+                    loading={resetCounter.isPending}
+                    onClick={handleReset}
+                  >
+                    Tak, resetuj licznik → {resetPreview}
+                  </Button>
+                  <Button variant="secondary" onClick={() => setConfirmReset(false)}>Anuluj</Button>
+                </>
+              )
+              : (
+                <Button variant="secondary" onClick={handleReset}>
+                  Resetuj licznik
+                </Button>
+              )
+            }
+          </div>
         </div>
       )}
     </Card>

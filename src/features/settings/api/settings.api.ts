@@ -144,6 +144,21 @@ export const settingsApi = {
     if (error) throw error
     if (!data) throw new Error('Konfiguracja numeracji nie została zapisana. Sprawdź uprawnienia do firmy.')
   },
+
+  async resetDocCounter(companyId: string, docType: string, year: number, month: number, value: number): Promise<{ docType: string; year: number; month: number; value: number }> {
+    if (isDemoMode || !supabase) return { docType, year, month, value }
+    const scope = await getDataScope(companyId)
+    if (scope.mode !== 'multi-tenant') return { docType, year, month, value }
+    const { error } = await supabase.rpc('reset_doc_counter', {
+      p_company_id: scope.companyId,
+      p_doc_type: docType,
+      p_year: year,
+      p_month: month,
+      p_value: value,
+    })
+    if (error) throw error
+    return { docType, year, month, value }
+  },
 }
 
 export interface DocNumberTypeConfig {
