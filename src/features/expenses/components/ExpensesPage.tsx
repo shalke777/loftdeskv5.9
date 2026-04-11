@@ -352,8 +352,9 @@ export function ExpensesPage() {
             }
             const aiResult = await callParseInvoiceAI(file, pdfHintText, url)
             const aiConf   = aiResult.extraction_confidence ?? 0
-            // Only take AI result if it actually extracted something useful
-            if (aiConf > 0 && aiConf >= ocrConf) {
+            // Only take AI result if it extracted something useful with reasonable confidence.
+            // Threshold 35 prevents accepting hallucinated results with very low confidence.
+            if (aiConf >= 35 && aiConf >= ocrConf) {
               ocrResult = aiResult   // AI gave equal or better result
             }
           } catch (aiErr: unknown) {

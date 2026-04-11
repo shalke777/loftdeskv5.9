@@ -274,7 +274,22 @@ VERIFICATION — run these checks before producing final JSON output:
    - Line items appear in tabular sections with repeating numeric patterns (quantity, price, rate, amounts).
 
 - CRITICAL: If the input image shows a room, interior space, bathroom, kitchen, corridor, construction site, outdoor scene, or any non-document scene — return document_type: "other", all monetary values as null, confidence: 0, and add to warnings: "Zdjęcie nie wygląda na dokument kosztowy — prześlij skan faktury, paragonu lub PDF." Do NOT invent invoice fields from non-document images.
-- A cost document must contain visibly readable text with labels, numbers, or dates. If no such document text is visible in the image, set confidence: 0 and document_type: "other".`
+- A cost document must contain visibly readable text with labels, numbers, or dates. If no such document text is visible in the image, set confidence: 0 and document_type: "other".
+
+8. NULL POLICY — MOST IMPORTANT RULE
+   NEVER invent, guess, or infer data that is not clearly and explicitly visible in the document.
+   Return null for ANY field you are not at least 90% certain about based on clearly readable text.
+   This means:
+   - If a company name is blurry, obscured, or ambiguous → vendor_name: null
+   - If you see a partial number but can't read all digits → vendor_nip: null
+   - If amounts are unclear or you are interpolating from context → all amounts: null
+   - If line items are not explicitly listed in a table → line_items: []
+   - If dates are unclear or partially visible → dates: null
+   NEVER fill a field with "UNKNOWN", "N/A", "---", a made-up company name, or a plausible-sounding value.
+   A result with many null fields and confidence 20 is FAR BETTER than a hallucinated result with confidence 80.
+   Set confidence = 0–20 when image quality is poor or most fields cannot be read.
+   Set confidence = 21–50 when some fields are clear but key fields (vendor, amounts) are uncertain.
+   Set confidence = 51–100 only when critical fields are explicitly, unambiguously readable.`
 
 // ─── OpenAI Responses API types ───────────────────────────────────────────────
 

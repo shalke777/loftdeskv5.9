@@ -14,6 +14,8 @@ interface OpenAIRequestOptions {
   input: unknown[]
   text: { format: unknown }
   max_output_tokens: number
+  temperature?: number
+  store?: boolean
 }
 
 /** Token usage extracted from OpenAI Responses API */
@@ -75,6 +77,8 @@ export async function callOpenAIWithRetry(
       input: opts.input,
       text: opts.text,
       max_output_tokens: opts.max_output_tokens,
+      temperature: opts.temperature ?? 0,
+      store: opts.store ?? false,
     }),
   }
 
