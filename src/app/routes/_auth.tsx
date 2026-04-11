@@ -295,15 +295,15 @@ export function AuthLayout() {
                 <Link key={item.to} to={item.to} className="mobile-nav__link" style={{ position: 'relative', flex: '0 0 auto' }}>
                   <span style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 52, height: 52, borderRadius: '50%',
-                    background: active ? 'var(--color-brand)' : 'var(--color-brand)',
+                    width: 64, height: 64, borderRadius: '50%',
+                    background: 'var(--color-brand)',
                     color: '#fff',
-                    boxShadow: '0 4px 18px rgba(0,0,0,0.28)',
-                    marginTop: -18,
-                    border: '3px solid var(--color-bg, #fff)',
+                    boxShadow: '0 6px 24px rgba(0,0,0,0.32)',
+                    marginTop: -24,
+                    border: '4px solid var(--color-bg, #fff)',
                     transition: 'transform 0.15s',
                   }}>
-                    <Icon size={22} />
+                    <Icon size={28} />
                   </span>
                   <span style={{ fontSize: 10, fontWeight: 700, color: active ? 'var(--color-brand)' : 'var(--color-text-muted)', marginTop: 2 }}>{item.label}</span>
                 </Link>
