@@ -2124,6 +2124,18 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
     overflow: visible;
   }
 
+  /* Embedded: thread panel visible when mobile-thread, with sensible height */
+  .chat-layout--embedded.chat-layout--mobile-thread .chat-thread {
+    display: flex;
+    flex-direction: column;
+    min-height: 60vh;
+  }
+
+  /* Embedded: sidebar still visible in list state */
+  .chat-layout--embedded.chat-layout--mobile-list .chat-sidebar {
+    display: flex;
+  }
+
   /* Sidebar: visible by default (list state), fill height */
   .chat-sidebar {
     border-right: none;

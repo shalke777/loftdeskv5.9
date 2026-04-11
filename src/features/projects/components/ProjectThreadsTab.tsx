@@ -6,6 +6,7 @@
 
 import { useState, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/shared/ui/Button/Button'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
@@ -131,6 +132,7 @@ export function ProjectThreadsTab({ projectId }: Props) {
   const { data: threads, isLoading } = useThreads(projectId)
   const [activeId,       setActiveId]       = useState<string | null>(null)
   const [showNewForm,    setShowNewForm]     = useState(false)
+  const [mobileView,     setMobileView]      = useState<'list' | 'thread'>('list')
 
   const activeThread = useMemo(
     () => threads?.find(t => t.id === activeId) ?? null,
@@ -152,7 +154,7 @@ export function ProjectThreadsTab({ projectId }: Props) {
   }
 
   return (
-    <div className="chat-layout chat-layout--embedded">
+    <div className={`chat-layout chat-layout--embedded chat-layout--mobile-${mobileView}`}>
       {/* ── Lewa kolumna: lista wątków ────────────────────────────────── */}
       <div className="chat-sidebar">
 
@@ -175,7 +177,7 @@ export function ProjectThreadsTab({ projectId }: Props) {
         {showNewForm && (
           <NewThreadForm
             projectId={projectId}
-            onCreated={(t) => { setActiveId(t.id); setShowNewForm(false) }}
+            onCreated={(t) => { setActiveId(t.id); setShowNewForm(false); setMobileView('thread') }}
             onCancel={() => setShowNewForm(false)}
           />
         )}
@@ -187,12 +189,22 @@ export function ProjectThreadsTab({ projectId }: Props) {
           onSelect={t => {
             setActiveId(t.id)
             setShowNewForm(false)
+            setMobileView('thread')
           }}
         />
       </div>
 
       {/* ── Prawa kolumna: wiadomości + composer ─────────────────────── */}
       <div className="chat-thread">
+
+        {/* Mobile: ← back to thread list */}
+        <button
+          className="chat-thread__mobile-back"
+          onClick={() => setMobileView('list')}
+        >
+          <ChevronLeft size={15} />
+          Wątki
+        </button>
 
         {/* Nagłówek aktywnego wątku */}
         {activeThread && (
