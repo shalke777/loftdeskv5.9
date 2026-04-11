@@ -691,6 +691,99 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 /* Documents hub — hide per-page PageHeaders (tab label serves as heading) */
 .docs-hub-content .page-header { display: none; }
 
+/* ── Documents hub segment tabs ─────────────────────────────────────── */
+.docs-hub { display: flex; flex-direction: column; height: 100%; }
+
+.docs-hub__tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--color-card);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.docs-hub__tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border-radius: 10px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+  position: relative;
+  white-space: nowrap;
+}
+
+.docs-hub__tab:hover {
+  background: var(--color-surface-elevated, rgba(26,92,50,0.06));
+  border-color: var(--color-brand);
+  color: var(--color-text-primary);
+}
+
+.docs-hub__tab--active {
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+  color: #fff;
+  font-weight: 700;
+}
+
+.docs-hub__tab--locked {
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.docs-hub__tab-lock {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  opacity: 0.7;
+}
+
+/* ── StatusFilter dropdown ───────────────────────────────────────────── */
+.status-filter {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.status-filter__select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 7px 36px 7px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 170px;
+  transition: border-color 0.12s;
+  outline: none;
+}
+
+.status-filter__select:focus,
+.status-filter__select:hover {
+  border-color: var(--color-brand);
+}
+
+.status-filter__icon {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+  color: var(--color-text-muted);
+}
+
 /* Topbar mic: hidden on desktop (FAB used there), shown on mobile */
 .topbar-mic { display: none; }
 

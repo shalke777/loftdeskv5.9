@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Calculator, FileText, Receipt, Shield } from 'lucide-react'
+import { Calculator, FileText, Receipt, Shield, Lock } from 'lucide-react'
 import { EstimatesPage } from '@/features/estimates/components/EstimatesPage'
 import { ContractsPage } from '@/features/contracts/components/ContractsPage'
 import { InvoicesPage } from '@/features/invoices/components/InvoicesPage'
@@ -23,63 +23,33 @@ export function DocumentsRoutePage() {
   const [tab, setTab] = useState<DocTab>('estimates')
 
   const visibleTabs = TABS.filter(t => t.id !== 'ksef' || canUseKsef)
+  const allTabs = canUseKsef ? TABS : [...TABS.filter(t => t.id !== 'ksef'), { id: 'ksef' as DocTab, label: 'KSeF', icon: Shield }]
 
   return (
-    <div>
-      {/* Tab bar — scrollable on mobile, no wrap */}
-      <div style={{
-        display: 'flex', gap: 4, padding: '12px 16px 0',
-        borderBottom: '1px solid var(--color-border)',
-        background: 'var(--color-card)',
-        overflowX: 'auto',
-        WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
-        scrollbarWidth: 'none' as React.CSSProperties['scrollbarWidth'],
-        flexShrink: 0,
-      }}>
-        {visibleTabs.map(t => {
+    <div className="docs-hub">
+      {/* Segment control tab bar */}
+      <div className="docs-hub__tabs">
+        {allTabs.map(t => {
           const Icon = t.icon
           const active = tab === t.id
+          const locked = t.id === 'ksef' && !canUseKsef
           return (
             <button
               key={t.id}
               type="button"
-              onClick={() => setTab(t.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '8px 14px',
-                fontSize: 13, fontWeight: active ? 700 : 500,
-                flexShrink: 0, whiteSpace: 'nowrap',
-                color: active ? 'var(--color-brand)' : 'var(--color-text-secondary)',
-                background: 'none', border: 'none', cursor: 'pointer',
-                borderBottom: active ? '2px solid var(--color-brand)' : '2px solid transparent',
-                marginBottom: -1, borderRadius: '4px 4px 0 0',
-                transition: 'color 0.15s',
-              }}
+              onClick={() => locked ? navigate({ to: '/billing' }) : setTab(t.id)}
+              className={`docs-hub__tab${active ? ' docs-hub__tab--active' : ''}${locked ? ' docs-hub__tab--locked' : ''}`}
+              title={locked ? 'Dostępne w planie Pro' : t.label}
             >
-              <Icon size={15} />
-              {t.label}
+              <Icon size={16} />
+              <span>{t.label}</span>
+              {locked && <Lock size={10} className="docs-hub__tab-lock" />}
             </button>
           )
         })}
-        {!canUseKsef && (
-          <button
-            type="button"
-            onClick={() => navigate({ to: '/billing' })}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 14px', fontSize: 13, fontWeight: 500,
-              flexShrink: 0, whiteSpace: 'nowrap',
-              color: 'var(--color-text-muted)', background: 'none', border: 'none',
-              cursor: 'pointer', borderBottom: '2px solid transparent', marginBottom: -1,
-            }}
-          >
-            <Shield size={15} />
-            KSeF <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'var(--color-sidebar-active)', color: 'var(--color-brand)', marginLeft: 2 }}>Pro</span>
-          </button>
-        )}
       </div>
 
-      {/* Tab content — hide inner PageHeaders (they duplicate the tab label) */}
+      {/* Tab content — inner PageHeaders hidden via CSS (.docs-hub-content) */}
       <div className="docs-hub-content">
         {tab === 'estimates' && <EstimatesPage />}
         {tab === 'contracts' && <ContractsPage />}

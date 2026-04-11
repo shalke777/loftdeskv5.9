@@ -4,6 +4,7 @@ import { Button } from '@/shared/ui/Button/Button'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import { Modal } from '@/shared/ui/Modal/Modal'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
+import { StatusFilter } from '@/shared/ui/StatusFilter/StatusFilter'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useCreateCorrection, useCreateInvoice, useDeleteInvoice, useFinalizeInvoice, useInvoices, useMarkInvoicePaid, useSendInvoiceToKsef, useUpdateInvoice } from '@/features/invoices/hooks/useInvoices'
@@ -105,16 +106,11 @@ export function InvoicesPage() {
         </div>
       </div>
 
-      <div className="proj-filters">
-        {FILTER_LABELS.map(({ value, label }) => (
-          <button key={value} type="button"
-            className={`proj-filter-pill${filterStatus === value ? ' proj-filter-pill--active' : ''}`}
-            onClick={() => setFilterStatus(value)}>
-            {label}
-            <span className="proj-filter-pill__count">{counts[value as keyof typeof counts]}</span>
-          </button>
-        ))}
-      </div>
+      <StatusFilter
+        options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
+        value={filterStatus}
+        onChange={v => setFilterStatus(v as FilterStatus)}
+      />
 
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><Spinner /></div>

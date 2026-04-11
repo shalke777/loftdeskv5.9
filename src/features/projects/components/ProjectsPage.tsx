@@ -6,6 +6,7 @@ import { Modal } from '@/shared/ui/Modal/Modal'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { QueryError } from '@/shared/ui/QueryError/QueryError'
+import { StatusFilter } from '@/shared/ui/StatusFilter/StatusFilter'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { createTimelineEvent } from '@/features/projects/lib/timeline'
 import {
@@ -136,21 +137,13 @@ export function ProjectsPage() {
         </div>
       </div>
 
-      {/* Filter pills */}
+      {/* Filter */}
       <AssignmentQueueBanner />
-      <div className="proj-filters">
-        {FILTER_LABELS.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            className={`proj-filter-pill${filterStatus === value ? ' proj-filter-pill--active' : ''}`}
-            onClick={() => setFilterStatus(value)}
-          >
-            {label}
-            <span className="proj-filter-pill__count">{counts[value]}</span>
-          </button>
-        ))}
-      </div>
+      <StatusFilter
+        options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
+        value={filterStatus}
+        onChange={v => setFilterStatus(v as FilterStatus)}
+      />
 
       {/* List */}
       {isLoading ? (

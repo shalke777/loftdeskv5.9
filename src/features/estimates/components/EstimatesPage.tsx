@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { Plus, Mic, MicOff } from 'lucide-react'
+import { StatusFilter } from '@/shared/ui/StatusFilter/StatusFilter'
 import { useSearch } from '@tanstack/react-router'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useCreateEstimate, useDeleteEstimate, useEstimates, useUpdateEstimate } from '@/features/estimates/hooks/useEstimates'
@@ -232,16 +233,11 @@ export function EstimatesPage() {
         </div>
       )}
 
-      <div className="proj-filters">
-        {FILTER_LABELS.map(({ value, label }) => (
-          <button key={value} type="button"
-            className={`proj-filter-pill${filterStatus === value ? ' proj-filter-pill--active' : ''}`}
-            onClick={() => setFilterStatus(value)}>
-            {label}
-            <span className="proj-filter-pill__count">{counts[value]}</span>
-          </button>
-        ))}
-      </div>
+      <StatusFilter
+        options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
+        value={filterStatus}
+        onChange={v => setFilterStatus(v as FilterStatus)}
+      />
 
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><Spinner /></div>
