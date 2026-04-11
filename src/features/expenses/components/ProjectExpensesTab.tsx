@@ -341,7 +341,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
               type="button"
               className="btn btn-secondary"
               onClick={startCapture}
-              title="Inne opcje: galeria, PDF, analiza pomieszczenia, ręcznie"
+              title="Inne opcje: galeria, PDF, ręcznie"
               style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}
             >
               <Plus style={{ width: 14, height: 14 }} />
