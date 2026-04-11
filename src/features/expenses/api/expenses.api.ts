@@ -841,7 +841,8 @@ export const projectExpensesApi = {
         description:   input.notes ?? null,
         status: deriveExpenseStatus(input.extraction_confidence, input.project_id),
         source_type:   input.source_type,
-        cost_type:     input.cost_type ?? null,
+        // cost_type: omit when null so DB DEFAULT applies (migration 122 makes it nullable)
+        ...(input.cost_type != null ? { cost_type: input.cost_type } : {}),
         approval_status: 'not_sent',
         extraction_confidence:      normalizeConfidenceForDb(input.extraction_confidence),
         extraction_warnings:        input.extraction_warnings ?? null,

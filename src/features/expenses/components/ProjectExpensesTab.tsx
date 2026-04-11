@@ -226,7 +226,8 @@ export function ProjectExpensesTab({ projectId }: Props) {
     createExpense.mutate({
       vendor_name: reductionDesc.trim() || 'Pomniejszenie kosztów',
       gross_amount: -Math.abs(val),
-      cost_type: 'reduction' as any,
+      cost_type: 'other',
+      notes: `[pomniejszenie] ${reductionDesc.trim()}`.trim(),
       source_type: 'manual',
     }, {
       onSuccess: () => {
@@ -407,16 +408,17 @@ export function ProjectExpensesTab({ projectId }: Props) {
               const storedAnalysis = isExpanded ? rehydrateAnalysisResult(exp.parse_raw) : null
               const hasAnalysis = exp.parse_raw != null
               const SourceIcon = SOURCE_ICONS[exp.source_type ?? 'manual'] ?? Receipt
+              const isReduction = (exp.amount_gross ?? 0) < 0
 
               return (
               <div
                 key={exp.id}
                 style={{
                   borderRadius: 8,
-                  border: exp.cost_type === 'reduction'
+                  border: isReduction
                     ? '1px solid var(--color-error, #A83228)'
                     : '1px solid var(--color-border)',
-                  background: exp.cost_type === 'reduction'
+                  background: isReduction
                     ? 'var(--color-error-soft, rgba(168,50,40,0.06))'
                     : exp.possible_duplicate
                       ? 'var(--color-warning-soft, rgba(212,150,10,0.12))'
@@ -463,8 +465,8 @@ export function ProjectExpensesTab({ projectId }: Props) {
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 4, fontSize: 12, color: 'var(--color-text-muted)' }}>
                     {exp.issue_date && <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Calendar size={11} />{exp.issue_date}</span>}
                     {exp.amount_gross != null && (
-                      <span style={{ fontWeight: 600, color: exp.cost_type === 'reduction' ? 'var(--color-error, #A83228)' : 'var(--color-text, #111)' }}>
-                        {exp.cost_type === 'reduction' && '−'}
+                      <span style={{ fontWeight: 600, color: isReduction ? 'var(--color-error, #A83228)' : 'var(--color-text, #111)' }}>
+                        {isReduction && '−'}
                         {Math.abs(exp.amount_gross).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} {exp.currency ?? 'PLN'}
                       </span>
                     )}
@@ -523,8 +525,14 @@ export function ProjectExpensesTab({ projectId }: Props) {
         )}
 
         {/* Summary row */}
-        {expenses.length > 0 && (() => {
+        {(expenses.length > 0 || (reductionOpen && reductionAmount)) && (() => {
           const totalGross = expenses.reduce((sum, e) => sum + (e.amount_gross ?? 0), 0)
+          const pendingReduction = reductionOpen ? parseFloat(reductionAmount.replace(',', '.')) : NaN
+          const previewTotal = !isNaN(pendingReduction) && pendingReduction > 0
+            ? totalGross - pendingReduction
+            : totalGross
+          const hasPreview = !isNaN(pendingReduction) && pendingReduction > 0
+
           return (
             <div
               style={{
@@ -535,8 +543,10 @@ export function ProjectExpensesTab({ projectId }: Props) {
                 fontSize: 13, fontWeight: 600,
               }}
             >
-              <span>Suma kosztów (brutto)</span>
-              <span>{totalGross.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN</span>
+              <span>Suma kosztów (brutto){hasPreview && <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--color-text-muted)', marginLeft: 6 }}>po pomniejszeniu</span>}</span>
+              <span style={{ color: hasPreview ? 'var(--color-error)' : undefined }}>
+                {previewTotal.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN
+              </span>
             </div>
           )
         })()}
