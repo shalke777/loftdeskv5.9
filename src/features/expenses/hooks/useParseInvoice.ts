@@ -14,6 +14,7 @@ async function getAuthHeader(): Promise<Record<string, string>> {
 const MAX_FILE_SIZE  = 20 * 1024 * 1024 // 20 MB — large files use URL path (server downloads from storage)
 const URL_THRESHOLD  = 4 * 1024 * 1024  // 4 MB — above this, send URL instead of base64 (Lambda body ≤6 MB)
 const MAX_OCR_WIDTH  = 1800             // px — keeps detail, reduces payload
+const MAX_AI_WIDTH   = 2048             // px — GPT-4o works best with full-resolution docs
 
 const IMAGE_MIME_SET = new Set([
   'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
@@ -262,6 +263,52 @@ async function preprocessForOCR(file: File): Promise<File> {
   }
 }
 
+/**
+ * Lightweight preprocessing for AI vision path (GPT-4o).
+ * GPT-4o reads natural images better than binarized ones — only resize.
+ * Skip grayscale, deskew, binarization — send the original color image.
+ */
+async function preprocessForAI(file: File): Promise<File> {
+  const isImg = IMAGE_MIME_SET.has(file.type) || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name)
+  if (!isImg || typeof document === 'undefined') return file
+  try {
+    const url = URL.createObjectURL(file)
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const el = new Image()
+      el.onload  = () => res(el)
+      el.onerror = () => rej(new Error('img load failed'))
+      el.src = url
+    })
+    URL.revokeObjectURL(url)
+
+    const scale = Math.min(1, MAX_AI_WIDTH / (img.naturalWidth || 1))
+    const w = Math.round(img.naturalWidth  * scale)
+    const h = Math.round(img.naturalHeight * scale)
+
+    const canvas = document.createElement('canvas')
+    canvas.width  = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return file
+    ctx.drawImage(img, 0, 0, w, h)
+
+    return await new Promise<File>((resolve) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(file); return }
+          const name = file.name.replace(/\.[^.]+$/, '') + '_ai.jpg'
+          resolve(new File([blob], name, { type: 'image/jpeg' }))
+        },
+        'image/jpeg',
+        0.95,  // high quality — preserve fine text details for AI vision
+      )
+    })
+  } catch (err) {
+    console.warn('[AI] image preprocessing failed, using original:', err)
+    return file
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
@@ -460,8 +507,9 @@ export async function callParseInvoiceAI(file: File, extractedText?: string, fil
   const body: Record<string, string> = {}
 
   if (isImage) {
-    // Preprocess and encode image for vision API
-    const processedFile = await preprocessForOCR(file)
+    // AI vision path: use lightweight preprocessing (resize only, no binarization).
+    // GPT-4o reads natural color/grayscale images better than binarized ones.
+    const processedFile = await preprocessForAI(file)
     body.image_base64 = await fileToBase64(processedFile)
     body.image_type   = 'image/jpeg'
   } else if (isPDF) {
