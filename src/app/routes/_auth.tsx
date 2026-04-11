@@ -47,7 +47,7 @@ type MainNavItem = {
 }
 
 const mainNavItems: MainNavItem[] = [
-  { to: '/dashboard', label: 'Tablica', icon: LayoutDashboard },
+  { to: '/dashboard', label: 'Start', icon: LayoutDashboard },
   { to: '/clients', label: 'Kontrahenci', icon: Users },
   { to: '/estimates', label: 'Wycena', icon: Calculator },
   { to: '/contracts', label: 'Umowa', icon: FileText },
@@ -61,11 +61,11 @@ const mainNavItems: MainNavItem[] = [
 ]
 
 const mobileNav: MainNavItem[] = [
-  { to: '/dashboard',  label: 'Tablica',  icon: LayoutDashboard },
-  { to: '/projects',   label: 'Projekty', icon: FolderKanban },
-  { to: '/invoices',   label: 'Faktura',  icon: Receipt },
-  { to: '/estimates',  label: 'Wycena',   icon: Calculator },
-  { to: '/settings',   label: 'Więcej',   icon: Settings },
+  { to: '/dashboard',  label: 'Start',     icon: LayoutDashboard },
+  { to: '/projects',   label: 'Projekty',  icon: FolderKanban },
+  { to: '/chat',       label: 'Chat',      icon: MessageSquare },
+  { to: '/invoices',   label: 'Faktura',   icon: Receipt },
+  { to: '/settings',   label: 'Więcej',    icon: Settings },
 ]
 
 function isActive(pathname: string, item: MainNavItem) {

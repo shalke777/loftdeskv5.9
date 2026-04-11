@@ -153,7 +153,7 @@ export function ColorPaletteDemo({ dark: initialDark, onToggleDark }: { dark?: b
                   <span style={{ display: 'block', fontSize: 11, opacity: 0.65 }}>Plan Free</span>
                 </div>
               </div>
-              {['Tablica', 'Klienci', 'Wyceny', 'Faktury', 'Umowy', 'Projekty', 'Ustawienia'].map((item, i) => (
+              {['Start', 'Klienci', 'Wyceny', 'Faktury', 'Umowy', 'Projekty', 'Ustawienia'].map((item, i) => (
                 <div key={item} style={{ padding: '10px 14px', borderRadius: 12, color: i === 0 ? brand : 'rgba(255,255,255,.72)', background: i === 0 ? 'rgba(58,168,90,.15)' : 'transparent', fontSize: 14, cursor: 'pointer', transition: 'all .2s' }}>{item}</div>
               ))}
             </div>

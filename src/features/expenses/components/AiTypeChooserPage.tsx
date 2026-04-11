@@ -73,7 +73,7 @@ export function AiTypeChooserPage() {
           onNext={() => setStep('type')}
           nextLabel="Dalej — wybierz typ analizy"
           onBack={() => navigate({ to: '/dashboard' as any })}
-          backLabel="← Tablica"
+          backLabel="← Start"
         />
       </div>
     )
