@@ -18,6 +18,7 @@ const INVOICE_TYPE_OPTIONS = [
   { value: 'advance', label: 'Faktura zaliczkowa' },
   { value: 'final', label: 'Faktura końcowa' },
   { value: 'partial', label: 'Faktura częściowa' },
+  { value: 'correction', label: 'Faktura korygująca' },
 ]
 const PAYMENT_METHOD_OPTIONS = [
   { value: 'transfer', label: 'Przelew bankowy' },
@@ -51,6 +52,7 @@ interface Props { companyId: string; onSubmit: (input: CreateInvoiceInput) => Pr
 
 export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, initialProjectId, initialClientId, initialContractId }: Props) {
   const isNew = !initialInvoice
+  const isCorrection = initialInvoice?.invoice_type === 'correction'
   const saveGuard = useRef(false)
   const [submitting, setSubmitting] = useState(false)
 
@@ -73,6 +75,7 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
   const [items, setItems] = useState<InvoiceItem[]>([])
   const [notes, setNotes] = useState('')
   const [projectId, setProjectId] = useState('')
+  const [correctionReason, setCorrectionReason] = useState('')
 
   const { data: clients = [] } = useClients()
   const { data: contracts = [] } = useContracts()
@@ -115,6 +118,7 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
       setItems(initialInvoice.items?.length ? initialInvoice.items : [{ id: generateId(), description: 'Usługa', unit: 'kpl', quantity: 1, unit_price: 0, vat_rate: 23, sort_order: 1, tranche_label: '' }])
       setProjectId(initialInvoice.project_id || '')
       setNotes(initialInvoice.notes || '')
+      setCorrectionReason(initialInvoice.correction_reason || '')
     } else {
       const draft = loadDraft()
       if (draft) {
@@ -218,11 +222,14 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
       advance_total: invoiceType === 'final' ? (Number(advanceTotal) || null) : null,
       notes,
       items,
+      corrected_invoice_id: initialInvoice?.corrected_invoice_id ?? null,
+      correction_reason: invoiceType === 'correction' ? correctionReason : null,
     }
   }
 
   async function handleSubmit() {
     if (items.length === 0) { toast.error('Brak pozycji', 'Dodaj co najmniej jedną pozycję do faktury.'); return }
+    if (invoiceType === 'correction' && !correctionReason.trim()) { toast.error('Brak powodu korekty', 'Podaj powód korekty faktury.'); return }
     setSubmitting(true)
     try {
       await onSubmit(await buildInput(false))
@@ -242,9 +249,35 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
 
   return (
     <div style={{ display: 'grid', gap: 20 }}>
+      {/* ── Korekta: nagłówek i powód ── */}
+      {isCorrection && (
+        <div style={{ background: 'rgba(168,50,40,0.06)', border: '1px solid rgba(168,50,40,0.2)', borderRadius: 10, padding: '12px 16px', display: 'grid', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ background: '#A83228', color: '#fff', borderRadius: 6, padding: '2px 10px', fontSize: 12, fontWeight: 700, letterSpacing: '0.04em' }}>FAKTURA KORYGUJĄCA</span>
+            {initialInvoice?.corrected_invoice_id && (
+              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                Korekta do faktury
+              </span>
+            )}
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
+              Powód korekty <span style={{ color: '#A83228' }}>*</span>
+            </label>
+            <textarea
+              value={correctionReason}
+              onChange={(e) => setCorrectionReason(e.target.value)}
+              placeholder="np. Błędna stawka VAT, zmiana ilości, błąd w nazwie towaru…"
+              rows={2}
+              style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 13, background: 'var(--color-bg)', color: 'var(--color-text-primary)', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── Sekcja nagłówkowa ── */}
       <div className="form-grid">
-        <Select label="Rodzaj faktury" value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)} options={INVOICE_TYPE_OPTIONS} />
+        <Select label="Rodzaj faktury" value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)} options={INVOICE_TYPE_OPTIONS} disabled={isCorrection} />
         <Select label="Umowa" value={contractId} onChange={(e) => setContractId(e.target.value)} options={contractOptions} placeholder="Bez umowy" />
         {selectedContract?.tranches?.length ? (
           <Select label="Transza / płatność z umowy" value={selectedTrancheId} onChange={(e) => applyTranche(e.target.value)} options={trancheOptions} placeholder="Wybierz transzę" />

@@ -6,7 +6,7 @@ import { Modal } from '@/shared/ui/Modal/Modal'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
-import { useCreateInvoice, useDeleteInvoice, useFinalizeInvoice, useInvoices, useMarkInvoicePaid, useSendInvoiceToKsef, useUpdateInvoice } from '@/features/invoices/hooks/useInvoices'
+import { useCreateCorrection, useCreateInvoice, useDeleteInvoice, useFinalizeInvoice, useInvoices, useMarkInvoicePaid, useSendInvoiceToKsef, useUpdateInvoice } from '@/features/invoices/hooks/useInvoices'
 import { InvoiceRow } from '@/features/invoices/components/InvoiceRow'
 import { InvoiceForm } from '@/features/invoices/components/InvoiceModal/InvoiceForm'
 import { InvoiceImportModal } from '@/features/invoices/components/InvoiceImportModal'
@@ -15,14 +15,15 @@ import { PlanLimitGuard } from '@/features/billing/components/PlanLimitGuard'
 import { useClients } from '@/features/clients/hooks/useClients'
 import type { Invoice } from '@/entities/invoice/model'
 
-type FilterStatus = 'all' | Invoice['status'] | 'ksef'
+type FilterStatus = 'all' | Invoice['status'] | 'ksef' | 'correction'
 
 const FILTER_LABELS: { value: FilterStatus; label: string }[] = [
-  { value: 'all',     label: 'Wszystkie' },
-  { value: 'unpaid',  label: 'Nieopłacone' },
-  { value: 'paid',    label: 'Opłacone' },
-  { value: 'overdue', label: 'Przeterminowane' },
-  { value: 'ksef',    label: 'KSeF' },
+  { value: 'all',        label: 'Wszystkie' },
+  { value: 'unpaid',     label: 'Nieopłacone' },
+  { value: 'paid',       label: 'Opłacone' },
+  { value: 'overdue',    label: 'Przeterminowane' },
+  { value: 'ksef',       label: 'KSeF' },
+  { value: 'correction', label: 'Korekty' },
 ]
 
 export function InvoicesPage() {
@@ -40,6 +41,7 @@ export function InvoicesPage() {
   const finalizeInvoice = useFinalizeInvoice()
   const markPaid = useMarkInvoicePaid()
   const sendToKsef = useSendInvoiceToKsef()
+  const createCorrection = useCreateCorrection()
   const canCreate = useCan('invoices.create')
   const canDelete = useCan('invoices.delete')
   const canMarkPaid = useCan('invoices.markPaid')
@@ -51,17 +53,19 @@ export function InvoicesPage() {
   )
 
   const counts = useMemo(() => ({
-    all:     data?.length ?? 0,
-    unpaid:  data?.filter(i => i.status === 'unpaid').length  ?? 0,
-    paid:    data?.filter(i => i.status === 'paid').length    ?? 0,
-    overdue: data?.filter(i => i.status === 'overdue').length ?? 0,
-    ksef:    data?.filter(i => i.ksef_status === 'ksef_sent').length ?? 0,
+    all:        data?.length ?? 0,
+    unpaid:     data?.filter(i => i.status === 'unpaid').length  ?? 0,
+    paid:       data?.filter(i => i.status === 'paid').length    ?? 0,
+    overdue:    data?.filter(i => i.status === 'overdue').length ?? 0,
+    ksef:       data?.filter(i => i.ksef_status === 'ksef_sent').length ?? 0,
+    correction: data?.filter(i => i.invoice_type === 'correction').length ?? 0,
   }), [data])
 
   const visible = useMemo(() => {
     if (!data) return []
     if (filterStatus === 'all') return data
     if (filterStatus === 'ksef') return data.filter(i => i.ksef_status === 'ksef_sent')
+    if (filterStatus === 'correction') return data.filter(i => i.invoice_type === 'correction')
     return data.filter(i => i.status === filterStatus)
   }, [data, filterStatus])
 
@@ -74,6 +78,11 @@ export function InvoicesPage() {
   async function saveDraft(input: any) {
     await createInvoice.mutateAsync(input)
     setEditing(null); setOpen(false)
+  }
+
+  async function handleCreateCorrection(invoiceId: string) {
+    const correction = await createCorrection.mutateAsync(invoiceId)
+    setEditing(correction); setOpen(true)
   }
 
   return (
@@ -129,6 +138,7 @@ export function InvoicesPage() {
               onMarkPaid={id => markPaid.mutate(id)}
               onSendToKsef={id => sendToKsef.mutate(id)}
               onFinalize={id => finalizeInvoice.mutate(id)}
+              onCreateCorrection={canCreate ? handleCreateCorrection : undefined}
               canDelete={canDelete}
               canMarkPaid={canMarkPaid}
               canSendToKsef={canSendToKsef}

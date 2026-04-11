@@ -19,8 +19,12 @@ export const InvoiceSchema = z.object({
   contract_id: z.string().nullable().optional(),
   /** null for drafts — assigned at issuance */
   number: z.string().nullable(),
-  /** Rodzaj faktury: standardowa / zaliczkowa / końcowa / częściowa */
-  invoice_type: z.enum(['standard', 'advance', 'final', 'partial']).optional(),
+  /** Rodzaj faktury: standardowa / zaliczkowa / końcowa / częściowa / korekta */
+  invoice_type: z.enum(['standard', 'advance', 'final', 'partial', 'correction']).optional(),
+  /** ID oryginalnej faktury, do której wystawiono korektę */
+  corrected_invoice_id: z.string().nullable().optional(),
+  /** Powód korekty (wymagany przy invoice_type === 'correction') */
+  correction_reason: z.string().nullable().optional(),
   status: z.enum(['draft', 'unpaid', 'paid', 'overdue']),
   issue_date: z.string(),
   /** Data sprzedaży / wykonania usługi */
@@ -61,4 +65,6 @@ export type CreateInvoiceInput = Pick<Invoice, 'client_id' | 'project_id' | 'con
   bank_account?: string | null
   tranche_id?: string | null
   advance_total?: number | null
+  corrected_invoice_id?: string | null
+  correction_reason?: string | null
 }

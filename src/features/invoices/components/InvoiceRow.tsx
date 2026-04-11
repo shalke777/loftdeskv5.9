@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, Mail, Trash2, Bell } from 'lucide-react'
+import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, FileMinus, Mail, Trash2, Bell } from 'lucide-react'
 import type { Invoice } from '@/entities/invoice/model'
 import { Button } from '@/shared/ui/Button/Button'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
@@ -42,6 +42,7 @@ interface Props {
   onMarkPaid: (id: string) => void
   onSendToKsef: (id: string) => void
   onFinalize: (id: string) => void
+  onCreateCorrection?: (id: string) => void
   canDelete?: boolean
   canMarkPaid?: boolean
   canSendToKsef?: boolean
@@ -49,10 +50,11 @@ interface Props {
 
 export function InvoiceRow({
   invoice, clientName,
-  onEdit, onDelete, onMarkPaid, onSendToKsef, onFinalize,
+  onEdit, onDelete, onMarkPaid, onSendToKsef, onFinalize, onCreateCorrection,
   canDelete = true, canMarkPaid = true, canSendToKsef = true,
 }: Props) {
   const isDraft = invoice.status === 'draft'
+  const isCorrection = invoice.invoice_type === 'correction'
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -136,6 +138,9 @@ export function InvoiceRow({
               {KSEF_LABEL[invoice.ksef_status]}
             </span>
           )}
+          {isCorrection && (
+            <span style={{ background: 'rgba(168,50,40,0.1)', color: '#A83228', borderRadius: 5, padding: '2px 8px', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em' }}>KOR</span>
+          )}
           <span className={STATUS_CLASS[invoice.status]}>{STATUS_LABEL[invoice.status]}</span>
           {daysOverdue !== null && (
             <span className="invoice-row__overdue" style={{
@@ -211,6 +216,15 @@ export function InvoiceRow({
               >
                 <Trash2 size={14} />
                 {confirmDelete && <span className="proj-action-btn__label">Potwierdź</span>}
+              </button>
+            )}
+            {!isDraft && !isCorrection && onCreateCorrection && invoice.ksef_status !== 'ksef_sent' && (
+              <button
+                className="proj-action-btn"
+                title="Wystaw fakturę korygującą"
+                onClick={e => { e.stopPropagation(); onCreateCorrection(invoice.id) }}
+              >
+                <FileMinus size={14} />
               </button>
             )}
           </div>

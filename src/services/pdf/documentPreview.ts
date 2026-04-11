@@ -225,12 +225,14 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
     advance: 'FAKTURA ZALICZKOWA',
     final: 'FAKTURA KO\u0143COWA',
     partial: 'FAKTURA CZ\u0118\u015aCIOWA',
+    correction: 'FAKTURA KORYGUJ\u0104CA',
   }
   const typeTagBg: Record<string, string> = {
     standard: '#1d4ed8',
     advance: '#7c3aed',
     final: '#065f46',
     partial: '#92400e',
+    correction: '#991b1b',
   }
   const invoiceTitle = typeTitles[invoiceType] ?? 'FAKTURA VAT'
   const tagBg = typeTagBg[invoiceType] ?? '#1d4ed8'
@@ -380,6 +382,8 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
 
       ${invoice.notes ? `<div style="margin-top:18px; padding:12px 16px; border:1px solid var(--line); border-radius:10px; font-size:14px;"><strong>Uwagi: </strong>${escapeHtml(invoice.notes)}</div>` : ''}
 
+      ${invoiceType === 'correction' && invoice.correction_reason ? `<div style="margin-top:16px; padding:12px 16px; border:1px solid rgba(153,27,27,0.25); border-radius:10px; font-size:14px; background:rgba(153,27,27,0.04);"><strong style="color:#991b1b;">Powód korekty: </strong>${escapeHtml(invoice.correction_reason)}</div>` : ''}
+
       <div class="small" style="margin-top:16px; text-align:center; color:var(--muted);">${ksefInfo}</div>
 
       <div class="signature-grid" style="margin-top:50px;">
@@ -397,6 +401,9 @@ export function buildInvoiceXml(invoice: Invoice) {
   const items = invoice.items
     .map((item) => `    <Item><Description>${escapeXml(item.description)}</Description><Quantity>${item.quantity}</Quantity><Unit>${escapeXml(item.unit)}</Unit><UnitPriceNet>${item.unit_price}</UnitPriceNet><VatRate>${item.vat_rate}</VatRate><Label>${escapeXml(item.tranche_label || '')}</Label></Item>`)
     .join('\n')
+  const correctionFields = invoice.invoice_type === 'correction'
+    ? `  <CorrectedInvoiceId>${escapeXml(invoice.corrected_invoice_id || '')}</CorrectedInvoiceId>\n  <CorrectionReason>${escapeXml(invoice.correction_reason || '')}</CorrectionReason>\n`
+    : ''
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Invoice${typeAttr}>
   <Number>${invoice.number}</Number>
@@ -415,7 +422,7 @@ export function buildInvoiceXml(invoice: Invoice) {
   <AdvanceTotal>${invoice.advance_total ?? 0}</AdvanceTotal>
   <KsefStatus>${invoice.ksef_status || ''}</KsefStatus>
   <KsefRef>${invoice.ksef_ref || ''}</KsefRef>
-  <Items>
+${correctionFields}  <Items>
 ${items}
   </Items>
 </Invoice>`
