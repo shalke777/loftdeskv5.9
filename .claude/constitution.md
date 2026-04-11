@@ -52,6 +52,7 @@ client -> estimate -> contract -> invoice -> KSeF -> project -> portal -> commun
 - do not patch symptoms if root cause is deeper
 - do not break role boundaries
 - do not break mobile obviousness
+- **NEVER use emoji as UI icons** — all icons must use lucide-react components; emoji are forbidden in JSX as decorative/functional icons (📷 ⏳ ✓ ✗ ⚠️ 🟢 etc. are all banned); use Lucide equivalents instead
 
 ## Modal law
 Every modal is part of a process.

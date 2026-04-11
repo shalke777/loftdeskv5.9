@@ -2,7 +2,7 @@
 // Uses open-meteo.com (free, no API key) + open-meteo geocoding
 // Shows 3-day forecast for project address with risk indicators
 import { useEffect, useState } from 'react'
-import { CloudRain, Snowflake, Wind, Thermometer, CloudSun, Sun, Cloud } from 'lucide-react'
+import { CloudRain, Snowflake, Wind, Thermometer, CloudSun, Sun, Cloud, AlertTriangle } from 'lucide-react'
 
 // WMO weather code → icon + label
 function decodeWeather(code: number): { label: string; risk: 'clear' | 'watch' | 'danger'; icon: React.ElementType } {
@@ -141,8 +141,9 @@ export function ProjectWeatherWidget({ address }: { address?: string | null }) {
           <span style={{
             fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
             background: 'rgba(239,68,68,0.12)', color: 'var(--color-error, #ef4444)',
+            display: 'flex', alignItems: 'center', gap: 3,
           }}>
-            ⚠️ Ryzyko
+            <AlertTriangle size={10} />Ryzyko
           </span>
         )}
       </div>

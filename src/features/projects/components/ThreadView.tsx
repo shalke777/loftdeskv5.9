@@ -7,7 +7,7 @@
 // - Dedup: bez optimistic inserts, realtime channel w useThreadMessages
 
 import { useEffect, useRef, useState } from 'react'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, Paperclip, MessageCircle, Lock, Mail, Loader2, Inbox } from 'lucide-react'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { useThreadMessages, useDeleteThreadMessage } from '@/features/projects/hooks/useThreadMessages'
 import { useMarkThreadRead } from '@/features/projects/hooks/useMarkThreadRead'
@@ -127,7 +127,7 @@ function MessageBubble({ msg, onDelete, deleting }: BubbleProps) {
               className="chat-bubble__attachment"
               style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 12 }}
             >
-              📎 {msg.attachment_name ?? 'Załącznik'}
+              <Paperclip size={12} />{msg.attachment_name ?? 'Załącznik'}
             </a>
           )
         )}
@@ -212,11 +212,11 @@ export function ThreadView({ threadId, projectId, visibility, onNewThread }: Thr
             </button>
           )}
           <div className="chat-empty-state__hints">
-            <span>💬 Z klientem</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MessageCircle size={12} />Z klientem</span>
             <span className="chat-empty-state__hints-dot">·</span>
-            <span>🔒 Wewnętrznie</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Lock size={12} />Wewnętrznie</span>
             <span className="chat-empty-state__hints-dot">·</span>
-            <span>📬 Z portalu</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={12} />Z portalu</span>
           </div>
         </div>
       </div>
@@ -240,7 +240,7 @@ export function ThreadView({ threadId, projectId, visibility, onNewThread }: Thr
     <div ref={listRef} className="chat-thread__messages">
       {list.length === 0 ? (
         <div className="chat-thread__no-messages">
-          <div style={{ fontSize: 36 }}>📭</div>
+          <Inbox size={36} style={{ opacity: 0.35, marginBottom: 8 }} />
           <p style={{ margin: 0 }}>
             {visibility === 'client_shared'
               ? 'Napisz pierwszą wiadomość — klient zobaczy ją w portalu'
@@ -269,7 +269,7 @@ export function ThreadView({ threadId, projectId, visibility, onNewThread }: Thr
               fontSize: 12, color: 'var(--color-text-muted)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}>
-              <span>⏳</span> Oczekiwanie na odpowiedź klienta z portalu projektu
+              <Loader2 size={12} style={{ opacity: 0.6 }} /> Oczekiwanie na odpowiedź klienta z portalu projektu
             </div>
           )}
         </>

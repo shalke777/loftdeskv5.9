@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Camera, Plus, PenLine, Receipt, Minus } from 'lucide-react'
+import { Camera, Plus, PenLine, Receipt, Minus, Image as GalleryIcon, FileText, Home, Calendar, Tag, Send, AlertTriangle } from 'lucide-react'
 import { translateError } from '@/shared/lib/errorMessages'
 import type { ExpenseSourceType, CreateExpenseForProjectInput, ExpenseInvoiceV4 } from '@/features/expenses/api/expenses.api'
 import { rehydrateAnalysisResult } from '@/features/expenses/api/expenses.api'
@@ -37,12 +37,14 @@ const APPROVAL_LABELS: Record<ApprovalStatus | 'not_sent', string> = {
   cancelled:      'Anulowany',
 }
 
-const SOURCE_ICONS: Record<string, string> = {
-  camera:     '📷',
-  gallery:    '🖼️',
-  pdf:        '📄',
-  manual:     '✏️',
-  room_photo: '🏠',
+import type { ElementType } from 'react'
+
+const SOURCE_ICONS: Record<string, ElementType> = {
+  camera:     Camera,
+  gallery:    GalleryIcon,
+  pdf:        FileText,
+  manual:     PenLine,
+  room_photo: Home,
 }
 
 export function ProjectExpensesTab({ projectId }: Props) {
@@ -404,6 +406,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
               const isExpanded = expandedId === exp.id
               const storedAnalysis = isExpanded ? rehydrateAnalysisResult(exp.parse_raw) : null
               const hasAnalysis = exp.parse_raw != null
+              const SourceIcon = SOURCE_ICONS[exp.source_type ?? 'manual'] ?? Receipt
 
               return (
               <div
@@ -433,9 +436,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
                     cursor: hasAnalysis ? 'pointer' : 'default',
                   }}
                 >
-                <span style={{ fontSize: 22, lineHeight: 1 }}>
-                  {SOURCE_ICONS[exp.source_type ?? 'manual'] ?? '🧾'}
-                </span>
+                <SourceIcon size={20} style={{ flexShrink: 0, color: 'var(--color-text-muted)', marginTop: 2 }} />
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -460,7 +461,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
                   </div>
 
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 4, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                    {exp.issue_date && <span>📅 {exp.issue_date}</span>}
+                    {exp.issue_date && <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Calendar size={11} />{exp.issue_date}</span>}
                     {exp.amount_gross != null && (
                       <span style={{ fontWeight: 600, color: exp.cost_type === 'reduction' ? 'var(--color-error, #A83228)' : 'var(--color-text, #111)' }}>
                         {exp.cost_type === 'reduction' && '−'}
@@ -470,7 +471,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
                     {exp.approval_status && (exp.approval_status as string) !== 'not_sent' && (
                       <ApprovalStatusBadge status={exp.approval_status as ApprovalStatus} />
                     )}
-                    {exp.cost_type && <span>🏷️ {exp.cost_type}</span>}
+                    {exp.cost_type && <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Tag size={11} />{exp.cost_type}</span>}
                   </div>
                 </div>
 
@@ -480,11 +481,11 @@ export function ProjectExpensesTab({ projectId }: Props) {
                     <button
                       type="button"
                       className="btn btn-ghost"
-                      style={{ fontSize: 11, padding: '4px 10px' }}
+                      style={{ fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4 }}
                       onClick={(e) => { e.stopPropagation(); setApprovalExpense(exp) }}
                       title="Wyślij do akceptacji klienta"
                     >
-                      📤 Akceptacja
+                      <Send size={11} />Akceptacja
                     </button>
                   )}
                   {hasAnalysis && (
@@ -666,9 +667,11 @@ export function ProjectExpensesTab({ projectId }: Props) {
             background: 'var(--color-warning-soft, rgba(212,150,10,0.12))',
             border: '1px solid rgba(212,150,10,0.30)',
             color: 'var(--color-text, #111)',
+            display: 'flex', alignItems: 'flex-start', gap: 8,
           }}
         >
-          ⚠️ Odczyt faktury nie powiódł się: {parseError} — uzupełnij pola ręcznie.
+          <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+          Odczyt faktury nie powiódł się: {parseError} — uzupełnij pola ręcznie.
         </div>
       )}
 

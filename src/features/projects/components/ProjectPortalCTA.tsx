@@ -20,6 +20,7 @@ import { supabase, isDemoMode } from '@/shared/lib/supabase'
 import { netlifyFn } from '@/shared/lib/functions'
 import { threadsApi } from '@/features/projects/api/threads.api'
 import { useProjectPortalAccess, useRevokeProjectAccess } from '@/features/portal/hooks/usePortalData'
+import { CheckCircle2, Check, Clock, AlertTriangle, Mail } from 'lucide-react'
 
 const INVITE_ENDPOINT = netlifyFn('client-identify')
 
@@ -213,12 +214,12 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
       <Card>
         <h3 style={{ margin: '0 0 12px' }}>Dostęp klienta</h3>
         <div style={{ background: 'rgba(26,92,50,0.12)', border: '1px solid rgba(26,92,50,0.30)', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
-          <div style={{ fontWeight: 600, color: 'var(--color-brand)', marginBottom: 6 }}>
-            ✅ Dostęp nadany — {email}
+          <div style={{ fontWeight: 600, color: 'var(--color-brand)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <CheckCircle2 size={14} />Dostęp nadany — {email}
           </div>
           {emailSent ? (
-            <p style={{ fontSize: 13, color: 'var(--color-brand)', margin: 0, lineHeight: 1.6 }}>
-              📧 Email z linkiem logowania został wysłany automatycznie.
+            <p style={{ fontSize: 13, color: 'var(--color-brand)', margin: 0, lineHeight: 1.6, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+              <Mail size={13} style={{ flexShrink: 0, marginTop: 2 }} />Email z linkiem logowania został wysłany automatycznie.
               Klient powinien go otrzymać w ciągu kilku minut.
             </p>
           ) : magicLink ? (
@@ -238,7 +239,7 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
                   onClick={() => void copyLink()}
                   style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--color-brand)', background: copied ? 'var(--color-brand)' : 'var(--color-surface)', color: copied ? '#fff' : 'var(--color-brand)', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s' }}
                 >
-                  {copied ? '✓ Skopiowano' : 'Kopiuj'}
+                  {copied ? <><Check size={12} style={{ marginRight: 3 }} />Skopiowano</> : 'Kopiuj'}
                 </button>
               </div>
             </>
@@ -263,7 +264,7 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
     const statusBg     = isActive  ? 'rgba(26,92,50,0.08)' : 'rgba(212,150,10,0.10)'
     const statusBorder = isActive  ? 'rgba(26,92,50,0.25)' : 'rgba(212,150,10,0.30)'
     const statusLabel  = isActive  ? 'Klient ma aktywny dostęp' : 'Dostęp wysłany'
-    const statusIcon   = isActive  ? '🟢' : '🟡'
+    const StatusIconComp = isActive ? CheckCircle2 : Clock
     const contextLine  = isActive
       ? 'Klient może otwierać dokumenty, odpowiadać na zatwierdzenia i pisać wiadomości.'
       : 'Link dostępowy został wysłany. Klient jeszcze nie zalogował się do portalu.'
@@ -285,8 +286,8 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
 
         {/* B + C. Status dostępu + meta */}
         <div style={{ background: statusBg, border: `1px solid ${statusBorder}`, borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: statusColor, marginBottom: 4 }}>
-            {statusIcon} {statusLabel}
+          <div style={{ fontSize: 13, fontWeight: 600, color: statusColor, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <StatusIconComp size={13} />{statusLabel}
           </div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
             Wysłano: {since}
@@ -430,8 +431,8 @@ export function ProjectPortalCTA({ projectId, clientEmail, clientName }: Props) 
           disabled={mode === 'sending'}
         />
         {mode === 'failed' && errorMsg && (
-          <div style={{ fontSize: 12, color: 'var(--color-error)', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 6, padding: '8px 12px' }}>
-            ⚠️ {errorMsg}{' '}
+          <div style={{ fontSize: 12, color: 'var(--color-error)', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.30)', borderRadius: 6, padding: '8px 12px', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+            <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1 }} />{errorMsg}{' '}
             <button
               style={{ background: 'none', border: 'none', color: 'var(--color-error)', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: 12 }}
               onClick={() => { setMode(isReInvite ? 'invite' : 'view'); setErrorMsg(null) }}

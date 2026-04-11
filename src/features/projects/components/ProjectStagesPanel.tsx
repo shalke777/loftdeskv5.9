@@ -3,7 +3,7 @@
 // "Zakończ etap" creates stage_completed event.
 // If project has contract with planned tranches → prompts invoice creation.
 import { useState, useMemo } from 'react'
-import { CheckCircle2, Circle, ChevronRight, FileText } from 'lucide-react'
+import { CheckCircle2, Circle, ChevronRight, FileText, Loader2 } from 'lucide-react'
 import { useProjectTimeline } from '@/features/projects/hooks/useProjectTimeline'
 import { useContracts } from '@/features/contracts/hooks/useContracts'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
@@ -150,7 +150,7 @@ export function ProjectStagesPanel({ projectId, onRequestInvoice }: Props) {
                     flexShrink: 0,
                   }}
                 >
-                  {isCompleting ? '⏳' : <ChevronRight size={11} />}
+                  {isCompleting ? <Loader2 size={11} className="spinner" /> : <ChevronRight size={11} />}
                   {isCompleting ? 'Zapisywanie…' : 'Zakończ'}
                 </button>
               )}
@@ -178,7 +178,7 @@ export function ProjectStagesPanel({ projectId, onRequestInvoice }: Props) {
             <ul style={{ margin: '6px 0 0', padding: 0, listStyle: 'none' }}>
               {invoicePrompt.tranches.map(t => (
                 <li key={t.id} style={{ padding: '2px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>📄 {t.label}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><FileText size={12} />{t.label}</span>
                   <span style={{ fontWeight: 700 }}>{t.amount.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} zł</span>
                 </li>
               ))}

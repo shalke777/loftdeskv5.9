@@ -242,8 +242,9 @@ export function BudgetComparisonTab({ projectId, projectName, projectNumber }: {
         {/* Różnica */}
         {stats.plannedGross > 0 && (
           <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 8, background: stats.overBudget ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)' }}>
-            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: statusColor }}>
-              {stats.overBudget ? '⚠ Przekroczenie: ' : '✓ Pozostało: '}
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: statusColor, display: 'flex', alignItems: 'center', gap: 5 }}>
+              {stats.overBudget ? <AlertCircle size={13} /> : <CheckCircle size={13} />}
+              {stats.overBudget ? 'Przekroczenie: ' : 'Pozostało: '}
               {formatCurrency(Math.abs(stats.diff))}
               {stats.diffPct !== null && ` (${Math.abs(stats.diffPct)}%)`}
             </span>
@@ -355,7 +356,7 @@ export function BudgetComparisonTab({ projectId, projectName, projectNumber }: {
               key={t.id}
               label={t.label}
               value={formatCurrency(t.amount)}
-              sub={t.status === 'paid' ? '✓ Opłacona' : t.status === 'invoiced' ? 'Zafakturowana' : t.due_date ? `Termin: ${t.due_date}` : undefined}
+              sub={t.status === 'paid' ? 'Opłacona' : t.status === 'invoiced' ? 'Zafakturowana' : t.due_date ? `Termin: ${t.due_date}` : undefined}
               color={t.status === 'paid' ? 'var(--color-success)' : undefined}
             />
           ))}

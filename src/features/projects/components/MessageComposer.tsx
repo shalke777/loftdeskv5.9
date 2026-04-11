@@ -13,7 +13,7 @@
 //   - Obsługa braku internetu: mutation.error → komunikat
 
 import { useRef, useState, type KeyboardEvent } from 'react'
-import { Send, Paperclip, X, Images } from 'lucide-react'
+import { Send, Paperclip, X, Images, Lock, MessageCircle, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { useSendThreadMessage } from '@/features/projects/hooks/useSendThreadMessage'
 import { uploadProjectAsset } from '@/shared/lib/uploadProjectAsset'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
@@ -90,7 +90,7 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
           bg:    'rgba(96,165,250,0.12)',
           border: 'rgba(96,165,250,0.30)',
           color:  'var(--color-info)',
-          icon:   '🔒',
+          icon:   <Lock size={13} />,
           text:   'Notatka wewnętrzna — widoczna tylko dla Twojego zespołu',
         }
       case 'client_shared':
@@ -98,7 +98,7 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
           bg:    'rgba(26,92,50,0.12)',
           border: 'rgba(26,92,50,0.30)',
           color:  'var(--color-brand)',
-          icon:   '💬',
+          icon:   <MessageCircle size={13} />,
           text:   'Wiadomość do klienta — klient zobaczy ją w portalu',
         }
       case 'approval':
@@ -106,7 +106,7 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
           bg:    'rgba(212,150,10,0.12)',
           border: 'rgba(212,150,10,0.30)',
           color:  'var(--color-accent)',
-          icon:   '✅',
+          icon:   <CheckCircle2 size={13} />,
           text:   'Wiadomość w kontekście akceptacji — widoczna dla klienta',
         }
       default:
@@ -238,13 +238,13 @@ export function MessageComposer({ thread, projectId, disabled }: Props) {
       )}
 
       {uploadErr && (
-        <div style={{ marginTop: 4, fontSize: 12, color: 'var(--color-error)' }}>
-          ⚠️ {uploadErr}
+        <div style={{ marginTop: 4, fontSize: 12, color: 'var(--color-error)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <AlertTriangle size={12} />{uploadErr}
         </div>
       )}
       {send.isError ? (
-        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-error)' }}>
-          ⚠️ Błąd wysyłki — sprawdź połączenie
+        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-error)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <AlertTriangle size={12} />Błąd wysyłki — sprawdź połączenie
         </div>
       ) : (
         <div className="chat-hint">{uploading ? 'Przesyłam załącznik…' : 'Ctrl+Enter aby wysłać'}</div>

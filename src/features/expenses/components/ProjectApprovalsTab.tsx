@@ -1,5 +1,5 @@
 import { useState }            from 'react'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Clock, AlertTriangle } from 'lucide-react'
 import { useCostApprovals }    from '@/features/expenses/hooks/useCostApprovals'
 import { useCreateCostApproval } from '@/features/expenses/hooks/useCreateCostApproval'
 import { ApprovalStatusBadge } from './ApprovalStatusBadge'
@@ -55,10 +55,10 @@ export function ProjectApprovalsTab({ projectId }: Props) {
         </h3>
         {approvals.length > 0 && (
           <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--color-text-muted)' }}>
-            {pendingCount > 0 && <span>⏳ {pendingCount} oczekują</span>}
+            {pendingCount > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={12} />{pendingCount} oczekują</span>}
             {acceptedCount > 0 && (
-              <span style={{ fontWeight: 600, color: 'var(--color-success)' }}>
-                ✅ {totalGross.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN zaakceptowane
+              <span style={{ fontWeight: 600, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <CheckCircle2 size={12} />{totalGross.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} PLN zaakceptowane
               </span>
             )}
           </div>

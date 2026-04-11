@@ -298,8 +298,12 @@ export function ProjectPhotosSection({ project }: { project: Project }) {
     >
       {/* Nagłówek formularza */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
-          {addMode === 'camera' ? '📷 Zdjęcie z aparatu' : addMode === 'gallery' ? '🖼 Z galerii / pliku' : '🔗 URL zdjęcia'}
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 5 }}>
+          {addMode === 'camera'
+            ? <><Camera size={13} />Zdjęcie z aparatu</>
+            : addMode === 'gallery'
+              ? <><ImageIcon size={13} />Z galerii / pliku</>
+              : <><Link size={13} />URL zdjęcia</>}
         </span>
         <button
           type="button"
@@ -566,7 +570,7 @@ export function ProjectPhotosSection({ project }: { project: Project }) {
             color:        'var(--color-text-muted)',
           }}
         >
-          <div style={{ fontSize: 36, marginBottom: 10 }}>📷</div>
+          <Camera size={36} style={{ marginBottom: 10, opacity: 0.35 }} />
           <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: 14 }}>Brak zdjęć z realizacji</p>
           <p style={{ margin: 0, fontSize: 13 }}>Dodaj pierwsze zdjęcie — z aparatu, galerii lub przez URL.</p>
         </div>

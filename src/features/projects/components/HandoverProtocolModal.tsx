@@ -199,7 +199,7 @@ export function HandoverProtocolModal({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const title = step === 'done'
-    ? 'Protokół zapisany ✓'
+    ? 'Protokół zapisany'
     : step === 'sig_operator'
     ? 'Podpis wykonawcy'
     : step === 'sig_client'

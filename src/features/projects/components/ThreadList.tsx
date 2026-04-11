@@ -6,6 +6,7 @@
 
 import type { ProjectThread } from '@/features/portal/model/project-portal.types'
 import type { InboxThread } from '@/features/projects/api/threads.api'
+import { MessageSquare } from 'lucide-react'
 
 // ─── Pomocnicze ───────────────────────────────────────────────────────────────
 
@@ -164,7 +165,7 @@ export function ThreadList({
   if (threads.length === 0) {
     return (
       <div className="chat-sidebar__empty">
-        <div className="chat-sidebar__empty-icon">💬</div>
+        <div className="chat-sidebar__empty-icon"><MessageSquare size={28} style={{ opacity: 0.4 }} /></div>
         <p className="chat-sidebar__empty-title">{emptyLabel}</p>
         {onNewThread ? (
           <>

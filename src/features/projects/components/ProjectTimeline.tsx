@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { Ban, Check } from 'lucide-react'
 import type { Project } from '@/entities/project/model'
 
 const STEPS: { key: string; label: string }[] = [
@@ -14,7 +15,7 @@ export function ProjectTimeline({ project }: { project: Project }) {
     return (
       <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
         <strong style={{ fontSize: 13 }}>Etap projektu</strong>
-        <span style={{ fontSize: 13, color: 'var(--color-error)', fontWeight: 600 }}>⛔ Anulowany</span>
+        <span style={{ fontSize: 13, color: 'var(--color-error)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}><Ban size={13} />Anulowany</span>
       </div>
     )
   }
@@ -58,7 +59,7 @@ export function ProjectTimeline({ project }: { project: Project }) {
                     boxShadow: isCurrent ? '0 0 0 3px rgba(122,34,48,.18)' : 'none',
                   }}
                 >
-                  {isPast ? '✓' : i + 1}
+                  {isPast ? <Check size={12} /> : i + 1}
                 </div>
                 <span
                   style={{

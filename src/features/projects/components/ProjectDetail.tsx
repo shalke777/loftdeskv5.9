@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarCheck, FileDown, QrCode, ClipboardCheck } from 'lucide-react'
+import { CalendarCheck, FileDown, QrCode, ClipboardCheck, Loader2, ClipboardList } from 'lucide-react'
 import type { Project } from '@/entities/project/model'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Card } from '@/shared/ui/Card/Card'
@@ -180,7 +180,9 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
           )}
           {/* Raport dzienny HTML — podgląd + druk */}
           <Button variant="secondary" onClick={openDailyReport} disabled={htmlReportLoading}>
-            {htmlReportLoading ? '⏳ Generowanie...' : '📋 Raport dzienny'}
+            {htmlReportLoading
+              ? <><Loader2 size={14} style={{ marginRight: 4 }} />Generowanie...</>
+              : <><ClipboardList size={14} style={{ marginRight: 4 }} />Raport dzienny</>}
           </Button>
           {/* Raport zbiorczy projektu — PDF */}
           <Button variant="secondary" onClick={exportProjectReport} disabled={projectReportLoading}>

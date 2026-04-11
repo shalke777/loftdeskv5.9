@@ -1,4 +1,5 @@
 import type { ProjectCompleteness as ProjectCompletenessType } from '@/entities/project/model'
+import { Check, X as XIcon } from 'lucide-react'
 
 const CHECKS: { key: keyof ProjectCompletenessType; label: string }[] = [
   { key: 'has_client',   label: 'Klient' },
@@ -82,7 +83,7 @@ export function ProjectCompleteness({ score, flags, compact = false }: Props) {
                 color: flags[key] ? 'var(--color-brand)' : 'var(--color-error)',
               }}
             >
-              {flags[key] ? '✓' : '✗'} {label}
+              {flags[key] ? <Check size={10} /> : <XIcon size={10} />} {label}
             </span>
           ))}
         </div>
