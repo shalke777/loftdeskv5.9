@@ -64,7 +64,7 @@ const mobileNav: MainNavItem[] = [
   { to: '/projects',   label: 'Projekty',  icon: FolderKanban },
   { to: '/chat',       label: 'Chat',      icon: MessageSquare },
   { to: '/dashboard',  label: 'Start',     icon: LayoutDashboard },
-  { to: '/invoices',   label: 'Faktura',   icon: Receipt },
+  { to: '/invoices',   label: 'Papiery',   icon: FileText },
   { to: '/settings',   label: 'Więcej',    icon: Settings },
 ]
 
@@ -317,12 +317,7 @@ export function AuthLayout() {
               </Link>
             )
           })}
-          {canUsePortal ? (
-            <Link to="/portal-inbox" className={pathname.startsWith('/portal-inbox') ? 'mobile-nav__link mobile-nav__link--active' : 'mobile-nav__link'}>
-              <MessageSquare size={18} />
-              <span>Portal</span>
-            </Link>
-          ) : null}
+          {canUsePortal ? null : null}
         </nav>
       </section>
     </div>
