@@ -21,12 +21,13 @@ const TYPE_LABELS: Record<MemoryEntry['memory_type'], string> = {
   amount:     'Kwota',
 }
 
-const TYPE_COLORS: Record<MemoryEntry['memory_type'], { bg: string; text: string }> = {
-  decision:   { bg: '#dbeafe', text: '#1d4ed8' },
-  preference: { bg: '#ede9fe', text: '#6d28d9' },
-  event:      { bg: '#d1fae5', text: '#065f46' },
-  issue:      { bg: '#fee2e2', text: '#b91c1c' },
-  amount:     { bg: '#fef3c7', text: '#92400e' },
+// CSS-variable-friendly badge colors (bg is semi-transparent so it works in both light/dark)
+const TYPE_COLORS: Record<MemoryEntry['memory_type'], { bg: string; text: string; border: string }> = {
+  decision:   { bg: 'rgba(59,130,246,0.12)',  text: 'var(--color-brand, #3b82f6)',      border: 'rgba(59,130,246,0.25)' },
+  preference: { bg: 'rgba(139,92,246,0.12)',  text: 'var(--color-violet, #8b5cf6)',     border: 'rgba(139,92,246,0.25)' },
+  event:      { bg: 'rgba(16,185,129,0.12)',  text: 'var(--color-success, #10b981)',    border: 'rgba(16,185,129,0.25)' },
+  issue:      { bg: 'rgba(239,68,68,0.12)',   text: 'var(--color-error, #ef4444)',      border: 'rgba(239,68,68,0.25)' },
+  amount:     { bg: 'rgba(245,158,11,0.12)',  text: 'var(--color-warning, #f59e0b)',    border: 'rgba(245,158,11,0.25)' },
 }
 
 const SOURCE_LABELS: Record<MemoryEntry['source_type'], string> = {
@@ -169,8 +170,8 @@ export function ProjectMemoryPanel({ projectId }: { projectId: string }) {
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
           >
             <Brain size={14} style={{ color: 'var(--color-brand)' }} />
-            <span style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>Kontekst AI (auto-generowany)</span>
-            {summaryOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Kontekst AI (auto-generowany)</span>
+            {summaryOpen ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />}
           </button>
           {summaryOpen && (
             <div style={{ padding: '0 14px 12px', fontSize: 13, lineHeight: 1.7, color: 'var(--color-text-secondary)', borderTop: '1px solid var(--color-border)' }}>
@@ -188,16 +189,16 @@ export function ProjectMemoryPanel({ projectId }: { projectId: string }) {
           style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
         >
           <Plus size={14} style={{ color: 'var(--color-brand)' }} />
-          <span style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>Dodaj wpis ręcznie</span>
-          {addOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Dodaj wpis ręcznie</span>
+            {addOpen ? <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />}
         </button>
 
         {addOpen && (
           <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {conflictWarning && (
-              <div style={{ display: 'flex', gap: 8, padding: '10px 12px', background: '#fef9c3', borderRadius: 6, marginTop: 10 }}>
-                <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
-                <div style={{ fontSize: 12 }}>
+              <div style={{ display: 'flex', gap: 8, padding: '10px 12px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, marginTop: 10 }}>
+                <AlertTriangle size={14} style={{ color: 'var(--color-warning, #d97706)', flexShrink: 0, marginTop: 1 }} />
+                <div style={{ fontSize: 12, color: 'var(--color-text)' }}>
                   <strong>Możliwy konflikt:</strong> {conflictWarning}
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                     <button type="button" onClick={submitEntry} style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 6, background: 'var(--color-brand)', color: '#fff', border: 'none', cursor: 'pointer' }}>
@@ -215,7 +216,7 @@ export function ProjectMemoryPanel({ projectId }: { projectId: string }) {
               <select
                 value={form.memory_type}
                 onChange={e => setForm(f => ({ ...f, memory_type: e.target.value as MemoryEntry['memory_type'] }))}
-                style={{ fontSize: 12, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', flex: '0 0 auto' }}
+                style={{ fontSize: 12, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', flex: '0 0 auto' }}
               >
                 {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
@@ -223,7 +224,7 @@ export function ProjectMemoryPanel({ projectId }: { projectId: string }) {
                 placeholder="Temat (opcjonalny)"
                 value={form.topic}
                 onChange={e => setForm(f => ({ ...f, topic: e.target.value }))}
-                style={{ fontSize: 12, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', flex: 1, minWidth: 0 }}
+                style={{ fontSize: 12, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', flex: 1, minWidth: 0 }}
               />
             </div>
             <textarea
@@ -231,7 +232,7 @@ export function ProjectMemoryPanel({ projectId }: { projectId: string }) {
               value={form.content}
               onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
               rows={3}
-              style={{ fontSize: 12, padding: '8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
+              style={{ fontSize: 12, padding: '8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
             />
             {saveError && <p style={{ margin: 0, fontSize: 11, color: 'var(--color-error, #dc2626)' }}>{saveError}</p>}
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -267,26 +268,26 @@ export function ProjectMemoryPanel({ projectId }: { projectId: string }) {
                 {group.map(entry => (
                   <div key={entry.id} style={{
                     display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px',
-                    border: `1px solid ${entry.contradiction_of ? '#fca5a5' : 'var(--color-border)'}`,
+                    border: `1px solid ${entry.contradiction_of ? 'rgba(239,68,68,0.4)' : 'var(--color-border)'}`,
                     borderRadius: 7,
-                    background: entry.contradiction_of ? '#fff7f7' : 'var(--color-surface)',
+                    background: entry.contradiction_of ? 'rgba(239,68,68,0.07)' : 'var(--color-surface)',
                   }}>
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 8,
-                      background: colors.bg, color: colors.text, flexShrink: 0, marginTop: 1,
+                      background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`, flexShrink: 0, marginTop: 1,
                     }}>
                       {label}
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {entry.contradiction_of && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, fontSize: 11, color: '#b91c1c' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, fontSize: 11, color: 'var(--color-error, #ef4444)' }}>
                           <AlertTriangle size={11} /> Możliwy konflikt z wcześniejszym wpisem
                         </div>
                       )}
                       {entry.topic && (
                         <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{entry.topic}</div>
                       )}
-                      <div style={{ fontSize: 12, lineHeight: 1.5 }}>{entry.content}</div>
+                      <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--color-text)' }}>{entry.content}</div>
                       <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 4 }}>
                         {SOURCE_LABELS[entry.source_type]} · {new Date(entry.created_at).toLocaleString('pl-PL')}
                       </div>
