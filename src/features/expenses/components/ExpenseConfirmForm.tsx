@@ -130,6 +130,8 @@ export function ExpenseConfirmForm({
   const [autofilled, setAutofilled] = useState<Set<keyof FormState>>(new Set())
 
   const isRoomPhoto = parseResult?.input_type === 'room_photo'
+  // Simplified layout for manual entry (no AI parse result)
+  const isSimple = !parseResult
 
   // Pre-fill from parse result
   useEffect(() => {
@@ -317,9 +319,9 @@ export function ExpenseConfirmForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      {/* Confidence badge */}
+      {/* Confidence badge — only when AI parsed */}
       {parseResult && (
         <ExpenseConfidenceBadge
           confidence={parseResult.extraction_confidence}
@@ -327,275 +329,269 @@ export function ExpenseConfirmForm({
         />
       )}
 
-      {/* Editable line items — card list */}
-      {!isRoomPhoto && lineItems.length > 0 && (
-        <EditableLineItemsList
-          items={lineItems}
-          onUpdate={updateLineItem}
-          onRemove={removeLineItem}
-          onAdd={addLineItem}
-          sumMismatch={sumMismatch}
-          lineItemsSum={lineItemsSum}
-          formGross={formGross}
-          inputStyle={inputStyle}
-        />
-      )}
-      {!isRoomPhoto && lineItems.length === 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button type="button" onClick={addLineItem}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--color-brand)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
-            <Plus size={14} /> Dodaj pozycję
-          </button>
-        </div>
-      )}
-
-      {/* Future analysis sections */}
-      {parseResult?.detected_materials && parseResult.detected_materials.length > 0 && (
-        <DetectedMaterialsSection items={parseResult.detected_materials} />
-      )}
-      {parseResult?.work_scope && parseResult.work_scope.length > 0 && (
-        <WorkScopeSection items={parseResult.work_scope} />
-      )}
-      {parseResult?.suggested_estimate_items && parseResult.suggested_estimate_items.length > 0 && (
-        <SuggestedEstimateSection items={parseResult.suggested_estimate_items} />
-      )}
-
-      {/* Section: sprzedawca — hidden for room_photo */}
-      {!isRoomPhoto && (
-      <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
-          Sprzedawca
-        </legend>
-
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Nazwa sprzedawcy * <AutoChip field="vendor_name" /></label>
-          <input
-            style={autoStyle('vendor_name')}
-            value={form.vendor_name}
-            onChange={(e) => set('vendor_name', e.target.value)}
-            placeholder="np. ABC Sp. z o.o."
-            required
-          />
-        </div>
-
-        <div style={fieldStyle}>
-          <label style={labelStyle}>NIP sprzedawcy <AutoChip field="vendor_nip" /></label>
-          <input
-            style={autoStyle('vendor_nip')}
-            value={form.vendor_nip}
-            onChange={(e) => set('vendor_nip', e.target.value)}
-            placeholder="10 cyfr"
-            inputMode="numeric"
-            maxLength={10}
-          />
-        </div>
-      </fieldset>
-      )}
-
-      {/* Section: nabywca — editable with swap button */}
-      {!isRoomPhoto && (
-      <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-          Nabywca
-          <button type="button" onClick={handleSwapBuyerVendor}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--color-brand)', background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '3px 8px', cursor: 'pointer', marginLeft: 'auto' }}
-            title="Zamień nabywcę ze sprzedawcą">
-            <ArrowLeftRight size={12} /> Zamień
-          </button>
-        </legend>
-
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Nazwa nabywcy <AutoChip field="buyer_name" /></label>
-          <input
-            style={autoStyle('buyer_name')}
-            value={form.buyer_name}
-            onChange={(e) => set('buyer_name', e.target.value)}
-            placeholder="np. Twoja firma Sp. z o.o."
-          />
-        </div>
-
-        <div style={fieldStyle}>
-          <label style={labelStyle}>NIP nabywcy <AutoChip field="buyer_nip" /></label>
-          <input
-            style={autoStyle('buyer_nip')}
-            value={form.buyer_nip}
-            onChange={(e) => set('buyer_nip', e.target.value)}
-            placeholder="10 cyfr"
-            inputMode="numeric"
-            maxLength={10}
-          />
-        </div>
-      </fieldset>
-      )}
-
-      {/* Section: faktura — hidden for room_photo */}
-      {!isRoomPhoto && (
-      <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
-          Faktura
-        </legend>
-
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Numer faktury <AutoChip field="invoice_number" /></label>
-          <input
-            style={autoStyle('invoice_number')}
-            value={form.invoice_number}
-            onChange={(e) => set('invoice_number', e.target.value)}
-            placeholder="np. FV/2026/001"
-          />
-        </div>
-
-        <div className="form-grid" style={{ gap: 10 }}>
+      {/* ── SIMPLE MODE (manual entry) ─────────────────────────────────────── */}
+      {isSimple && (
+        <>
+          {/* Sprzedawca / Opis */}
           <div style={fieldStyle}>
-            <label style={labelStyle}>Data wystawienia <AutoChip field="issue_date" /></label>
-            <input
-              style={autoStyle('issue_date')}
-              type="date"
-              value={form.issue_date}
-              onChange={(e) => set('issue_date', e.target.value)}
-            />
-          </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Data sprzedaży</label>
+            <label style={labelStyle}>Sprzedawca / Opis *</label>
             <input
               style={inputStyle}
-              type="date"
-              value={form.sale_date}
-              onChange={(e) => set('sale_date', e.target.value)}
+              value={form.vendor_name}
+              onChange={(e) => set('vendor_name', e.target.value)}
+              placeholder="np. Sklep budowlany, dostawca materiałów…"
+              required
             />
           </div>
-        </div>
 
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Termin płatności</label>
-          <input
-            style={inputStyle}
-            type="date"
-            value={form.payment_due_date}
-            onChange={(e) => set('payment_due_date', e.target.value)}
-          />
-        </div>
-      </fieldset>
+          {/* Kwota brutto + Data — side by side */}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ ...fieldStyle, flex: '1 1 120px' }}>
+              <label style={labelStyle}>Kwota brutto (PLN) *</label>
+              <input
+                style={inputStyle}
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.gross_amount}
+                onChange={(e) => set('gross_amount', e.target.value)}
+                placeholder="0.00"
+                required
+              />
+            </div>
+            <div style={{ ...fieldStyle, flex: '1 1 130px' }}>
+              <label style={labelStyle}>Data</label>
+              <input
+                style={inputStyle}
+                type="date"
+                value={form.issue_date}
+                onChange={(e) => set('issue_date', e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Klasyfikacja */}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ ...fieldStyle, flex: '1 1 150px' }}>
+              <label style={labelStyle}>Rozliczenie</label>
+              <select
+                style={{ ...inputStyle, borderColor: !form.billing_type ? 'var(--color-warning, #f59e0b)' : undefined }}
+                value={form.billing_type}
+                onChange={(e) => set('billing_type', e.target.value)}
+              >
+                <option value="">— nie określono —</option>
+                <option value="included">Wliczony w wycenę</option>
+                <option value="additional">Koszt dodatkowy</option>
+              </select>
+            </div>
+            <div style={{ ...fieldStyle, flex: '1 1 150px' }}>
+              <label style={labelStyle}>Typ kosztu</label>
+              <select
+                style={inputStyle}
+                value={form.cost_type}
+                onChange={(e) => set('cost_type', e.target.value)}
+              >
+                <option value="">— typ —</option>
+                {(Object.entries(COST_TYPE_LABELS) as [ExpenseCostType | 'other', string][]).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Notatka */}
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Notatka (opcjonalna)</label>
+            <textarea
+              style={{ ...inputStyle, minHeight: 54, resize: 'vertical' }}
+              value={form.notes}
+              onChange={(e) => set('notes', e.target.value)}
+              placeholder="Opis, numer paragonu, uwagi…"
+            />
+          </div>
+        </>
       )}
 
-      {/* Section: kwoty — hidden for room_photo */}
-      {!isRoomPhoto && (
-      <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
-          Kwoty
-        </legend>
-
-        <div className="form-grid" style={{ gap: 10 }}>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Netto <AutoChip field="net_amount" /></label>
-            <input
-              style={autoStyle('net_amount')}
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.net_amount}
-              onChange={(e) => set('net_amount', e.target.value)}
-              placeholder="0.00"
+      {/* ── FULL MODE (AI-parsed document / room photo) ─────────────────────── */}
+      {!isSimple && (
+        <>
+          {/* Editable line items — card list */}
+          {!isRoomPhoto && lineItems.length > 0 && (
+            <EditableLineItemsList
+              items={lineItems}
+              onUpdate={updateLineItem}
+              onRemove={removeLineItem}
+              onAdd={addLineItem}
+              sumMismatch={sumMismatch}
+              lineItemsSum={lineItemsSum}
+              formGross={formGross}
+              inputStyle={inputStyle}
             />
-          </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>VAT <AutoChip field="vat_amount" /></label>
-            <input
-              style={autoStyle('vat_amount')}
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.vat_amount}
-              onChange={(e) => set('vat_amount', e.target.value)}
-              placeholder="0.00"
-            />
-          </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Brutto <AutoChip field="gross_amount" /></label>
-            <input
-              style={autoStyle('gross_amount')}
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.gross_amount}
-              onChange={(e) => set('gross_amount', e.target.value)}
-              placeholder="0.00"
-            />
-          </div>
-        </div>
-
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Waluta</label>
-          <select
-            style={inputStyle}
-            value={form.currency}
-            onChange={(e) => set('currency', e.target.value)}
-          >
-            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-      </fieldset>
-      )}
-
-      {/* Section: klasyfikacja */}
-      <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
-          Klasyfikacja
-        </legend>
-
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Rozliczenie kosztu *</label>
-          <select
-            style={{ ...inputStyle, borderColor: !form.billing_type ? 'var(--color-warning, #f59e0b)' : undefined }}
-            value={form.billing_type}
-            onChange={(e) => set('billing_type', e.target.value)}
-          >
-            <option value="">— wybierz —</option>
-            <option value="included">Wliczony w wycenę (ujęty w zakresie)</option>
-            <option value="additional">Koszt dodatkowy (poza wycenę)</option>
-          </select>
-          {!form.billing_type && (
-            <span style={{ fontSize: 11, color: 'var(--color-warning, #d97706)', marginTop: 2 }}>
-              Określ, czy koszt jest w zakresie wyceny czy dodatkowy — wpływa na pipeline budżetu.
-            </span>
           )}
-        </div>
+          {!isRoomPhoto && lineItems.length === 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button type="button" onClick={addLineItem}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--color-brand)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
+                <Plus size={14} /> Dodaj pozycję
+              </button>
+            </div>
+          )}
 
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Typ kosztu</label>
-          <select
-            style={inputStyle}
-            value={form.cost_type}
-            onChange={(e) => set('cost_type', e.target.value)}
-          >
-            <option value="">— wybierz —</option>
-            {(Object.entries(COST_TYPE_LABELS) as [ExpenseCostType | 'other', string][]).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-        </div>
+          {/* Analysis sections */}
+          {parseResult?.detected_materials && parseResult.detected_materials.length > 0 && (
+            <DetectedMaterialsSection items={parseResult.detected_materials} />
+          )}
+          {parseResult?.work_scope && parseResult.work_scope.length > 0 && (
+            <WorkScopeSection items={parseResult.work_scope} />
+          )}
+          {parseResult?.suggested_estimate_items && parseResult.suggested_estimate_items.length > 0 && (
+            <SuggestedEstimateSection items={parseResult.suggested_estimate_items} />
+          )}
 
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Kategoria (opcjonalna)</label>
-          <input
-            style={inputStyle}
-            value={form.category}
-            onChange={(e) => set('category', e.target.value)}
-            placeholder="np. Instalacje elektryczne"
-          />
-        </div>
-      </fieldset>
+          {/* Section: sprzedawca */}
+          {!isRoomPhoto && (
+          <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
+              Sprzedawca
+            </legend>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Nazwa sprzedawcy * <AutoChip field="vendor_name" /></label>
+              <input style={autoStyle('vendor_name')} value={form.vendor_name} onChange={(e) => set('vendor_name', e.target.value)} placeholder="np. ABC Sp. z o.o." required />
+            </div>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>NIP sprzedawcy <AutoChip field="vendor_nip" /></label>
+              <input style={autoStyle('vendor_nip')} value={form.vendor_nip} onChange={(e) => set('vendor_nip', e.target.value)} placeholder="10 cyfr" inputMode="numeric" maxLength={10} />
+            </div>
+          </fieldset>
+          )}
 
-      {/* Notes */}
-      <div style={fieldStyle}>
-        <label style={labelStyle}>Notatka</label>
-        <textarea
-          style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
-          value={form.notes}
-          onChange={(e) => set('notes', e.target.value)}
-          placeholder="Opis towarów / usług…"
-        />
-      </div>
+          {/* Section: nabywca */}
+          {!isRoomPhoto && (
+          <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0, display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+              Nabywca
+              <button type="button" onClick={handleSwapBuyerVendor}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--color-brand)', background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '3px 8px', cursor: 'pointer', marginLeft: 'auto' }}
+                title="Zamień nabywcę ze sprzedawcą">
+                <ArrowLeftRight size={12} /> Zamień
+              </button>
+            </legend>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Nazwa nabywcy <AutoChip field="buyer_name" /></label>
+              <input style={autoStyle('buyer_name')} value={form.buyer_name} onChange={(e) => set('buyer_name', e.target.value)} placeholder="np. Twoja firma Sp. z o.o." />
+            </div>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>NIP nabywcy <AutoChip field="buyer_nip" /></label>
+              <input style={autoStyle('buyer_nip')} value={form.buyer_nip} onChange={(e) => set('buyer_nip', e.target.value)} placeholder="10 cyfr" inputMode="numeric" maxLength={10} />
+            </div>
+          </fieldset>
+          )}
+
+          {/* Section: faktura */}
+          {!isRoomPhoto && (
+          <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
+              Faktura
+            </legend>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Numer faktury <AutoChip field="invoice_number" /></label>
+              <input style={autoStyle('invoice_number')} value={form.invoice_number} onChange={(e) => set('invoice_number', e.target.value)} placeholder="np. FV/2026/001" />
+            </div>
+            <div className="form-grid" style={{ gap: 10 }}>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Data wystawienia <AutoChip field="issue_date" /></label>
+                <input style={autoStyle('issue_date')} type="date" value={form.issue_date} onChange={(e) => set('issue_date', e.target.value)} />
+              </div>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Data sprzedaży</label>
+                <input style={inputStyle} type="date" value={form.sale_date} onChange={(e) => set('sale_date', e.target.value)} />
+              </div>
+            </div>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Termin płatności</label>
+              <input style={inputStyle} type="date" value={form.payment_due_date} onChange={(e) => set('payment_due_date', e.target.value)} />
+            </div>
+          </fieldset>
+          )}
+
+          {/* Section: kwoty */}
+          {!isRoomPhoto && (
+          <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
+              Kwoty
+            </legend>
+            <div className="form-grid" style={{ gap: 10 }}>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Netto <AutoChip field="net_amount" /></label>
+                <input style={autoStyle('net_amount')} type="number" step="0.01" min="0" value={form.net_amount} onChange={(e) => set('net_amount', e.target.value)} placeholder="0.00" />
+              </div>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>VAT <AutoChip field="vat_amount" /></label>
+                <input style={autoStyle('vat_amount')} type="number" step="0.01" min="0" value={form.vat_amount} onChange={(e) => set('vat_amount', e.target.value)} placeholder="0.00" />
+              </div>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Brutto <AutoChip field="gross_amount" /></label>
+                <input style={autoStyle('gross_amount')} type="number" step="0.01" min="0" value={form.gross_amount} onChange={(e) => set('gross_amount', e.target.value)} placeholder="0.00" />
+              </div>
+            </div>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Waluta</label>
+              <select style={inputStyle} value={form.currency} onChange={(e) => set('currency', e.target.value)}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          </fieldset>
+          )}
+
+          {/* Section: klasyfikacja (full) */}
+          <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
+              Klasyfikacja
+            </legend>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Rozliczenie kosztu *</label>
+              <select
+                style={{ ...inputStyle, borderColor: !form.billing_type ? 'var(--color-warning, #f59e0b)' : undefined }}
+                value={form.billing_type}
+                onChange={(e) => set('billing_type', e.target.value)}
+              >
+                <option value="">— wybierz —</option>
+                <option value="included">Wliczony w wycenę (ujęty w zakresie)</option>
+                <option value="additional">Koszt dodatkowy (poza wycenę)</option>
+              </select>
+              {!form.billing_type && (
+                <span style={{ fontSize: 11, color: 'var(--color-warning, #d97706)', marginTop: 2 }}>
+                  Określ, czy koszt jest w zakresie wyceny czy dodatkowy — wpływa na pipeline budżetu.
+                </span>
+              )}
+            </div>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Typ kosztu</label>
+              <select style={inputStyle} value={form.cost_type} onChange={(e) => set('cost_type', e.target.value)}>
+                <option value="">— wybierz —</option>
+                {(Object.entries(COST_TYPE_LABELS) as [ExpenseCostType | 'other', string][]).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Kategoria (opcjonalna)</label>
+              <input style={inputStyle} value={form.category} onChange={(e) => set('category', e.target.value)} placeholder="np. Instalacje elektryczne" />
+            </div>
+          </fieldset>
+
+          {/* Notes */}
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Notatka</label>
+            <textarea
+              style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
+              value={form.notes}
+              onChange={(e) => set('notes', e.target.value)}
+              placeholder="Opis towarów / usług…"
+            />
+          </div>
+        </>
+      )}
 
       {/* Buttons */}
       <div className="actions-row" style={{ paddingTop: 4 }}>
