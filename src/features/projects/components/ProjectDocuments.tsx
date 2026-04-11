@@ -212,145 +212,150 @@ export function ProjectDocuments({
           <div key={type} style={{ marginBottom: 16 }}>
             <p
               style={{
-                fontWeight: 600,
-                fontSize: 12,
-                color: 'var(--color-border)',
+                fontWeight: 700,
+                fontSize: 11,
+                color: 'var(--color-text-muted)',
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em',
+                letterSpacing: '0.06em',
                 marginBottom: 6,
               }}
             >
               {TYPE_LABEL[type] ?? type} ({typeDocs.length})
             </p>
-            {typeDocs.map((doc) => (
+            {typeDocs.map((doc) => {
+              const docName = docNamesLoading ? '…' : resolveDocName(doc.doc_type, doc.doc_id)
+              return (
               <div
                 key={doc.id}
                 className="proj-doc-row"
                 style={{
-                  display: 'flex',
-                  gap: 8,
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  padding: '6px 0',
+                  padding: '8px 0',
                   borderBottom: '1px solid var(--color-surface-soft)',
-                  fontSize: 13,
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={selected.has(doc.doc_id)}
-                  onChange={() => toggleSelect(doc.doc_id)}
-                  style={{ flexShrink: 0 }}
-                />
-                <span style={{ flex: 1, fontSize: 13 }} title={doc.doc_id}>
-                  {docNamesLoading ? '…' : resolveDocName(doc.doc_type, doc.doc_id)}
-                </span>
-                {(doc.doc_type === 'estimate' || doc.doc_type === 'contract') && (
-                  <SignatureStatusBadge
-                    documentType={doc.doc_type as 'estimate' | 'contract'}
-                    documentId={doc.doc_id}
+                {/* Row 1: checkbox + name + badges */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(doc.doc_id)}
+                    onChange={() => toggleSelect(doc.doc_id)}
+                    style={{ flexShrink: 0 }}
                   />
-                )}
-                {doc.linked_automatically && (
-                  <Badge variant="default">Automat.</Badge>
-                )}
-                {doc.linked_manually && (
-                  <Badge variant="warning">ręcznie</Badge>
-                )}
-                {doc.source_doc_type && (
-                  <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                    z: {TYPE_LABEL[doc.source_doc_type] ?? doc.source_doc_type}
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }} title={doc.doc_id}>
+                    {docName}
                   </span>
-                )}
-                {APPROVAL_TYPES.has(doc.doc_type) && (
+                  {(doc.doc_type === 'estimate' || doc.doc_type === 'contract') && (
+                    <SignatureStatusBadge
+                      documentType={doc.doc_type as 'estimate' | 'contract'}
+                      documentId={doc.doc_id}
+                    />
+                  )}
+                  {doc.linked_automatically && (
+                    <Badge variant="default">Automat.</Badge>
+                  )}
+                  {doc.linked_manually && (
+                    <Badge variant="warning">ręcznie</Badge>
+                  )}
+                  {doc.source_doc_type && (
+                    <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                      z: {TYPE_LABEL[doc.source_doc_type] ?? doc.source_doc_type}
+                    </span>
+                  )}
+                </div>
+
+                {/* Row 2: action buttons */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingLeft: 22 }}>
+                  {APPROVAL_TYPES.has(doc.doc_type) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Wyślij do akceptacji klienta"
+                      onClick={() => {
+                        const est = doc.doc_type === 'estimate' ? estimates.find(e => e.id === doc.doc_id) : null
+                        const ctr = doc.doc_type === 'contract' ? contracts.find(c => c.id === doc.doc_id) : null
+                        if (!est && !ctr) return
+                        setApprovalDoc(est
+                          ? {
+                              type: 'estimate',
+                              id: est.id,
+                              label: `${est.number} – ${est.name}`,
+                              contentForHash: JSON.stringify({
+                                id: est.id, number: est.number, name: est.name,
+                                total_gross: est.total_gross, valid_until: est.valid_until ?? null,
+                                items: est.items.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, unit: i.unit, unit_price: i.unit_price, vat_rate: i.vat_rate })),
+                              }),
+                              clientEmail: resolveApprovalEmail('estimate', est.id),
+                              clientName:  resolveApprovalName('estimate', est.id),
+                            }
+                          : {
+                              type: 'contract',
+                              id: ctr!.id,
+                              label: ctr!.number,
+                              contentForHash: JSON.stringify({
+                                id: ctr!.id, number: ctr!.number, value: ctr!.value,
+                                start_date: ctr!.start_date ?? null, end_date: ctr!.end_date ?? null,
+                                location: ctr!.location ?? null, tranches: ctr!.tranches ?? [],
+                              }),
+                              clientEmail: resolveApprovalEmail('contract', ctr!.id),
+                              clientName:  resolveApprovalName('contract', ctr!.id),
+                            }
+                        )
+                      }}
+                    >
+                      Do akceptacji
+                    </Button>
+                  )}
+                  {MAILABLE_TYPES.has(doc.doc_type) && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() =>
+                        setSendDoc({
+                          type: doc.doc_type as 'estimate' | 'contract' | 'invoice',
+                          name: docName,
+                          defaultEmail: resolveClientEmail(doc.doc_type, doc.doc_id),
+                        })
+                      }
+                    >
+                      Wyślij
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
-                    size="sm"
-                    title="Wyślij do akceptacji klienta"
-                    onClick={() => {
-                      const est = doc.doc_type === 'estimate' ? estimates.find(e => e.id === doc.doc_id) : null
-                      const ctr = doc.doc_type === 'contract' ? contracts.find(c => c.id === doc.doc_id) : null
-                      if (!est && !ctr) return
-                      setApprovalDoc(est
-                        ? {
-                            type: 'estimate',
-                            id: est.id,
-                            label: `${est.number} – ${est.name}`,
-                            contentForHash: JSON.stringify({
-                              id: est.id, number: est.number, name: est.name,
-                              total_gross: est.total_gross, valid_until: est.valid_until ?? null,
-                              items: est.items.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, unit: i.unit, unit_price: i.unit_price, vat_rate: i.vat_rate })),
-                            }),
-                            clientEmail: resolveApprovalEmail('estimate', est.id),
-                            clientName:  resolveApprovalName('estimate', est.id),
-                          }
-                        : {
-                            type: 'contract',
-                            id: ctr!.id,
-                            label: ctr!.number,
-                            contentForHash: JSON.stringify({
-                              id: ctr!.id, number: ctr!.number, value: ctr!.value,
-                              start_date: ctr!.start_date ?? null, end_date: ctr!.end_date ?? null,
-                              location: ctr!.location ?? null, tranches: ctr!.tranches ?? [],
-                            }),
-                            clientEmail: resolveApprovalEmail('contract', ctr!.id),
-                            clientName:  resolveApprovalName('contract', ctr!.id),
-                          }
-                      )
-                    }}
-                  >
-                    Do akceptacji
-                  </Button>
-                )}
-                {MAILABLE_TYPES.has(doc.doc_type) && (
-                  <Button
-                    variant="secondary"
                     size="sm"
                     onClick={() =>
-                      setSendDoc({
-                        type: doc.doc_type as 'estimate' | 'contract' | 'invoice',
-                        name: resolveDocName(doc.doc_type, doc.doc_id),
-                        defaultEmail: resolveClientEmail(doc.doc_type, doc.doc_id),
+                      unlink.mutate({
+                        projectId: project.id,
+                        docType: doc.doc_type,
+                        docId: doc.doc_id,
                       })
                     }
+                    disabled={unlink.isPending}
                   >
-                    Wyślij
+                    Odepnij
                   </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    unlink.mutate({
-                      projectId: project.id,
-                      docType: doc.doc_type,
-                      docId: doc.doc_id,
-                    })
-                  }
-                  disabled={unlink.isPending}
-                >
-                  Odepnij
-                </Button>
-                {DELETABLE_TYPES.has(doc.doc_type) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    style={confirmDeleteId === doc.id ? { color: 'var(--color-danger)' } : {}}
-                    disabled={isDeleting}
-                    onClick={() => {
-                      if (confirmDeleteId === doc.id) {
-                        handleDelete(doc.doc_id, doc.doc_type, doc.id)
-                      } else {
-                        setConfirmDeleteId(doc.id)
-                        setTimeout(() => setConfirmDeleteId(cur => cur === doc.id ? null : cur), 3000)
-                      }
-                    }}
-                  >
-                    {confirmDeleteId === doc.id ? 'Potwierdź usunięcie' : 'Usuń'}
-                  </Button>
-                )}
+                  {DELETABLE_TYPES.has(doc.doc_type) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      style={confirmDeleteId === doc.id ? { color: 'var(--color-danger)' } : {}}
+                      disabled={isDeleting}
+                      onClick={() => {
+                        if (confirmDeleteId === doc.id) {
+                          handleDelete(doc.doc_id, doc.doc_type, doc.id)
+                        } else {
+                          setConfirmDeleteId(doc.id)
+                          setTimeout(() => setConfirmDeleteId(cur => cur === doc.id ? null : cur), 3000)
+                        }
+                      }}
+                    >
+                      {confirmDeleteId === doc.id ? 'Potwierdź usunięcie' : 'Usuń'}
+                    </Button>
+                  )}
+                </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         ))
       )}

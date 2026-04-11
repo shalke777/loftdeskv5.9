@@ -95,19 +95,19 @@ export function AiTypeChooserPage() {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '8px 14px', borderRadius: 8,
-            background: 'var(--color-primary-soft, rgba(37,99,235,0.06))',
-            border: '1px solid var(--color-primary)',
+            background: 'rgba(26,92,50,0.07)',
+            border: '1px solid var(--color-brand)',
             fontSize: 13,
           }}>
-          <FolderOpen size={14} style={{ flexShrink: 0 }} />
-            <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+          <FolderOpen size={14} style={{ flexShrink: 0, color: 'var(--color-brand)' }} />
+            <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
               {selectedProject.number} · {selectedProject.name}
             </span>
             <button
               type="button"
               onClick={() => setStep('project')}
               style={{
-                marginLeft: 'auto', fontSize: 12, color: 'var(--color-primary)',
+                marginLeft: 'auto', fontSize: 12, color: 'var(--color-brand)',
                 background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline',
               }}
             >

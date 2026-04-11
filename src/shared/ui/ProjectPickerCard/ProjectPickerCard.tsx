@@ -109,16 +109,17 @@ export function ProjectPickerCard({
                     onClick={() => onSelect(p.id)}
                     style={{
                       ...itemStyle,
-                      borderColor: isSelected ? 'var(--color-primary)' : 'var(--color-border)',
-                      background: isSelected ? 'var(--color-primary-soft, rgba(37,99,235,0.06))' : 'var(--color-surface, #fff)',
-                      boxShadow: isSelected ? '0 0 0 2px var(--color-primary)' : 'none',
+                      borderColor: isSelected ? 'var(--color-brand)' : 'var(--color-border)',
+                      background: isSelected ? 'rgba(26,92,50,0.08)' : 'var(--color-surface)',
+                      boxShadow: isSelected ? '0 0 0 2px rgba(26,92,50,0.2)' : 'none',
+                      color: 'var(--color-text)',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
                       <span style={{
                         width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                        border: isSelected ? '5px solid var(--color-primary)' : '2px solid var(--color-border-dark)',
-                        background: isSelected ? '#fff' : 'transparent',
+                        border: isSelected ? '5px solid var(--color-brand)' : '2px solid var(--color-border-dark)',
+                        background: isSelected ? 'var(--color-surface)' : 'transparent',
                         boxSizing: 'border-box',
                       }} />
                       <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
@@ -158,8 +159,10 @@ export function ProjectPickerCard({
               onClick={onNext}
               style={{
                 ...ctaStyle,
-                background: selectedId ? 'var(--color-primary)' : 'var(--color-border-dark)',
+                background: selectedId ? 'var(--color-brand)' : 'var(--color-surface-soft)',
+                color: selectedId ? '#fff' : 'var(--color-text-muted)',
                 cursor: selectedId ? 'pointer' : 'default',
+                border: selectedId ? 'none' : '1px solid var(--color-border)',
               }}
             >
               {nextLabel}
