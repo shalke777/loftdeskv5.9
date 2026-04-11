@@ -59,7 +59,8 @@ export const invoicesApi = {
       // 1. next_doc_number (mig 079) — atomic, month-aware, format FV/YYYY/MM/N
       // 2. next_invoice_number (mig 032) — atomic, year-only, fallback
       // 3. count-based — non-atomic, last-resort edge case
-      const { data: numData, error: numError } = await supabase.rpc('next_doc_number', { p_company_id: input.company_id, p_doc_type: 'invoice' })
+      // Pass issue_date so the counter increments the correct month's sequence (mig 118)
+      const { data: numData, error: numError } = await supabase.rpc('next_doc_number', { p_company_id: input.company_id, p_doc_type: 'invoice', p_issue_date: input.issue_date ?? null })
       if (!numError && numData) {
         invoiceNumber = numData as string
       } else {
@@ -149,13 +150,13 @@ export const invoicesApi = {
     }
     const scope = await getDataScope(companyId)
     // Verify invoice is still a draft before consuming a number
-    const { data: current, error: fetchErr } = await supabase.from('invoices').select('id, status, number').eq('id', id).maybeSingle()
+    const { data: current, error: fetchErr } = await supabase.from('invoices').select('id, status, number, issue_date').eq('id', id).maybeSingle()
     if (fetchErr) throw fetchErr
     if (!current) throw new Error('Nie znaleziono faktury')
     if (current.status !== 'draft') throw new Error('Faktura nie jest szkicem — nie można ponownie wystawić.')
     if (current.number) throw new Error('Faktura ma już przypisany numer.')
-    // Consume next number atomically
-    const { data: numData, error: numError } = await supabase.rpc('next_doc_number', { p_company_id: scope.companyId, p_doc_type: 'invoice' })
+    // Consume next number atomically — use the invoice's own issue_date for correct month
+    const { data: numData, error: numError } = await supabase.rpc('next_doc_number', { p_company_id: scope.companyId, p_doc_type: 'invoice', p_issue_date: current.issue_date ?? null })
     if (numError || !numData) throw numError ?? new Error('Nie udało się pobrać numeru faktury.')
     const invoiceNumber = numData as string
     const { error: updateErr } = await supabase.from('invoices').update({ number: invoiceNumber, status: 'unpaid', ksef_status: 'ksef_pending' }).eq('id', id)

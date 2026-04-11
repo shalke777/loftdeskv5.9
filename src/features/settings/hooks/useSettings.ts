@@ -109,3 +109,17 @@ export function useUpdateDocNumberConfig() {
     onError: (error) => toast.error('Nie udało się zapisać numeracji', translateError(error)),
   })
 }
+
+export function useResetDocCounter() {
+  const companyId = useCompanyId()
+  const toast = useToast()
+  return useMutation({
+    mutationFn: ({ docType, year, month, value = 0 }: { docType: string; year: number; month: number; value?: number }) =>
+      settingsApi.resetDocCounter(companyId, docType, year, month, value),
+    onSuccess: ({ docType, year, month, value }) => {
+      const nextNum = (value ?? 0) + 1
+      toast.success('Licznik zresetowany', `Następny ${docType === 'invoice' ? 'numer faktury' : 'numer dokumentu'} za ${month.toString().padStart(2, '0')}/${year} = ${nextNum}`)
+    },
+    onError: (error) => toast.error('Nie udało się zresetować licznika', translateError(error)),
+  })
+}
