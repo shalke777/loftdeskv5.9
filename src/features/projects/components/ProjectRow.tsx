@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Copy, Edit2, FileText, Trash2 } from 'lucide
 import type { Project } from '@/entities/project/model'
 import { ProjectDetail } from '@/features/projects/components/ProjectDetail'
 import { ProjectCompleteness } from '@/features/projects/components/ProjectCompleteness'
+import { QuickPhotoButton } from '@/features/projects/components/QuickPhotoButton'
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
@@ -105,6 +106,7 @@ export function ProjectRow({
           <span className={STATUS_CLASS[project.status]}>{STATUS_LABEL[project.status]}</span>
 
           <div className="proj-row__actions">
+            <QuickPhotoButton projectId={project.id} />
             <button
               type="button"
               className="proj-action-btn"
