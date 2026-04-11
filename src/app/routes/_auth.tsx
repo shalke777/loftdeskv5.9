@@ -61,9 +61,9 @@ const mainNavItems: MainNavItem[] = [
 ]
 
 const mobileNav: MainNavItem[] = [
-  { to: '/dashboard',  label: 'Start',     icon: LayoutDashboard },
   { to: '/projects',   label: 'Projekty',  icon: FolderKanban },
   { to: '/chat',       label: 'Chat',      icon: MessageSquare },
+  { to: '/dashboard',  label: 'Start',     icon: LayoutDashboard },
   { to: '/invoices',   label: 'Faktura',   icon: Receipt },
   { to: '/settings',   label: 'Więcej',    icon: Settings },
 ]
@@ -289,6 +289,26 @@ export function AuthLayout() {
           {visibleMobileNav.map((item) => {
             const Icon = item.icon
             const active = isActive(pathname, item)
+            const isStart = item.to === '/dashboard'
+            if (isStart) {
+              return (
+                <Link key={item.to} to={item.to} className="mobile-nav__link" style={{ position: 'relative', flex: '0 0 auto' }}>
+                  <span style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 52, height: 52, borderRadius: '50%',
+                    background: active ? 'var(--color-brand)' : 'var(--color-brand)',
+                    color: '#fff',
+                    boxShadow: '0 4px 18px rgba(0,0,0,0.28)',
+                    marginTop: -18,
+                    border: '3px solid var(--color-bg, #fff)',
+                    transition: 'transform 0.15s',
+                  }}>
+                    <Icon size={22} />
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: active ? 'var(--color-brand)' : 'var(--color-text-muted)', marginTop: 2 }}>{item.label}</span>
+                </Link>
+              )
+            }
             return (
               <Link key={item.to} to={item.to} className={active ? 'mobile-nav__link mobile-nav__link--active' : 'mobile-nav__link'}>
                 <Icon size={18} />
