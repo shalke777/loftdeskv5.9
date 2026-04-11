@@ -349,15 +349,80 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
       </div>
 
       {/* ── Pozycje ── */}
-      <div style={{ display: 'grid', gap: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pozycje faktury</div>
-          <Button variant="secondary" size="sm" onClick={addItem}>+ Dodaj pozycję</Button>
-        </div>
+      {isCorrection && initialInvoice?.original_items?.length ? (
+        /* ── Correction mode: show "Przed korektą" readonly + "Po korekcie" editable ── */
+        <div style={{ display: 'grid', gap: 12 }}>
+          {/* Przed korektą — readonly */}
+          <div style={{ border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ background: 'var(--color-surface-soft)', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--color-border)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#991b1b' }}>Przed korektą</span>
+              <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>(tylko do podglądu)</span>
+            </div>
+            <div style={{ padding: '10px 14px', overflowX: 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,3fr) 52px 52px 64px 100px', gap: 6, padding: '0 0 6px', borderBottom: '1px solid var(--color-border)', marginBottom: 6 }}>
+                {['Opis', 'VAT', 'Jedn.', 'Ilość', 'Cena netto'].map((h, i) => (
+                  <div key={i} style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</div>
+                ))}
+              </div>
+              {initialInvoice.original_items.map((item) => (
+                <div key={item.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,3fr) 52px 52px 64px 100px', gap: 6, padding: '4px 0', fontSize: 13, color: 'var(--color-text-secondary)', opacity: 0.75 }}>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.description}</div>
+                  <div>{item.vat_rate === 0 ? 'ZW' : `${item.vat_rate}%`}</div>
+                  <div>{item.unit}</div>
+                  <div>{item.quantity}</div>
+                  <div>{formatCurrency(item.unit_price)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-        {items.length > 0 && (
-          <div style={{ overflowX: 'auto' }}>
-            {/* Table header */}
+          {/* Po korekcie — editable */}
+          <div style={{ border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ background: 'var(--color-surface-soft)', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-success, #16a34a)' }}>Po korekcie</span>
+              <Button variant="secondary" size="sm" onClick={addItem}>+ Dodaj pozycję</Button>
+            </div>
+            <div style={{ padding: '10px 14px', overflowX: 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,3fr) 62px 66px 72px 108px 110px 30px', gap: 6, padding: '0 2px 6px', borderBottom: '1px solid var(--color-border)', marginBottom: 4 }}>
+                {['Opis pozycji', 'VAT', 'Jedn.', 'Ilość', 'Cena netto', 'Etykieta', ''].map((h, i) => (
+                  <div key={i} style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</div>
+                ))}
+              </div>
+              {items.map((item, idx) => (
+                <Fragment key={item.id}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,3fr) 62px 66px 72px 108px 110px 30px', gap: 6, alignItems: 'center', padding: '4px 0' }}>
+                    <input className="input" style={{ width: '100%', fontSize: 13 }} value={item.description} onChange={e => patchItem(item.id, 'description', e.target.value)} onFocus={e => e.target.select()} placeholder="Opis usługi" />
+                    <select className="input" style={{ padding: '0 4px', fontSize: 13 }} value={String(item.vat_rate)} onChange={e => patchItem(item.id, 'vat_rate', e.target.value)}>
+                      <option value="23">23%</option><option value="8">8%</option><option value="5">5%</option><option value="0">0%</option>
+                    </select>
+                    <input className="input" style={{ fontSize: 13 }} value={item.unit} onChange={e => patchItem(item.id, 'unit', e.target.value)} onFocus={e => e.target.select()} />
+                    <input className="input" type="number" style={{ fontSize: 13 }} value={String(item.quantity)} onChange={e => patchItem(item.id, 'quantity', e.target.value)} onFocus={e => e.target.select()} />
+                    <input className="input" type="number" style={{ fontSize: 13 }} value={String(item.unit_price)} onChange={e => patchItem(item.id, 'unit_price', e.target.value)} onFocus={e => e.target.select()} />
+                    <input className="input" style={{ fontSize: 13 }} value={item.tranche_label || ''} onChange={e => patchItem(item.id, 'tranche_label', e.target.value)} onFocus={e => e.target.select()} placeholder="opcjonalnie" />
+                    <button type="button" onClick={() => removeItem(item.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textAlign: 'right', paddingBottom: 4, borderBottom: idx < items.length - 1 ? '1px solid var(--color-border)' : 'none', marginBottom: idx < items.length - 1 ? 4 : 0 }}>
+                    Netto: {formatCurrency(item.unit_price * item.quantity)} · Brutto: {formatCurrency(item.unit_price * item.quantity * (1 + item.vat_rate / 100))}
+                  </div>
+                </Fragment>
+              ))}
+              {items.length === 0 && (
+                <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}>Brak pozycji — kliknij &quot;+ Dodaj pozycję&quot;</div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* ── Standard mode ── */
+        <div style={{ display: 'grid', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pozycje faktury</div>
+            <Button variant="secondary" size="sm" onClick={addItem}>+ Dodaj pozycję</Button>
+          </div>
+
+          {items.length > 0 && (
+            <div style={{ overflowX: 'auto' }}>
+              {/* Table header */}
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,3fr) 62px 66px 72px 108px 110px 30px', gap: 6, padding: '0 2px 6px', borderBottom: '1px solid var(--color-border)', marginBottom: 4 }}>
               {['Opis pozycji', 'VAT', 'Jedn.', 'Ilość', 'Cena netto', 'Etykieta', ''].map((h, i) => (
                 <div key={i} style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</div>
@@ -433,12 +498,13 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
           </div>
         )}
 
-        {items.length === 0 && (
-          <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}>
-            Brak pozycji — kliknij &quot;+ Dodaj pozycję&quot;
-          </div>
-        )}
-      </div>
+          {items.length === 0 && (
+            <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}>
+              Brak pozycji — kliknij &quot;+ Dodaj pozycję&quot;
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Podsumowanie ── */}
       <div style={{ background: 'var(--color-surface-soft)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 18px' }}>

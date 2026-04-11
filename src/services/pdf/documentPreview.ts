@@ -313,6 +313,7 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
             <div><span style="color:var(--muted); display:inline-block; width:210px;">Data sprzeda\u017cy / us\u0142ugi:</span> ${escapeHtml(invoice.sale_date || invoice.issue_date)}</div>
             <div><span style="color:var(--muted); display:inline-block; width:210px;">Miejsce wystawienia:</span> ${escapeHtml(invoice.issue_place || contractMeta?.contractLocation || '\u2014')}</div>
             ${contractMeta?.contractNumber ? `<div><span style="color:var(--muted); display:inline-block; width:210px;">Nr umowy:</span> <strong>${escapeHtml(contractMeta.contractNumber)}</strong></div>` : ''}
+            ${invoiceType === 'correction' ? `<div style="margin-top:4px;"><span style="color:#991b1b; display:inline-block; width:210px; font-weight:600;">Korekta do faktury:</span> <strong>${escapeHtml(invoice.correction_reason ? '' : '')}</strong><span style="font-style:italic; color:var(--muted);">— patrz zestawienie poniżej</span></div>` : ''}
           </div>
         </div>
         <div style="text-align:right;">
@@ -329,6 +330,89 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
 
       ${contractRefHtml}
 
+      ${invoiceType === 'correction' && invoice.original_items?.length ? (() => {
+        // Correction invoice: show before/after comparison table
+        const origItems = invoice.original_items!
+        const corrItems = invoice.items
+
+        function itemGross(item: { quantity: number; unit_price: number; vat_rate: number }) {
+          const net = item.quantity * item.unit_price
+          return net + net * item.vat_rate / 100
+        }
+        const origGross = origItems.reduce((s, i) => s + itemGross(i), 0)
+        const corrGross = corrItems.reduce((s, i) => s + itemGross(i), 0)
+        const diff = corrGross - origGross
+
+        const maxLen = Math.max(origItems.length, corrItems.length)
+        const compRows = Array.from({ length: maxLen }, (_, idx) => {
+          const o = origItems[idx]
+          const c = corrItems[idx]
+          const oBrutto = o ? itemGross(o) : null
+          const cBrutto = c ? itemGross(c) : null
+          const rowDiff = (cBrutto ?? 0) - (oBrutto ?? 0)
+          return `<tr>
+            <td class="center">${idx + 1}</td>
+            <td>${o ? escapeHtml(o.description) : '<em style="color:var(--muted)">—</em>'}</td>
+            <td class="num">${o ? o.quantity : '—'}</td>
+            <td class="num">${o ? formatCurrency(o.unit_price) : '—'}</td>
+            <td class="num" style="color:#991b1b;">${o ? formatCurrency(oBrutto!) : '—'}</td>
+            <td style="width:2%;background:#f0f9ff;"></td>
+            <td>${c ? escapeHtml(c.description) : '<em style="color:var(--muted)">—</em>'}</td>
+            <td class="num">${c ? c.quantity : '—'}</td>
+            <td class="num">${c ? formatCurrency(c.unit_price) : '—'}</td>
+            <td class="num" style="color:#166534;">${c ? formatCurrency(cBrutto!) : '—'}</td>
+            <td class="num" style="font-weight:700; color:${rowDiff >= 0 ? '#166534' : '#991b1b'};">${rowDiff >= 0 ? '+' : ''}${formatCurrency(rowDiff)}</td>
+          </tr>`
+        }).join('')
+
+        return `
+        <div style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; margin-top:4px;">Zestawienie korekty</div>
+        <table>
+          <colgroup>
+            <col style="width:3%"/>
+            <col style="width:20%"/>
+            <col style="width:6%"/>
+            <col style="width:9%"/>
+            <col style="width:10%"/>
+            <col style="width:1%"/>
+            <col style="width:20%"/>
+            <col style="width:6%"/>
+            <col style="width:9%"/>
+            <col style="width:10%"/>
+            <col style="width:6%"/>
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="center" rowspan="2">Lp.</th>
+              <th colspan="4" style="background:rgba(153,27,27,0.08); color:#991b1b; text-align:center; padding:6px;">Przed korektą</th>
+              <th style="background:#f0f9ff;"></th>
+              <th colspan="4" style="background:rgba(22,101,52,0.08); color:#166534; text-align:center; padding:6px;">Po korekcie</th>
+              <th class="num" rowspan="2" style="font-size:11px;">Różnica brutto</th>
+            </tr>
+            <tr>
+              <th>Nazwa</th><th class="num">Ilość</th><th class="num">Cena netto</th><th class="num">Brutto</th>
+              <th style="background:#f0f9ff;"></th>
+              <th>Nazwa</th><th class="num">Ilość</th><th class="num">Cena netto</th><th class="num">Brutto</th>
+            </tr>
+          </thead>
+          <tbody>${compRows}</tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" style="text-align:right; padding-right:8px; font-weight:600; color:var(--muted);">Razem brutto przed:</td>
+              <td class="num" style="font-weight:700; color:#991b1b;">${formatCurrency(origGross)}</td>
+              <td style="background:#f0f9ff;"></td>
+              <td colspan="3" style="text-align:right; padding-right:8px; font-weight:600; color:var(--muted);">Razem brutto po:</td>
+              <td class="num" style="font-weight:700; color:#166534;">${formatCurrency(corrGross)}</td>
+              <td class="num" style="font-weight:800; border-top:2px solid var(--red); color:${diff >= 0 ? '#166534' : '#991b1b'};">${diff >= 0 ? '+' : ''}${formatCurrency(diff)}</td>
+            </tr>
+          </tfoot>
+        </table>
+        <div style="margin-top:14px; padding:10px 16px; background:${diff < 0 ? 'rgba(153,27,27,0.06)' : 'rgba(22,101,52,0.06)'}; border:1px solid ${diff < 0 ? 'rgba(153,27,27,0.2)' : 'rgba(22,101,52,0.2)'}; border-radius:8px; font-size:14px;">
+          ${diff < 0
+            ? `<strong style="color:#991b1b;">Do zwrotu nabywcy: ${formatCurrency(Math.abs(diff))}</strong>`
+            : `<strong style="color:#166534;">Dopłata nabywcy: ${formatCurrency(diff)}</strong>`}
+        </div>`
+      })() : `
       <table>
         <colgroup>
           <col style="width:4%"/>
@@ -371,7 +455,7 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
           <div class="totals-line"><strong>DO ZAP\u0141ATY (brutto):</strong><strong>${formatCurrency(invoice.total_gross)}</strong></div>
           ${advanceDeductionHtml}
         </div>
-      </div>
+      </div>`}
 
       <div style="margin-top:22px; padding:14px 20px; background:#f9fafb; border-radius:12px; border:1px solid var(--line); display:grid; grid-template-columns:1fr 1fr; gap:10px 32px; font-size:14px;">
         <div><span style="color:var(--muted);">Forma p\u0142atno\u015bci: </span><strong>${paymentMethodLabel}</strong></div>

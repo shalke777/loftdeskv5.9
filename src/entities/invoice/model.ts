@@ -17,6 +17,7 @@ export const InvoiceSchema = z.object({
   client_id: z.string().nullable(),
   project_id: z.string().nullable(),
   contract_id: z.string().nullable().optional(),
+  tranche_id: z.string().nullable().optional(),
   /** null for drafts — assigned at issuance */
   number: z.string().nullable(),
   /** Rodzaj faktury: standardowa / zaliczkowa / końcowa / częściowa / korekta */
@@ -36,8 +37,8 @@ export const InvoiceSchema = z.object({
   payment_method: z.enum(['transfer', 'cash', 'card']).optional(),
   /** Opcjonalne nadpisanie rachunku bankowego firmy na tej fakturze */
   bank_account: z.string().nullable().optional(),
-  /** ID transzy z umowy, której dotyczy faktura */
-  tranche_id: z.string().nullable().optional(),
+  /** Pozycje oryginalne przed korektą — tylko dla faktur korygujących */
+  original_items: z.array(InvoiceItemSchema).nullable().optional(),
   /** Suma wcześniejszych zaliczek – używana przy fakturze końcowej */
   advance_total: z.number().nullable().optional(),
   total_net: z.number(),
@@ -67,4 +68,5 @@ export type CreateInvoiceInput = Pick<Invoice, 'client_id' | 'project_id' | 'con
   advance_total?: number | null
   corrected_invoice_id?: string | null
   correction_reason?: string | null
+  original_items?: InvoiceItem[] | null
 }
