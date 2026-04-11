@@ -79,15 +79,20 @@ function emptyLineItem(): EditableLineItem {
 }
 
 // ── Form state ───────────────────────────────────────────────────────────────
-function emptyState() {
+function today() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function emptyState(prefillDates = false) {
+  const t = prefillDates ? today() : ''
   return {
     vendor_name:      '',
     vendor_nip:       '',
     buyer_name:       '',
     buyer_nip:        '',
     invoice_number:   '',
-    issue_date:       '',
-    sale_date:        '',
+    issue_date:       t,
+    sale_date:        t,
     net_amount:       '',
     vat_amount:       '',
     gross_amount:     '',
@@ -118,7 +123,7 @@ export function ExpenseConfirmForm({
   onCancel,
   saving,
 }: Props) {
-  const [form, setForm] = useState<FormState>(emptyState())
+  const [form, setForm] = useState<FormState>(() => emptyState(!parseResult || parseResult.input_type === 'room_photo'))
   const [lineItems, setLineItems] = useState<EditableLineItem[]>([])
   const [lineItemsDirty, setLineItemsDirty] = useState(false)
   const [autofilled, setAutofilled] = useState<Set<keyof FormState>>(new Set())
@@ -131,7 +136,7 @@ export function ExpenseConfirmForm({
 
     if (isRoomPhoto) {
       setForm({
-        ...emptyState(),
+        ...emptyState(true),
         notes: parseResult.document_fields?.notes ?? '',
         cost_type: 'material',
       })

@@ -91,10 +91,11 @@ export function ProjectExpensesTab({ projectId }: Props) {
 
   function startEdit(exp: ExpenseInvoiceV4) {
     setEditingId(exp.id)
+    const todayStr = new Date().toISOString().slice(0, 10)
     setEditForm({
       vendor: exp.vendor_name ?? exp.vendor ?? '',
       amount: String(Math.abs(exp.amount_gross ?? 0)),
-      date:   exp.issue_date ?? '',
+      date:   exp.issue_date ?? todayStr,
       notes:  exp.description ?? '',
     })
   }
