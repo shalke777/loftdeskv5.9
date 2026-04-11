@@ -1,18 +1,17 @@
 ﻿import {
   Bell,
-  Calculator,
+  ChevronDown,
+  ChevronUp,
   CreditCard,
   ExternalLink,
-  FileText,
+  FileStack,
   FolderKanban,
   LayoutDashboard,
   LogOut,
   MessageSquare,
   Mic,
   Moon,
-  Receipt,
   Settings,
-  Shield,
   Sun,
   Users,
   Wallet,
@@ -40,32 +39,32 @@ import { GlobalRefreshButton } from '@/shared/ui/GlobalRefreshButton/GlobalRefre
 
 type MainNavItem = {
   type?: 'route'
-  to: '/dashboard' | '/clients' | '/estimates' | '/contracts' | '/invoices' | '/projects' | '/ksef' | '/settings' | '/chat' | '/expenses' | '/notes'
+  to: '/dashboard' | '/clients' | '/estimates' | '/contracts' | '/invoices' | '/projects' | '/ksef' | '/settings' | '/chat' | '/expenses' | '/notes' | '/documents'
   label: string
   icon: typeof LayoutDashboard
   feature?: 'ksef'
 }
 
 const mainNavItems: MainNavItem[] = [
-  { to: '/dashboard', label: 'Start', icon: LayoutDashboard },
-  { to: '/clients', label: 'Kontrahenci', icon: Users },
-  { to: '/estimates', label: 'Wycena', icon: Calculator },
-  { to: '/contracts', label: 'Umowa', icon: FileText },
-  { to: '/invoices', label: 'Faktura', icon: Receipt },
-  { to: '/projects', label: 'Projekty', icon: FolderKanban },
-  { to: '/chat', label: 'Chat', icon: MessageSquare },
-  { to: '/expenses', label: 'Koszty', icon: Wallet },
-  { to: '/notes', label: 'Notatki', icon: Mic },
-  { to: '/ksef', label: 'KSeF', icon: Shield, feature: 'ksef' },
-  { to: '/settings', label: 'Ustawienia', icon: Settings },
+  { to: '/dashboard',  label: 'Start',      icon: LayoutDashboard },
+  { to: '/projects',   label: 'Projekty',   icon: FolderKanban },
+  { to: '/chat',       label: 'Chat',       icon: MessageSquare },
+  { to: '/documents',  label: 'Dokumenty',  icon: FileStack },
+  { to: '/expenses',   label: 'Koszty',     icon: Wallet },
+]
+
+const moreNavItems: MainNavItem[] = [
+  { to: '/clients',  label: 'Kontrahenci', icon: Users },
+  { to: '/notes',    label: 'Notatki',     icon: Mic },
+  { to: '/settings', label: 'Ustawienia',  icon: Settings },
 ]
 
 const mobileNav: MainNavItem[] = [
-  { to: '/projects',   label: 'Projekty',  icon: FolderKanban },
-  { to: '/chat',       label: 'Chat',      icon: MessageSquare },
-  { to: '/dashboard',  label: 'Start',     icon: LayoutDashboard },
-  { to: '/invoices',   label: 'Papiery',   icon: FileText },
-  { to: '/settings',   label: 'Więcej',    icon: Settings },
+  { to: '/projects',   label: 'Projekty',   icon: FolderKanban },
+  { to: '/chat',       label: 'Chat',       icon: MessageSquare },
+  { to: '/dashboard',  label: 'Start',      icon: LayoutDashboard },
+  { to: '/documents',  label: 'Dokumenty',  icon: FileStack },
+  { to: '/settings',   label: 'Więcej',     icon: Settings },
 ]
 
 function isActive(pathname: string, item: MainNavItem) {
@@ -78,7 +77,6 @@ export function AuthLayout() {
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const canUsePortal = useFeatureAccess('portal')
-  const canUseKsef = useFeatureAccess('ksef')
   const { theme, toggleTheme } = useTheme()
   const { data: notifications = [] } = useOperatorNotifications()
   const { data: unreadCount = 0 } = useOperatorUnreadCount()
@@ -87,6 +85,7 @@ export function AuthLayout() {
   function markAllRead() { markAllReadMutation.mutate() }
   const [showNotifications, setShowNotifications] = useState(false)
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null)
+  const [moreExpanded, setMoreExpanded] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -113,9 +112,7 @@ export function AuthLayout() {
     return null
   }
 
-  const featureFlags = { ksef: canUseKsef } as const
-  const visibleMainNav = mainNavItems.filter((item) => !item.feature || featureFlags[item.feature])
-  const visibleMobileNav = mobileNav.filter((item) => !item.feature || featureFlags[item.feature])
+  const visibleMobileNav = mobileNav
 
   return (
     <>
@@ -133,7 +130,7 @@ export function AuthLayout() {
 
 		<div className="sidebar__section-label">Główne moduły</div>
 		<nav className="sidebar__nav sidebar__nav--main">
-		  {visibleMainNav.map((item) => {
+		  {mainNavItems.map((item) => {
 			const Icon = item.icon
 			const active = isActive(pathname, item)
 
@@ -166,6 +163,27 @@ export function AuthLayout() {
 			  </span>
 			</Link>
 		  ) : null}
+
+		  {/* ⋯ Więcej — collapsible section */}
+		  <button
+			type="button"
+			onClick={() => setMoreExpanded(e => !e)}
+			className="sidebar__link"
+			style={{ border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', marginTop: 4 }}
+		  >
+			{moreExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+			<span>Więcej</span>
+		  </button>
+		  {moreExpanded && moreNavItems.map((item) => {
+			const Icon = item.icon
+			const active = isActive(pathname, item)
+			return (
+			  <Link key={item.to} to={item.to} className={active ? 'sidebar__link sidebar__link--active' : 'sidebar__link'} style={{ paddingLeft: 28 }}>
+				<Icon size={16} />
+				<span style={{ fontSize: 13 }}>{item.label}</span>
+			  </Link>
+			)
+		  })}
 		</nav>
 
         <div className="sidebar__footer">
@@ -234,7 +252,7 @@ export function AuthLayout() {
                     notifications.slice(0, 20).map((n) => (
                       <button key={n.id} onClick={() => {
                         setShowNotifications(false)
-                        navigate({ to: '/projects' as any })
+                        navigate({ to: n.project_id ? `/projects/${n.project_id}` as any : '/projects' as any })
                       }} style={{
                         display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer',
                         padding: '10px 16px', borderBottom: '1px solid var(--color-border)',

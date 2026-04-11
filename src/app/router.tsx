@@ -35,6 +35,7 @@ const invoicesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path:
 const contractsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'contracts', component: lazyRouteComponent(() => import('@/app/routes/contracts'), 'ContractsRoutePage') })
 const projectsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'projects', component: lazyRouteComponent(() => import('@/app/routes/projects'), 'ProjectsRoutePage') })
 const reportsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'reports', component: lazyRouteComponent(() => import('@/app/routes/reports'), 'ReportsRoutePage') })
+const documentsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'documents', component: lazyRouteComponent(() => import('@/app/routes/documents'), 'DocumentsRoutePage') })
 const ksefRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'ksef', component: lazyRouteComponent(() => import('@/app/routes/ksef'), 'KsefRoutePage') })
 const settingsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'settings', component: lazyRouteComponent(() => import('@/app/routes/settings'), 'SettingsRoutePage') })
 const expensesRoute = createRoute({
@@ -90,6 +91,7 @@ const routeTree = rootRoute.addChildren([
     estimatesRoute,
     invoicesRoute,
     contractsRoute,
+    documentsRoute,
     projectsRoute,
     reportsRoute,
     ksefRoute,

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { CalendarCheck, FileDown, QrCode, ClipboardCheck, Loader2, ClipboardList } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { CalendarCheck, FileDown, QrCode, ClipboardCheck, Loader2, ClipboardList, User } from 'lucide-react'
 import type { Project } from '@/entities/project/model'
 import { Badge } from '@/shared/ui/Badge/Badge'
 import { Card } from '@/shared/ui/Card/Card'
@@ -161,6 +162,15 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
           <Badge variant={project.status === 'done' ? 'success' : project.status === 'cancelled' ? 'danger' : project.status === 'active' ? 'warning' : 'default'}>{STATUS_LABEL[project.status]}</Badge>
         </div>
         <p>Adres: {project.address || 'brak'}</p>
+        {linkedClient && (
+          <p style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <User size={12} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+            <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Klient:</span>
+            <Link to={`/clients/${linkedClient.id}` as any} style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-brand)', textDecoration: 'none' }}>
+              {linkedClient.name}
+            </Link>
+          </p>
+        )}
         <p>Start: {project.start_date || 'nie ustawiono'} · Koniec: {project.end_date || 'nie ustawiono'}</p>
         <div style={{ margin: '12px 0' }}>
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 6 }}>Kompletność dokumentacji</p>
