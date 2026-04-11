@@ -614,12 +614,17 @@ export function isPdfTextUsable(text: string): boolean {
 
   const lower = trimmed.toLowerCase()
   const INVOICE_KEYWORDS = [
+    // Invoice / receipt / bill
     'faktura', 'paragon', 'rachunek', 'proforma',
     'nip', 'netto', 'brutto', 'vat',
     'sprzedawca', 'nabywca', 'wystawca', 'dostawca',
     'termin', 'zaplat', 'platno',
     'suma', 'razem', 'kwota',
     'data wystawienia', 'data sprzed',
+    // WZ / delivery note / cost documents from ERP systems
+    'wydanie', 'dostaw', 'odbiorca', 'magazyn',
+    'ilo\u015b\u0107', 'warto\u015b\u0107', 'zamówi', 'zleceni',
+    'koszt', 'us\u0142ug',
   ]
   let keywordMatches = 0
   for (const kw of INVOICE_KEYWORDS) {
@@ -668,9 +673,11 @@ function parseTextWithRegex(text: string, companyNip = ''): Omit<ParseInvoiceRes
   // Must run first — affects confidence scoring and warning generation below.
   const RECEIPT_KEYWORDS = /paragon|kasa\s+fiskalna|nr\s*paragonu|fiskaln|kasowy|kasy\s+fiskal|sprzeda[zż]\s+kasow/i
   const BILL_KEYWORDS    = /proforma|zaliczk(?:owa|owy)|rachunek\s+(?:nr|numer)/i
+  const WZ_KEYWORDS      = /wydanie\s+zewn[eę]trzne|\bwz\s*(?:nr|\/|$)|\bdokument\s+wz\b/i
   const docType: ParseInvoiceResult['document_type'] =
     RECEIPT_KEYWORDS.test(t) ? 'receipt'
     : BILL_KEYWORDS.test(t)  ? 'bill'
+    : WZ_KEYWORDS.test(t)    ? 'other'
     : 'invoice'
   result.document_type = docType
 

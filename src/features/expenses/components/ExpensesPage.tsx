@@ -298,7 +298,8 @@ export function ExpensesPage() {
       if (isPDF) {
         try {
           const rawText = await extractRawPdfText(file)
-          const PDF_KEYWORDS = ['faktura', 'fvat', 'nip', 'netto', 'brutto', 'zaplat', 'termin']
+          const PDF_KEYWORDS = ['faktura', 'fvat', 'nip', 'netto', 'brutto', 'zaplat', 'termin',
+            'wydanie', 'wz/', 'dostaw', 'odbiorca', 'ilo\u015b\u0107', 'warto\u015b\u0107', 'magazyn']
           const hasGoodText  = rawText.trim().length >= 80 &&
             PDF_KEYWORDS.some(kw => rawText.toLowerCase().includes(kw))
           if (hasGoodText) {

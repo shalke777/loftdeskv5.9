@@ -206,7 +206,8 @@ Line item rules:
 - For receipts: items may not have explicit net/vat breakdown; extract what is visible.
 
 Field rules:
-- document_type: "invoice" for faktura VAT; "receipt" for paragon/kasa fiskalna/NR PARAGONU; "bill" for rachunki/proforma/zaliczka; "other" for anything else.
+- document_type: "invoice" for faktura VAT; "receipt" for paragon/kasa fiskalna/NR PARAGONU; "bill" for rachunki/proforma/zaliczka; "other" for WZ (wydanie zewnętrzne), delivery notes, packing lists, and any other cost document.
+- IMPORTANT: For document_type "other" (WZ, delivery notes, etc.) — still extract ALL available fields: vendor_name, vendor_nip, buyer_name, buyer_nip, document_number, dates, line items, and amounts. Do NOT skip extraction just because the document is not a standard invoice.
 - issue_date, sale_date, payment_due_date: ISO YYYY-MM-DD; convert from DD.MM.YYYY or MM/DD/YYYY.
 - vendor_nip / buyer_nip: exactly 10 digits, no dashes/spaces, or null.
 - currency: default "PLN" if not specified.
@@ -243,7 +244,8 @@ VERIFICATION — run these checks before producing final JSON output:
    If you see NIP next to "SPRZEDAWCA" or at the top of the document → that is vendor_nip.
    If you see NIP next to "NABYWCA" or in the second address block → that is buyer_nip.
    NEVER swap buyer and seller. If unsure, add warning: "Nie jestem pewien rozróżnienia nabywca/sprzedawca — zweryfikuj"
-   Context keywords: sprzedawca, wystawca, dostawca → vendor | nabywca, odbiorca, kupujący → buyer
+   Context keywords: sprzedawca, wystawca, dostawca → vendor | nabywca, odbiorca, kupujący, zamawiający → buyer
+   WZ documents: "wystawił" / "wydał" / "dostawca" = vendor; "odbiorca" / "zamawiający" = buyer.
 
 5. POLISH AMOUNT FORMAT
    Polish invoices use comma as decimal separator and space as thousands separator.

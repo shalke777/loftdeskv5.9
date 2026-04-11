@@ -566,7 +566,7 @@ export function useParseAndNormalize() {
 
 // ── Room photo / non-document gate ───────────────────────────────────────────
 // Invoice keywords that should be present in any real cost document.
-const INVOICE_KEYWORDS = /faktura|paragon|sprzedawca|nabywca|nip[:\s#]|netto[:\s]|brutto[:\s]|vat[:\s%]|termin.*p.at|nr.*faktury|do zap.aty/i
+const INVOICE_KEYWORDS = /faktura|paragon|sprzedawca|nabywca|nip[:\s#]|netto[:\s]|brutto[:\s]|vat[:\s%]|termin.*p.at|nr.*faktury|do zap.aty|wydanie|dostawca|odbiorca|wz\s*nr|warto[sś][cć]/i
 
 /**
  * Returns true when an OCR/AI result strongly suggests the input image was NOT
