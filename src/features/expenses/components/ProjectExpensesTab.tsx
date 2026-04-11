@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Camera, Plus, PenLine, Receipt } from 'lucide-react'
+import { Camera, Plus, PenLine, Receipt, Minus } from 'lucide-react'
 import { translateError } from '@/shared/lib/errorMessages'
 import type { ExpenseSourceType, CreateExpenseForProjectInput, ExpenseInvoiceV4 } from '@/features/expenses/api/expenses.api'
 import { rehydrateAnalysisResult } from '@/features/expenses/api/expenses.api'
@@ -53,6 +53,10 @@ export function ProjectExpensesTab({ projectId }: Props) {
   const [parseError,  setParseError]  = useState<string | null>(null)
   const [approvalExpense, setApprovalExpense] = useState<ExpenseInvoiceV4 | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [reductionOpen, setReductionOpen] = useState(false)
+  const [reductionAmount, setReductionAmount] = useState('')
+  const [reductionDesc, setReductionDesc] = useState('')
+  const [reductionSaving, setReductionSaving] = useState(false)
 
   const { data: expenses = [], isLoading } = useProjectExpenses(projectId)
   const createExpense = useCreateExpense(projectId)
@@ -213,6 +217,26 @@ export function ProjectExpensesTab({ projectId }: Props) {
     })
   }
 
+  function handleReductionSave() {
+    const val = parseFloat(reductionAmount.replace(',', '.'))
+    if (!val || val <= 0) return
+    setReductionSaving(true)
+    createExpense.mutate({
+      vendor_name: reductionDesc.trim() || 'Pomniejszenie kosztów',
+      gross_amount: -Math.abs(val),
+      cost_type: 'reduction' as any,
+      source_type: 'manual',
+    }, {
+      onSuccess: () => {
+        setReductionOpen(false)
+        setReductionAmount('')
+        setReductionDesc('')
+        setReductionSaving(false)
+      },
+      onError: () => setReductionSaving(false),
+    })
+  }
+
   // ── Rendering: list ───────────────────────────────────────────────────────
 
   if (mode === 'list') {
@@ -258,8 +282,83 @@ export function ProjectExpensesTab({ projectId }: Props) {
               <Plus style={{ width: 14, height: 14 }} />
               Dodaj
             </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setReductionOpen(v => !v)}
+              title="Dodaj ręczne pomniejszenie kosztów (rabat, upust, korekta)"
+              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'var(--color-error)' }}
+            >
+              <Minus style={{ width: 14, height: 14 }} />
+              Pomniejszenie
+            </button>
           </div>
         </div>
+
+        {/* Inline reduction form */}
+        {reductionOpen && (
+          <div style={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-error, #A83228)',
+            borderRadius: 8,
+            padding: '14px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-error)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Minus style={{ width: 14, height: 14 }} />
+              Pomniejszenie kosztów
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                placeholder="Opis (np. Rabat od dostawcy)"
+                value={reductionDesc}
+                onChange={e => setReductionDesc(e.target.value)}
+                style={{
+                  flex: '1 1 160px', minWidth: 0, padding: '8px 10px',
+                  border: '1px solid var(--color-border)', borderRadius: 6,
+                  background: 'var(--color-bg)', color: 'var(--color-text-primary)',
+                  fontSize: 13,
+                }}
+              />
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="Kwota (PLN)"
+                value={reductionAmount}
+                onChange={e => setReductionAmount(e.target.value)}
+                style={{
+                  flex: '0 0 130px', padding: '8px 10px',
+                  border: '1px solid var(--color-border)', borderRadius: 6,
+                  background: 'var(--color-bg)', color: 'var(--color-text-primary)',
+                  fontSize: 13,
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                className="btn"
+                disabled={reductionSaving || !reductionAmount || parseFloat(reductionAmount) <= 0}
+                onClick={handleReductionSave}
+                style={{ background: 'var(--color-error)', color: '#fff', border: 'none', fontSize: 13 }}
+              >
+                {reductionSaving ? 'Zapisuję…' : 'Zapisz pomniejszenie'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => { setReductionOpen(false); setReductionAmount(''); setReductionDesc('') }}
+                style={{ fontSize: 13 }}
+              >
+                Anuluj
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Loading */}
         {isLoading && (
@@ -311,10 +410,14 @@ export function ProjectExpensesTab({ projectId }: Props) {
                 key={exp.id}
                 style={{
                   borderRadius: 8,
-                  border: '1px solid var(--color-border)',
-                  background: exp.possible_duplicate
-                    ? 'var(--color-warning-soft, rgba(212,150,10,0.12))'
-                    : 'var(--color-surface)',
+                  border: exp.cost_type === 'reduction'
+                    ? '1px solid var(--color-error, #A83228)'
+                    : '1px solid var(--color-border)',
+                  background: exp.cost_type === 'reduction'
+                    ? 'var(--color-error-soft, rgba(168,50,40,0.06))'
+                    : exp.possible_duplicate
+                      ? 'var(--color-warning-soft, rgba(212,150,10,0.12))'
+                      : 'var(--color-surface)',
                   overflow: 'hidden',
                 }}
               >
@@ -359,8 +462,9 @@ export function ProjectExpensesTab({ projectId }: Props) {
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 4, fontSize: 12, color: 'var(--color-text-muted)' }}>
                     {exp.issue_date && <span>📅 {exp.issue_date}</span>}
                     {exp.amount_gross != null && (
-                      <span style={{ fontWeight: 600, color: 'var(--color-text, #111)' }}>
-                        {exp.amount_gross.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} {exp.currency ?? 'PLN'}
+                      <span style={{ fontWeight: 600, color: exp.cost_type === 'reduction' ? 'var(--color-error, #A83228)' : 'var(--color-text, #111)' }}>
+                        {exp.cost_type === 'reduction' && '−'}
+                        {Math.abs(exp.amount_gross).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} {exp.currency ?? 'PLN'}
                       </span>
                     )}
                     {exp.approval_status && (exp.approval_status as string) !== 'not_sent' && (
