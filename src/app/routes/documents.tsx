@@ -26,11 +26,15 @@ export function DocumentsRoutePage() {
 
   return (
     <div>
-      {/* Tab bar */}
+      {/* Tab bar — scrollable on mobile, no wrap */}
       <div style={{
         display: 'flex', gap: 4, padding: '12px 16px 0',
         borderBottom: '1px solid var(--color-border)',
         background: 'var(--color-card)',
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
+        scrollbarWidth: 'none' as React.CSSProperties['scrollbarWidth'],
+        flexShrink: 0,
       }}>
         {visibleTabs.map(t => {
           const Icon = t.icon
@@ -44,6 +48,7 @@ export function DocumentsRoutePage() {
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '8px 14px',
                 fontSize: 13, fontWeight: active ? 700 : 500,
+                flexShrink: 0, whiteSpace: 'nowrap',
                 color: active ? 'var(--color-brand)' : 'var(--color-text-secondary)',
                 background: 'none', border: 'none', cursor: 'pointer',
                 borderBottom: active ? '2px solid var(--color-brand)' : '2px solid transparent',
@@ -63,6 +68,7 @@ export function DocumentsRoutePage() {
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 14px', fontSize: 13, fontWeight: 500,
+              flexShrink: 0, whiteSpace: 'nowrap',
               color: 'var(--color-text-muted)', background: 'none', border: 'none',
               cursor: 'pointer', borderBottom: '2px solid transparent', marginBottom: -1,
             }}
@@ -73,8 +79,8 @@ export function DocumentsRoutePage() {
         )}
       </div>
 
-      {/* Tab content */}
-      <div>
+      {/* Tab content — hide inner PageHeaders (they duplicate the tab label) */}
+      <div className="docs-hub-content">
         {tab === 'estimates' && <EstimatesPage />}
         {tab === 'contracts' && <ContractsPage />}
         {tab === 'invoices'  && <InvoicesPage />}

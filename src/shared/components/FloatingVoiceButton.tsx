@@ -21,7 +21,7 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   )
 }
 
-export function FloatingVoiceButton() {
+export function FloatingVoiceButton({ inHeader }: { inHeader?: boolean } = {}) {
   const companyId = useCompanyId()
   const [voiceMode, setVoiceMode] = useState<VoiceMode>('idle')
   const [recordTarget, setRecordTarget] = useState<RecordTarget>('note')
@@ -251,12 +251,16 @@ export function FloatingVoiceButton() {
   const isMenu       = voiceMode === 'menu'
 
   return (
-    <div ref={menuRef} className="floating-fab" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000 }}>
+    <div ref={menuRef} className={inHeader ? 'voice-btn-header' : 'floating-fab'}
+      style={inHeader
+        ? { position: 'relative', display: 'inline-flex' }
+        : { position: 'fixed', bottom: 24, right: 24, zIndex: 1000 }}>
 
       {/* ── Mode picker popup ── */}
       {isMenu && (
         <div style={{
-          position: 'absolute', bottom: 68, right: 0,
+          position: 'absolute',
+          ...(inHeader ? { top: 48, right: 0 } : { bottom: 68, right: 0 }),
           background: 'var(--color-surface-elevated, var(--color-surface))',
           border: '1px solid var(--color-border)',
           borderRadius: 12,
@@ -264,6 +268,7 @@ export function FloatingVoiceButton() {
           overflow: 'hidden',
           minWidth: 200,
           animation: 'fadeInUp 0.15s ease',
+          zIndex: 2000,
         }}>
           <button
             type="button"
@@ -338,28 +343,30 @@ export function FloatingVoiceButton() {
           : 'Nagraj notatkę lub wycenę głosową'
         }
         style={{
-          width: 56, height: 56,
+          width: inHeader ? 44 : 56, height: inHeader ? 44 : 56,
           borderRadius: '50%',
           border: isMenu ? '2px solid var(--color-brand)' : 'none',
           cursor: isProcessing ? 'default' : 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexDirection: 'column', gap: 2,
-          background: isRecording
-            ? (recordTarget === 'estimate' ? '#d97706' : recordTarget === 'expense' ? '#059669' : '#dc2626')
-            : isProcessing ? 'var(--color-border, #555)'
-            : isMenu ? 'var(--color-surface-elevated, #1e1e2e)'
-            : 'var(--color-brand)',
-          color: '#fff',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+          background: inHeader
+            ? (isRecording ? '#dc2626' : 'transparent')
+            : (isRecording
+                ? (recordTarget === 'estimate' ? '#d97706' : recordTarget === 'expense' ? '#059669' : '#dc2626')
+                : isProcessing ? 'var(--color-border, #555)'
+                : isMenu ? 'var(--color-surface-elevated, #1e1e2e)'
+                : 'var(--color-brand)'),
+          color: inHeader ? (isRecording ? '#ef4444' : 'var(--color-text-secondary)') : '#fff',
+          boxShadow: inHeader ? 'none' : '0 4px 16px rgba(0,0,0,0.25)',
           animation: isRecording ? 'fab-pulse 1.2s ease-in-out infinite' : 'none',
-          transition: 'background 0.2s',
+          transition: 'background 0.2s, color 0.2s',
         }}
       >
         {isProcessing
-          ? <span className="spinner" style={{ width: 22, height: 22 }} />
+          ? <span className="spinner" style={{ width: inHeader ? 17 : 22, height: inHeader ? 17 : 22 }} />
           : isRecording
-            ? <MicOff size={22} />
-            : <Mic size={22} />
+            ? <MicOff size={inHeader ? 17 : 22} />
+            : <Mic size={inHeader ? 17 : 22} />
         }
         {isRecording && (
           <span style={{ fontSize: 9, lineHeight: 1, fontWeight: 700 }}>

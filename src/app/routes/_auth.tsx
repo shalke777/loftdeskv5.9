@@ -284,6 +284,10 @@ export function AuthLayout() {
             </div>
             <InstallAppButton compact />
             <GlobalRefreshButton />
+            {/* Mic button — visible only on mobile (FAB hidden on mobile) */}
+            <span className="topbar-mic">
+              <FloatingVoiceButton inHeader />
+            </span>
             <button
               type="button"
               onClick={toggleTheme}

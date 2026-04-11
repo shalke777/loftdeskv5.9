@@ -673,6 +673,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .toast-viewport { bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 8px); }
   /* FAB: raise above mobile-nav (68px) + safe area */
   .floating-fab { bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important; }
+  /* FAB voice: hide on mobile — mic moves to topbar */
+  .floating-fab { display: none !important; }
+  /* Topbar mic: show only on mobile */
+  .topbar-mic { display: inline-flex; }
   /* Settings: single column on mobile to prevent overflow */
   .settings-grid.grid-2 { grid-template-columns: 1fr !important; }
   .grid-2 { min-width: 0; }
@@ -683,6 +687,12 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .legal-gate__card { max-height: 92vh; overflow-y: auto; margin: 16px; }
   .legal-page { padding: 16px; }
 }
+
+/* Documents hub — hide per-page PageHeaders (tab label serves as heading) */
+.docs-hub-content .page-header { display: none; }
+
+/* Topbar mic: hidden on desktop (FAB used there), shown on mobile */
+.topbar-mic { display: none; }
 
 /* ====================================================================
    LEGAL — document pages
