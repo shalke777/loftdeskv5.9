@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, FileMinus, Mail, Trash2, Bell } from 'lucide-react'
+import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, FileMinus, Mail, Trash2, Bell, Download } from 'lucide-react'
 import type { Invoice } from '@/entities/invoice/model'
 import { Button } from '@/shared/ui/Button/Button'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
@@ -10,6 +10,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
 import { getAppOrigin } from '@/shared/lib/native'
+import { downloadBlob } from '@/shared/lib/downloads'
 
 const STATUS_LABEL: Record<Invoice['status'], string> = {
   draft: 'Szkic', unpaid: 'Nieopłacona', paid: 'Opłacona', overdue: 'Przeterminowana',
@@ -59,6 +60,7 @@ export function InvoiceRow({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
 
   // Compute days overdue from due_date (client-side, for display only)
   const daysOverdue = useMemo(() => {
@@ -88,6 +90,28 @@ export function InvoiceRow({
     address: companyMeta.address, postalCity: companyMeta.postalCity,
     email: companyMeta.email || user?.email, phone: companyMeta.phone,
     bankAccount: companyMeta.bankAccount, logoUrl: companyMeta.logoUrl,
+  }
+
+  async function downloadPdfDirect(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (downloadingPdf) return
+    setDownloadingPdf(true)
+    try {
+      const { generatePdfBlob } = await import('@/services/pdf/pdfGenerator')
+      const html = buildInvoicePreview(invoice, clientMeta, undefined, companyMetaFull)
+      const blob = await generatePdfBlob(html)
+      const filename = `${(invoice.number ?? 'faktura').replace(/\//g, '-')}.pdf`
+      await downloadBlob(filename, blob)
+    } catch (err) {
+      console.error('[LoftDesk] PDF download failed', err)
+      const html = buildInvoicePreview(invoice, clientMeta, undefined, companyMetaFull)
+      await downloadBlob(
+        `${(invoice.number ?? 'faktura').replace(/\//g, '-')}.html`,
+        new Blob([html], { type: 'text/html;charset=utf-8' }),
+      )
+    } finally {
+      setDownloadingPdf(false)
+    }
   }
 
   const tabs = useMemo(() => ([
@@ -179,6 +203,17 @@ export function InvoiceRow({
                 onClick={e => { e.stopPropagation(); setPreviewOpen(true) }}
               >
                 <FileText size={14} />
+              </button>
+            )}
+            {!isDraft && (
+              <button
+                className="proj-action-btn"
+                title={downloadingPdf ? 'Generowanie PDF…' : 'Pobierz PDF na dysk'}
+                onClick={downloadPdfDirect}
+                disabled={downloadingPdf}
+                style={downloadingPdf ? { opacity: 0.5 } : undefined}
+              >
+                <Download size={14} />
               </button>
             )}
             {canEdit && (
@@ -318,6 +353,9 @@ export function InvoiceRow({
             ) : (
               <>
                 <Button variant="secondary" onClick={() => setPreviewOpen(true)}>PDF / XML</Button>
+                <Button variant="secondary" loading={downloadingPdf} onClick={e => { void downloadPdfDirect(e) }}>
+                  {downloadingPdf ? 'Generowanie…' : 'Pobierz PDF'}
+                </Button>
                 <Button variant="secondary" onClick={() => setSendOpen(true)}>Wyślij do klienta</Button>
                 {invoice.status !== 'paid' && canMarkPaid && (
                   <Button variant="secondary" onClick={() => onMarkPaid(invoice.id)}>
