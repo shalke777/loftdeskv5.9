@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { useSearch } from '@tanstack/react-router'
@@ -263,8 +264,8 @@ export function ExpensesPage() {
     await new Promise<void>(resolve => {
       requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
     })
-    // Extra 50ms fallback for iOS WebKit compositor lag in standalone mode
-    await new Promise(resolve => setTimeout(resolve, 50))
+    // Extra 200ms fallback for iOS WebKit compositor lag in standalone mode
+    await new Promise(resolve => setTimeout(resolve, 200))
     try {
       // ── Pre-parse gate: screen images BEFORE upload or extraction ─────────
       // PDFs use their own keyword check and pass through. Image files are
@@ -644,8 +645,8 @@ export function ExpensesPage() {
     <div className="page">
       <PageHeader title="Koszty" subtitle="Skanuj faktury od dostawców — dane uzupełniają się automatycznie." />
 
-      {/* ── OCR loading overlay — fixed full-screen, always visible ────── */}
-      {uploading && (
+      {/* ── OCR loading overlay — portal to body, escapes all CSS containing blocks ── */}
+      {uploading && createPortal(
       <div className="exp-ocr-overlay">
         <div className="exp-ocr-overlay__card">
           <div className="exp-ocr-loading__icon">
@@ -660,7 +661,8 @@ export function ExpensesPage() {
             To może zająć kilka sekund — nie zamykaj okna.
           </span>
         </div>
-      </div>
+      </div>,
+      document.body,
       )}
 
       {/* ── Mobile quick-action bar (hidden on desktop) ──────────────── */}

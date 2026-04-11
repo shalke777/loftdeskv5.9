@@ -24,6 +24,28 @@ function useInvalidate() {
   return { companyId, qc, toast, invalidate }
 }
 
+// Fast setQueryData helper for project-photos cache
+function usePhotoCache() {
+  const qc = useQueryClient()
+  return {
+    addPhoto: (photo: PhotoDocumentation) =>
+      qc.setQueryData<PhotoDocumentation[]>(
+        documentationKeys.projectPhotos(photo.project_id ?? ''),
+        (old = []) => (old.some(p => p.id === photo.id) ? old : [...old, photo]),
+      ),
+    updatePhoto: (photo: PhotoDocumentation) =>
+      qc.setQueryData<PhotoDocumentation[]>(
+        documentationKeys.projectPhotos(photo.project_id ?? ''),
+        (old = []) => old.map(p => p.id === photo.id ? photo : p),
+      ),
+    removePhoto: (id: string, projectId: string) =>
+      qc.setQueryData<PhotoDocumentation[]>(
+        documentationKeys.projectPhotos(projectId),
+        (old = []) => old.filter(p => p.id !== id),
+      ),
+  }
+}
+
 export function useCreateDecision() {
   const { toast, invalidate } = useInvalidate()
   return useMutation({ mutationFn: (input: Omit<ClientDecision, 'id' | 'requested_at' | 'decided_at'>) => documentationApi.createDecision(input), onSuccess: () => { invalidate(); toast.success('Decyzja klienta dodana') } })
@@ -60,15 +82,18 @@ export function useDeleteProtocol() {
 
 export function useCreatePhoto() {
   const { toast, invalidate } = useInvalidate()
-  return useMutation({ mutationFn: (input: Omit<PhotoDocumentation, 'id'>) => documentationApi.createPhoto(input), onSuccess: () => { invalidate(); toast.success('Zdjęcie dodane do dokumentacji') } })
+  const photoCache = usePhotoCache()
+  return useMutation({ mutationFn: (input: Omit<PhotoDocumentation, 'id'>) => documentationApi.createPhoto(input), onSuccess: (photo) => { photoCache.addPhoto(photo); invalidate(); toast.success('Zdjęcie dodane do dokumentacji') } })
 }
 export function useUpdatePhoto() {
   const { toast, invalidate } = useInvalidate()
-  return useMutation({ mutationFn: ({ id, input }: { id: string; input: Partial<PhotoDocumentation> }) => documentationApi.updatePhoto(id, input), onSuccess: () => { invalidate(); toast.success('Zdjęcie zaktualizowane') } })
+  const photoCache = usePhotoCache()
+  return useMutation({ mutationFn: ({ id, input }: { id: string; input: Partial<PhotoDocumentation> }) => documentationApi.updatePhoto(id, input), onSuccess: (photo) => { photoCache.updatePhoto(photo); invalidate(); toast.success('Zdjęcie zaktualizowane') } })
 }
 export function useDeletePhoto() {
   const { toast, invalidate } = useInvalidate()
-  return useMutation({ mutationFn: (id: string) => documentationApi.deletePhoto(id), onSuccess: () => { invalidate(); toast.info('Zdjęcie usunięte') } })
+  const photoCache = usePhotoCache()
+  return useMutation({ mutationFn: ({ id, projectId }: { id: string; projectId: string }) => documentationApi.deletePhoto(id), onSuccess: (_, { id, projectId }) => { photoCache.removePhoto(id, projectId); invalidate(); toast.info('Zdjęcie usunięte') } })
 }
 
 export function useProjectPhotos(projectId: string) {

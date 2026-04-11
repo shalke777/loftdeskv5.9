@@ -5,13 +5,15 @@ import { threadsApi, type SendThreadMessageInput } from '@/features/projects/api
 import { useToast } from '@/shared/hooks/useToast'
 import { messagesKey } from './useThreadMessages'
 import { threadsKey } from './useThreads'
+import type { ProjectMessage } from '@/features/portal/model/project-portal.types'
 
 /**
  * Mutacja wysyłania wiadomości przez operatora.
  *
  * Po sukcesie:
- *  1. invalidateQueries thread-messages → refetch z serwera (poprawny stan bez optimistic duplikacji)
- *  2. invalidateQueries project-threads → odświeżenie last_message_preview i unread count na liście
+ *  1. setQueryData → natychmiastowe dodanie wiadomości do cache (zero opóźnienia)
+ *  2. invalidateQueries thread-messages → sync z serwerem w tle
+ *  3. invalidateQueries project-threads → odświeżenie last_message_preview i unread count
  */
 export function useSendThreadMessage(projectId: string | null) {
   const companyId   = useCompanyId()
@@ -25,6 +27,13 @@ export function useSendThreadMessage(projectId: string | null) {
     onMutate: async (input) => {
       // Blokuj realtime update podczas mutacji — patrz useThreadMessages
       queryClient.setMutationDefaults(messagesKey(input.thread_id), {})
+    },
+    onSuccess: (message: ProjectMessage, input) => {
+      // Natychmiastowe dodanie wiadomości do cache — bez czekania na refetch
+      queryClient.setQueryData<ProjectMessage[]>(
+        messagesKey(input.thread_id),
+        (old = []) => old.some(m => m.id === message.id) ? old : [...old, message],
+      )
     },
     onSettled: (_, __, input) => {
       void queryClient.invalidateQueries({ queryKey: messagesKey(input.thread_id) })

@@ -170,7 +170,7 @@ export function DocumentationPage() {
                   <p className="field__label" style={{ marginTop: 8 }}>{photo.note || '—'}</p>
                   <div className="actions-row">
                     {canManage ? <Button size="sm" variant="secondary" onClick={() => { setEditingPhoto(photo); setPhotoOpen(true) }}>Edytuj</Button> : null}
-                    {canManage ? <Button size="sm" variant="danger" onClick={() => deletePhoto.mutate(photo.id)}>Usuń</Button> : null}
+                    {canManage ? <Button size="sm" variant="danger" onClick={() => deletePhoto.mutate({ id: photo.id, projectId: photo.project_id ?? '' })}>Usuń</Button> : null}
                   </div>
                 </Card>
               ))}

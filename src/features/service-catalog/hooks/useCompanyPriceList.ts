@@ -56,7 +56,20 @@ export function useUpsertPrice() {
   return useMutation({
     mutationFn: ({ catalogItemId, unitPrice }: { catalogItemId: string; unitPrice: number }) =>
       companyPriceListApi.upsertPrice(companyId, catalogItemId, unitPrice),
-    onSuccess: () => {
+    onSuccess: (_, { catalogItemId, unitPrice }) => {
+      // Update Map cache immediately
+      qc.setQueryData<Map<string, number>>(priceListKey(companyId), (old) => {
+        const next = new Map(old ?? [])
+        next.set(catalogItemId, unitPrice)
+        return next
+      })
+      // Update detail list cache immediately
+      qc.setQueryData<CompanyPriceEntry[]>(priceListDetailKey(companyId), (old = []) => {
+        const now = new Date().toISOString()
+        const exists = old.some(e => e.catalog_item_id === catalogItemId)
+        if (exists) return old.map(e => e.catalog_item_id === catalogItemId ? { ...e, unit_price: unitPrice, updated_at: now } : e)
+        return [{ catalog_item_id: catalogItemId, custom_label: null, unit_price: unitPrice, updated_at: now }, ...old]
+      })
       qc.invalidateQueries({ queryKey: priceListKey(companyId) })
       qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
     },
@@ -76,7 +89,14 @@ export function useUpsertCustomPrice() {
   return useMutation({
     mutationFn: ({ customLabel, unitPrice }: { customLabel: string; unitPrice: number }) =>
       companyPriceListApi.upsertCustomPrice(companyId, customLabel, unitPrice),
-    onSuccess: () => {
+    onSuccess: (_, { customLabel, unitPrice }) => {
+      // Update detail list cache immediately
+      qc.setQueryData<CompanyPriceEntry[]>(priceListDetailKey(companyId), (old = []) => {
+        const now = new Date().toISOString()
+        const exists = old.some(e => e.custom_label === customLabel && !e.catalog_item_id)
+        if (exists) return old.map(e => (e.custom_label === customLabel && !e.catalog_item_id) ? { ...e, unit_price: unitPrice, updated_at: now } : e)
+        return [{ catalog_item_id: null, custom_label: customLabel, unit_price: unitPrice, updated_at: now }, ...old]
+      })
       qc.invalidateQueries({ queryKey: priceListKey(companyId) })
       qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
     },
@@ -96,7 +116,15 @@ export function useDeletePrice() {
   return useMutation({
     mutationFn: (catalogItemId: string) =>
       companyPriceListApi.deletePrice(companyId, catalogItemId),
-    onSuccess: () => {
+    onSuccess: (_, catalogItemId) => {
+      qc.setQueryData<Map<string, number>>(priceListKey(companyId), (old) => {
+        const next = new Map(old ?? [])
+        next.delete(catalogItemId)
+        return next
+      })
+      qc.setQueryData<CompanyPriceEntry[]>(priceListDetailKey(companyId), (old = []) =>
+        old.filter(e => e.catalog_item_id !== catalogItemId),
+      )
       qc.invalidateQueries({ queryKey: priceListKey(companyId) })
       qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
     },
@@ -115,7 +143,10 @@ export function useDeleteCustomPrice() {
   return useMutation({
     mutationFn: (customLabel: string) =>
       companyPriceListApi.deleteCustomPrice(companyId, customLabel),
-    onSuccess: () => {
+    onSuccess: (_, customLabel) => {
+      qc.setQueryData<CompanyPriceEntry[]>(priceListDetailKey(companyId), (old = []) =>
+        old.filter(e => !(e.custom_label === customLabel && !e.catalog_item_id)),
+      )
       qc.invalidateQueries({ queryKey: priceListKey(companyId) })
       qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
     },
@@ -134,7 +165,32 @@ export function useUpsertManyPrices() {
   return useMutation({
     mutationFn: (entries: Array<{ catalog_item_id?: string | null; custom_label?: string | null; unit_price: number }>) =>
       companyPriceListApi.upsertMany(companyId, entries),
-    onSuccess: () => {
+    onSuccess: (_, entries) => {
+      const now = new Date().toISOString()
+      // Update Map cache immediately for catalog entries
+      qc.setQueryData<Map<string, number>>(priceListKey(companyId), (old) => {
+        const next = new Map(old ?? [])
+        for (const e of entries) {
+          if (e.catalog_item_id && e.unit_price > 0) next.set(e.catalog_item_id, e.unit_price)
+        }
+        return next
+      })
+      // Update detail list cache immediately
+      qc.setQueryData<CompanyPriceEntry[]>(priceListDetailKey(companyId), (old = []) => {
+        let updated = [...old]
+        for (const e of entries) {
+          if (e.catalog_item_id) {
+            const idx = updated.findIndex(x => x.catalog_item_id === e.catalog_item_id)
+            if (idx >= 0) updated[idx] = { ...updated[idx], unit_price: e.unit_price, updated_at: now }
+            else updated = [{ catalog_item_id: e.catalog_item_id, custom_label: null, unit_price: e.unit_price, updated_at: now }, ...updated]
+          } else if (e.custom_label) {
+            const idx = updated.findIndex(x => x.custom_label === e.custom_label && !x.catalog_item_id)
+            if (idx >= 0) updated[idx] = { ...updated[idx], unit_price: e.unit_price, updated_at: now }
+            else updated = [{ catalog_item_id: null, custom_label: e.custom_label, unit_price: e.unit_price, updated_at: now }, ...updated]
+          }
+        }
+        return updated
+      })
       qc.invalidateQueries({ queryKey: priceListKey(companyId) })
       qc.invalidateQueries({ queryKey: priceListDetailKey(companyId) })
     },

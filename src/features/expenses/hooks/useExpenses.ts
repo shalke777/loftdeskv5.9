@@ -24,9 +24,13 @@ export const useCreateExpense = (companyId: string) => {
       extractionWarnings?: string[] | null
       parseRaw?: Record<string, unknown> | null
     }) => expensesApi.create({ companyId, ...input }),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      // Natychmiastowe dodanie do cache — widoczne od razu
+      qc.setQueryData<ExpenseInvoice[]>(['expenses', companyId], (old = []) => [data, ...old])
+      if (variables.projectId) {
+        qc.setQueryData<ExpenseInvoice[]>(['project-expenses', variables.projectId], (old = []) => [data, ...old])
+      }
       qc.invalidateQueries({ queryKey: ['expenses', companyId] })
-      // Refresh project-expenses list if the expense was linked to a project
       if (variables.projectId) {
         qc.invalidateQueries({ queryKey: ['project-expenses', variables.projectId] })
       }
@@ -42,7 +46,14 @@ export const useUpdateExpense = (companyId: string) => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<ExpenseInvoice> }) =>
       expensesApi.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['expenses', companyId] }); toast.success('Koszt zaktualizowany') },
+    onSuccess: (_, { id, data }) => {
+      // Patch in-place without waiting for refetch
+      qc.setQueryData<ExpenseInvoice[]>(['expenses', companyId], (old = []) =>
+        old.map(e => e.id === id ? { ...e, ...data, updated_at: new Date().toISOString() } : e),
+      )
+      qc.invalidateQueries({ queryKey: ['expenses', companyId] })
+      toast.success('Koszt zaktualizowany')
+    },
     onError: (error: any) => toast.error('Nie udało się zaktualizować kosztu', error?.message ?? 'Spróbuj ponownie.'),
   })
 }
@@ -52,7 +63,12 @@ export const useDeleteExpense = (companyId: string) => {
   const toast = useToast()
   return useMutation({
     mutationFn: (id: string) => expensesApi.delete(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['expenses', companyId] }); toast.success('Koszt usunięty') },
+    onSuccess: (_, id) => {
+      // Natychmiastowe usunięcie z cache
+      qc.setQueryData<ExpenseInvoice[]>(['expenses', companyId], (old = []) => old.filter(e => e.id !== id))
+      qc.invalidateQueries({ queryKey: ['expenses', companyId] })
+      toast.success('Koszt usunięty')
+    },
     onError: (error: any) => toast.error('Nie udało się usunąć kosztu', error?.message ?? 'Spróbuj ponownie.'),
   })
 }

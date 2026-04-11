@@ -180,7 +180,7 @@ export function ProjectPhotosSection({ project }: { project: Project }) {
   }
 
   function handleDelete(id: string) {
-    deletePhoto.mutate(id, { onSuccess: invalidate })
+    deletePhoto.mutate({ id, projectId: project.id })
   }
 
   // ── Render — lista zdjęć ─────────────────────────────────────────────────

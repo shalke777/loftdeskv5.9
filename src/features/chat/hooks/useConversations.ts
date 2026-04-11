@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { conversationsApi } from '@/features/chat/api/conversations.api'
+import { conversationsApi, type ConversationMessage } from '@/features/chat/api/conversations.api'
 import { useToast } from '@/shared/hooks/useToast'
 
 const CONVERSATIONS_KEY = (companyId: string) => ['conversations', companyId] as const
@@ -35,7 +35,12 @@ export function useSendMessage(companyId: string, conversationId: string | null)
         companyId,
         ...input,
       }),
-    onSuccess: () => {
+    onSuccess: (message: ConversationMessage) => {
+      // Natychmiastowe dodanie wiadomości do cache
+      qc.setQueryData<ConversationMessage[]>(
+        MESSAGES_KEY(conversationId ?? ''),
+        (old = []) => old.some(m => m.id === message.id) ? old : [...old, message],
+      )
       void qc.invalidateQueries({ queryKey: MESSAGES_KEY(conversationId ?? '') })
       void qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY(companyId) })
     },
