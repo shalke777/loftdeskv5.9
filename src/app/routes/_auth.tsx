@@ -56,7 +56,7 @@ const mainNavItems: MainNavItem[] = [
 const moreNavItems: MainNavItem[] = [
   { to: '/clients',  label: 'Kontrahenci', icon: Users },
   { to: '/notes',    label: 'Notatki',     icon: Mic },
-  { to: '/settings', label: 'Ustawienia',  icon: Settings },
+  { to: '/settings', label: 'Konto',       icon: Settings },
 ]
 
 const mobileNav: MainNavItem[] = [
@@ -64,7 +64,7 @@ const mobileNav: MainNavItem[] = [
   { to: '/chat',       label: 'Chat',       icon: MessageSquare },
   { to: '/dashboard',  label: 'Start',      icon: LayoutDashboard },
   { to: '/documents',  label: 'Dokumenty',  icon: FileStack },
-  { to: '/settings',   label: 'Więcej',     icon: Settings },
+  { to: '/settings',   label: 'Konto',      icon: Settings },
 ]
 
 function isActive(pathname: string, item: MainNavItem) {
@@ -164,7 +164,7 @@ export function AuthLayout() {
 			</Link>
 		  ) : null}
 
-		  {/* ⋯ Więcej — collapsible section */}
+		  {/* ⋯ Konto — collapsible section */}
 		  <button
 			type="button"
 			onClick={() => setMoreExpanded(e => !e)}
@@ -172,7 +172,7 @@ export function AuthLayout() {
 			style={{ border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', marginTop: 4 }}
 		  >
 			{moreExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-			<span>Więcej</span>
+			<span>Konto</span>
 		  </button>
 		  {moreExpanded && moreNavItems.map((item) => {
 			const Icon = item.icon
@@ -326,8 +326,7 @@ export function AuthLayout() {
                     transition: 'transform 0.15s',
                     gap: 2,
                   }}>
-                    <Icon size={22} />
-                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', lineHeight: 1 }}>START</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.06em', lineHeight: 1 }}>START</span>
                   </span>
                 </Link>
               )
