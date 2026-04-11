@@ -93,6 +93,13 @@ export function BudgetComparisonTab({ projectId, projectName, projectNumber }: {
     const margin      = revenue > 0 ? revenue - actualGross : null
     const marginPct   = revenue > 0 ? Math.round(((revenue - actualGross) / revenue) * 100) : null
 
+    // Split by billing_type
+    const includedCosts  = expenses.filter(e => e.billing_type === 'included')
+    const additionalCosts = expenses.filter(e => e.billing_type === 'additional')
+    const unclassifiedCosts = expenses.filter(e => !e.billing_type && (e.amount_gross ?? 0) > 0)
+    const includedGross   = includedCosts.reduce((s, e) => s + (e.amount_gross ?? 0), 0)
+    const additionalGross = additionalCosts.reduce((s, e) => s + (e.amount_gross ?? 0), 0)
+
     // By category
     const byCategory = expenses.reduce<Record<string, number>>((acc, exp) => {
       const cat = exp.cost_type || 'other'
@@ -116,6 +123,9 @@ export function BudgetComparisonTab({ projectId, projectName, projectNumber }: {
       byCategory, byApproval,
       source,
       expenseCount: expenses.length,
+      includedGross,
+      additionalGross,
+      unclassifiedCount: unclassifiedCosts.length,
     }
   }, [expenses, estimates, contracts, projectId])
 
@@ -248,6 +258,30 @@ export function BudgetComparisonTab({ projectId, projectName, projectNumber }: {
               {formatCurrency(Math.abs(stats.diff))}
               {stats.diffPct !== null && ` (${Math.abs(stats.diffPct)}%)`}
             </span>
+          </div>
+        )}
+
+        {/* Podział: wliczone w wycenę vs dodatkowe */}
+        {stats.expenseCount > 0 && (stats.includedGross > 0 || stats.additionalGross > 0) && (
+          <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {stats.includedGross > 0 && (
+              <div style={{ flex: '1 1 140px', padding: '8px 12px', borderRadius: 8, background: 'rgba(26,92,50,0.07)', border: '1px solid rgba(26,92,50,0.18)' }}>
+                <div style={{ fontSize: 11, color: 'var(--color-success, #1A5C32)', fontWeight: 600, marginBottom: 3 }}>Wliczone w wycenę</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>{formatCurrency(stats.includedGross)}</div>
+              </div>
+            )}
+            {stats.additionalGross > 0 && (
+              <div style={{ flex: '1 1 140px', padding: '8px 12px', borderRadius: 8, background: 'rgba(184,116,42,0.07)', border: '1px solid rgba(184,116,42,0.18)' }}>
+                <div style={{ fontSize: 11, color: 'var(--color-warning, #B8742A)', fontWeight: 600, marginBottom: 3 }}>Koszty dodatkowe</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>{formatCurrency(stats.additionalGross)}</div>
+              </div>
+            )}
+          </div>
+        )}
+        {stats.unclassifiedCount > 0 && (
+          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--color-warning, #B8742A)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <AlertCircle size={11} />
+            {stats.unclassifiedCount} {stats.unclassifiedCount === 1 ? 'koszt bez' : 'kosztów bez'} klasyfikacji — otwórz i wybierz typ rozliczenia.
           </div>
         )}
       </div>

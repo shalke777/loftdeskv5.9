@@ -619,6 +619,7 @@ export interface ExpenseInvoiceV4 extends ExpenseInvoice {
   vendor_name?:              string | null
   source_type?:              ExpenseSourceType | null
   cost_type?:                ExpenseCostType | string | null
+  billing_type?:             'included' | 'additional' | null
   approval_status?:          ExpenseApprovalStatus | null
   extraction_confidence?:    number | null
   extraction_warnings?:      string[] | null
@@ -702,6 +703,7 @@ export interface CreateExpenseForProjectInput {
   payment_due_date?: string | null
   category?:     string | null
   cost_type?:    ExpenseCostType | string | null
+  billing_type?: 'included' | 'additional' | null
   notes?:        string | null
   // OCR metadata
   source_type:                ExpenseSourceType
@@ -843,6 +845,7 @@ export const projectExpensesApi = {
         source_type:   input.source_type,
         // Omit when null so DB DEFAULT applies (explicit null bypasses DEFAULT in PostgreSQL)
         ...(input.cost_type != null ? { cost_type: input.cost_type } : {}),
+        ...(input.billing_type != null ? { billing_type: input.billing_type } : {}),
         approval_status: 'not_sent',
         // extraction_confidence: nullable smallint, null is fine
         extraction_confidence: normalizeConfidenceForDb(input.extraction_confidence),

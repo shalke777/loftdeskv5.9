@@ -347,22 +347,6 @@ export function ExpenseCameraCapture({ onCapture, onRoomPhotos, onManual, disabl
         — lub —
       </div>
 
-      {/* Room / site photo — vision analysis (materials + work scope) */}
-      <button
-        type="button"
-        className="btn btn-secondary"
-        disabled={disabled}
-        onClick={() => {
-          setRoomPhotos([])
-          setRoomMode(true)
-          setSelectedRoomType(null)
-          // Room type selector will appear — no auto-open file picker here
-        }}
-        style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', fontSize: 15, padding: '14px 20px' }}
-      >
-        <span><Home size={16} /></span> Analiza pomieszczenia (1–{MAX_ROOM_PHOTOS} zdjęć)
-      </button>
-
       {/* Manual entry — no file */}
       <button
         type="button"

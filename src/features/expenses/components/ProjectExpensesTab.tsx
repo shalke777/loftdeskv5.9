@@ -65,8 +65,8 @@ export function ProjectExpensesTab({ projectId }: Props) {
   // Edit / delete state
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<{ vendor: string; amount: string; date: string; notes: string }>({
-    vendor: '', amount: '', date: '', notes: '',
+  const [editForm, setEditForm] = useState<{ vendor: string; amount: string; date: string; notes: string; billing_type: string }>({
+    vendor: '', amount: '', date: '', notes: '', billing_type: '',
   })
 
   const queryClient = useQueryClient()
@@ -97,6 +97,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
       amount: String(Math.abs(exp.amount_gross ?? 0)),
       date:   exp.issue_date ?? todayStr,
       notes:  exp.description ?? '',
+      billing_type: exp.billing_type ?? '',
     })
   }
 
@@ -110,6 +111,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
         amount_gross: isReduction ? -Math.abs(gross) : gross,
         issue_date:   editForm.date || null,
         description:  editForm.notes.trim() || null,
+        billing_type: editForm.billing_type || null,
         updated_at:   new Date().toISOString(),
       },
     })
@@ -539,6 +541,16 @@ export function ProjectExpensesTab({ projectId }: Props) {
                       <ApprovalStatusBadge status={exp.approval_status as ApprovalStatus} />
                     )}
                     {exp.cost_type && <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Tag size={11} />{exp.cost_type}</span>}
+                    {exp.billing_type === 'included' && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--color-success, #1A5C32)', background: 'rgba(26,92,50,0.08)', borderRadius: 4, padding: '1px 5px', fontSize: 11 }}>
+                        wliczone w wycenę
+                      </span>
+                    )}
+                    {exp.billing_type === 'additional' && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--color-warning, #B8742A)', background: 'rgba(184,116,42,0.10)', borderRadius: 4, padding: '1px 5px', fontSize: 11 }}>
+                        koszt dodatkowy
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -640,6 +652,15 @@ export function ProjectExpensesTab({ projectId }: Props) {
                       onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
                       style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12 }}
                     />
+                    <select
+                      value={editForm.billing_type}
+                      onChange={e => setEditForm(f => ({ ...f, billing_type: e.target.value }))}
+                      style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12 }}
+                    >
+                      <option value="">Rozliczenie — nie określono</option>
+                      <option value="included">Wliczony w wycenę</option>
+                      <option value="additional">Koszt dodatkowy</option>
+                    </select>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button
                         type="button"

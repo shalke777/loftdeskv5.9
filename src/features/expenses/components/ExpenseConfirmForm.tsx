@@ -98,6 +98,7 @@ function emptyState(prefillDates = false) {
     gross_amount:     '',
     currency:         'PLN',
     cost_type:        '' as ExpenseCostType | '',
+    billing_type:     '' as 'included' | 'additional' | '',
     category:         '',
     payment_due_date: '',
     notes:            '',
@@ -157,6 +158,7 @@ export function ExpenseConfirmForm({
       gross_amount:     df?.gross_amount      != null ? String(df.gross_amount)  : '',
       currency:         df?.currency          ?? 'PLN',
       cost_type:        '',
+      billing_type:     '',
       category:         '',
       payment_due_date: df?.payment_due_date ?? '',
       notes:            df?.notes             ?? '',
@@ -274,6 +276,7 @@ export function ExpenseConfirmForm({
       gross_amount:   form.gross_amount  ? parseFloat(form.gross_amount)  : null,
       currency:       form.currency,
       cost_type:      (form.cost_type as ExpenseCostType) || null,
+      billing_type:   (form.billing_type as 'included' | 'additional') || null,
       category:       form.category.trim()  || null,
       payment_due_date: form.payment_due_date || null,
       notes:          form.notes.trim()     || null,
@@ -539,6 +542,24 @@ export function ExpenseConfirmForm({
         <legend style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-muted)', marginBottom: 4, padding: 0 }}>
           Klasyfikacja
         </legend>
+
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Rozliczenie kosztu *</label>
+          <select
+            style={{ ...inputStyle, borderColor: !form.billing_type ? 'var(--color-warning, #f59e0b)' : undefined }}
+            value={form.billing_type}
+            onChange={(e) => set('billing_type', e.target.value)}
+          >
+            <option value="">— wybierz —</option>
+            <option value="included">Wliczony w wycenę (ujęty w zakresie)</option>
+            <option value="additional">Koszt dodatkowy (poza wycenę)</option>
+          </select>
+          {!form.billing_type && (
+            <span style={{ fontSize: 11, color: 'var(--color-warning, #d97706)', marginTop: 2 }}>
+              Określ, czy koszt jest w zakresie wyceny czy dodatkowy — wpływa na pipeline budżetu.
+            </span>
+          )}
+        </div>
 
         <div style={fieldStyle}>
           <label style={labelStyle}>Typ kosztu</label>
