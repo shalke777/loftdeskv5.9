@@ -841,14 +841,17 @@ export const projectExpensesApi = {
         description:   input.notes ?? null,
         status: deriveExpenseStatus(input.extraction_confidence, input.project_id),
         source_type:   input.source_type,
-        // cost_type: omit when null so DB DEFAULT applies (migration 122 makes it nullable)
+        // Omit when null so DB DEFAULT applies (explicit null bypasses DEFAULT in PostgreSQL)
         ...(input.cost_type != null ? { cost_type: input.cost_type } : {}),
         approval_status: 'not_sent',
-        extraction_confidence:      normalizeConfidenceForDb(input.extraction_confidence),
-        extraction_warnings:        input.extraction_warnings ?? null,
-        requires_user_confirmation: input.requires_user_confirmation ?? null,
-        parser_source:              input.parser_source ?? null,
-        possible_duplicate:         possibleDuplicate,
+        // extraction_confidence: nullable smallint, null is fine
+        extraction_confidence: normalizeConfidenceForDb(input.extraction_confidence),
+        // extraction_warnings: NOT NULL DEFAULT '{}'::text[] — omit when absent so DEFAULT applies
+        ...(input.extraction_warnings != null ? { extraction_warnings: input.extraction_warnings } : {}),
+        // requires_user_confirmation: NOT NULL DEFAULT false — omit when absent so DEFAULT applies
+        ...(input.requires_user_confirmation != null ? { requires_user_confirmation: input.requires_user_confirmation } : {}),
+        parser_source:   input.parser_source ?? null,
+        possible_duplicate: possibleDuplicate,
         category:      input.category ?? null,
         currency:      input.currency ?? 'PLN',
         payment_due_date: input.payment_due_date ?? null,

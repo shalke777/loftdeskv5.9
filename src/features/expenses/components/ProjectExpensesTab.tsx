@@ -59,6 +59,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
   const [reductionAmount, setReductionAmount] = useState('')
   const [reductionDesc, setReductionDesc] = useState('')
   const [reductionSaving, setReductionSaving] = useState(false)
+  const [reductionError, setReductionError] = useState('')
 
   const { data: expenses = [], isLoading } = useProjectExpenses(projectId)
   const createExpense = useCreateExpense(projectId)
@@ -223,6 +224,7 @@ export function ProjectExpensesTab({ projectId }: Props) {
     const val = parseFloat(reductionAmount.replace(',', '.'))
     if (!val || val <= 0) return
     setReductionSaving(true)
+    setReductionError('')
     createExpense.mutate({
       vendor_name: reductionDesc.trim() || 'Pomniejszenie kosztów',
       gross_amount: -Math.abs(val),
@@ -235,8 +237,12 @@ export function ProjectExpensesTab({ projectId }: Props) {
         setReductionAmount('')
         setReductionDesc('')
         setReductionSaving(false)
+        setReductionError('')
       },
-      onError: () => setReductionSaving(false),
+      onError: (err) => {
+        setReductionSaving(false)
+        setReductionError(err instanceof Error ? err.message : 'Błąd zapisu pomniejszenia')
+      },
     })
   }
 
@@ -354,12 +360,17 @@ export function ProjectExpensesTab({ projectId }: Props) {
               <button
                 type="button"
                 className="btn btn-ghost"
-                onClick={() => { setReductionOpen(false); setReductionAmount(''); setReductionDesc('') }}
+                onClick={() => { setReductionOpen(false); setReductionAmount(''); setReductionDesc(''); setReductionError('') }}
                 style={{ fontSize: 13 }}
               >
                 Anuluj
               </button>
             </div>
+            {reductionError && (
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--color-error)', paddingTop: 2 }}>
+                Błąd: {reductionError}
+              </p>
+            )}
           </div>
         )}
 
