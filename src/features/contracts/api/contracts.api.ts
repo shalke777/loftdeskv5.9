@@ -18,14 +18,15 @@ export const contractsApi = {
     const scope = await getDataScope(input.company_id)
 
     // Resolve sequential contract number via DB function (atomic, per-company, per-year-month)
+    // Pass sign_date so backdated contracts get the correct month in the number (e.g. UM/2026/01/1)
     let contractNumber: string
-    const { data: numData, error: numError } = await supabase.rpc('next_doc_number', { p_company_id: input.company_id, p_doc_type: 'contract' })
+    const { data: numData, error: numError } = await supabase.rpc('next_doc_number', { p_company_id: input.company_id, p_doc_type: 'contract', p_issue_date: input.sign_date ?? null })
     if (numError || !numData) {
-      // Fallback: count-based, month-aware (non-atomic, safe for single-user edge case)
-      const now = new Date()
-      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+      // Fallback: count-based, uses sign_date month when available
+      const ref = input.sign_date ? new Date(input.sign_date) : new Date()
+      const monthStart = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, '0')}-01`
       const { count } = await supabase.from('contracts').select('*', { count: 'exact', head: true }).eq('company_id', input.company_id).gte('created_at', monthStart)
-      contractNumber = `UM/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${(count ?? 0) + 1}`
+      contractNumber = `UM/${ref.getFullYear()}/${String(ref.getMonth() + 1).padStart(2, '0')}/${(count ?? 0) + 1}`
     } else {
       contractNumber = numData as string
     }
