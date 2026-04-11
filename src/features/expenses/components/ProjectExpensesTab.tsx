@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react'
-import { Camera, Plus, PenLine, Receipt, Minus, Image as GalleryIcon, FileText, Home, Calendar, Tag, Send, AlertTriangle } from 'lucide-react'
+import { Camera, Plus, PenLine, Receipt, Minus, Image as GalleryIcon, FileText, Home, Calendar, Tag, Send, AlertTriangle, Trash2, Pencil, Check, X as XIcon } from 'lucide-react'
 import { translateError } from '@/shared/lib/errorMessages'
 import type { ExpenseSourceType, CreateExpenseForProjectInput, ExpenseInvoiceV4 } from '@/features/expenses/api/expenses.api'
-import { rehydrateAnalysisResult } from '@/features/expenses/api/expenses.api'
+import { rehydrateAnalysisResult, expensesApi } from '@/features/expenses/api/expenses.api'
 import { useProjectExpenses } from '@/features/expenses/hooks/useProjectExpenses'
 import { useCreateExpense }   from '@/features/expenses/hooks/useCreateExpense'
 import { useParseInvoice, callParseInvoiceAI, normalizeParseResult, isNonDocumentImage, screenImageForInvoice } from '@/features/expenses/hooks/useParseInvoice'
@@ -23,6 +23,7 @@ import {
 } from './AnalysisSections'
 import type { AnalysisResult } from '@/services/ai/analysis.types'
 import type { ApprovalStatus } from '@/features/expenses/api/cost-approvals.api'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 type TabMode = 'list' | 'capture' | 'clarification' | 'processing' | 'confirm'
 
@@ -60,6 +61,58 @@ export function ProjectExpensesTab({ projectId }: Props) {
   const [reductionDesc, setReductionDesc] = useState('')
   const [reductionSaving, setReductionSaving] = useState(false)
   const [reductionError, setReductionError] = useState('')
+
+  // Edit / delete state
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<{ vendor: string; amount: string; date: string; notes: string }>({
+    vendor: '', amount: '', date: '', notes: '',
+  })
+
+  const queryClient = useQueryClient()
+
+  const deleteExpense = useMutation({
+    mutationFn: (id: string) => expensesApi.delete(id),
+    onSuccess: (_, id) => {
+      queryClient.setQueryData<ExpenseInvoiceV4[]>(['project-expenses', projectId], (old = []) => old.filter(e => e.id !== id))
+      queryClient.invalidateQueries({ queryKey: ['project-expenses', projectId] })
+      setDeleteConfirmId(null)
+    },
+  })
+
+  const updateExpense = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      expensesApi.update(id, data as any),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-expenses', projectId] })
+      setEditingId(null)
+    },
+  })
+
+  function startEdit(exp: ExpenseInvoiceV4) {
+    setEditingId(exp.id)
+    setEditForm({
+      vendor: exp.vendor_name ?? exp.vendor ?? '',
+      amount: String(Math.abs(exp.amount_gross ?? 0)),
+      date:   exp.issue_date ?? '',
+      notes:  exp.description ?? '',
+    })
+  }
+
+  function commitEdit(exp: ExpenseInvoiceV4) {
+    const gross = parseFloat(editForm.amount.replace(',', '.'))
+    const isReduction = (exp.amount_gross ?? 0) < 0
+    updateExpense.mutate({
+      id: exp.id,
+      data: {
+        vendor:       editForm.vendor.trim() || undefined,
+        amount_gross: isReduction ? -Math.abs(gross) : gross,
+        issue_date:   editForm.date || null,
+        description:  editForm.notes.trim() || null,
+        updated_at:   new Date().toISOString(),
+      },
+    })
+  }
 
   const { data: expenses = [], isLoading } = useProjectExpenses(projectId)
   const createExpense = useCreateExpense(projectId)
@@ -488,26 +541,123 @@ export function ProjectExpensesTab({ projectId }: Props) {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                   {/* Send to approval button */}
                   {(!exp.approval_status || (exp.approval_status as string) === 'not_sent') && (
                     <button
                       type="button"
                       className="btn btn-ghost"
-                      style={{ fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4 }}
+                      style={{ fontSize: 11, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 3 }}
                       onClick={(e) => { e.stopPropagation(); setApprovalExpense(exp) }}
                       title="Wyślij do akceptacji klienta"
                     >
                       <Send size={11} />Akceptacja
                     </button>
                   )}
+                  {/* Edit */}
+                  <button
+                    type="button"
+                    title="Edytuj koszt"
+                    onClick={(e) => { e.stopPropagation(); startEdit(exp) }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: 'var(--color-text-muted)', borderRadius: 6, display: 'flex', alignItems: 'center' }}
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  {/* Delete with confirm */}
+                  {deleteConfirmId === exp.id ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <button
+                        type="button"
+                        title="Potwierdź usunięcie"
+                        disabled={deleteExpense.isPending}
+                        onClick={(e) => { e.stopPropagation(); deleteExpense.mutate(exp.id) }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: 'var(--color-error)', borderRadius: 6, display: 'flex', alignItems: 'center' }}
+                      >
+                        <Check size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        title="Anuluj"
+                        onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null) }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: 'var(--color-text-muted)', borderRadius: 6, display: 'flex', alignItems: 'center' }}
+                      >
+                        <XIcon size={13} />
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      title="Usuń koszt"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDeleteConfirmId(exp.id)
+                        setTimeout(() => setDeleteConfirmId(cur => cur === exp.id ? null : cur), 4000)
+                      }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: 'var(--color-text-muted)', borderRadius: 6, display: 'flex', alignItems: 'center' }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                   {hasAnalysis && (
-                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)', userSelect: 'none' }}>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)', userSelect: 'none', paddingLeft: 2 }}>
                       {isExpanded ? '▲' : '▼'}
                     </span>
                   )}
                 </div>
                 </div>
+
+                {/* Inline edit form */}
+                {editingId === exp.id && (
+                  <div style={{ padding: '10px 14px 14px', borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <input
+                        type="text"
+                        placeholder="Sprzedawca / opis"
+                        value={editForm.vendor}
+                        onChange={e => setEditForm(f => ({ ...f, vendor: e.target.value }))}
+                        style={{ flex: '2 1 140px', minWidth: 0, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12 }}
+                      />
+                      <input
+                        type="number"
+                        placeholder="Kwota brutto"
+                        value={editForm.amount}
+                        min="0.01" step="0.01"
+                        onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))}
+                        style={{ flex: '1 1 110px', minWidth: 0, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12 }}
+                      />
+                      <input
+                        type="date"
+                        value={editForm.date}
+                        onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))}
+                        style={{ flex: '1 1 130px', minWidth: 0, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12 }}
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Notatka (opcjonalnie)"
+                      value={editForm.notes}
+                      onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+                      style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 12 }}
+                    />
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        type="button"
+                        disabled={updateExpense.isPending}
+                        onClick={() => commitEdit(exp)}
+                        style={{ fontSize: 12, fontWeight: 600, padding: '5px 14px', borderRadius: 6, background: 'var(--color-brand)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <Check size={12} />{updateExpense.isPending ? 'Zapisuję…' : 'Zapisz'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(null)}
+                        style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                      >
+                        Anuluj
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Expandable analysis detail — rehydrated from stored parse_raw */}
                 {isExpanded && storedAnalysis && (
