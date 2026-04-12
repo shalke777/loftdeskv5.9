@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   Calculator, FileText, Receipt, StickyNote, ClipboardList, Paperclip, File,
-  Send, UserCheck, Unlink, Trash2, Download, Package,
+  Send, UserCheck, Unlink, Trash2, Download, Package, Link2,
 } from 'lucide-react'
 import type { Project } from '@/entities/project/model'
 import { Badge } from '@/shared/ui/Badge/Badge'
@@ -11,6 +11,7 @@ import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientMod
 import {
   useProjectDocuments,
   useUnlinkDocument,
+  useLinkDocument,
   useProjectExport,
 } from '@/features/projects/hooks/useProjectDocuments'
 import { useEstimates, useDeleteEstimate } from '@/features/estimates/hooks/useEstimates'
@@ -67,10 +68,14 @@ export function ProjectDocuments({
   const companyId = useCompanyId()
   const { data: docs = [], isLoading } = useProjectDocuments(project.id)
   const unlink = useUnlinkDocument()
+  const link   = useLinkDocument()
   const { exportZip, loading: exporting } = useProjectExport(project.id)
   const [sendDoc, setSendDoc] = useState<{ type: 'estimate' | 'contract' | 'invoice'; name: string; defaultEmail?: string } | null>(null)
   const [packageSendOpen, setPackageSendOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false)
+  const [linkType, setLinkType] = useState<'estimate' | 'contract' | 'invoice'>('estimate')
+  const [linkDocId, setLinkDocId] = useState('')
   const [approvalDoc, setApprovalDoc] = useState<{
     type: 'estimate' | 'contract'
     id: string
@@ -143,12 +148,38 @@ export function ProjectDocuments({
     (a, b) => (TYPE_ORDER[a.doc_type] ?? 9) - (TYPE_ORDER[b.doc_type] ?? 9),
   )
 
+  // Compute already-linked doc IDs per type for filtering
+  const linkedEstimateIds = new Set(docs.filter(d => d.doc_type === 'estimate').map(d => d.doc_id))
+  const linkedContractIds = new Set(docs.filter(d => d.doc_type === 'contract').map(d => d.doc_id))
+  const linkedInvoiceIds  = new Set(docs.filter(d => d.doc_type === 'invoice').map(d => d.doc_id))
+
+  const linkableItems = linkType === 'estimate'
+    ? estimates.filter(e => !linkedEstimateIds.has(e.id)).map(e => ({ id: e.id, label: `${e.number} – ${e.name || ''}`.trim() }))
+    : linkType === 'contract'
+    ? contracts.filter(c => !linkedContractIds.has(c.id)).map(c => ({ id: c.id, label: c.number }))
+    : invoices.filter(i => !linkedInvoiceIds.has(i.id)).map(i => ({ id: i.id, label: i.number }))
+
+  function handleLink() {
+    if (!linkDocId) return
+    link.mutate({ projectId: project.id, docType: linkType, docId: linkDocId })
+    setLinkPickerOpen(false)
+    setLinkDocId('')
+  }
+
   return (
     <Card>
       {/* Header + toolbar */}
       <div className="toolbar" style={{ marginBottom: 12 }}>
         <h4 style={{ margin: 0 }}>Dokumenty ({docs.length})</h4>
         <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            type="button"
+            className="doc-icon-btn"
+            title="Dołącz istniejący dokument do projektu"
+            onClick={() => { setLinkPickerOpen(v => !v); setLinkDocId('') }}
+          >
+            <Link2 size={16} />
+          </button>
           <button
             type="button"
             className="doc-icon-btn"
@@ -169,6 +200,60 @@ export function ProjectDocuments({
           </button>
         </div>
       </div>
+
+      {/* Link picker inline panel */}
+      {linkPickerOpen && (
+        <div style={{
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 8,
+          padding: '12px 14px',
+          marginBottom: 12,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+            Dołącz istniejący dokument
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {(['estimate', 'contract', 'invoice'] as const).map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => { setLinkType(t); setLinkDocId('') }}
+                style={{
+                  padding: '4px 10px', borderRadius: 6, fontSize: 12, border: '1px solid var(--color-border)',
+                  background: linkType === t ? 'var(--color-brand)' : 'var(--color-surface-soft)',
+                  color: linkType === t ? '#fff' : 'var(--color-text-primary)',
+                  cursor: 'pointer',
+                }}
+              >
+                {t === 'estimate' ? 'Wycena' : t === 'contract' ? 'Umowa' : 'Faktura'}
+              </button>
+            ))}
+          </div>
+          <select
+            value={linkDocId}
+            onChange={e => setLinkDocId(e.target.value)}
+            style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, background: 'var(--color-surface)', color: 'var(--color-text-primary)', width: '100%' }}
+          >
+            <option value="">— wybierz —</option>
+            {linkableItems.map(item => (
+              <option key={item.id} value={item.id}>{item.label}</option>
+            ))}
+          </select>
+          {linkableItems.length === 0 && (
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>Brak nieprzypiętych dokumentów tego typu.</p>
+          )}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setLinkPickerOpen(false)}>Anuluj</button>
+            <button type="button" className="btn" style={{ fontSize: 13 }} disabled={!linkDocId || link.isPending} onClick={handleLink}>
+              {link.isPending ? 'Przypisuję…' : 'Dołącz'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Ładowanie dokumentów…</p>
