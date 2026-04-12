@@ -571,17 +571,11 @@ interface ContractClientMeta {
 }
 
 function contractPartiesHtml(clientMeta: ContractClientMeta, company: CompanyMeta) {
-  const addrLine = [clientMeta.address, clientMeta.postal_code && clientMeta.city ? `${clientMeta.postal_code} ${clientMeta.city}` : clientMeta.city || clientMeta.postal_code].filter(Boolean).join(', ')
   const idLine = clientMeta.nip ? `NIP: ${escapeHtml(clientMeta.nip)}` : clientMeta.pesel ? `PESEL: ${escapeHtml(clientMeta.pesel)}` : ''
   return `<div class="party-grid">
     <div class="party-box">
       <h3>Inwestor</h3>
-      <strong>${escapeHtml(clientMeta.name)}</strong>
-      ${addrLine ? `<p>${escapeHtml(addrLine)}</p>` : ''}
-      ${idLine ? `<p>${idLine}</p>` : ''}
-      ${clientMeta.phone ? `<p>tel.: ${escapeHtml(clientMeta.phone)}</p>` : ''}
-      ${clientMeta.email ? `<p>${escapeHtml(clientMeta.email)}</p>` : ''}
-      ${clientMeta.contact_person ? `<p>os. kontaktowa: ${escapeHtml(clientMeta.contact_person)}</p>` : ''}
+      <strong>${escapeHtml(clientMeta.name)}</strong>${idLine ? ` / ${idLine}` : ''}${clientMeta.email ? ` / ${escapeHtml(clientMeta.email)}` : ''}
       <p>zwany/a dalej <strong>„Inwestorem"</strong></p>
     </div>
     <div class="party-box">
