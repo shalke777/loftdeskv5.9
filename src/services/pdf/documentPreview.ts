@@ -666,7 +666,7 @@ function buildFullContractHtml(
         </li>
         <li>Każda transza płatna jest na podstawie faktury VAT lub rachunku wystawionego przez Wykonawcę, w terminie 7 dni od daty doręczenia dokumentu Inwestorowi.</li>
         <li>W przypadku nieterminowej zapłaty Wykonawca uprawniony jest do naliczania odsetek ustawowych za każdy dzień zwłoki.</li>
-        <li>Materiały i ich transport niezbędne do realizacji robót wliczone są w wynagrodzenie, chyba że Strony w odrębnym aneksie postanowią inaczej.</li>
+        <li>Materiały i ich transport niezbędne do realizacji robót nie są wliczone w wynagrodzenie, chyba że Strony w odrębnym aneksie postanowią inaczej.</li>
       </ol>
     </div>
 
