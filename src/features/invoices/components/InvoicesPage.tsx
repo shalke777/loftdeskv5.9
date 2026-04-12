@@ -88,9 +88,8 @@ export function InvoicesPage() {
 
   return (
     <div className="page">
-      <div className="toolbar">
-        <PageHeader title="Faktury" subtitle="Faktury powiązane z umowami, gotowe do KSeF — edytuj, drukuj PDF i wysyłaj do Ministerstwa Finansów." />
-        <div className="toolbar__actions">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+        <div className="toolbar__actions" style={{ flex: 1, minWidth: 0 }}>
           {canCreate && (
             <PlanLimitGuard resource="invoices">
               <Button variant="secondary" onClick={() => setImportOpen(true)}>
@@ -103,12 +102,12 @@ export function InvoicesPage() {
               </Button>
             </PlanLimitGuard>
           )}
-          <StatusFilter
-            options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
-            value={filterStatus}
-            onChange={v => setFilterStatus(v as FilterStatus)}
-          />
         </div>
+        <StatusFilter
+          options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
+          value={filterStatus}
+          onChange={v => setFilterStatus(v as FilterStatus)}
+        />
       </div>
 
       {isLoading ? (
