@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, CheckCircle, ClipboardCheck, Edit2, FileText, Mail, ReceiptText, Trash2 } from 'lucide-react'
+import type { Client } from '@/entities/client/model'
 import type { Contract } from '@/entities/contract/model'
 import { Button } from '@/shared/ui/Button/Button'
 import { DocumentPreviewModal } from '@/shared/ui/DocumentPreview/DocumentPreviewModal'
@@ -31,6 +32,7 @@ const TRANCHE_CLASS: Record<string, string> = {
 interface Props {
   contract: Contract
   clientName: string | null
+  client?: Client | null
   projectName: string | null
   onEdit: (c: Contract) => void
   onDelete: (id: string) => void
@@ -41,7 +43,7 @@ interface Props {
 }
 
 export function ContractRow({
-  contract, clientName, projectName,
+  contract, clientName, client, projectName,
   onEdit, onDelete, onSign, onCreateInvoice,
   canDelete = true, canSign = true,
 }: Props) {
@@ -67,8 +69,20 @@ export function ContractRow({
         email: companyMeta.email || user?.email, phone: companyMeta.phone,
         logoUrl: companyMeta.logoUrl,
       },
+      undefined,
+      client ? {
+        name: client.name,
+        address: client.address ?? undefined,
+        postal_code: client.postal_code ?? undefined,
+        city: client.city ?? undefined,
+        phone: client.phone ?? undefined,
+        email: client.email ?? undefined,
+        nip: client.nip ?? undefined,
+        pesel: client.pesel ?? undefined,
+        contact_person: client.contact_person ?? undefined,
+      } : undefined,
     ),
-  }], [clientName, projectName, companyMeta, contract, user?.companyName, user?.email])
+  }], [clientName, client, projectName, companyMeta, contract, user?.companyName, user?.email])
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation()

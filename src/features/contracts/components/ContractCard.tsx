@@ -23,7 +23,7 @@ export function ContractCard({ contract, onDelete, onOpen, onEdit, canDelete = t
   const companyMeta = useCompanyMeta()
   const client = clients.find((item) => item.id === contract.client_id)
   const project = projects.find((item) => item.id === contract.project_id)
-  const tabs = useMemo(() => [{ key: 'pdf', label: 'Podgląd PDF', type: 'html' as const, content: buildContractPreview(contract, client?.name, project?.name, { name: companyMeta.name || user?.companyName, nip: companyMeta.nip, address: companyMeta.address, postalCity: companyMeta.postalCity, email: companyMeta.email || user?.email, phone: companyMeta.phone, logoUrl: companyMeta.logoUrl }) }], [client?.name, companyMeta, contract, project?.name, user?.companyName, user?.email])
+  const tabs = useMemo(() => [{ key: 'pdf', label: 'Podgląd PDF', type: 'html' as const, content: buildContractPreview(contract, client?.name, project?.name, { name: companyMeta.name || user?.companyName, nip: companyMeta.nip, address: companyMeta.address, postalCity: companyMeta.postalCity, email: companyMeta.email || user?.email, phone: companyMeta.phone, logoUrl: companyMeta.logoUrl }, undefined, client ? { name: client.name, address: client.address ?? undefined, postal_code: client.postal_code ?? undefined, city: client.city ?? undefined, phone: client.phone ?? undefined, email: client.email ?? undefined, nip: client.nip ?? undefined, pesel: client.pesel ?? undefined, contact_person: client.contact_person ?? undefined } : undefined) }], [client, companyMeta, contract, project?.name, user?.companyName, user?.email])
   function handleDelete() {
     if (!confirmDelete) { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 3000); return }
     onDelete(contract.id)

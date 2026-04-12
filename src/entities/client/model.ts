@@ -10,6 +10,7 @@ export const ClientSchema = z.object({
   address: z.string().optional(),
   postal_code: z.string().optional(),
   nip: z.string().optional(),
+  pesel: z.string().optional(),
   contact_person: z.string().optional(),
   created_at: z.string(),
 })

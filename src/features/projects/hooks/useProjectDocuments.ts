@@ -246,7 +246,7 @@ export function useProjectExport(projectId: string) {
               const ct = (dbRaw.contracts ?? []).find((c: any) => c.id === doc.doc_id)
               const cl = ct ? clients.find((c: any) => c.id === ct.client_id) : undefined
               const est = ct ? (dbRaw.estimates ?? []).find((e: any) => (e as any).project_id === ct.project_id) : undefined
-              html = ct ? buildContractPreview(ct, cl?.name ?? '', est?.name ?? ct?.notes ?? '', companyMeta, est?.number) : `<!DOCTYPE html><html><body><p>Umowa ${doc.doc_id}</p></body></html>`
+              html = ct ? buildContractPreview(ct, cl?.name ?? '', est?.name ?? ct?.notes ?? '', companyMeta, est?.number, cl ? { name: cl.name, address: cl.address ?? undefined, postal_code: cl.postal_code ?? undefined, city: cl.city ?? undefined, phone: cl.phone ?? undefined, email: cl.email ?? undefined, nip: cl.nip ?? undefined, pesel: cl.pesel ?? undefined, contact_person: cl.contact_person ?? undefined } : undefined) : `<!DOCTYPE html><html><body><p>Umowa ${doc.doc_id}</p></body></html>`
             } else {
               html = `<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>${doc.doc_type}</title></head><body><h1>LoftDesk – ${doc.doc_type.toUpperCase()}</h1><p>ID: ${doc.doc_id}</p></body></html>`
             }
@@ -269,7 +269,8 @@ export function useProjectExport(projectId: string) {
             } else if (doc.doc_type === 'contract') {
               const ct  = prodContracts.find((c: any) => c.id === doc.doc_id)
               const est = ct?.estimate_id ? prodEstimates.find((e: any) => e.id === ct.estimate_id) : undefined
-              html = ct ? buildContractPreview(ct, cl(ct.client_id)?.name ?? '', est?.name ?? ct?.notes ?? '', companyMeta, est?.number) : `<!DOCTYPE html><html><body><p>Umowa ${doc.doc_id.slice(0, 8)}</p></body></html>`
+              const clObj = ct ? cl(ct.client_id) : undefined
+              html = ct ? buildContractPreview(ct, clObj?.name ?? '', est?.name ?? ct?.notes ?? '', companyMeta, est?.number, clObj ? { name: clObj.name, address: clObj.address ?? undefined, postal_code: clObj.postal_code ?? undefined, city: clObj.city ?? undefined, phone: clObj.phone ?? undefined, email: clObj.email ?? undefined, nip: clObj.nip ?? undefined, pesel: clObj.pesel ?? undefined, contact_person: clObj.contact_person ?? undefined } : undefined) : `<!DOCTYPE html><html><body><p>Umowa ${doc.doc_id.slice(0, 8)}</p></body></html>`
             } else {
               html = `<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>${doc.doc_type}</title></head><body><h1>LoftDesk – ${doc.doc_type.toUpperCase()}</h1><p>ID: ${doc.doc_id}</p></body></html>`
             }

@@ -19,6 +19,7 @@ export function ClientModal({ open, onClose, initialClient }: { open: boolean; o
   const [address, setAddress] = useState('')
   const [postalCode, setPostalCode] = useState('')
   const [nip, setNip] = useState('')
+  const [pesel, setPesel] = useState('')
   const [contactPerson, setContactPerson] = useState('')
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export function ClientModal({ open, onClose, initialClient }: { open: boolean; o
     setAddress(initialClient?.address || '')
     setPostalCode(initialClient?.postal_code || '')
     setNip(initialClient?.nip || '')
+    setPesel(initialClient?.pesel || '')
     setContactPerson(initialClient?.contact_person || '')
   }, [initialClient, open])
 
@@ -37,7 +39,7 @@ export function ClientModal({ open, onClose, initialClient }: { open: boolean; o
       toast.error('Wymagane pole', 'Nazwa kontrahenta jest wymagana.')
       return
     }
-    const payload = { company_id: companyId, name, email, phone, city, address, postal_code: postalCode, nip, contact_person: contactPerson }
+    const payload = { company_id: companyId, name, email, phone, city, address, postal_code: postalCode, nip, pesel, contact_person: contactPerson }
     try {
       if (initialClient?.id) await updateClient.mutateAsync({ id: initialClient.id, input: payload })
       else await createClient.mutateAsync(payload)
@@ -56,7 +58,8 @@ export function ClientModal({ open, onClose, initialClient }: { open: boolean; o
         <Input label="Osoba kontaktowa" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
         <Input label="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
         <Input label="Telefon" value={phone} onChange={(e) => setPhone(e.target.value)} />
-        <Input label="NIP" value={nip} onChange={(e) => setNip(e.target.value)} />
+        <Input label="NIP (firma)" value={nip} onChange={(e) => setNip(e.target.value)} />
+        <Input label="PESEL (os. fizyczna)" value={pesel} onChange={(e) => setPesel(e.target.value)} />
         <Input label="Kod pocztowy" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
         <Input label="Miasto" value={city} onChange={(e) => setCity(e.target.value)} />
         <Input label="Adres" value={address} onChange={(e) => setAddress(e.target.value)} />

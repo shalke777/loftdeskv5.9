@@ -44,7 +44,7 @@ export function ContractsPage() {
   const canSign = useCan('contracts.sign')
 
   const clientMap = useMemo(
-    () => Object.fromEntries(clients.map(c => [c.id, c.name])),
+    () => Object.fromEntries(clients.map(c => [c.id, c])),
     [clients],
   )
   const projectMap = useMemo(
@@ -105,7 +105,8 @@ export function ContractsPage() {
             <ContractRow
               key={contract.id}
               contract={contract}
-              clientName={contract.client_id ? (clientMap[contract.client_id] ?? null) : null}
+              clientName={contract.client_id ? (clientMap[contract.client_id]?.name ?? null) : null}
+              client={contract.client_id ? (clientMap[contract.client_id] ?? null) : null}
               projectName={contract.project_id ? (projectMap[contract.project_id] ?? null) : null}
               onEdit={c => { setEditing(c); setOpen(true) }}
               onDelete={id => deleteContract.mutate(id)}

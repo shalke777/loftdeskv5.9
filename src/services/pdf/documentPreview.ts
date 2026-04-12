@@ -558,11 +558,30 @@ function renderContractTemplate(template: string, variables: Record<string, stri
   return Object.entries(variables).reduce((acc, [key, value]) => replaceEvery(acc, `{{${key}}}`, value), template)
 }
 
-function contractPartiesHtml(clientName: string, company: CompanyMeta) {
+interface ContractClientMeta {
+  name: string
+  address?: string
+  postal_code?: string
+  city?: string
+  phone?: string
+  email?: string
+  nip?: string
+  pesel?: string
+  contact_person?: string
+}
+
+function contractPartiesHtml(clientMeta: ContractClientMeta, company: CompanyMeta) {
+  const addrLine = [clientMeta.address, clientMeta.postal_code && clientMeta.city ? `${clientMeta.postal_code} ${clientMeta.city}` : clientMeta.city || clientMeta.postal_code].filter(Boolean).join(', ')
+  const idLine = clientMeta.nip ? `NIP: ${escapeHtml(clientMeta.nip)}` : clientMeta.pesel ? `PESEL: ${escapeHtml(clientMeta.pesel)}` : ''
   return `<div class="party-grid">
     <div class="party-box">
       <h3>Inwestor</h3>
-      <strong>${escapeHtml(clientName)}</strong>
+      <strong>${escapeHtml(clientMeta.name)}</strong>
+      ${addrLine ? `<p>${escapeHtml(addrLine)}</p>` : ''}
+      ${idLine ? `<p>${idLine}</p>` : ''}
+      ${clientMeta.phone ? `<p>tel.: ${escapeHtml(clientMeta.phone)}</p>` : ''}
+      ${clientMeta.email ? `<p>${escapeHtml(clientMeta.email)}</p>` : ''}
+      ${clientMeta.contact_person ? `<p>os. kontaktowa: ${escapeHtml(clientMeta.contact_person)}</p>` : ''}
       <p>zwany/a dalej <strong>„Inwestorem"</strong></p>
     </div>
     <div class="party-box">
@@ -598,7 +617,7 @@ function contractTranchesTable(tranches: import('@/entities/contract/model').Con
 
 function buildFullContractHtml(
   contract: import('@/entities/contract/model').Contract,
-  clientName: string,
+  clientMeta: ContractClientMeta,
   estimateName: string,
   company: CompanyMeta,
   estimateNumber?: string,
@@ -625,7 +644,7 @@ function buildFullContractHtml(
     : `kosztorysie stanowiącym Załącznik nr 1 do niniejszej umowy`
 
   return `
-    ${contractPartiesHtml(clientName, company)}
+    ${contractPartiesHtml(clientMeta, company)}
 
     <div class="section">
       <h2>§1 Przedmiot umowy</h2>
@@ -740,7 +759,7 @@ function buildFullContractHtml(
 
     <div class="signature-grid" style="margin-top:60px;">
       <div class="signature">
-        <strong>${escapeHtml(clientName)}</strong>
+        <strong>${escapeHtml(clientMeta.name)}</strong>
         <div class="small" style="margin-top:4px;">Inwestor</div>
       </div>
       <div class="signature">
@@ -751,9 +770,10 @@ function buildFullContractHtml(
   `
 }
 
-export function buildContractPreview(contract: import('@/entities/contract/model').Contract, clientName?: string, estimateName?: string, companyInput?: CompanyMeta, estimateNumber?: string) {
+export function buildContractPreview(contract: import('@/entities/contract/model').Contract, clientName?: string, estimateName?: string, companyInput?: CompanyMeta, estimateNumber?: string, clientData?: ContractClientMeta) {
   const company = defaultCompany(companyInput)
   const locationOrCity = contract.location || '—'
+  const clientMeta: ContractClientMeta = clientData ?? { name: clientName || 'Klient' }
 
   const page = `<section class="page">
     <div class="topbar">
@@ -765,7 +785,7 @@ export function buildContractPreview(contract: import('@/entities/contract/model
       <div class="meta">
         zawarta dnia <strong>${escapeHtml(contract.sign_date || '— do ustalenia —')}</strong> w <strong>${escapeHtml(locationOrCity)}</strong>
       </div>
-      ${buildFullContractHtml(contract, clientName || 'Klient', estimateName || contract.notes || 'roboty wykończeniowe', company, estimateNumber)}
+      ${buildFullContractHtml(contract, clientMeta, estimateName || contract.notes || 'roboty wykończeniowe', company, estimateNumber)}
       ${contract.notes ? `<div class="section small" style="margin-top:24px;"><strong>Notatki:</strong> ${escapeHtml(contract.notes)}</div>` : ''}
     </div>
     ${footer(company)}
