@@ -572,11 +572,15 @@ interface ContractClientMeta {
 
 function contractPartiesHtml(clientMeta: ContractClientMeta, company: CompanyMeta) {
   const idLine = clientMeta.nip ? `NIP: ${escapeHtml(clientMeta.nip)}` : clientMeta.pesel ? `PESEL: ${escapeHtml(clientMeta.pesel)}` : ''
+  const addrLine = [clientMeta.address, clientMeta.postal_code && clientMeta.city ? `${clientMeta.postal_code} ${clientMeta.city}` : clientMeta.city || clientMeta.postal_code].filter(Boolean).join(', ')
   return `<div class="party-grid">
     <div class="party-box">
       <h3>Inwestor</h3>
-      <strong>${escapeHtml(clientMeta.name)}</strong>${idLine ? ` / ${idLine}` : ''}${clientMeta.email ? ` / ${escapeHtml(clientMeta.email)}` : ''}
-      <p>zwany/a dalej <strong>„Inwestorem"</strong></p>
+      <strong>${escapeHtml(clientMeta.name)}</strong>
+      ${addrLine ? `<p>${escapeHtml(addrLine)}</p>` : ''}
+      ${idLine ? `<p>${idLine}</p>` : ''}
+      ${clientMeta.phone ? `<p>tel.: ${escapeHtml(clientMeta.phone)}</p>` : ''}
+      ${clientMeta.email ? `<p>${escapeHtml(clientMeta.email)}</p>` : ''}
     </div>
     <div class="party-box">
       <h3>Wykonawca</h3>
@@ -584,7 +588,6 @@ function contractPartiesHtml(clientMeta: ContractClientMeta, company: CompanyMet
       ${company.address ? `<p>${escapeHtml(company.address)}</p>` : ''}
       ${company.nip ? `<p>NIP: ${escapeHtml(company.nip)}</p>` : ''}
       ${company.email ? `<p>${escapeHtml(company.email)}</p>` : ''}
-      <p>zwany dalej <strong>„Wykonawcą"</strong></p>
     </div>
   </div>`
 }
