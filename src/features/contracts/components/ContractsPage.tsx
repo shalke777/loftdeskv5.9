@@ -74,6 +74,11 @@ export function ContractsPage() {
       <div className="toolbar">
         <PageHeader title="Umowy" subtitle="Umowy powiązane z wycenami i projektami — z harmonogramem płatności i podpisem." />
         <div className="toolbar__actions">
+          <StatusFilter
+            options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
+            value={filterStatus}
+            onChange={v => setFilterStatus(v as FilterStatus)}
+          />
           {canCreate && (
             <PlanLimitGuard resource="contracts">
               <Button onClick={() => { setEditing(null); setOpen(true) }}>
@@ -84,12 +89,6 @@ export function ContractsPage() {
           )}
         </div>
       </div>
-
-      <StatusFilter
-        options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
-        value={filterStatus}
-        onChange={v => setFilterStatus(v as FilterStatus)}
-      />
 
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><Spinner /></div>

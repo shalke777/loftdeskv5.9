@@ -702,6 +702,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 /* Documents hub — hide per-page PageHeaders (tab label serves as heading) */
 .docs-hub-content .page-header { display: none; }
+.docs-hub-content .page { padding-top: 20px; }
 
 /* ── Documents hub segment tabs ─────────────────────────────────────── */
 .docs-hub { display: flex; flex-direction: column; height: 100%; }
