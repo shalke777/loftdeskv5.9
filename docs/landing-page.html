@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LoftDesk — Od wyceny do KSeF. W jednej aplikacji.</title>
+  <meta name="description" content="LoftDesk to polska aplikacja dla firm remontowo-wykończeniowych. Kosztorysy, umowy, faktury, KSeF, portal klienta — w jednym systemie." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#1A5C32', light: '#3E8C58', dark: '#12401F' },
+            cream: { DEFAULT: '#F5F0E8', soft: '#EDE8DD', border: '#DDD6C9' },
+            amber: { DEFAULT: '#B8742A', light: '#D4944A' },
+            surface: '#FFFFFF',
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          boxShadow: {
+            card: '0 2px 8px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04)',
+            lifted: '0 8px 24px rgba(0,0,0,0.10)',
+            hero: '0 24px 64px rgba(26,92,50,0.16)',
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: #F5F0E8; color: #1a1a1a; }
+    .flow-arrow::after { content: '→'; color: #3E8C58; font-weight: 700; margin: 0 4px; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fadeUp 0.5s ease both; }
+    .gradient-text { background: linear-gradient(135deg, #1A5C32, #3E8C58); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    details > summary { list-style: none; cursor: pointer; }
+    details > summary::-webkit-details-marker { display: none; }
+    details[open] .faq-icon { transform: rotate(45deg); }
+    .faq-icon { transition: transform 0.2s; display: inline-block; }
+  </style>
+</head>
+<body class="antialiased">
+
+<!-- ═══════════════════════════════════════════
+     NAV
+════════════════════════════════════════════ -->
+<nav class="sticky top-0 z-50 bg-cream border-b border-cream-border">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
+        <span class="text-white font-bold text-sm">L</span>
+      </div>
+      <span class="font-bold text-xl text-brand">LoftDesk</span>
+    </div>
+    <div class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
+      <a href="#flow" class="hover:text-brand transition-colors">Jak działa</a>
+      <a href="#features" class="hover:text-brand transition-colors">Funkcje</a>
+      <a href="#ksef" class="hover:text-brand transition-colors">KSeF</a>
+      <a href="#pricing" class="hover:text-brand transition-colors">Cennik</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="#" class="hidden sm:block text-sm font-medium text-gray-600 hover:text-brand transition-colors">Zaloguj</a>
+      <a href="#" class="bg-brand text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-brand-dark transition-colors">Zacznij za darmo</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     1. HERO
+════════════════════════════════════════════ -->
+<section class="relative overflow-hidden bg-cream pt-16 pb-20 sm:pt-24 sm:pb-28">
+  <div class="absolute inset-0 pointer-events-none">
+    <div class="absolute top-0 right-0 w-96 h-96 bg-brand/5 rounded-full translate-x-1/2 -translate-y-1/2"></div>
+    <div class="absolute bottom-0 left-0 w-64 h-64 bg-amber/8 rounded-full -translate-x-1/2 translate-y-1/2"></div>
+  </div>
+  <div class="relative max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="max-w-2xl">
+      <div class="inline-flex items-center gap-2 bg-brand/10 text-brand text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
+        <span class="w-1.5 h-1.5 rounded-full bg-brand"></span>
+        Polska aplikacja dla firm wykończeniowych
+      </div>
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight text-gray-900 mb-6">
+        Od wyceny do KSeF.<br />
+        <span class="gradient-text">W jednej aplikacji.</span>
+      </h1>
+      <p class="text-lg sm:text-xl text-gray-600 leading-relaxed mb-10 max-w-xl">
+        Jeden system dla Ciebie i Twojego klienta. Kosztorys, umowa, projekt, faktura i KSeF — dane przepływają automatycznie, bez przepisywania. Działa na telefonie.
+      </p>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <a href="#" class="bg-brand text-white font-semibold px-6 py-3.5 rounded-xl text-base hover:bg-brand-dark transition-colors shadow-hero text-center">
+          Zacznij za darmo — 14 dni Pro
+        </a>
+        <a href="#flow" class="border border-cream-border bg-white text-gray-700 font-medium px-6 py-3.5 rounded-xl text-base hover:bg-cream transition-colors text-center">
+          Zobacz jak działa
+        </a>
+      </div>
+      <p class="mt-4 text-sm text-gray-500">Bez karty kredytowej. Plan Free dostępny zawsze.</p>
+    </div>
+
+    <!-- Mockup -->
+    <div class="mt-14 lg:mt-0 lg:absolute lg:right-4 lg:top-12 lg:w-[480px]">
+      <div class="bg-white rounded-2xl shadow-lifted overflow-hidden border border-cream-border">
+        <!-- fake topbar -->
+        <div class="bg-brand px-4 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-5 h-5 rounded bg-white/20"></div>
+            <span class="text-white text-sm font-semibold">LoftDesk</span>
+          </div>
+          <div class="flex gap-1.5">
+            <div class="w-2.5 h-2.5 rounded-full bg-white/30"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-white/30"></div>
+          </div>
+        </div>
+        <!-- fake project card -->
+        <div class="p-4 border-b border-cream-border">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <p class="text-xs text-gray-400 font-medium">AKTYWNY PROJEKT</p>
+              <p class="font-semibold text-gray-900">Mieszkanie — ul. Wiśniowa 14</p>
+            </div>
+            <span class="bg-brand/10 text-brand text-xs font-semibold px-2.5 py-1 rounded-full">W trakcie</span>
+          </div>
+          <div class="grid grid-cols-4 gap-2">
+            <div class="bg-cream rounded-lg p-2 text-center">
+              <p class="text-xs text-gray-400">Wycena</p>
+              <p class="text-xs font-semibold text-brand mt-0.5">Zaakceptowana</p>
+            </div>
+            <div class="bg-cream rounded-lg p-2 text-center">
+              <p class="text-xs text-gray-400">Umowa</p>
+              <p class="text-xs font-semibold text-brand mt-0.5">Podpisana</p>
+            </div>
+            <div class="bg-cream rounded-lg p-2 text-center">
+              <p class="text-xs text-gray-400">Faktura</p>
+              <p class="text-xs font-semibold text-amber mt-0.5">Wystawiona</p>
+            </div>
+            <div class="bg-cream rounded-lg p-2 text-center">
+              <p class="text-xs text-gray-400">KSeF</p>
+              <p class="text-xs font-semibold text-brand mt-0.5">Wysłana</p>
+            </div>
+          </div>
+        </div>
+        <!-- fake message -->
+        <div class="p-4 flex items-start gap-3">
+          <div class="w-8 h-8 rounded-full bg-brand/10 flex-shrink-0 flex items-center justify-center">
+            <span class="text-brand text-xs font-bold">K</span>
+          </div>
+          <div class="flex-1">
+            <p class="text-xs text-gray-400 mb-1">Kasia Kowalska · portal klienta</p>
+            <div class="bg-cream rounded-xl px-3 py-2">
+              <p class="text-sm text-gray-700">Zaakceptowałam protokół odbioru. Dziękuję!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     2. PROBLEM
+════════════════════════════════════════════ -->
+<section class="bg-white py-16 sm:py-20">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="max-w-2xl mx-auto text-center mb-12">
+      <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Znasz to?</h2>
+      <p class="text-gray-500 text-lg">Tak wyglądają narzędzia większości firm remontowych w Polsce.</p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <div class="rounded-xl border border-red-100 bg-red-50 p-5">
+        <p class="font-semibold text-red-700 mb-2">Excel i Word</p>
+        <p class="text-sm text-red-600">Kosztorys w Excelu, umowa w Wordzie, kopia dla klienta mailem. Za każdym razem od nowa.</p>
+      </div>
+
+      <div class="rounded-xl border border-red-100 bg-red-50 p-5">
+        <p class="font-semibold text-red-700 mb-2">WhatsApp jako „system"</p>
+        <p class="text-sm text-red-600">Klient pyta o postępy. Ty szukasz w 15 wątkach. Potem nie wiadomo co było ustalone.</p>
+      </div>
+
+      <div class="rounded-xl border border-red-100 bg-red-50 p-5">
+        <p class="font-semibold text-red-700 mb-2">Oddzielna fakturownia</p>
+        <p class="text-sm text-red-600">Przepisujesz dane klienta z Worda do programu FK. Trzecia kopia tych samych danych.</p>
+      </div>
+
+      <div class="rounded-xl border border-red-100 bg-red-50 p-5">
+        <p class="font-semibold text-red-700 mb-2">Brak dowodów</p>
+        <p class="text-sm text-red-600">Klient twierdzi, że czegoś nie akceptował. Nie ma protokołu, nie ma podpisu, nie ma daty.</p>
+      </div>
+
+      <div class="rounded-xl border border-red-100 bg-red-50 p-5">
+        <p class="font-semibold text-red-700 mb-2">KSeF — za rok obowiązkowy</p>
+        <p class="text-sm text-red-600">Każda firma w Polsce musi wysyłać faktury do systemu MF. Kto nie jest gotowy — płaci kary.</p>
+      </div>
+
+      <div class="rounded-xl border border-red-100 bg-red-50 p-5">
+        <p class="font-semibold text-red-700 mb-2">Pięć narzędzi zamiast jednego</p>
+        <p class="text-sm text-red-600">Excel, Word, WhatsApp, fakturownia, papier. Każde coś kosztuje. Żadne nie mówi do reszty.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     3. ROZWIĄZANIE
+════════════════════════════════════════════ -->
+<section class="bg-cream py-16 sm:py-20">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="lg:grid lg:grid-cols-2 lg:gap-16 lg:items-center">
+      <div>
+        <div class="inline-flex items-center gap-2 bg-brand/10 text-brand text-xs font-semibold px-3 py-1.5 rounded-full mb-5">
+          Rozwiązanie
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-6 leading-tight">
+          Jeden system.<br />Dla Ciebie i Twojego klienta.
+        </h2>
+        <p class="text-gray-600 text-lg leading-relaxed mb-8">
+          LoftDesk nie jest kolejnym programem do fakturowania. To aplikacja procesowa — obsługuje cały cykl zlecenia remontowego, od pierwszego kontaktu do rozliczenia z KSeF.
+        </p>
+        <div class="space-y-4">
+          <div class="flex items-start gap-3">
+            <div class="w-5 h-5 rounded-full bg-brand/15 flex-shrink-0 flex items-center justify-center mt-0.5">
+              <div class="w-2 h-2 rounded-full bg-brand"></div>
+            </div>
+            <div>
+              <p class="font-semibold text-gray-900">Dane wpisujesz raz</p>
+              <p class="text-sm text-gray-500 mt-0.5">NIP klienta wpisany przy zakładaniu konta wchodzi automatycznie do wyceny, umowy, faktury i KSeF.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <div class="w-5 h-5 rounded-full bg-brand/15 flex-shrink-0 flex items-center justify-center mt-0.5">
+              <div class="w-2 h-2 rounded-full bg-brand"></div>
+            </div>
+            <div>
+              <p class="font-semibold text-gray-900">Klient ma swój portal</p>
+              <p class="text-sm text-gray-500 mt-0.5">Jeden link — klient widzi dokumenty, pisze w chacie, akceptuje protokoły. Bez rejestracji, na telefonie.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <div class="w-5 h-5 rounded-full bg-brand/15 flex-shrink-0 flex items-center justify-center mt-0.5">
+              <div class="w-2 h-2 rounded-full bg-brand"></div>
+            </div>
+            <div>
+              <p class="font-semibold text-gray-900">KSeF bez oddzielnego programu</p>
+              <p class="text-sm text-gray-500 mt-0.5">Wystawiasz fakturę, klikasz Wyślij do KSeF. Status wróci automatycznie. Koniec.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- visual -->
+      <div class="mt-12 lg:mt-0">
+        <div class="bg-white rounded-2xl shadow-card border border-cream-border p-6">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Wszystko w jednym miejscu</p>
+          <div class="space-y-2.5">
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-brand/5 border border-brand/10">
+              <div class="w-8 h-8 rounded-lg bg-brand flex items-center justify-center flex-shrink-0">
+                <span class="text-white text-xs font-bold">W</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-gray-900">Kosztorys #WYC/2025/012</p>
+                <p class="text-xs text-gray-400">Kasia Kowalska · 38 400 zł brutto</p>
+              </div>
+              <span class="text-xs font-semibold text-brand bg-brand/10 px-2 py-0.5 rounded-full">Zaakceptowana</span>
+            </div>
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-cream border border-cream-border">
+              <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                <span class="text-gray-600 text-xs font-bold">U</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-gray-900">Umowa #UMW/2025/012</p>
+                <p class="text-xs text-gray-400">3 transze · Podpisana elektronicznie</p>
+              </div>
+              <span class="text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">Podpisana</span>
+            </div>
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-cream border border-cream-border">
+              <div class="w-8 h-8 rounded-lg bg-amber/20 flex items-center justify-center flex-shrink-0">
+                <span class="text-amber text-xs font-bold">F</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-gray-900">Faktura #FV/2025/034</p>
+                <p class="text-xs text-gray-400">Zaliczkowa 40% · 15 360 zł</p>
+              </div>
+              <span class="text-xs font-semibold text-amber bg-amber/10 px-2 py-0.5 rounded-full">KSeF ✓</span>
+            </div>
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-cream border border-cream-border">
+              <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <span class="text-blue-600 text-xs font-bold">P</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-gray-900">Portal klienta</p>
+                <p class="text-xs text-gray-400">2 nieprzeczytane · Akceptacja oczekuje</p>
+              </div>
+              <span class="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     4. FLOW
+════════════════════════════════════════════ -->
+<section id="flow" class="bg-white py-16 sm:py-20">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Jeden ciąg. Zero przepisywania.</h2>
+      <p class="text-gray-500 text-lg max-w-xl mx-auto">Każdy krok wynika z poprzedniego. Dane przepływają automatycznie. Ty tylko akceptujesz.</p>
+    </div>
+
+    <!-- Flow steps horizontal -->
+    <div class="overflow-x-auto pb-4">
+      <div class="flex items-stretch gap-0 min-w-max mx-auto lg:min-w-0 lg:flex-wrap lg:justify-center">
+
+        <!-- Step -->
+        <div class="flex items-center">
+          <div class="flex flex-col items-center w-28 sm:w-32">
+            <div class="w-12 h-12 rounded-xl bg-brand flex items-center justify-center shadow-sm mb-3">
+              <span class="text-white font-bold text-sm">1</span>
+            </div>
+            <p class="text-xs font-semibold text-gray-900 text-center">Klient</p>
+            <p class="text-xs text-gray-400 text-center mt-1">Dodajesz inwestora — raz</p>
+          </div>
+          <div class="text-brand-light font-bold text-2xl px-1 self-center pb-6">›</div>
+        </div>
+
+        <div class="flex items-center">
+          <div class="flex flex-col items-center w-28 sm:w-32">
+            <div class="w-12 h-12 rounded-xl bg-brand flex items-center justify-center shadow-sm mb-3">
+              <span class="text-white font-bold text-sm">2</span>
+            </div>
+            <p class="text-xs font-semibold text-gray-900 text-center">Kosztorys</p>
+            <p class="text-xs text-gray-400 text-center mt-1">Głos lub PDF → AI draft</p>
+          </div>
+          <div class="text-brand-light font-bold text-2xl px-1 self-center pb-6">›</div>
+        </div>
+
+        <div class="flex items-center">
+          <div class="flex flex-col items-center w-28 sm:w-32">
+            <div class="w-12 h-12 rounded-xl bg-brand flex items-center justify-center shadow-sm mb-3">
+              <span class="text-white font-bold text-sm">3</span>
+            </div>
+            <p class="text-xs font-semibold text-gray-900 text-center">Umowa</p>
+            <p class="text-xs text-gray-400 text-center mt-1">1 klik z wyceny</p>
+          </div>
+          <div class="text-brand-light font-bold text-2xl px-1 self-center pb-6">›</div>
+        </div>
+
+        <div class="flex items-center">
+          <div class="flex flex-col items-center w-28 sm:w-32">
+            <div class="w-12 h-12 rounded-xl bg-brand flex items-center justify-center shadow-sm mb-3">
+              <span class="text-white font-bold text-sm">4</span>
+            </div>
+            <p class="text-xs font-semibold text-gray-900 text-center">Projekt</p>
+            <p class="text-xs text-gray-400 text-center mt-1">Centrum realizacji</p>
+          </div>
+          <div class="text-brand-light font-bold text-2xl px-1 self-center pb-6">›</div>
+        </div>
+
+        <div class="flex items-center">
+          <div class="flex flex-col items-center w-28 sm:w-32">
+            <div class="w-12 h-12 rounded-xl bg-amber flex items-center justify-center shadow-sm mb-3">
+              <span class="text-white font-bold text-sm">5</span>
+            </div>
+            <p class="text-xs font-semibold text-gray-900 text-center">Faktura</p>
+            <p class="text-xs text-gray-400 text-center mt-1">1 klik z projektu</p>
+          </div>
+          <div class="text-brand-light font-bold text-2xl px-1 self-center pb-6">›</div>
+        </div>
+
+        <div class="flex items-center">
+          <div class="flex flex-col items-center w-28 sm:w-32">
+            <div class="w-12 h-12 rounded-xl bg-amber flex items-center justify-center shadow-sm mb-3">
+              <span class="text-white font-bold text-sm">6</span>
+            </div>
+            <p class="text-xs font-semibold text-gray-900 text-center">KSeF</p>
+            <p class="text-xs text-gray-400 text-center mt-1">Wysyłka z aplikacji</p>
+          </div>
+          <div class="text-brand-light font-bold text-2xl px-1 self-center pb-6">›</div>
+        </div>
+
+        <div class="flex items-center">
+          <div class="flex flex-col items-center w-28 sm:w-32">
+            <div class="w-12 h-12 rounded-xl bg-brand-light flex items-center justify-center shadow-sm mb-3">
+              <span class="text-white font-bold text-sm">7</span>
+            </div>
+            <p class="text-xs font-semibold text-gray-900 text-center">Portal klienta</p>
+            <p class="text-xs text-gray-400 text-center mt-1">Klient widzi wszystko</p>
+          </div>
+          <div class="text-brand-light font-bold text-2xl px-1 self-center pb-6">›</div>
+        </div>
+
+        <div class="flex items-center">
+          <div class="flex flex-col items-center w-28 sm:w-32">
+            <div class="w-12 h-12 rounded-xl bg-brand-light flex items-center justify-center shadow-sm mb-3">
+              <span class="text-white font-bold text-sm">8</span>
+            </div>
+            <p class="text-xs font-semibold text-gray-900 text-center">Odbiór</p>
+            <p class="text-xs text-gray-400 text-center mt-1">Protokół z podpisem</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Flow highlight -->
+    <div class="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-cream rounded-xl p-5 border border-cream-border">
+        <p class="text-2xl font-extrabold text-brand mb-1">0</p>
+        <p class="font-semibold text-gray-900 mb-1">Razy przepisujesz dane</p>
+        <p class="text-sm text-gray-500">NIP, adres, kwoty — wpisane raz przy kliencie wchodzą do każdego dokumentu.</p>
+      </div>
+      <div class="bg-cream rounded-xl p-5 border border-cream-border">
+        <p class="text-2xl font-extrabold text-brand mb-1">1 klik</p>
+        <p class="font-semibold text-gray-900 mb-1">Wycena staje się umową</p>
+        <p class="text-sm text-gray-500">Dane klienta, pozycje, kwoty — przepisują się automatycznie. Ty tylko weryfikujesz transze.</p>
+      </div>
+      <div class="bg-cream rounded-xl p-5 border border-cream-border">
+        <p class="text-2xl font-extrabold text-amber mb-1">5 → 1</p>
+        <p class="font-semibold text-gray-900 mb-1">Narzędzi zamieniasz na jedno</p>
+        <p class="text-sm text-gray-500">Excel, Word, WhatsApp, fakturownia, papier — wszystko zastępuje LoftDesk.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     5. FEATURES / WOW MOMENTS
+════════════════════════════════════════════ -->
+<section id="features" class="bg-cream py-16 sm:py-20">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Funkcje, które zmieniają pracę w terenie</h2>
+      <p class="text-gray-500 text-lg max-w-xl mx-auto">Nie funkcje dla funkcji — każda skraca czas, eliminuje błąd lub chroni przed sporem.</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+      <!-- Wow 1 -->
+      <div class="bg-white rounded-2xl shadow-card border border-cream-border p-6 hover:shadow-lifted transition-shadow">
+        <div class="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center mb-4">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A5C32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </div>
+        <p class="font-bold text-gray-900 mb-2">„Powiedziałem — wyszła wycena"</p>
+        <p class="text-sm text-gray-500 leading-relaxed">Mów do telefonu o zakresie prac. AI transkrybuje i generuje draft kosztorysu z pozycjami, jednostkami i cenami. Bez klawiatury, bez Excela.</p>
+      </div>
+
+      <!-- Wow 2 -->
+      <div class="bg-white rounded-2xl shadow-card border border-cream-border p-6 hover:shadow-lifted transition-shadow">
+        <div class="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center mb-4">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A5C32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        </div>
+        <p class="font-bold text-gray-900 mb-2">„Wrzuciłem PDF projektu — mam zakres"</p>
+        <p class="text-sm text-gray-500 leading-relaxed">Wgraj projekt architektoniczny. AI analizuje rzuty, warstwy materiałowe i instalacyjne — zwraca listę pozycji do wyceny. Co zajmuje godziny — trwa minuty.</p>
+      </div>
+
+      <!-- Wow 3 -->
+      <div class="bg-white rounded-2xl shadow-card border border-cream-border p-6 hover:shadow-lifted transition-shadow">
+        <div class="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center mb-4">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A5C32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <p class="font-bold text-gray-900 mb-2">„Klient kliknął Akceptuję — bez rejestracji"</p>
+        <p class="text-sm text-gray-500 leading-relaxed">Wyślij kosztorys lub protokół jednym kliknięciem. Klient otwiera link na telefonie, przegląda i zatwierdza. Zero haseł, zero rejestracji. Ty widzisz akceptację w czasie rzeczywistym.</p>
+      </div>
+
+      <!-- Wow 4 -->
+      <div class="bg-white rounded-2xl shadow-card border border-cream-border p-6 hover:shadow-lifted transition-shadow">
+        <div class="w-10 h-10 rounded-xl bg-amber/10 flex items-center justify-center mb-4">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B8742A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <p class="font-bold text-gray-900 mb-2">„Jeden klik — faktura do KSeF"</p>
+        <p class="text-sm text-gray-500 leading-relaxed">Dane klienta i kwoty z wyceny/umowy wchodzą do faktury automatycznie. Klikasz Wyślij do KSeF — aplikacja generuje XML, wysyła do MF i wraca ze statusem. Bez oddzielnego programu.</p>
+      </div>
+
+      <!-- Wow 5 -->
+      <div class="bg-white rounded-2xl shadow-card border border-cream-border p-6 hover:shadow-lifted transition-shadow">
+        <div class="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center mb-4">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A5C32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        </div>
+        <p class="font-bold text-gray-900 mb-2">„Klient ma aplikację — bez App Store"</p>
+        <p class="text-sm text-gray-500 leading-relaxed">Portal klienta instaluje się na ekranie głównym telefonu z linku — jak natywna aplikacja. Klient nie pobiera nic ze sklepu. Ty wyglądasz profesjonalnie.</p>
+      </div>
+
+      <!-- Wow 6 -->
+      <div class="bg-white rounded-2xl shadow-card border border-cream-border p-6 hover:shadow-lifted transition-shadow">
+        <div class="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center mb-4">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A5C32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <p class="font-bold text-gray-900 mb-2">„Protokół odbioru = dowód + timestamp"</p>
+        <p class="text-sm text-gray-500 leading-relaxed">Klient akceptuje protokół w portalu — zapisuje się data, godzina i IP. W razie sporu masz twardy dowód. Koniec papierowych protokołów bez daty i podpisu.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     6. PORTAL KLIENTA
+════════════════════════════════════════════ -->
+<section class="bg-white py-16 sm:py-20">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="lg:grid lg:grid-cols-2 lg:gap-16 lg:items-center">
+
+      <!-- Portal mockup -->
+      <div class="mb-12 lg:mb-0 order-2 lg:order-1">
+        <div class="max-w-sm mx-auto">
+          <div class="bg-gray-900 rounded-3xl p-3 shadow-hero">
+            <div class="bg-white rounded-2xl overflow-hidden">
+              <!-- status bar -->
+              <div class="bg-brand px-4 pt-2 pb-3">
+                <div class="flex justify-between items-center mb-3">
+                  <span class="text-white/70 text-xs">9:41</span>
+                  <div class="flex gap-1">
+                    <div class="w-3 h-1.5 rounded bg-white/50"></div>
+                    <div class="w-3 h-1.5 rounded bg-white/70"></div>
+                    <div class="w-3 h-1.5 rounded bg-white"></div>
+                  </div>
+                </div>
+                <p class="text-white/70 text-xs">LoftDesk · portal klienta</p>
+                <p class="text-white font-semibold text-sm">Mieszkanie — ul. Wiśniowa 14</p>
+              </div>
+              <!-- tabs -->
+              <div class="flex border-b border-gray-100 text-xs">
+                <button class="flex-1 py-2.5 font-semibold text-brand border-b-2 border-brand">Dokumenty</button>
+                <button class="flex-1 py-2.5 text-gray-400">Chat</button>
+                <button class="flex-1 py-2.5 text-gray-400">Akceptacje</button>
+              </div>
+              <!-- docs list -->
+              <div class="p-3 space-y-2">
+                <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-green-50 border border-green-100">
+                  <div class="w-7 h-7 rounded-lg bg-brand/15 flex items-center justify-center flex-shrink-0">
+                    <span class="text-brand text-xs font-bold">W</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-semibold text-gray-800">Kosztorys #012</p>
+                    <p class="text-xs text-gray-400">38 400 zł · Zaakceptowany</p>
+                  </div>
+                  <span class="text-green-600 text-xs">✓</span>
+                </div>
+                <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-green-50 border border-green-100">
+                  <div class="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <span class="text-gray-500 text-xs font-bold">U</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-semibold text-gray-800">Umowa #012</p>
+                    <p class="text-xs text-gray-400">Podpisana · 3 transze</p>
+                  </div>
+                  <span class="text-green-600 text-xs">✓</span>
+                </div>
+                <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-amber/5 border border-amber/20">
+                  <div class="w-7 h-7 rounded-lg bg-amber/15 flex items-center justify-center flex-shrink-0">
+                    <span class="text-amber text-xs font-bold">P</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-semibold text-gray-800">Protokół odbioru</p>
+                    <p class="text-xs text-gray-400">Oczekuje na akceptację</p>
+                  </div>
+                  <button class="text-xs font-semibold text-amber bg-amber/10 px-2 py-0.5 rounded-full">Podpisz</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Copy -->
+      <div class="order-1 lg:order-2">
+        <div class="inline-flex items-center gap-2 bg-brand/10 text-brand text-xs font-semibold px-3 py-1.5 rounded-full mb-5">
+          Portal klienta
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-6 leading-tight">
+          Twój klient widzi projekt.<br />Ty widzisz spokój.
+        </h2>
+        <p class="text-gray-600 text-lg leading-relaxed mb-8">
+          Zapraszasz klienta jednym linkiem. Dostaje dedykowany widok swojego projektu — dokumenty, czat z Tobą, postęp prac i protokoły do akceptacji. Na telefonie, jak prawdziwa aplikacja.
+        </p>
+        <div class="space-y-3">
+          <div class="flex items-center gap-3">
+            <div class="w-5 h-5 rounded-full bg-brand flex-shrink-0 flex items-center justify-center">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <p class="text-sm text-gray-700">Klient widzi tylko swoje projekty — marże i koszty są dla Ciebie</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-5 h-5 rounded-full bg-brand flex-shrink-0 flex items-center justify-center">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <p class="text-sm text-gray-700">Czat w kontekście projektu — nie WhatsApp, gdzie wszystko się miesza</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-5 h-5 rounded-full bg-brand flex-shrink-0 flex items-center justify-center">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <p class="text-sm text-gray-700">Akceptacje dokumentów z logiem daty i IP — dowód prawny</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-5 h-5 rounded-full bg-brand flex-shrink-0 flex items-center justify-center">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <p class="text-sm text-gray-700">Galeria zdjęć z budowy — klient widzi postęp, nie dzwoni</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-5 h-5 rounded-full bg-brand flex-shrink-0 flex items-center justify-center">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <p class="text-sm text-gray-700">Instalacja bez App Store — PWA prosto z linku, jak natywna aplikacja</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     7. KSEF
+════════════════════════════════════════════ -->
+<section id="ksef" class="bg-brand py-16 sm:py-20">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="lg:grid lg:grid-cols-2 lg:gap-16 lg:items-center">
+      <div>
+        <div class="inline-flex items-center gap-2 bg-white/15 text-white text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
+          Obowiązek prawny od 2026
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold text-white mb-6 leading-tight">
+          KSeF od 2026 obowiązkowy.<br />LoftDesk gotowy dziś.
+        </h2>
+        <p class="text-white/80 text-lg leading-relaxed mb-8">
+          Od 1 lutego 2026 każda firma w Polsce musi wysyłać faktury do Krajowego Systemu e-Faktur Ministerstwa Finansów. Kto nie wyśle — faktura jest nieważna, grożą kary.
+        </p>
+        <div class="space-y-4 mb-8">
+          <div class="flex items-start gap-3">
+            <div class="w-5 h-5 rounded-full bg-white/20 flex-shrink-0 flex items-center justify-center mt-0.5">
+              <div class="w-2 h-2 rounded-full bg-white"></div>
+            </div>
+            <p class="text-white/80 text-sm">KSeF wbudowany w LoftDesk — nie jako wtyczka, ale jako naturalne zakończenie procesu fakturowego</p>
+          </div>
+          <div class="flex items-start gap-3">
+            <div class="w-5 h-5 rounded-full bg-white/20 flex-shrink-0 flex items-center justify-center mt-0.5">
+              <div class="w-2 h-2 rounded-full bg-white"></div>
+            </div>
+            <p class="text-white/80 text-sm">Automatyczne generowanie XML zgodnego z FA(1) — zero ręcznej pracy</p>
+          </div>
+          <div class="flex items-start gap-3">
+            <div class="w-5 h-5 rounded-full bg-white/20 flex-shrink-0 flex items-center justify-center mt-0.5">
+              <div class="w-2 h-2 rounded-full bg-white"></div>
+            </div>
+            <p class="text-white/80 text-sm">Statusy wysyłki widoczne dla każdej faktury — wiesz co dotarło, co czeka, co się nie powiodło</p>
+          </div>
+        </div>
+        <a href="#pricing" class="inline-block bg-white text-brand font-semibold px-6 py-3.5 rounded-xl hover:bg-cream transition-colors text-sm">
+          Sprawdź plan Pro z KSeF
+        </a>
+      </div>
+      <div class="mt-12 lg:mt-0">
+        <div class="bg-brand-dark rounded-2xl p-6 border border-white/10">
+          <p class="text-white/50 text-xs font-semibold uppercase tracking-wide mb-4">Status faktur KSeF</p>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+              <div>
+                <p class="text-white text-sm font-semibold">FV/2025/034</p>
+                <p class="text-white/40 text-xs">Zaliczkowa · 15 360 zł</p>
+              </div>
+              <span class="text-xs font-semibold text-green-300 bg-green-900/40 px-2.5 py-1 rounded-full">Wysłana</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+              <div>
+                <p class="text-white text-sm font-semibold">FV/2025/035</p>
+                <p class="text-white/40 text-xs">Końcowa · 23 040 zł</p>
+              </div>
+              <span class="text-xs font-semibold text-yellow-300 bg-yellow-900/40 px-2.5 py-1 rounded-full">W kolejce</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+              <div>
+                <p class="text-white text-sm font-semibold">FV/2025/031</p>
+                <p class="text-white/40 text-xs">Standard · 8 200 zł</p>
+              </div>
+              <span class="text-xs font-semibold text-green-300 bg-green-900/40 px-2.5 py-1 rounded-full">Wysłana</span>
+            </div>
+          </div>
+          <div class="mt-4 p-3 rounded-xl bg-green-900/20 border border-green-500/20">
+            <p class="text-green-300 text-xs font-semibold">Numer KSeF: KSeF/2025/1234567890</p>
+            <p class="text-white/40 text-xs mt-0.5">Przyjęto przez MF · 12.04.2025 14:23</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     8. SOCIAL PROOF
+════════════════════════════════════════════ -->
+<section class="bg-cream py-16 sm:py-20">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold text-gray-900 mb-3">Firmy, które postawiły na porządek</h2>
+      <p class="text-gray-500">Co mówią wykonawcy, którzy przeszli z Excela na LoftDesk.</p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+
+      <div class="bg-white rounded-2xl shadow-card border border-cream-border p-6">
+        <div class="flex items-center gap-1 mb-4">
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+        </div>
+        <p class="text-sm text-gray-600 leading-relaxed mb-4">"Kiedyś miałem kosztorys w Excelu, umowę w Wordzie i faktury w Fakturowni. Teraz klikam jedno i mam wszystko. Klientka napisała, że pierwszy raz wie co się dzieje z jej mieszkaniem."</p>
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-brand/10 flex items-center justify-center">
+            <span class="text-brand font-semibold text-sm">MW</span>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-900">Marek W.</p>
+            <p class="text-xs text-gray-400">Firma remontowa · Warszawa</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-card border border-cream-border p-6">
+        <div class="flex items-center gap-1 mb-4">
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+        </div>
+        <p class="text-sm text-gray-600 leading-relaxed mb-4">"Zanim dałem klientce dostęp do portalu, dzwoniła trzy razy w tygodniu. Teraz nie dzwoni wcale. Sama sprawdza w aplikacji. Dla mnie to wartość niematerialna."</p>
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-brand/10 flex items-center justify-center">
+            <span class="text-brand font-semibold text-sm">TP</span>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-900">Tomasz P.</p>
+            <p class="text-xs text-gray-400">Wykończenia pod klucz · Kraków</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-card border border-cream-border p-6">
+        <div class="flex items-center gap-1 mb-4">
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          <svg class="w-4 h-4 fill-amber" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+        </div>
+        <p class="text-sm text-gray-600 leading-relaxed mb-4">"Miałem spór z klientem o to, czy zmiany w projekcie były akceptowane. Weszłam w LoftDesk — data akceptacji, godzina, ip. Koniec rozmowy. Takich dowodów w Wordzie nie masz."</p>
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-brand/10 flex items-center justify-center">
+            <span class="text-brand font-semibold text-sm">AK</span>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-900">Agnieszka K.</p>
+            <p class="text-xs text-gray-400">Studio wykończen · Wrocław</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     9. CENNIK
+════════════════════════════════════════════ -->
+<section id="pricing" class="bg-white py-16 sm:py-20">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Prosty cennik. Bez niespodzianek.</h2>
+      <p class="text-gray-500 text-lg">14 dni planu Pro gratis. Bez karty kredytowej.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+
+      <!-- Free -->
+      <div class="bg-cream rounded-2xl border border-cream-border p-7">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Free</p>
+        <div class="flex items-end gap-1 mb-1">
+          <span class="text-4xl font-extrabold text-gray-900">0 zł</span>
+          <span class="text-gray-400 text-sm pb-1.5">/miesiąc</span>
+        </div>
+        <p class="text-sm text-gray-500 mb-6">Na zawsze. Żadnych limitów czasowych.</p>
+        <a href="#" class="block text-center border border-gray-300 text-gray-700 font-semibold py-3 rounded-xl hover:bg-white transition-colors text-sm mb-6">
+          Zacznij za darmo
+        </a>
+        <ul class="space-y-2.5 text-sm text-gray-600">
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 text-gray-500 text-xs">✓</span>Do 5 projektów</li>
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 text-gray-500 text-xs">✓</span>Do 10 klientów</li>
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 text-gray-500 text-xs">✓</span>Do 10 faktur</li>
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 text-gray-500 text-xs">✓</span>Kosztorysy i umowy</li>
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 text-gray-500 text-xs">✓</span>PDF dokumentów</li>
+          <li class="flex items-center gap-2 text-gray-400"><span class="w-4 h-4 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 text-xs">—</span>KSeF</li>
+          <li class="flex items-center gap-2 text-gray-400"><span class="w-4 h-4 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 text-xs">—</span>Portal klienta</li>
+        </ul>
+      </div>
+
+      <!-- Pro -->
+      <div class="bg-brand rounded-2xl p-7 relative shadow-hero">
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+          <span class="bg-amber text-white text-xs font-bold px-3 py-1 rounded-full">Najpopularniejszy</span>
+        </div>
+        <p class="text-xs font-semibold text-white/60 uppercase tracking-wide mb-3">Pro</p>
+        <div class="flex items-end gap-1 mb-1">
+          <span class="text-4xl font-extrabold text-white">49 zł</span>
+          <span class="text-white/60 text-sm pb-1.5">/miesiąc</span>
+        </div>
+        <p class="text-sm text-white/70 mb-6">14 dni za darmo. Bez karty kredytowej.</p>
+        <a href="#" class="block text-center bg-white text-brand font-semibold py-3 rounded-xl hover:bg-cream transition-colors text-sm mb-6">
+          Zacznij 14 dni za darmo
+        </a>
+        <ul class="space-y-2.5 text-sm text-white/90">
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 text-white text-xs">✓</span>Bez limitów projektów</li>
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 text-white text-xs">✓</span>Bez limitów faktur</li>
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 text-white text-xs">✓</span>Bez limitów klientów</li>
+          <li class="flex items-center gap-2 font-semibold"><span class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 text-white text-xs">✓</span>KSeF — pełna integracja</li>
+          <li class="flex items-center gap-2 font-semibold"><span class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 text-white text-xs">✓</span>Portal klienta</li>
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 text-white text-xs">✓</span>AI — kosztorys z głosu</li>
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 text-white text-xs">✓</span>AI — analiza PDF projektu</li>
+        </ul>
+      </div>
+
+      <!-- Business -->
+      <div class="bg-cream rounded-2xl border border-cream-border p-7">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Business</p>
+        <div class="flex items-end gap-1 mb-1">
+          <span class="text-4xl font-extrabold text-gray-900">119 zł</span>
+          <span class="text-gray-400 text-sm pb-1.5">/miesiąc</span>
+        </div>
+        <p class="text-sm text-gray-500 mb-6">Dla firm z ekipą i strukturą.</p>
+        <a href="#" class="block text-center border border-brand text-brand font-semibold py-3 rounded-xl hover:bg-brand/5 transition-colors text-sm mb-6">
+          Zacznij 14 dni za darmo
+        </a>
+        <ul class="space-y-2.5 text-sm text-gray-600">
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0 text-brand text-xs">✓</span>Wszystko z Pro</li>
+          <li class="flex items-center gap-2 font-semibold text-gray-900"><span class="w-4 h-4 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0 text-brand text-xs">✓</span>Zarządzanie zespołem</li>
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0 text-brand text-xs">✓</span>Role pracowników</li>
+          <li class="flex items-center gap-2 font-semibold text-gray-900"><span class="w-4 h-4 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0 text-brand text-xs">✓</span>Własne logo na dokumentach</li>
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0 text-brand text-xs">✓</span>Priorytetowe wsparcie</li>
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full bg-brand/10 flex items-center justify-center flex-shrink-0 text-brand text-xs">✓</span>Zaawansowane raporty</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- KSeF note -->
+    <div class="mt-8 max-w-5xl mx-auto p-4 rounded-xl bg-amber/10 border border-amber/20 text-sm text-amber-900 flex items-start gap-3">
+      <svg class="w-5 h-5 text-amber flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+      <span><strong>KSeF obowiązkowy od 1 lutego 2026.</strong> Każda firma w Polsce musi wysyłać faktury elektronicznie do systemu MF. Firmy bez gotowości narażają się na odrzucone faktury i kary. Plan Pro zawiera pełną obsługę KSeF.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     10. FAQ
+════════════════════════════════════════════ -->
+<section class="bg-cream py-16 sm:py-20">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6">
+    <h2 class="text-3xl font-bold text-gray-900 mb-10 text-center">Najczęstsze pytania</h2>
+
+    <div class="space-y-3">
+
+      <details class="bg-white rounded-xl border border-cream-border group">
+        <summary class="flex items-center justify-between p-5 cursor-pointer">
+          <span class="font-semibold text-gray-900 text-sm sm:text-base">Czy muszę mieć wiedzę techniczną, żeby zacząć?</span>
+          <span class="faq-icon text-gray-400 text-xl leading-none ml-3 flex-shrink-0">+</span>
+        </summary>
+        <div class="px-5 pb-5 text-sm text-gray-600 leading-relaxed">
+          Nie. LoftDesk jest zaprojektowany do pracy z telefonu, na budowie. Rejestracja zajmuje 3 minuty — podajesz nazwę firmy i NIP. Pierwszą wycenę możesz stworzyć w 5 minut.
+        </div>
+      </details>
+
+      <details class="bg-white rounded-xl border border-cream-border group">
+        <summary class="flex items-center justify-between p-5 cursor-pointer">
+          <span class="font-semibold text-gray-900 text-sm sm:text-base">Klient musi zakładać konto, żeby zobaczyć dokumenty?</span>
+          <span class="faq-icon text-gray-400 text-xl leading-none ml-3 flex-shrink-0">+</span>
+        </summary>
+        <div class="px-5 pb-5 text-sm text-gray-600 leading-relaxed">
+          Nie. Wysyłasz klientowi link. Klient otwiera go w przeglądarce, widzi wycenę lub protokół i może od razu zaakceptować — bez rejestracji, bez hasła. Może też zainstalować portal jako aplikację na telefonie.
+        </div>
+      </details>
+
+      <details class="bg-white rounded-xl border border-cream-border group">
+        <summary class="flex items-center justify-between p-5 cursor-pointer">
+          <span class="font-semibold text-gray-900 text-sm sm:text-base">Czy LoftDesk zastępuje program do fakturowania?</span>
+          <span class="faq-icon text-gray-400 text-xl leading-none ml-3 flex-shrink-0">+</span>
+        </summary>
+        <div class="px-5 pb-5 text-sm text-gray-600 leading-relaxed">
+          Tak, w zakresie faktur VAT, faktur zaliczkowych i końcowych dla firm budowlano-wykończeniowych. LoftDesk generuje faktury PDF i XML, wystawia do KSeF, śledzi statusy płatności. Nie zastępuje pełnego programu księgowego dla dużych firm z wieloma typami dokumentów handlowych.
+        </div>
+      </details>
+
+      <details class="bg-white rounded-xl border border-cream-border group">
+        <summary class="flex items-center justify-between p-5 cursor-pointer">
+          <span class="font-semibold text-gray-900 text-sm sm:text-base">Jak działa KSeF w LoftDesk?</span>
+          <span class="faq-icon text-gray-400 text-xl leading-none ml-3 flex-shrink-0">+</span>
+        </summary>
+        <div class="px-5 pb-5 text-sm text-gray-600 leading-relaxed">
+          Po wystawieniu faktury w LoftDesk klikasz „Wyślij do KSeF". Aplikacja generuje plik XML zgodny z schematem FA(1), wysyła go do systemu Ministerstwa Finansów i wraca z numerem KSeF. Status każdej faktury — wysłana, w kolejce, błąd — jest widoczny bez logowania do osobnej bramki.
+        </div>
+      </details>
+
+      <details class="bg-white rounded-xl border border-cream-border group">
+        <summary class="flex items-center justify-between p-5 cursor-pointer">
+          <span class="font-semibold text-gray-900 text-sm sm:text-base">Czy funkcja głosowej wyceny działa po polsku?</span>
+          <span class="faq-icon text-gray-400 text-xl leading-none ml-3 flex-shrink-0">+</span>
+        </summary>
+        <div class="px-5 pb-5 text-sm text-gray-600 leading-relaxed">
+          Tak. System transkrypcji (Whisper) rozumie naturalny język polski, w tym branżowe słownictwo budowlane i wykończeniowe. Mówisz normalnie, jak do zleceniobiorcy — AI zamienia to na pozycje kosztorysu z jednostkami i cenami.
+        </div>
+      </details>
+
+      <details class="bg-white rounded-xl border border-cream-border group">
+        <summary class="flex items-center justify-between p-5 cursor-pointer">
+          <span class="font-semibold text-gray-900 text-sm sm:text-base">Co się dzieje po zakończeniu 14 dni trialu?</span>
+          <span class="faq-icon text-gray-400 text-xl leading-none ml-3 flex-shrink-0">+</span>
+        </summary>
+        <div class="px-5 pb-5 text-sm text-gray-600 leading-relaxed">
+          Konto przechodzi na plan Free — zachowujesz dostęp do wszystkich dotychczasowych danych, ale z limitami (do 5 projektów, 10 klientów, 10 faktur). Możesz w każdej chwili przejść na Pro za 49 zł/miesiąc. Nie usuwamy danych.
+        </div>
+      </details>
+
+      <details class="bg-white rounded-xl border border-cream-border group">
+        <summary class="flex items-center justify-between p-5 cursor-pointer">
+          <span class="font-semibold text-gray-900 text-sm sm:text-base">Czy aplikacja działa offline?</span>
+          <span class="faq-icon text-gray-400 text-xl leading-none ml-3 flex-shrink-0">+</span>
+        </summary>
+        <div class="px-5 pb-5 text-sm text-gray-600 leading-relaxed">
+          Tak, w trybie odczytu. LoftDesk cache'uje dane z ostatniej sesji — projekty, kosztorysy i dokumenty są dostępne nawet bez połączenia z siecią. Wysyłanie dokumentów i KSeF wymagają internetu.
+        </div>
+      </details>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     11. CTA KOŃCOWE
+════════════════════════════════════════════ -->
+<section class="bg-brand py-16 sm:py-20">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 text-center">
+    <h2 class="text-3xl sm:text-4xl font-extrabold text-white mb-5 leading-tight">
+      Zacznij porządkować projekty dziś.
+    </h2>
+    <p class="text-white/75 text-lg mb-8 max-w-xl mx-auto">
+      Rejestracja zajmuje 3 minuty. Przez 14 dni masz pełen dostęp do planu Pro — bez karty kredytowej, bez zobowiązań.
+    </p>
+    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+      <a href="#" class="bg-white text-brand font-bold px-8 py-4 rounded-xl text-base hover:bg-cream transition-colors shadow-hero">
+        Zacznij za darmo — 14 dni Pro
+      </a>
+      <a href="#" class="border border-white/30 text-white font-medium px-8 py-4 rounded-xl text-base hover:bg-white/10 transition-colors">
+        Obejrzyj demo
+      </a>
+    </div>
+    <p class="mt-5 text-white/50 text-sm">Bez karty kredytowej. Plan Free dostępny zawsze.</p>
+
+    <!-- trust row -->
+    <div class="mt-12 pt-8 border-t border-white/10 flex flex-wrap justify-center gap-8 text-white/60 text-sm">
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+        Dane szyfrowane
+      </div>
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+        Serwery w Polsce
+      </div>
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+        Zgodność z RODO
+      </div>
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"/><path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"/></svg>
+        Gotowość KSeF 2026
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="bg-cream border-t border-cream-border py-10">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-brand flex items-center justify-center">
+          <span class="text-white font-bold text-xs">L</span>
+        </div>
+        <span class="font-bold text-brand">LoftDesk</span>
+        <span class="text-gray-400 text-sm">· Polska aplikacja dla firm wykończeniowych</span>
+      </div>
+      <div class="flex gap-6 text-sm text-gray-400">
+        <a href="#" class="hover:text-gray-600">Polityka prywatności</a>
+        <a href="#" class="hover:text-gray-600">Regulamin</a>
+        <a href="#" class="hover:text-gray-600">Kontakt</a>
+      </div>
+    </div>
+    <p class="mt-6 text-xs text-gray-400 text-center sm:text-left">© 2025 LoftDesk. Wszelkie prawa zastrzeżone.</p>
+  </div>
+</footer>
+
+<script>
+  // Smooth scroll for anchor links
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+      const href = this.getAttribute('href');
+      if (href === '#') return;
+      e.preventDefault();
+      const target = document.querySelector(href);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  // FAQ + icon toggle
+  document.querySelectorAll('details').forEach(el => {
+    el.addEventListener('toggle', function() {
+      const icon = this.querySelector('.faq-icon');
+      if (icon) icon.textContent = this.open ? '×' : '+';
+    });
+  });
+</script>
+
+</body>
+</html>
