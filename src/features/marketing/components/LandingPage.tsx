@@ -2,6 +2,9 @@ import { useState } from 'react';
 
 const LANDING_CSS = `
   * { -webkit-font-smoothing: antialiased; box-sizing: border-box; }
+  .lp-wrap, .lp-wrap *, .lp-nav, .lp-nav *, .lp-hero-gradient, .lp-hero-gradient * {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
 
   .lp-hero-gradient {
     background: linear-gradient(160deg, #0E3D20 0%, #1A5C32 50%, #1f6b3a 100%);
@@ -62,17 +65,19 @@ const LANDING_CSS = `
   @media (min-width: 768px) { .lp-nav-links { display: flex; } }
   .lp-nav-links a { color: #666; text-decoration: none; transition: color .15s; }
   .lp-nav-links a:hover { color: #1A5C32; }
-  .lp-nav-right { display: flex; align-items: center; gap: 12px; }
+  .lp-nav-right { display: flex; align-items: center; gap: 8px; }
   .lp-nav-login {
     display: none; font-size: 0.875rem; font-weight: 500;
-    color: #666; text-decoration: none; transition: color .15s;
+    color: #666666; text-decoration: none; transition: color .15s;
+    padding: 8px 14px; border-radius: 8px;
   }
   @media (min-width: 640px) { .lp-nav-login { display: block; } }
-  .lp-nav-login:hover { color: #1A5C32; }
+  .lp-nav-login:hover { color: #1A5C32; background: rgba(26,92,50,0.05); }
   .lp-nav-cta {
     background: #1A5C32; color: #fff; font-size: 0.875rem; font-weight: 600;
-    padding: 8px 16px; border-radius: 8px; text-decoration: none;
+    padding: 9px 18px; border-radius: 8px; text-decoration: none;
     transition: background .15s; box-shadow: 0 4px 16px rgba(26,92,50,0.25);
+    white-space: nowrap;
   }
   .lp-nav-cta:hover { background: #236B3A; color: #fff; }
   .lp-nav-burger {
@@ -488,6 +493,79 @@ const LANDING_CSS = `
   }
   .lp-btn-cta:hover { background: #F5F0E8; }
 
+  /* === HERO BENEFITS === */
+  .lp-hero-benefits { display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; }
+  .lp-hero-benefit { display: flex; align-items: center; gap: 12px; }
+  .lp-hero-benefit-icon {
+    width: 32px; height: 32px; border-radius: 10px;
+    background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .lp-hero-benefit-text { color: #ffffff; font-weight: 500; font-size: 1rem; margin: 0; }
+  .lp-hero-h1-green { color: #86efac; }
+
+  /* === FLOW (larger icons + connector) === */
+  .lp-flow-track { position: relative; }
+  .lp-flow-track::before {
+    content: ''; position: absolute; top: 32px;
+    left: 7%; right: 7%; height: 1px;
+    background: linear-gradient(to right, transparent, #DDD6C9 20%, #DDD6C9 80%, transparent);
+  }
+  .lp-step-icon-lg {
+    width: 64px; height: 64px; border-radius: 18px;
+    background: #1A5C32; display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px; box-shadow: 0 8px 24px rgba(26,92,50,0.3); flex-shrink: 0;
+    position: relative; z-index: 1;
+    transition: background 0.15s;
+  }
+  .lp-step-icon-lg:hover { background: #236B3A; }
+  .lp-step-icon-rust {
+    width: 64px; height: 64px; border-radius: 18px;
+    background: #B8742A; display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px; box-shadow: 0 8px 24px rgba(184,116,42,0.3); flex-shrink: 0;
+    position: relative; z-index: 1;
+  }
+  .lp-step-icon-dark {
+    width: 64px; height: 64px; border-radius: 18px;
+    background: #0E3D20; display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); flex-shrink: 0;
+    position: relative; z-index: 1;
+  }
+
+  /* === FOR WHOM === */
+  .lp-segment-grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
+  @media (min-width: 768px) { .lp-segment-grid { grid-template-columns: 1fr 1fr 1fr; } }
+  .lp-segment-card {
+    background: #F5F0E8; border: 1px solid #EDE8DD; border-radius: 20px; padding: 28px;
+    transition: box-shadow 0.15s;
+  }
+  .lp-segment-card:hover { box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+  .lp-segment-card-dark {
+    background: #1A5C32; border-radius: 20px; padding: 28px;
+    box-shadow: 0 8px 32px rgba(26,92,50,0.25);
+  }
+  .lp-segment-icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+  .lp-segment-arrow { color: #1A5C32; font-weight: 700; font-size: 0.875rem; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .lp-segment-arrow-rust { color: #B8742A; font-weight: 700; font-size: 0.875rem; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .lp-segment-arrow-white { color: #86efac; font-weight: 700; font-size: 0.875rem; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+
+  /* === DARK SALES SECTION === */
+  .lp-dark-section { background: #1a1a1a; padding: 80px 0; }
+  @media (min-width: 640px) { .lp-dark-section { padding: 112px 0; } }
+  .lp-dark-stat-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 48px;
+  }
+  @media (min-width: 1024px) { .lp-dark-stat-grid { grid-template-columns: repeat(4, 1fr); } }
+  .lp-dark-stat-card {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px; padding: 24px; text-align: center;
+  }
+  .lp-dark-cta-box {
+    background: #1A5C32; border-radius: 20px; padding: 40px 32px; text-align: center;
+    box-shadow: 0 8px 32px rgba(26,92,50,0.35);
+  }
+  .lp-dark-cta-btns { display: flex; flex-direction: column; gap: 12px; justify-content: center; }
+  @media (min-width: 640px) { .lp-dark-cta-btns { flex-direction: row; } }
+
   /* === FOOTER === */
   .lp-footer { background: #0E3D20; padding: 40px 0; border-top: 1px solid rgba(255,255,255,0.05); }
   .lp-footer-inner { max-width: 1152px; margin: 0 auto; padding: 0 20px; }
@@ -545,8 +623,8 @@ export function LandingPage() {
           </div>
 
           <div className="lp-nav-right">
-            <a href="#" className="lp-nav-login">Zaloguj</a>
-            <a href="#" className="lp-nav-cta">Zacznij za darmo</a>
+            <a href="/login" className="lp-nav-login">Zaloguj</a>
+            <a href="/login" className="lp-nav-cta">Zacznij za darmo</a>
             <button className="lp-nav-burger" onClick={() => setMenuOpen(v => !v)} aria-label="Menu">
               {menuOpen ? (
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -566,6 +644,8 @@ export function LandingPage() {
             <a href="#jak-dziala" onClick={(e) => { scrollTo('jak-dziala')(e); setMenuOpen(false); }}>Jak działa</a>
             <a href="#portal" onClick={(e) => { scrollTo('portal')(e); setMenuOpen(false); }}>Portal klienta</a>
             <a href="#cennik" onClick={(e) => { scrollTo('cennik')(e); setMenuOpen(false); }}>Cennik</a>
+            <a href="/login" style={{ color: '#666' }}>Zaloguj</a>
+            <a href="/login" style={{ background: '#1A5C32', color: '#fff', padding: '10px 16px', borderRadius: 8, fontWeight: 600, textAlign: 'center' }}>Zacznij za darmo</a>
           </div>
         )}
       </nav>
@@ -596,7 +676,7 @@ export function LandingPage() {
             </div>
 
             <div className="lp-cta-row lp-animate-up lp-delay-3">
-              <a href="#" className="lp-btn-white">Zacznij — 14 dni za darmo</a>
+              <a href="/login" className="lp-btn-white">Zacznij — 14 dni za darmo</a>
               <a href="#jak-dziala" onClick={scrollTo('jak-dziala')} className="lp-btn-outline-white">Obejrzyj 3-minutowe demo</a>
             </div>
             <p className="lp-hero-trust">Bez karty kredytowej. Bez umów.</p>
@@ -746,7 +826,7 @@ export function LandingPage() {
                   LoftDesk Pro kosztuje 49 zł. Zwrot z inwestycji: 73&times;.
                 </p>
               </div>
-              <a href="#" className="lp-btn-roi">Zacznij za darmo</a>
+              <a href="/login" className="lp-btn-roi">Zacznij za darmo</a>
             </div>
           </div>
 
@@ -1034,7 +1114,7 @@ export function LandingPage() {
               </div>
 
               <div style={{ marginTop: 32 }}>
-                <a href="#" className="lp-btn-green">Zaproś klienta do portalu</a>
+                <a href="/login" className="lp-btn-green">Zaproś klienta do portalu</a>
                 <p style={{ fontSize: '0.75rem', color: '#999', marginTop: 8, marginBottom: 0 }}>Dostępne w planie Pro — 14 dni za darmo</p>
               </div>
             </div>
@@ -1104,7 +1184,7 @@ export function LandingPage() {
                 <span style={{ color: '#999', fontWeight: 500 }}> zł/mc</span>
               </div>
               <p style={{ fontSize: '0.875rem', color: '#999', marginBottom: 24, marginTop: 0 }}>Na zawsze bezpłatny</p>
-              <a href="#" className="lp-price-cta-outline">Zacznij za darmo</a>
+              <a href="/login" className="lp-price-cta-outline">Zacznij za darmo</a>
               <ul className="lp-feature-list">
                 <li className="lp-feature-li"><span className="lp-check-gray">&#x2713;</span><span style={{ color: '#666' }}>Do 5 projektów</span></li>
                 <li className="lp-feature-li"><span className="lp-check-gray">&#x2713;</span><span style={{ color: '#666' }}>Do 10 klientów i faktur</span></li>
@@ -1125,7 +1205,7 @@ export function LandingPage() {
               </div>
               <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', margin: '0 0 4px' }}>= 1,6 zł dziennie</p>
               <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', marginBottom: 24, marginTop: 0 }}>14 dni za darmo &middot; bez karty</p>
-              <a href="#" className="lp-price-cta-white">Zacznij 14 dni za darmo</a>
+              <a href="/login" className="lp-price-cta-white">Zacznij 14 dni za darmo</a>
               <ul className="lp-feature-list">
                 <li className="lp-feature-li"><span className="lp-check-white">&#x2713;</span><span style={{ color: 'rgba(255,255,255,0.8)' }}>Bez limitu projektów i faktur</span></li>
                 <li className="lp-feature-li"><span className="lp-check-white">&#x2713;</span><span style={{ color: '#ffffff', fontWeight: 600 }}>Portal klienta</span></li>
@@ -1145,7 +1225,7 @@ export function LandingPage() {
                 <span style={{ color: '#999', fontWeight: 500 }}> zł/mc</span>
               </div>
               <p style={{ fontSize: '0.875rem', color: '#999', marginBottom: 24, marginTop: 0 }}>Dla firm z ekipą</p>
-              <a href="#" className="lp-price-cta-green">Zacznij 14 dni za darmo</a>
+              <a href="/login" className="lp-price-cta-green">Zacznij 14 dni za darmo</a>
               <ul className="lp-feature-list">
                 <li className="lp-feature-li"><span className="lp-check-green">&#x2713;</span><span style={{ color: '#666' }}>Wszystko z Pro</span></li>
                 <li className="lp-feature-li"><span className="lp-check-green">&#x2713;</span><span style={{ color: '#1a1a1a', fontWeight: 600 }}>Zarządzanie zespołem</span></li>
@@ -1178,7 +1258,7 @@ export function LandingPage() {
           <p style={{ fontSize: '1.125rem', color: 'rgba(255,255,255,0.65)', marginBottom: 40, marginTop: 0 }}>
             Wdrożenie zajmuje <strong style={{ color: '#ffffff' }}>15 minut.</strong> Pierwszą wycenę wyślesz dzisiaj.
           </p>
-          <a href="#" className="lp-btn-cta">Zacznij teraz — 14 dni Pro za darmo</a>
+          <a href="/login" className="lp-btn-cta">Zacznij teraz — 14 dni Pro za darmo</a>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.875rem', marginTop: 20, marginBottom: 0 }}>
             Bez karty kredytowej. Bez umów. Możesz wrócić do Excela o każdej chwili — ale nie wrócisz.
           </p>
