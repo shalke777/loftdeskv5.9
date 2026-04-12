@@ -207,6 +207,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .sidebar__section-label { font-size: 11px; text-transform: uppercase; letter-spacing: .16em; color: var(--color-text-tertiary, var(--color-text-muted)); padding: 0 12px; margin-top: 6px; }
 .sidebar__link {
   display: flex; align-items: center; gap: 12px; border-radius: var(--radius-md, 8px); padding: 10px 14px; color: var(--color-text-secondary); transition: all .15s ease; font-weight: 500;
+  background: transparent; border: none;
 }
 .sidebar__link:hover { color: var(--color-text-primary); background: var(--color-muted); }
 .sidebar__link--active {
@@ -214,6 +215,17 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 }
 .auth-shell { background: var(--color-bg); }
 .sidebar__footer { margin-top: auto; display: grid; gap: 10px; background: var(--color-sidebar-bg); }
+/* Sidebar footer buttons inherit sidebar context — no white bg */
+.sidebar__footer .btn--ghost {
+  background: transparent;
+  border-color: var(--color-sidebar-border, var(--color-border));
+  color: var(--color-sidebar-foreground, var(--color-text-primary));
+}
+.sidebar__footer .btn--ghost:hover:not(:disabled) {
+  background: var(--color-sidebar-accent, var(--color-surface-soft));
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
 .shell-main { display: flex; flex-direction: column; min-width: 0; overflow-x: hidden; background: var(--color-bg); }
 .shell-topbar {
   position: sticky; top: 0; z-index: 6; display: flex; align-items: center; justify-content: space-between; gap: 12px;
