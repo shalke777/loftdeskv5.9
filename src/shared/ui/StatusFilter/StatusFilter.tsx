@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
-
 export interface FilterOption {
   value: string
   label: string
@@ -12,9 +12,10 @@ interface Props {
   value: string
   onChange: (value: string) => void
   className?: string
+  style?: CSSProperties
 }
 
-export function StatusFilter({ options, value, onChange, className }: Props) {
+export function StatusFilter({ options, value, onChange, className, style }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const selected = options.find(o => o.value === value) ?? options[0]
@@ -29,7 +30,7 @@ export function StatusFilter({ options, value, onChange, className }: Props) {
   }, [open])
 
   return (
-    <div ref={ref} className={`status-filter${className ? ` ${className}` : ''}`}>
+    <div ref={ref} className={`status-filter${className ? ` ${className}` : ''}`} style={style}>
       <button
         type="button"
         className="status-filter__trigger"

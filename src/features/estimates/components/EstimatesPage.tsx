@@ -98,12 +98,13 @@ export function EstimatesPage() {
               </Button>
             </PlanLimitGuard>
           )}
-          <StatusFilter
-            options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
-            value={filterStatus}
-            onChange={v => setFilterStatus(v as FilterStatus)}
-          />
         </div>
+        <StatusFilter
+          style={{ marginLeft: 'auto' }}
+          options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
+          value={filterStatus}
+          onChange={v => setFilterStatus(v as FilterStatus)}
+        />
       </div>
 
       {isLoading ? (
