@@ -69,6 +69,7 @@ export const projectDocumentsApi = {
         linked_manually: opts.manual ?? false,
         source_doc_type: opts.sourceDocType ?? null,
         source_doc_id: opts.sourceDocId ?? null,
+        archived_at: null,
       },
       { onConflict: 'company_id,project_id,doc_type,doc_id' },
     )
