@@ -601,6 +601,7 @@ function buildFullContractHtml(
   clientName: string,
   estimateName: string,
   company: CompanyMeta,
+  estimateNumber?: string,
 ): string {
   const net = contract.value_net ?? contract.value
   const gross = contract.value
@@ -610,11 +611,18 @@ function buildFullContractHtml(
   const nCustom = customParas.length
   const zmOffset = 6 + nCustom
 
+  const penaltyPerDay = contract.penalty_per_day_pct ?? 0.1
+  const maxPenalty    = contract.max_penalty_pct ?? 10
+
   const customParaSections = customParas.map((p, i) => `
     <div class="section">
       <h2>§${6 + i} ${escapeHtml(p.title || 'Postanowienie dodatkowe')}</h2>
       <ol>${p.content.split('\n').filter(Boolean).map((line) => `<li>${escapeHtml(line)}</li>`).join('') || `<li>${escapeHtml(p.content)}</li>`}</ol>
     </div>`).join('')
+
+  const estimateRef = estimateNumber
+    ? `Kosztorysem nr <strong>${escapeHtml(estimateNumber)}</strong> stanowiącym Załącznik nr 1 do niniejszej umowy`
+    : `kosztorysem stanowiącym Załącznik nr 1 do niniejszej umowy`
 
   return `
     ${contractPartiesHtml(clientName, company)}
@@ -622,7 +630,7 @@ function buildFullContractHtml(
     <div class="section">
       <h2>§1 Przedmiot umowy</h2>
       <ol>
-        <li>Wykonawca zobowiązuje się do wykonania na rzecz Inwestora robót budowlanych / wykończeniowych / remontowych polegających na: <strong>${escapeHtml(estimateName || contract.notes || 'robotach budowlano-wykończeniowych')}</strong>${contract.template_name ? `, zgodnie z kosztorysem stanowiącym Załącznik nr 1 do umowy` : ''}.</li>
+        <li>Wykonawca zobowiązuje się do wykonania na rzecz Inwestora robót budowlanych / wykończeniowych / remontowych zgodnie z zakresem usług określonym w ${estimateRef}.</li>
         <li>Prace będą wykonane w obiekcie zlokalizowanym pod adresem: <strong>${escapeHtml(contract.location || 'do uzupełnienia')}</strong>.</li>
         <li>Szczegółowy zakres robót, materiały i sposób rozliczenia określa kosztorys stanowiący integralną część niniejszej umowy.</li>
         <li>Wykonawca oświadcza, że posiada niezbędne kwalifikacje i uprawnienia do wykonania przedmiotu umowy.</li>
@@ -636,8 +644,9 @@ function buildFullContractHtml(
           a) termin przekazania terenu / obiektu i rozpoczęcia robót: <strong>${escapeHtml(contract.start_date || 'do ustalenia')}</strong>,<br/>
           b) termin zakończenia robót i przekazania do odbioru końcowego: <strong>${escapeHtml(contract.end_date || 'do ustalenia')}</strong>.
         </li>
-        <li>W przypadku niemożności zachowania powyższych terminów z przyczyn niezależnych od Wykonawcy (opóźnienia dostaw materiałów, okoliczności force majeure), termin ulega przedłużeniu o odpowiedni okres, pod warunkiem pisemnego powiadomienia Inwestora.</li>
-        <li>Za opóźnienie w finalizacji robót z winy Wykonawcy, Inwestor może naliczyć karę umowną w wysokości 0,1% wartości wynagrodzenia brutto za każdy dzień zwłoki, nie więcej niż 10% wynagrodzenia brutto.</li>
+        <li>W przypadku przekroczenia ustalonego terminu realizacji robót, termin ten może ulec wydłużeniu wyłącznie w wyjątkowych, nieprzewidzianych przez Wykonawcę okolicznościach, o maksymalnie 30 dni kalendarzowych.</li>
+        <li>Wszelkie zmiany zakresu robót, decyzje, opóźnienia lub działania leżące po stronie Inwestora skutkują automatycznym i bezwarunkowym wydłużeniem terminu realizacji o czas niezbędny do ich wykonania lub usunięcia ich skutków.</li>
+        <li>Dopiero po upływie wydłużonego terminu, o którym mowa powyżej, w przypadku dalszego opóźnienia z winy Wykonawcy, Inwestor ma prawo naliczyć karę umowną w wysokości <strong>${penaltyPerDay}%</strong> wynagrodzenia brutto za każdy dzień zwłoki, jednak nie więcej niż <strong>${maxPenalty}%</strong> wynagrodzenia brutto.</li>
       </ol>
     </div>
 
@@ -739,7 +748,7 @@ function buildFullContractHtml(
   `
 }
 
-export function buildContractPreview(contract: import('@/entities/contract/model').Contract, clientName?: string, estimateName?: string, companyInput?: CompanyMeta) {
+export function buildContractPreview(contract: import('@/entities/contract/model').Contract, clientName?: string, estimateName?: string, companyInput?: CompanyMeta, estimateNumber?: string) {
   const company = defaultCompany(companyInput)
   const locationOrCity = contract.location || '—'
 
@@ -753,7 +762,7 @@ export function buildContractPreview(contract: import('@/entities/contract/model
       <div class="meta">
         zawarta dnia <strong>${escapeHtml(contract.sign_date || '— do ustalenia —')}</strong> w <strong>${escapeHtml(locationOrCity)}</strong>
       </div>
-      ${buildFullContractHtml(contract, clientName || 'Klient', estimateName || contract.notes || 'roboty wykończeniowe', company)}
+      ${buildFullContractHtml(contract, clientName || 'Klient', estimateName || contract.notes || 'roboty wykończeniowe', company, estimateNumber)}
       ${contract.notes ? `<div class="section small" style="margin-top:24px;"><strong>Notatki:</strong> ${escapeHtml(contract.notes)}</div>` : ''}
     </div>
     ${footer(company)}

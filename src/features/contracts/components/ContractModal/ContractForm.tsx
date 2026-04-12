@@ -58,6 +58,8 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
   const [location, setLocation] = useState(initialContract?.location || '')
   const [notes, setNotes] = useState(initialContract?.notes || '')
   const [projectId, setProjectId] = useState(initialContract?.project_id || initialProjectId || '')
+  const [penaltyPerDay, setPenaltyPerDay] = useState(initialContract?.penalty_per_day_pct ?? 0.1)
+  const [maxPenalty, setMaxPenalty] = useState(initialContract?.max_penalty_pct ?? 10)
 
   const { data: estimates = [] } = useEstimates()
   const { data: clients = [] } = useClients()
@@ -89,6 +91,8 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
       setProjectId(initialContract.project_id || '')
       setTranches(initialContract.tranches || [])
       setCustomParagraphs(initialContract.custom_paragraphs || [])
+      setPenaltyPerDay(initialContract.penalty_per_day_pct ?? 0.1)
+      setMaxPenalty(initialContract.max_penalty_pct ?? 10)
     }
   }, [initialContract])
 
@@ -145,6 +149,8 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
       template_content: '',
       tranches,
       custom_paragraphs: customParagraphs,
+      penalty_per_day_pct: penaltyPerDay,
+      max_penalty_pct: maxPenalty,
     })
   }
 
@@ -184,6 +190,43 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
         </div>
         <div style={{ marginTop: 10 }}>
           <Input label="Notatki / ustalenia dodatkowe" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </div>
+      </div>
+
+      {/* Sekcja: Kary umowne */}
+      <div>
+        <div className="field__label" style={{ marginBottom: 6, fontWeight: 600, fontSize: 13 }}>Kary umowne (§2)</div>
+        <div className="field__label" style={{ marginBottom: 10, fontSize: 12 }}>
+          Kara naliczana tylko po opóźnieniu z winy Wykonawcy, po uwzględnieniu wydłużeń z tytułu działań Inwestora.
+        </div>
+        <div className="grid-2">
+          <div className="field">
+            <span className="field__label">Kara za dzień zwłoki (%)</span>
+            <input
+              type="number"
+              className="input"
+              step="0.05"
+              min="0"
+              max="5"
+              value={penaltyPerDay}
+              onChange={(e) => setPenaltyPerDay(parseFloat(e.target.value) || 0)}
+            />
+          </div>
+          <div className="field">
+            <span className="field__label">Maksymalna kara (%)</span>
+            <input
+              type="number"
+              className="input"
+              step="1"
+              min="0"
+              max="30"
+              value={maxPenalty}
+              onChange={(e) => setMaxPenalty(parseFloat(e.target.value) || 0)}
+            />
+          </div>
+        </div>
+        <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--color-surface-soft)', borderRadius: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>
+          Podgląd: Kara <strong>{penaltyPerDay}%</strong> wynagrodzenia brutto za każdy dzień zwłoki, nie więcej niż <strong>{maxPenalty}%</strong> wynagrodzenia brutto.
         </div>
       </div>
 

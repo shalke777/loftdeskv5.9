@@ -35,6 +35,8 @@ export const ContractSchema = z.object({
   notes: z.string().optional(),
   template_name: z.string().optional(),
   template_content: z.string().optional(),
+  penalty_per_day_pct: z.number().min(0).max(100).optional(),
+  max_penalty_pct: z.number().min(0).max(100).optional(),
   created_at: z.string(),
   tranches: z.array(ContractTrancheSchema).optional().default([]),
   custom_paragraphs: z.array(CustomParagraphSchema).optional().default([]),
@@ -43,4 +45,4 @@ export const ContractSchema = z.object({
 export type Contract = z.infer<typeof ContractSchema>
 export type ContractTranche = z.infer<typeof ContractTrancheSchema>
 export type CustomParagraph = z.infer<typeof CustomParagraphSchema>
-export type CreateContractInput = Pick<Contract, 'client_id' | 'project_id' | 'estimate_id' | 'status' | 'sign_date' | 'start_date' | 'end_date' | 'location' | 'value' | 'value_net' | 'vat_rate' | 'notes' | 'template_name' | 'template_content' | 'tranches' | 'custom_paragraphs'> & { company_id: string }
+export type CreateContractInput = Pick<Contract, 'client_id' | 'project_id' | 'estimate_id' | 'status' | 'sign_date' | 'start_date' | 'end_date' | 'location' | 'value' | 'value_net' | 'vat_rate' | 'notes' | 'template_name' | 'template_content' | 'tranches' | 'custom_paragraphs' | 'penalty_per_day_pct' | 'max_penalty_pct'> & { company_id: string }
