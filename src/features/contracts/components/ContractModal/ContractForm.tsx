@@ -75,6 +75,10 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
   const totalNet = selectedEstimate?.total_net ?? initialContract?.value_net ?? 0
   const vatAmount = totalGross - totalNet
 
+  // Tranche sum validation
+  const tranchesSum = tranches.reduce((sum, t) => sum + (Number(t.amount) || 0), 0)
+  const tranchesError = totalGross > 0 && tranches.length > 0 && Math.abs(tranchesSum - totalGross) > 0.5
+
   // Auto-generate template name
   const templateName = selectedEstimate
     ? `Umowa · ${selectedEstimate.number}${selectedClient ? ` · ${selectedClient.name}` : ''}`
@@ -131,6 +135,7 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
   }
 
   async function handleSubmit() {
+    if (tranchesError) return
     await onSubmit({
       company_id: companyId,
       estimate_id: estimateId || null,
@@ -227,6 +232,43 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
             </div>
           ))}
         </div>
+        {/* Suma transz */}
+        {tranches.length > 0 && totalGross > 0 && (
+          <div style={{
+            marginTop: 10,
+            padding: '10px 14px',
+            borderRadius: 8,
+            border: `1px solid ${tranchesError ? 'var(--color-error)' : 'var(--color-border)'}`,
+            background: tranchesError ? 'rgba(220,38,38,0.06)' : 'var(--color-surface-soft)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}>
+            <div style={{ fontSize: 13, color: tranchesError ? 'var(--color-error)' : 'var(--color-text-secondary)' }}>
+              {tranchesError
+                ? <strong>⚠ Suma transz nie zgadza się z wartością umowy!</strong>
+                : <span>✓ Suma transz = wartość umowy</span>}
+            </div>
+            <div style={{ display: 'flex', gap: 24, fontSize: 13 }}>
+              <div>
+                <div className="field__label" style={{ fontSize: 11 }}>Suma transz</div>
+                <strong style={{ color: tranchesError ? 'var(--color-error)' : 'inherit' }}>{formatCurrency(tranchesSum)}</strong>
+              </div>
+              <div>
+                <div className="field__label" style={{ fontSize: 11 }}>Wartość umowy (brutto)</div>
+                <strong>{formatCurrency(totalGross)}</strong>
+              </div>
+              {tranchesError && (
+                <div>
+                  <div className="field__label" style={{ fontSize: 11 }}>Różnica</div>
+                  <strong style={{ color: 'var(--color-error)' }}>{formatCurrency(Math.abs(tranchesSum - totalGross))}</strong>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Sekcja: Kary umowne (§2) */}
@@ -288,7 +330,8 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
       </div>
 
       <div className="actions-row">
-        <Button onClick={handleSubmit}>{initialContract ? 'Zapisz zmiany' : 'Zapisz umowę'}</Button>
+        <Button onClick={handleSubmit} disabled={tranchesError}>{initialContract ? 'Zapisz zmiany' : 'Zapisz umowę'}</Button>
+        {tranchesError && <span style={{ fontSize: 13, color: 'var(--color-error)' }}>Wyrównaj sumy transz przed zapisem</span>}
       </div>
     </div>
   )
