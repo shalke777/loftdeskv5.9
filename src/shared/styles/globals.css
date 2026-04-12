@@ -703,8 +703,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 /* Documents hub — hide per-page PageHeaders (tab label serves as heading) */
 .docs-hub-content .page-header { display: none; }
 .docs-hub-content .page { padding-top: 20px; }
-/* With page-header hidden, toolbar has only one child — push it to the right */
+/* When page-header is hidden, toolbar has one child — keep it right-aligned */
 .docs-hub-content .toolbar { justify-content: flex-end; }
+/* Filter always sticks to the right end of toolbar__actions */
+.toolbar__actions .status-filter { margin-left: auto; }
 
 /* ── Documents hub segment tabs ─────────────────────────────────────── */
 .docs-hub { display: flex; flex-direction: column; height: 100%; }

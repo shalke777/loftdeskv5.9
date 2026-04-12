@@ -90,11 +90,6 @@ export function EstimatesPage() {
       <div className="toolbar">
         <PageHeader title="Wyceny" subtitle="Przygotuj ofertę, wyślij do klienta i przekształć w umowę jednym kliknięciem." />
         <div className="toolbar__actions">
-          <StatusFilter
-            options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
-            value={filterStatus}
-            onChange={v => setFilterStatus(v as FilterStatus)}
-          />
           {canCreate && (
             <PlanLimitGuard resource="estimates">
               <Button onClick={() => { setEditing(null); setOpen(true) }}>
@@ -103,6 +98,11 @@ export function EstimatesPage() {
               </Button>
             </PlanLimitGuard>
           )}
+          <StatusFilter
+            options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
+            value={filterStatus}
+            onChange={v => setFilterStatus(v as FilterStatus)}
+          />
         </div>
       </div>
 
