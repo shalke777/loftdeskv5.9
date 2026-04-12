@@ -187,12 +187,6 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
           {hasContract && (
             <Button onClick={() => setShowInvoiceModal(true)}>Generuj fakturę</Button>
           )}
-          {/* Raport dzienny HTML — podgląd + druk */}
-          <Button variant="secondary" onClick={openDailyReport} disabled={htmlReportLoading}>
-            {htmlReportLoading
-              ? <><Loader2 size={14} style={{ marginRight: 4 }} />Generowanie...</>
-              : <><ClipboardList size={14} style={{ marginRight: 4 }} />Raport dzienny</>}
-          </Button>
           {/* Raport zbiorczy projektu — PDF */}
           <Button variant="secondary" onClick={exportProjectReport} disabled={projectReportLoading}>
             <FileDown size={14} style={{ marginRight: 4 }} />
@@ -208,13 +202,12 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
             <ClipboardCheck size={14} style={{ marginRight: 4 }} />
             Protokół odbioru
           </Button>
-          {/* Raport dzienny — widoczny gdy projekt ma klienta z e-mailem */}
-          {linkedClient?.email && reportStatus === 'idle' && (
-            <Button variant="secondary" onClick={() => setReportStatus('confirm')}>
-              <CalendarCheck size={14} style={{ marginRight: 4 }} />
-              Raport dzienny
-            </Button>
-          )}
+          {/* Raport dzienny HTML — podgląd + druk / wysyłka do klienta */}
+          <Button variant="secondary" onClick={openDailyReport} disabled={htmlReportLoading}>
+            {htmlReportLoading
+              ? <><Loader2 size={14} style={{ marginRight: 4 }} />Generowanie...</>
+              : <><ClipboardList size={14} style={{ marginRight: 4 }} />Raport dzienny</>}
+          </Button>
           {linkedClient?.email && reportStatus === 'confirm' && (
             <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
               <span style={{ color: 'var(--color-text-secondary)' }}>→ {linkedClient.email}</span>

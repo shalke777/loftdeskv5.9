@@ -152,7 +152,6 @@ export function ProjectRow({
         <div className="proj-row__detail">
           <ProjectDetail
             project={project}
-            onEdit={onEdit}
             onCreateInvoice={onCreateInvoice}
           />
         </div>
