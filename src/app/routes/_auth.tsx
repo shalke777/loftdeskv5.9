@@ -128,7 +128,6 @@ export function AuthLayout() {
 		  </div>
 		</div>
 
-		<div className="sidebar__section-label">Główne moduły</div>
 		<nav className="sidebar__nav sidebar__nav--main">
 		  {mainNavItems.map((item) => {
 			const Icon = item.icon
@@ -187,13 +186,7 @@ export function AuthLayout() {
 		</nav>
 
         <div className="sidebar__footer">
-          <Button variant="ghost" size="sm" onClick={toggleTheme} icon={theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}>
-            {theme === 'dark' ? 'Jasny' : 'Ciemny'}
-          </Button>
           <InstallAppButton compact />
-          <Button variant="ghost" onClick={async () => { await signOut(); window.location.assign('/login') }} icon={<LogOut size={16} />}>
-            Wyloguj
-          </Button>
         </div>
       </aside>
 
@@ -303,6 +296,22 @@ export function AuthLayout() {
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-secondary)' }}
             >
               {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
+            <button
+              type="button"
+              title="Wyloguj"
+              onClick={async () => { await signOut(); window.location.assign('/login') }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 44, height: 44, borderRadius: 8, border: 'none',
+                background: 'transparent', cursor: 'pointer',
+                color: 'var(--color-text-secondary)',
+                transition: 'background 0.15s, color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-surface-soft, rgba(0,0,0,0.06))'; e.currentTarget.style.color = 'var(--color-text-primary)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-secondary)' }}
+            >
+              <LogOut size={17} />
             </button>
           </div>
         </header>

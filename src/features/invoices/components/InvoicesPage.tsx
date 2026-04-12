@@ -88,26 +88,26 @@ export function InvoicesPage() {
 
   return (
     <div className="page">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-        <div className="toolbar__actions" style={{ flex: 1, minWidth: 0 }}>
-          {canCreate && (
-            <PlanLimitGuard resource="invoices">
-              <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                <Upload size={16} style={{ marginRight: 4 }} />
-                Import
-              </Button>
-              <Button onClick={() => { setEditing(null); setOpen(true) }}>
-                <Plus size={16} style={{ marginRight: 4 }} />
-                Nowa faktura
-              </Button>
-            </PlanLimitGuard>
-          )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+        {canCreate && (
+          <PlanLimitGuard resource="invoices">
+            <Button variant="secondary" onClick={() => setImportOpen(true)}>
+              <Upload size={16} style={{ marginRight: 4 }} />
+              Import
+            </Button>
+            <Button onClick={() => { setEditing(null); setOpen(true) }}>
+              <Plus size={16} style={{ marginRight: 4 }} />
+              Nowa faktura
+            </Button>
+          </PlanLimitGuard>
+        )}
+        <div style={{ marginLeft: 'auto' }}>
+          <StatusFilter
+            options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
+            value={filterStatus}
+            onChange={v => setFilterStatus(v as FilterStatus)}
+          />
         </div>
-        <StatusFilter
-          options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
-          value={filterStatus}
-          onChange={v => setFilterStatus(v as FilterStatus)}
-        />
       </div>
 
       {isLoading ? (
