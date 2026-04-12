@@ -19,10 +19,48 @@
 }
 
 .dark {
-  --color-surface-alt: #252820;
-  --color-accent-hover: #B8742A;
-  --color-sidebar-active: rgba(62, 168, 90, 0.15);
-  --color-border-dark: rgba(237, 232, 221, 0.15);
+  --color-surface-alt: #1A1E14;
+  --color-accent-hover: #B8942A;
+  --color-sidebar-active: rgba(62, 168, 90, 0.13);
+  --color-border-dark: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Dark mode: dot pattern bg + card gold glow ──────────────────────────── */
+.dark .shell-main {
+  background:
+    radial-gradient(circle, rgba(255,255,255,0.032) 1px, transparent 1px),
+    var(--color-bg);
+  background-size: 22px 22px, 100%;
+}
+
+.dark .card,
+.dark .proj-row__card,
+.dark [class*="proj-row"] {
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(200, 164, 64, 0.07) 0%, transparent 55%),
+    var(--color-card);
+  border-color: rgba(255,255,255,0.06);
+}
+
+/* Sidebar active item: subtle green tint */
+.dark .sidebar__link--active {
+  background: rgba(62, 168, 90, 0.12);
+}
+
+/* Gold accent for monetary values in dark mode */
+.dark .stat-card__value,
+.dark .proj-row__budget,
+.dark .exp-col-amount--gross {
+  color: var(--color-accent);
+}
+
+/* Progress bars: green → gold gradient in dark */
+.dark progress::-webkit-progress-value,
+.dark .progress-bar__fill {
+  background: linear-gradient(90deg, #3EA85A 0%, #C8A440 100%);
+}
+.dark progress::-moz-progress-bar {
+  background: linear-gradient(90deg, #3EA85A 0%, #C8A440 100%);
 }
 
 html, body, #root { margin: 0; min-height: 100%; }

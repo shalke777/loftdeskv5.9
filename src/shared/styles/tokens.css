@@ -119,23 +119,23 @@
 .dark {
   --color-brand: #3EA85A;
   --color-brand-hover: #35924E;
-  --color-brand-2: #1E2A1F;
+  --color-brand-2: #1A2318;
   --color-brand-light: #5DBF7A;
   --color-brand-border: rgba(62, 168, 90, 0.2);
   --color-brand-foreground: #FFFFFF;
 
-  --color-bg: #131610;
-  --color-bg-elevated: #1A1D17;
-  --color-surface: #1A1D17;
-  --color-surface-soft: #1E2219;
-  --color-border: rgba(237, 232, 221, 0.1);
-  --color-border-light: rgba(237, 232, 221, 0.05);
+  --color-bg: #0C0F09;
+  --color-bg-elevated: #141810;
+  --color-surface: #141810;
+  --color-surface-soft: #181D13;
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-light: rgba(255, 255, 255, 0.04);
 
-  --color-text-primary: #EDE8DD;
-  --color-text-secondary: #A09880;
-  --color-text-tertiary: #A09880;
-  --color-text-inverse: #131610;
-  --color-text-muted: #A09880;
+  --color-text-primary: #E8E2D4;
+  --color-text-secondary: #8A9480;
+  --color-text-tertiary: #6A7460;
+  --color-text-inverse: #0C0F09;
+  --color-text-muted: #7A8870;
 
   --color-success: #3EA85A;
   --color-success-soft: rgba(62, 168, 90, 0.12);
@@ -149,41 +149,42 @@
   --color-danger: #C0402E;
   --color-danger-soft: rgba(192, 64, 46, 0.12);
 
-  --color-accent: #C8863C;
-  --color-accent-foreground: #FFFFFF;
-  --color-accent-soft: rgba(200, 134, 60, 0.12);
+  /* Gold accent — wartości, budżet, premium */
+  --color-accent: #C8A440;
+  --color-accent-foreground: #0C0F09;
+  --color-accent-soft: rgba(200, 164, 64, 0.12);
 
-  --color-card: #1A1D17;
-  --color-card-foreground: #EDE8DD;
+  --color-card: #161A12;
+  --color-card-foreground: #E8E2D4;
 
-  --color-muted: #1E2219;
-  --color-muted-foreground: #A09880;
+  --color-muted: #181D13;
+  --color-muted-foreground: #7A8870;
 
-  --color-input-bg: rgba(237, 232, 221, 0.08);
-  --color-switch-bg: #4A4D44;
+  --color-input-bg: rgba(255, 255, 255, 0.06);
+  --color-switch-bg: #3A4034;
 
   --color-chart-1: #3EA85A;
-  --color-chart-2: #C8863C;
+  --color-chart-2: #C8A440;
   --color-chart-3: #5DBF7A;
   --color-chart-4: #DDB870;
   --color-chart-5: #C0402E;
 
-  --color-sidebar: #1A1D17;
-  --color-sidebar-foreground: #EDE8DD;
+  --color-sidebar: #10130D;
+  --color-sidebar-foreground: #E8E2D4;
   --color-sidebar-primary: #3EA85A;
   --color-sidebar-primary-foreground: #FFFFFF;
-  --color-sidebar-accent: #1E2219;
-  --color-sidebar-accent-foreground: #EDE8DD;
-  --color-sidebar-border: rgba(237, 232, 221, 0.07);
+  --color-sidebar-accent: #181D13;
+  --color-sidebar-accent-foreground: #E8E2D4;
+  --color-sidebar-border: rgba(255, 255, 255, 0.06);
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.45);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.6);
   --ring-brand: 0 0 0 4px rgba(62, 168, 90, 0.25);
   --color-ring: #3EA85A;
 
-  --overlay-heavy: rgba(0, 0, 0, 0.72);
-  --overlay-medium: rgba(0, 0, 0, 0.55);
-  --overlay-light: rgba(0, 0, 0, 0.3);
+  --overlay-heavy: rgba(0, 0, 0, 0.78);
+  --overlay-medium: rgba(0, 0, 0, 0.60);
+  --overlay-light: rgba(0, 0, 0, 0.35);
 }
