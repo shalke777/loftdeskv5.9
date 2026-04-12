@@ -664,7 +664,7 @@ function buildFullContractHtml(
         <li>Wynagrodzenie płatne jest w transzach, zgodnie z poniższym harmonogramem płatności:
           ${contractTranchesTable(contract.tranches ?? [], gross)}
         </li>
-        <li>Każda transza płatna jest na podstawie faktury VAT lub rachunku wystawionego przez Wykonawcę, w terminie 7 dni od daty doręczenia dokumentu Inwestorowi.</li>
+        <li>Każda transza wynagrodzenia płatna jest przez Inwestora z góry, w terminach określonych w harmonogramie płatności wskazanym w umowie. Po zaksięgowaniu wpłaty na rachunku Wykonawcy, Wykonawca wystawi i doręczy Inwestorowi odpowiednią fakturę VAT lub rachunek dokumentujący otrzymaną płatność.</li>
         <li>W przypadku nieterminowej zapłaty Wykonawca uprawniony jest do naliczania odsetek ustawowych za każdy dzień zwłoki.</li>
         <li>Materiały i ich transport niezbędne do realizacji robót nie są wliczone w wynagrodzenie, chyba że Strony w odrębnym aneksie postanowią inaczej.</li>
         <li>Wykonawca zastrzega sobie prawo do zwrócenia się do Inwestora o bezzwłoczne uregulowanie płatności za materiał dostarczony przez Wykonawcę w trakcie realizacji robót.</li>
