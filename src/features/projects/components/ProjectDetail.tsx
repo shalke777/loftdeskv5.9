@@ -18,7 +18,6 @@ import { ProjectTimelineTab }  from '@/features/projects/components/ProjectTimel
 import { ProjectPhotosSection } from '@/features/projects/components/ProjectPhotosSection'
 import { BudgetComparisonTab } from '@/features/projects/components/BudgetComparisonTab'
 import { ProjectMemoryPanel } from '@/features/projects/components/ProjectMemoryPanel'
-import { ProjectWeatherWidget } from '@/features/projects/components/ProjectWeatherWidget'
 import { ProjectQRCodeModal } from '@/features/projects/components/ProjectQRCodeModal'
 import { HandoverProtocolModal } from '@/features/projects/components/HandoverProtocolModal'
 import { useClients } from '@/features/clients/hooks/useClients'
@@ -274,7 +273,6 @@ export function ProjectDetail({ project, onEdit, onCreateInvoice }: { project: P
       </Card>
 
       <div style={{ display: 'grid', gap: 16 }}>
-        <ProjectWeatherWidget address={project.address || project.investment_address} />
         <ProjectPortalCTA
             projectId={project.id}
             projectName={project.name}

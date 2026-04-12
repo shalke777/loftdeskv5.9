@@ -318,46 +318,43 @@ export function ProjectExpensesTab({ projectId }: Props) {
         />
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
-            Koszty projektu
-            {expenses.length > 0 && (
-              <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: 'var(--color-text-muted)' }}>
-                ({expenses.length})
-              </span>
-            )}
-          </h3>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button
-              type="button"
-              className="btn"
-              onClick={startDirectCamera}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, background: 'var(--color-brand)', color: '#fff', border: 'none' }}
-            >
-              <Camera style={{ width: 15, height: 15 }} />
-              Skanuj fakturę
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={startCapture}
-              title="Inne opcje: galeria, PDF, ręcznie"
-              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}
-            >
-              <Plus style={{ width: 14, height: 14 }} />
-              Dodaj
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setReductionOpen(v => !v)}
-              title="Dodaj ręczne pomniejszenie kosztów (rabat, upust, korekta)"
-              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'var(--color-error)' }}
-            >
-              <Minus style={{ width: 14, height: 14 }} />
-              Pomniejszenie
-            </button>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+          <button
+            type="button"
+            onClick={startDirectCamera}
+            title="Skanuj fakturę"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 36, height: 36, borderRadius: 8, border: 'none',
+              background: 'var(--color-brand)', color: '#fff', cursor: 'pointer',
+            }}
+          >
+            <Camera style={{ width: 18, height: 18 }} />
+          </button>
+          <button
+            type="button"
+            onClick={startCapture}
+            title="Dodaj koszt (galeria, PDF, ręcznie)"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 36, height: 36, borderRadius: 8, border: 'none',
+              background: '#16a34a', color: '#fff', cursor: 'pointer',
+            }}
+          >
+            <Plus style={{ width: 18, height: 18 }} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setReductionOpen(v => !v)}
+            title="Dodaj pomniejszenie kosztów (rabat, upust, korekta)"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 36, height: 36, borderRadius: 8, border: 'none',
+              background: '#dc2626', color: '#fff', cursor: 'pointer',
+            }}
+          >
+            <Minus style={{ width: 18, height: 18 }} />
+          </button>
         </div>
 
         {/* Inline reduction form */}
