@@ -621,8 +621,8 @@ function buildFullContractHtml(
     </div>`).join('')
 
   const estimateRef = estimateNumber
-    ? `Kosztorysem nr <strong>${escapeHtml(estimateNumber)}</strong> stanowiącym Załącznik nr 1 do niniejszej umowy`
-    : `kosztorysem stanowiącym Załącznik nr 1 do niniejszej umowy`
+    ? `Kosztorysie nr <strong>${escapeHtml(estimateNumber)}</strong>, stanowiącym Załącznik nr 1 do niniejszej umowy`
+    : `kosztorysie stanowiącym Załącznik nr 1 do niniejszej umowy`
 
   return `
     ${contractPartiesHtml(clientName, company)}
