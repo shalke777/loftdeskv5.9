@@ -667,6 +667,7 @@ function buildFullContractHtml(
         <li>Każda transza płatna jest na podstawie faktury VAT lub rachunku wystawionego przez Wykonawcę, w terminie 7 dni od daty doręczenia dokumentu Inwestorowi.</li>
         <li>W przypadku nieterminowej zapłaty Wykonawca uprawniony jest do naliczania odsetek ustawowych za każdy dzień zwłoki.</li>
         <li>Materiały i ich transport niezbędne do realizacji robót nie są wliczone w wynagrodzenie, chyba że Strony w odrębnym aneksie postanowią inaczej.</li>
+        <li>Wykonawca zastrzega sobie prawo do zwrócenia się do Inwestora o bezzwłoczne uregulowanie płatności za materiał dostarczony przez Wykonawcę w trakcie realizacji robót.</li>
       </ol>
     </div>
 
@@ -693,6 +694,8 @@ function buildFullContractHtml(
           </ol>
         </li>
         <li>W trakcie realizacji robót Inwestor nie będzie ingerował w sposób wykonywania prac przez Wykonawcę i jego podwykonawców.</li>
+        <li>Wykonawca zastrzega sobie prawo do korzystania z lokalu na wyłączność przez okres trwania prac.</li>
+        <li>Inwestor wskaże Wykonawcy miejsce składowania odpadów budowlanych przy inwestycji. Koszt utylizacji odpadów budowlanych ponosi Inwestor.</li>
         <li>Odbiór robót nastąpi na podstawie protokołu odbioru podpisanego przez obie Strony. Inwestor zobowiązuje się do uczestnictwa w odbiorze w terminie uzgodnionym przez Strony.</li>
       </ol>
     </div>
