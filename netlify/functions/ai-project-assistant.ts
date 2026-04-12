@@ -147,9 +147,47 @@ export const handler: Handler = async (event: HandlerEvent) => {
     elapsed_ms: Date.now() - t0,
   }))
 
+  // Fetch L1+L2 project memory (mem-7)
+  let memoryBlock = ''
+  if (project_id) {
+    try {
+      const memClient = makeRateLimitClient()
+      if (memClient) {
+        const [{ data: proj }, { data: entries }] = await Promise.all([
+          memClient
+            .from('projects')
+            .select('ai_context_summary')
+            .eq('id', project_id)
+            .single(),
+          memClient
+            .from('project_memory_entries')
+            .select('memory_type, topic, content, created_at')
+            .eq('project_id', project_id)
+            .order('created_at', { ascending: false })
+            .limit(10),
+        ])
+        const summary = (proj as { ai_context_summary?: string } | null)?.ai_context_summary
+        const recent  = (entries ?? []) as Array<{ memory_type: string; topic: string; content: string }>
+        if (summary || recent.length > 0) {
+          const lines: string[] = []
+          if (summary) lines.push(`memory_summary: ${summary}`)
+          if (recent.length > 0) {
+            lines.push('memory_recent:')
+            for (const e of recent) {
+              lines.push(`  [${e.memory_type.toUpperCase()}] ${e.topic}: ${e.content}`)
+            }
+          }
+          memoryBlock = `\n\nPamięć projektu (L1+L2):\n${lines.join('\n')}`
+        }
+      }
+    } catch (memErr) {
+      console.warn('[ai-project-assistant] memory fetch failed, continuing without it', memErr)
+    }
+  }
+
   // Build prompt
   const contextSummary = JSON.stringify(context ?? {}, null, 0).slice(0, 4000)
-  const userMessage = `Kontekst analizy AI (JSON):\n${contextSummary}\n\nPytanie operatora:\n${question}`
+  const userMessage = `Kontekst analizy AI (JSON):\n${contextSummary}${memoryBlock}\n\nPytanie operatora:\n${question}`
 
   // Call OpenAI (gpt-4o-mini for cost efficiency)
   const apiKey = process.env.OPENAI_API_KEY
