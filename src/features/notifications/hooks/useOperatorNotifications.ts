@@ -19,6 +19,7 @@ export function useOperatorNotifications() {
   const queryClient = useQueryClient()
 
   // Realtime: nowe powiadomienie pojawia się natychmiast (np. akceptacja klienta)
+  // Bez filtra — RLS zapewnia izolację danych per company
   useEffect(() => {
     if (!companyId || !supabase || isDemoMode) return
     const channel = supabase
@@ -29,7 +30,6 @@ export function useOperatorNotifications() {
           event:  'INSERT',
           schema: 'public',
           table:  'operator_notifications',
-          filter: `company_id=eq.${companyId}`,
         },
         () => {
           void queryClient.invalidateQueries({ queryKey: operatorNotificationKeys.all })

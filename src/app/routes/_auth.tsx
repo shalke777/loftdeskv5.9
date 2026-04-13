@@ -203,12 +203,9 @@ export function AuthLayout() {
                 setShowNotifications(opening)
                 if (opening && notifRef.current) {
                   const rect = notifRef.current.getBoundingClientRect()
-                  const PANEL_W = Math.min(340, window.innerWidth - 16)
-                  const desiredLeft = rect.right - PANEL_W
-                  const clampedLeft = Math.max(8, Math.min(desiredLeft, window.innerWidth - PANEL_W - 8))
                   setDropdownPos({
                     top: rect.bottom + 4,
-                    left: clampedLeft,
+                    left: Math.max(8, rect.right - Math.min(340, window.innerWidth - 16)),
                   })
                   markAllRead()
                 }
@@ -226,7 +223,10 @@ export function AuthLayout() {
               )}
               {showNotifications && dropdownPos && (
                 <div style={{
-                  position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, zIndex: 9999,
+                  position: 'fixed',
+                  top: dropdownPos.top,
+                  right: Math.max(8, window.innerWidth - dropdownPos.left - Math.min(340, window.innerWidth - 16)),
+                  zIndex: 9999,
                   background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 10px)',
                   boxShadow: 'var(--shadow-lg)',
                   width: Math.min(340, window.innerWidth - 16),

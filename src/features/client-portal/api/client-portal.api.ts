@@ -465,7 +465,15 @@ export const clientPortalApi = {
         decision:             input.decision,
         comment:              input.comment ?? null,
       })
-    if (evtErr) throw evtErr
+    if (evtErr) {
+      console.error('[clientPortal] approval_events INSERT failed', {
+        code: (evtErr as any).code,
+        message: evtErr.message,
+        details: (evtErr as any).details,
+        hint: (evtErr as any).hint,
+      })
+      throw evtErr
+    }
 
     // 2. Update signature_participants.status (only for final decisions)
     // Skip 'questioned' — a question is not a final decision, the participant remains
@@ -477,7 +485,15 @@ export const clientPortalApi = {
         .from('signature_participants')
         .update({ status: input.decision, action_at: new Date().toISOString() })
         .eq('id', input.participantId)
-      if (partErr) throw partErr
+      if (partErr) {
+        console.error('[clientPortal] signature_participants UPDATE failed', {
+          code: (partErr as any).code,
+          message: partErr.message,
+          details: (partErr as any).details,
+          hint: (partErr as any).hint,
+        })
+        throw partErr
+      }
     }
 
     // 3. If questioned: auto-create or find message thread and post the question

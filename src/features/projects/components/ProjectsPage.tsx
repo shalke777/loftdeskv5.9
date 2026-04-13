@@ -3,7 +3,6 @@ import { FolderKanban, Plus } from 'lucide-react'
 import { Button } from '@/shared/ui/Button/Button'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import { Modal } from '@/shared/ui/Modal/Modal'
-import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { QueryError } from '@/shared/ui/QueryError/QueryError'
 import { StatusFilter } from '@/shared/ui/StatusFilter/StatusFilter'
@@ -122,10 +121,9 @@ export function ProjectsPage() {
 
   return (
     <div className="page">
-      {/* Header */}
-      <div className="toolbar">
-        <PageHeader title="Projekty" subtitle="Lista wszystkich realizacji i ofert." />
-        <div className="toolbar__actions">
+      {/* Header row: + Nowy projekt (left) + filtry (right) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {canCreate && (
             <PlanLimitGuard resource="projects">
               <Button onClick={() => { setEditing(null); setOpen(true) }}>
@@ -135,15 +133,15 @@ export function ProjectsPage() {
             </PlanLimitGuard>
           )}
         </div>
+        <StatusFilter
+          options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
+          value={filterStatus}
+          onChange={v => setFilterStatus(v as FilterStatus)}
+        />
       </div>
 
-      {/* Filter */}
+      {/* Queue banner */}
       <AssignmentQueueBanner />
-      <StatusFilter
-        options={FILTER_LABELS.map(o => ({ ...o, count: counts[o.value as keyof typeof counts] }))}
-        value={filterStatus}
-        onChange={v => setFilterStatus(v as FilterStatus)}
-      />
 
       {/* List */}
       {isLoading ? (

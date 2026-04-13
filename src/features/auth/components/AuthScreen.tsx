@@ -8,7 +8,7 @@ import { supabase } from '@/shared/lib/supabase'
 import { getAppOrigin } from '@/shared/lib/native'
 import { isNativePlatform } from '@/shared/lib/native'
 import { usePwaInstall } from '@/shared/hooks/usePwaInstall'
-import { Download, Smartphone } from 'lucide-react'
+import { Download, Smartphone, MailCheck } from 'lucide-react'
 
 type AuthTab = 'login' | 'register' | 'forgot' | 'client'
 
@@ -144,7 +144,7 @@ function ClientMagicLinkForm({ onBack }: { onBack: () => void }) {
   if (sent) {
     return (
       <div style={{ textAlign: 'center', padding: '16px 0' }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>📬</div>
+        <MailCheck size={48} color="var(--color-brand)" style={{ marginBottom: 12 }} />
         <h2 style={{ marginBottom: 8, fontSize: 22 }}>Sprawdź skrzynkę</h2>
         <p style={{ color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: 20 }}>
           Wysłaliśmy link logowania na <strong>{email}</strong>.<br />
