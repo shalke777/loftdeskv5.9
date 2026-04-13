@@ -85,6 +85,11 @@ export function useCreateExpense(projectId: string) {
     },
 
     onSuccess: (expense) => {
+      // Immediately prepend to cache so total updates without waiting for refetch
+      queryClient.setQueryData<import('@/features/expenses/api/expenses.api').ExpenseInvoiceV4[]>(
+        ['project-expenses', projectId, companyId],
+        (old = []) => old.some(e => e.id === expense.id) ? old : [expense, ...old],
+      )
       queryClient.invalidateQueries({ queryKey: ['project-expenses', projectId] })
 
       // Skip timeline event for offline-queued entries (id starts with 'offline-')

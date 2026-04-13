@@ -24,6 +24,7 @@ import {
 import type { AnalysisResult } from '@/services/ai/analysis.types'
 import type { ApprovalStatus } from '@/features/expenses/api/cost-approvals.api'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useCompanyId } from '@/features/auth'
 
 type TabMode = 'list' | 'capture' | 'clarification' | 'processing' | 'confirm'
 
@@ -70,11 +71,12 @@ export function ProjectExpensesTab({ projectId }: Props) {
   })
 
   const queryClient = useQueryClient()
+  const companyId   = useCompanyId()
 
   const deleteExpense = useMutation({
     mutationFn: (id: string) => expensesApi.delete(id),
     onSuccess: (_, id) => {
-      queryClient.setQueryData<ExpenseInvoiceV4[]>(['project-expenses', projectId], (old = []) => old.filter(e => e.id !== id))
+      queryClient.setQueryData<ExpenseInvoiceV4[]>(['project-expenses', projectId, companyId], (old = []) => old.filter(e => e.id !== id))
       queryClient.invalidateQueries({ queryKey: ['project-expenses', projectId] })
       setDeleteConfirmId(null)
     },
