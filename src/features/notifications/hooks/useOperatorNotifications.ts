@@ -2,17 +2,44 @@
 // useOperatorNotifications — hooki powiadomień operatora
 // =============================================================================
 
+import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { operatorNotificationsApi } from '@/features/notifications/api/operator-notifications.api'
 import { supabase, isDemoMode } from '@/shared/lib/supabase'
+import { useCompanyId } from '@/features/auth/hooks/useAuth'
 
 export const operatorNotificationKeys = {
   all:         ['operator-notifications']        as const,
   unreadCount: ['operator-notifications-unread'] as const,
 }
 
-/** Lista powiadomień operatora (max 50, najnowsze pierwsze) */
+/** Lista powiadomień operatora (max 50, najnowsze pierwsze) + realtime */
 export function useOperatorNotifications() {
+  const companyId   = useCompanyId()
+  const queryClient = useQueryClient()
+
+  // Realtime: nowe powiadomienie pojawia się natychmiast (np. akceptacja klienta)
+  useEffect(() => {
+    if (!companyId || !supabase || isDemoMode) return
+    const channel = supabase
+      .channel(`operator-notif:${companyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event:  'INSERT',
+          schema: 'public',
+          table:  'operator_notifications',
+          filter: `company_id=eq.${companyId}`,
+        },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: operatorNotificationKeys.all })
+          void queryClient.invalidateQueries({ queryKey: operatorNotificationKeys.unreadCount })
+        },
+      )
+      .subscribe()
+    return () => { void supabase?.removeChannel(channel) }
+  }, [companyId, queryClient])
+
   return useQuery({
     queryKey: operatorNotificationKeys.all,
     queryFn:  () => operatorNotificationsApi.list(),
