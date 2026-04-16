@@ -194,7 +194,7 @@ export function AuthLayout() {
         <header className="shell-topbar">
           <GlobalSearch />
           <div className="shell-topbar__right">
-            <Link to="/billing" className={user.plan === 'free' ? 'shell-pill shell-pill--upgrade topbar-desktop-only' : 'shell-pill topbar-desktop-only'} style={{ textDecoration: 'none', cursor: 'pointer' }}>
+            <Link to="/billing" className={user.plan === 'free' ? 'shell-pill shell-pill--upgrade' : 'shell-pill'} style={{ textDecoration: 'none', cursor: 'pointer' }}>
               {user.plan === 'free' ? '⭐ Przejdź na Business' : `Plan: ${user.plan}`}
             </Link>
             <div ref={notifRef} style={{ position: 'relative', display: 'inline-flex' }}>
@@ -275,8 +275,8 @@ export function AuthLayout() {
                 </div>
               )}
             </div>
-            <span className="topbar-desktop-only"><InstallAppButton compact /></span>
-            <span className="topbar-desktop-only"><GlobalRefreshButton /></span>
+            <InstallAppButton compact />
+            <GlobalRefreshButton />
             {/* Mic button — visible only on mobile (FAB hidden on mobile) */}
             <span className="topbar-mic">
               <FloatingVoiceButton inHeader />
@@ -285,7 +285,6 @@ export function AuthLayout() {
               type="button"
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Przełącz na jasny motyw' : 'Przełącz na ciemny motyw'}
-              className="topbar-desktop-only"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 44, height: 44, borderRadius: 8, border: 'none',

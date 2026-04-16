@@ -687,8 +687,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .floating-fab { bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important; }
   /* FAB voice: hide on mobile — mic is in topbar */
   .floating-fab { display: none !important; }
-  /* Desktop-only topbar items: hide on mobile to keep topbar slim */
-  .topbar-desktop-only { display: none !important; }
   /* Settings: single column on mobile to prevent overflow */
   .settings-grid.grid-2 { grid-template-columns: 1fr !important; }
   .grid-2 { min-width: 0; }
@@ -894,9 +892,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 /* Topbar mic: always visible in header */
 .topbar-mic { display: inline-flex; }
-
-/* Items hidden on mobile to keep topbar slim */
-.topbar-desktop-only { display: inline-flex; }
 
 /* ====================================================================
    LEGAL — document pages
