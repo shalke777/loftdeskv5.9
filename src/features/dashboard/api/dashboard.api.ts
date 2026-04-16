@@ -121,9 +121,14 @@ export const dashboardApi = {
         const fl = p.completeness_flags
         const issues: string[] = []
         if (!p.client_id && (p.status === 'offer' || p.status === 'active')) issues.push('Brak klienta')
-        if (fl && !fl.has_estimate && (p.status === 'offer' || p.status === 'active')) issues.push('Brak wyceny')
-        if (fl && !fl.has_contract && p.status === 'active') issues.push('Brak umowy')
-        if (fl && !fl.has_invoice && p.status === 'done') issues.push('Brak faktury')
+        // Check completeness_flags first; fall back to direct estimate/contract/invoice lookup
+        // so stale flags don't cause false positives.
+        const hasEstimate = fl?.has_estimate || estimates.some((e) => (e as any).project_id === p.id)
+        const hasContract = fl?.has_contract || contracts.some((c) => (c as any).project_id === p.id)
+        const hasInvoice  = fl?.has_invoice  || invoices.some((i)  => (i as any).project_id === p.id)
+        if (!hasEstimate && (p.status === 'offer' || p.status === 'active')) issues.push('Brak wyceny')
+        if (!hasContract && p.status === 'active') issues.push('Brak umowy')
+        if (!hasInvoice  && p.status === 'done') issues.push('Brak faktury')
         return { id: p.id, name: p.name, number: p.number, status: p.status, issues }
       })
       .filter((p) => p.issues.length > 0)

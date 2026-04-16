@@ -52,6 +52,23 @@ export async function recomputeCompleteness(projectId: string, companyId: string
     .eq('project_id', projectId)
     .is('archived_at', null)
   const types = new Set((data ?? []).map((r: { doc_type: string }) => r.doc_type))
+
+  // Fallback: check cost_estimates.project_id directly (handles stale/missing project_documents rows)
+  if (!types.has('estimate')) {
+    const { data: directEst } = await supabase
+      .from('cost_estimates')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('company_id', companyId)
+      .limit(1)
+    if (directEst?.length) {
+      types.add('estimate')
+      // Heal project_documents so future checks work without the fallback
+      projectDocumentsApi
+        .link(companyId, projectId, 'estimate', directEst[0].id, { manual: true })
+        .catch((err) => console.warn('[recompute] heal project_documents failed:', err))
+    }
+  }
   const flags = {
     has_client: true,
     has_estimate: types.has('estimate'),
