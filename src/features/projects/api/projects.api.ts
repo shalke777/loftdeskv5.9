@@ -3,6 +3,8 @@ import { demoDb } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { applyScope, getDataScope, withScope } from '@/shared/lib/dataScope'
 import { createTimelineEvent } from '@/features/projects/lib/timeline'
+import { projectDocumentsApi } from '@/features/projects/api/projectDocuments.api'
+import { recomputeCompleteness } from '@/services/project/autoLinkService'
 
 /** Generate next sequential project number: PRJ-001, PRJ-002, etc. */
 async function nextProjectNumber(scope: any): Promise<string> {
@@ -107,8 +109,13 @@ export const projectsApi = {
     })
     const { data, error } = await supabase.from('projects').insert(payload).select('*').single()
     if (error) throw error
-    // Powiąż wycenę z projektem
+    // Powiąż wycenę z projektem (FK + project_documents + completeness)
     await supabase.from('cost_estimates').update({ project_id: data.id }).eq('id', estimateId)
+    try {
+      await projectDocumentsApi.link(companyId, data.id, 'estimate', estimateId, { manual: true })
+    } catch (err) {
+      console.warn('[createFromEstimate] project_documents link failed:', err)
+    }
     // Kaskadowo powiąż umowy powiązane z tą wyceną
     const { data: relatedContracts } = await supabase
       .from('contracts')
@@ -126,6 +133,10 @@ export const projectsApi = {
         await supabase.from('invoices').update({ project_id: data.id }).in('id', relatedInvoices.map((i: any) => i.id))
       }
     }
+    // Przelicz completeness_flags (has_estimate, has_contract, itp.)
+    recomputeCompleteness(data.id, companyId).catch((err) =>
+      console.warn('[createFromEstimate] recomputeCompleteness failed:', err),
+    )
     return { id: data.id, company_id: data.company_id ?? companyId, client_id: data.client_id, number: data.number, name: data.name, status: data.status, start_date: data.start_date, end_date: data.end_date, address: data.address ?? '', investment_address: data.investment_address ?? null, notes: data.notes ?? '', completeness_score: data.completeness_score ?? 0, completeness_flags: data.completeness_flags ?? {}, created_at: data.created_at }
   },
   async updateStatus(id: string, status: Project['status'], companyId?: string) { if (isDemoMode || !supabase) { demoDb.projects.updateStatus(id, status); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('projects').update({ status }).eq('id', id), scope); const { error } = await query; if (error) throw error; if (companyId) createTimelineEvent({ company_id: companyId, project_id: id, event_type: 'project_status_changed', visibility: 'internal', title: 'Zmiana statusu projektu', actor_type: 'operator', payload: { new_status: status } }).catch((err) => console.warn('[projects] timeline event failed:', err)) },
