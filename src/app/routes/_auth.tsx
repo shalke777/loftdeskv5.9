@@ -63,7 +63,7 @@ const mobileNav: MainNavItem[] = [
   { to: '/projects',   label: 'Projekty',   icon: FolderKanban },
   { to: '/chat',       label: 'Chat',       icon: MessageSquare },
   { to: '/dashboard',  label: 'Start',      icon: LayoutDashboard },
-  { to: '/documents',  label: 'Dokumenty',  icon: FileStack },
+  { to: '/notes',      label: 'Notatki',    icon: Mic },
   { to: '/settings',   label: 'Konto',      icon: Settings },
 ]
 
