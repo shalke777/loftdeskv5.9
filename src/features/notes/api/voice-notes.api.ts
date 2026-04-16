@@ -176,4 +176,13 @@ export const voiceNotesApi = {
     const { error } = await supabase.from('voice_notes').delete().eq('id', id)
     if (error) throw error
   },
+
+  async assignToProject(id: string, projectId: string | null): Promise<void> {
+    if (!supabase) return
+    const { error } = await supabase
+      .from('voice_notes')
+      .update({ project_id: projectId, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (error) throw error
+  },
 }

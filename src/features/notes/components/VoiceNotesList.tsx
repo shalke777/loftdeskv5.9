@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Mic, Sparkles, Trash2, ChevronDown, ChevronUp, Edit2, Check, X, Download, FileText, RotateCcw, PlusCircle } from 'lucide-react'
+import { Mic, Sparkles, Trash2, ChevronDown, ChevronUp, Edit2, Check, X, Download, FileText, RotateCcw, PlusCircle, FolderKanban } from 'lucide-react'
 import { voiceNotesApi, type VoiceNote } from '../api/voice-notes.api'
 import { supabase } from '@/shared/lib/supabase'
 import { useNavigate } from '@tanstack/react-router'
 import { projectExpensesApi } from '@/features/expenses/api/expenses.api'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
+import { useProjects } from '@/features/projects/hooks/useProjects'
 
 function useToast() {
   const [message, setMessage] = useState<{ text: string; type: 'error' | 'success' } | null>(null)
@@ -131,9 +132,11 @@ export function VoiceNotesList({ projectId }: { projectId?: string }) {
   const [transcriptModal, setTranscriptModal] = useState<VoiceNote | null>(null)
   const [addingCostId, setAddingCostId] = useState<string | null>(null)
   const [costDoneId, setCostDoneId]     = useState<string | null>(null)
+  const [assigningId, setAssigningId]   = useState<string | null>(null)
   const navigate = useNavigate()
   const toast = useToast()
   const companyId = useCompanyId()
+  const { data: projects = [] } = useProjects()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -229,6 +232,17 @@ export function VoiceNotesList({ projectId }: { projectId?: string }) {
   function handleTitleDone(id: string, newTitle: string) {
     setNotes(n => n.map(x => x.id === id ? { ...x, title: newTitle } : x))
     setEditingTitle(null)
+  }
+
+  async function handleAssign(noteId: string, projectId: string | null) {
+    try {
+      await voiceNotesApi.assignToProject(noteId, projectId)
+      setNotes(n => n.map(x => x.id === noteId ? { ...x, project_id: projectId } : x))
+      setAssigningId(null)
+      toast.show(projectId ? 'Przypisano do projektu' : 'Odłączono od projektu', 'success')
+    } catch (err) {
+      toast.show(`Błąd przypisania: ${err instanceof Error ? err.message : String(err)}`)
+    }
   }
 
   if (loading) return (
@@ -390,6 +404,44 @@ export function VoiceNotesList({ projectId }: { projectId?: string }) {
                   <Trash2 size={14} />
                 </button>
               </div>
+
+              {/* Project assignment inline picker */}
+              {assigningId === note.id ? (
+                <div style={{ padding: '8px 14px', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FolderKanban size={13} style={{ color: 'var(--color-brand)', flexShrink: 0 }} />
+                  <select
+                    autoFocus
+                    defaultValue={note.project_id ?? ''}
+                    onChange={e => handleAssign(note.id, e.target.value || null)}
+                    style={{
+                      flex: 1, fontSize: 12, padding: '5px 8px', borderRadius: 6,
+                      border: '1px solid var(--color-brand)', background: 'var(--color-surface)',
+                      color: 'var(--color-text)', outline: 'none',
+                    }}
+                  >
+                    <option value="">— bez projektu —</option>
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={() => setAssigningId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 2, display: 'flex' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <div style={{ padding: '4px 14px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => setAssigningId(note.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: note.project_id ? 'var(--color-brand)' : 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0' }}
+                  >
+                    <FolderKanban size={11} />
+                    {note.project_id
+                      ? (projects.find(p => p.id === note.project_id)?.name ?? 'Projekt')
+                      : 'Przypisz do projektu'}
+                  </button>
+                </div>
+              )}
 
               {/* Transcript preview (raw / error status) */}
               {note.transcript && (note.status === 'raw' || note.status === 'error') && (
