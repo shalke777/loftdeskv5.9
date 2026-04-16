@@ -11,6 +11,7 @@
   MessageSquare,
   Mic,
   Moon,
+  Palette,
   Settings,
   Sun,
   Users,
@@ -39,7 +40,7 @@ import { GlobalRefreshButton } from '@/shared/ui/GlobalRefreshButton/GlobalRefre
 
 type MainNavItem = {
   type?: 'route'
-  to: '/dashboard' | '/clients' | '/estimates' | '/contracts' | '/invoices' | '/projects' | '/ksef' | '/settings' | '/chat' | '/expenses' | '/notes' | '/documents'
+  to: '/dashboard' | '/clients' | '/estimates' | '/contracts' | '/invoices' | '/projects' | '/ksef' | '/settings' | '/chat' | '/expenses' | '/notes' | '/documents' | '/pdf-design'
   label: string
   icon: typeof LayoutDashboard
   feature?: 'ksef'
@@ -54,9 +55,10 @@ const mainNavItems: MainNavItem[] = [
 ]
 
 const moreNavItems: MainNavItem[] = [
-  { to: '/clients',  label: 'Kontrahenci', icon: Users },
-  { to: '/notes',    label: 'Notatki',     icon: Mic },
-  { to: '/settings', label: 'Konto',       icon: Settings },
+  { to: '/clients',    label: 'Kontrahenci',    icon: Users },
+  { to: '/notes',      label: 'Notatki',        icon: Mic },
+  { to: '/pdf-design', label: 'Style PDF',      icon: Palette },
+  { to: '/settings',   label: 'Konto',          icon: Settings },
 ]
 
 const mobileNav: MainNavItem[] = [
