@@ -30,6 +30,43 @@ export interface CreateVoiceNoteInput {
 }
 
 export const voiceNotesApi = {
+  /**
+   * Upload a raw audio blob to the voice-notes Storage bucket.
+   * Stored at: {companyId}/{timestamp}-{uuid}.{ext}
+   * Returns the storage PATH (not a signed URL) — use getAudioSignedUrl() to play.
+   */
+  async uploadAudio(
+    blob: Blob,
+    mimeType: string,
+    companyId: string,
+  ): Promise<string> {
+    if (!supabase) throw new Error('Supabase not available')
+    const ext = mimeType.includes('mp4') ? 'm4a'
+      : mimeType.includes('ogg') ? 'ogg'
+      : mimeType.includes('mpeg') ? 'mp3'
+      : 'webm'
+    const ts  = Date.now()
+    const uid = crypto.randomUUID().slice(0, 8)
+    const path = `${companyId}/${ts}-${uid}.${ext}`
+    const { error } = await supabase.storage
+      .from('voice-notes')
+      .upload(path, blob, { contentType: mimeType, upsert: false })
+    if (error) throw error
+    return path
+  },
+
+  /**
+   * Create a short-lived signed URL (1 hour) for audio playback.
+   */
+  async getAudioSignedUrl(path: string): Promise<string | null> {
+    if (!supabase || !path) return null
+    const { data, error } = await supabase.storage
+      .from('voice-notes')
+      .createSignedUrl(path, 3600) // 1 hour
+    if (error || !data?.signedUrl) return null
+    return data.signedUrl
+  },
+
   async create(input: CreateVoiceNoteInput): Promise<VoiceNote> {
     if (!supabase) throw new Error('Supabase not available')
     const scope = await getDataScope()

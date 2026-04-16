@@ -210,6 +210,17 @@ export function FloatingVoiceButton({ inHeader }: { inHeader?: boolean } = {}) {
 
       } else {
         // ── Default: Voice note ─────────────────────────────────────────────
+        // 1. Upload raw audio to Storage (so it's available as a file in Memory tab)
+        let audioStoragePath: string | null = null
+        if (companyId) {
+          try {
+            audioStoragePath = await voiceNotesApi.uploadAudio(blob, mimeType, companyId)
+          } catch (uploadErr) {
+            console.warn('[FAB] audio upload failed (non-fatal):', uploadErr)
+          }
+        }
+
+        // 2. Transcribe via Whisper (Netlify function)
         const res = await fetch('/.netlify/functions/voice-to-note', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -223,11 +234,11 @@ export function FloatingVoiceButton({ inHeader }: { inHeader?: boolean } = {}) {
         const projectId = match ? match[1] : null
 
         const now = new Date()
-        const title = `Notatka ${now.toLocaleDateString('pl-PL')} ${now.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
-        await voiceNotesApi.create({ project_id: projectId, title, transcript })
+        const title = `Nagranie ${now.toLocaleDateString('pl-PL')} ${now.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
+        await voiceNotesApi.create({ project_id: projectId, title, transcript, audio_url: audioStoragePath })
 
         setVoiceMode('idle')
-        setToast('✓ Notatka zapisana — otwórz AI hub żeby ekstraktować')
+        setToast('✓ Nagranie zapisane w zakładce Pamięć projektu')
       }
     } catch (err) {
       setVoiceMode('idle')

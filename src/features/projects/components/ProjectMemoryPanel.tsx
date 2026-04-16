@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Brain, Plus, AlertTriangle, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Brain, Plus, AlertTriangle, Trash2, ChevronDown, ChevronUp, Mic, Volume2 } from 'lucide-react'
 import { supabase } from '@/shared/lib/supabase'
 import { getDataScope } from '@/shared/lib/dataScope'
+import { voiceNotesApi, type VoiceNote } from '@/features/notes/api/voice-notes.api'
 
 export interface MemoryEntry {
   id: string
@@ -44,6 +45,115 @@ interface AddEntryForm {
 }
 
 const EMPTY_FORM: AddEntryForm = { memory_type: 'decision', topic: '', content: '' }
+
+// ── VoiceNotesSection ─────────────────────────────────────────────────────────
+
+function AudioPlayer({ note }: { note: VoiceNote }) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  async function loadUrl() {
+    if (signedUrl || !note.audio_url) return
+    setLoading(true)
+    try {
+      const url = await voiceNotesApi.getAudioSignedUrl(note.audio_url)
+      setSignedUrl(url)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div>
+      {note.audio_url && !signedUrl && (
+        <button
+          type="button"
+          onClick={loadUrl}
+          disabled={loading}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: 11,
+            padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)',
+            background: 'none', cursor: loading ? 'default' : 'pointer', color: 'var(--color-text-secondary)',
+          }}
+        >
+          <Volume2 size={12} />
+          {loading ? 'Ładowanie…' : 'Odtwórz nagranie'}
+        </button>
+      )}
+      {signedUrl && (
+        <audio controls src={signedUrl} style={{ width: '100%', height: 32, marginTop: 4 }} />
+      )}
+      {!note.audio_url && (
+        <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>brak pliku audio</span>
+      )}
+    </div>
+  )
+}
+
+function VoiceNotesSection({ projectId }: { projectId: string }) {
+  const [notes, setNotes] = useState<VoiceNote[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    voiceNotesApi.listByProject(projectId)
+      .then(setNotes)
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [projectId])
+
+  async function handleDelete(id: string) {
+    if (!window.confirm('Usunąć nagranie?')) return
+    await voiceNotesApi.delete(id)
+    setNotes(n => n.filter(x => x.id !== id))
+  }
+
+  if (loading) return null
+  if (notes.length === 0) return null
+
+  return (
+    <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden', background: 'var(--color-surface)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--color-border)' }}>
+        <Mic size={14} style={{ color: 'var(--color-brand)' }} />
+        <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Nagrania głosowe ({notes.length})</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {notes.map((note, i) => (
+          <div
+            key={note.id}
+            style={{
+              padding: '10px 14px',
+              borderBottom: i < notes.length - 1 ? '1px solid var(--color-border)' : 'none',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {note.title || 'Nagranie'}
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                {new Date(note.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleDelete(note.id)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 2, flexShrink: 0, display: 'flex' }}
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+            <AudioPlayer note={note} />
+            {note.transcript && (
+              <p style={{ margin: '6px 0 0', fontSize: 11, lineHeight: 1.6, color: 'var(--color-text-secondary)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                {note.transcript}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── ProjectMemoryPanel ────────────────────────────────────────────────────────
 
 export function ProjectMemoryPanel({ projectId }: { projectId: string }) {
   const [entries, setEntries] = useState<MemoryEntry[]>([])
@@ -180,6 +290,9 @@ export function ProjectMemoryPanel({ projectId }: { projectId: string }) {
           )}
         </div>
       )}
+
+      {/* Voice notes from recordings */}
+      <VoiceNotesSection projectId={projectId} />
 
       {/* Add entry */}
       <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden', background: 'var(--color-surface)' }}>
