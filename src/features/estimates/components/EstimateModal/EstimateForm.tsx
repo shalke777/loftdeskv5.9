@@ -30,7 +30,7 @@ export function clearDraft() {
 }
 
 interface Props {
-  onSubmit: (input: { name: string; client_id: string | null; project_id?: string | null; notes?: string; company_id: string; status?: Estimate['status']; valid_until?: string | null; items?: EstimateItem[] }) => void | Promise<void>
+  onSubmit: (input: { name: string; client_id: string | null; project_id?: string | null; notes?: string; company_id: string; status?: Estimate['status']; estimate_type?: 'preliminary' | 'final'; valid_until?: string | null; items?: EstimateItem[] }) => void | Promise<void>
   companyId: string
   initialEstimate?: Estimate | null
   initialProjectId?: string | null
@@ -46,6 +46,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
   const [clientId, setClientId] = useState('')
   const [newClientOpen, setNewClientOpen] = useState(false)
   const [status, setStatus] = useState<Estimate['status']>('draft')
+  const [estimateType, setEstimateType] = useState<'preliminary' | 'final'>('preliminary')
   const [validUntil, setValidUntil] = useState('')
   const [projectId, setProjectId] = useState('')
   const [items, setItems] = useState<EstimateItem[]>([])
@@ -87,6 +88,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
       setNotes(initialEstimate.notes || '')
       setClientId(initialEstimate.client_id || '')
       setStatus(initialEstimate.status || 'draft')
+      setEstimateType(initialEstimate.estimate_type ?? 'preliminary')
       setValidUntil(initialEstimate.valid_until?.slice(0, 10) || '')
       setProjectId(initialEstimate.project_id || '')
       setItems(initialEstimate.items?.length ? initialEstimate.items : [])
@@ -102,7 +104,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
         setItems((draft.items as EstimateItem[]) ?? [])
         setIsAiDraft(draft._source === 'ai_analysis' || draft._source === 'project_analysis' || draft._source === 'voice_whisper' || draft._source === 'voice_note')
       } else {
-        setName(''); setNotes(''); setClientId(initialClientId || ''); setStatus('draft')
+        setName(''); setNotes(''); setClientId(initialClientId || ''); setStatus('draft'); setEstimateType('preliminary')
         setValidUntil(todayStr()); setProjectId(initialProjectId || ''); setItems([])
         setIsAiDraft(false)
       }
@@ -134,7 +136,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
     }
     setSubmitting(true)
     try {
-      await onSubmit({ name, notes, client_id: clientId || null, project_id: projectId || null, company_id: companyId, status, valid_until: validUntil || null, items })
+      await onSubmit({ name, notes, client_id: clientId || null, project_id: projectId || null, company_id: companyId, status, estimate_type: estimateType, valid_until: validUntil || null, items })
       clearDraft()
     } catch {
       // Error toast is shown by mutation onError — do NOT clear draft so user can retry
@@ -216,6 +218,12 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
           value={status}
           onChange={(e) => setStatus((e.target.value || 'draft') as Estimate['status'])}
           options={[{ value: 'draft', label: 'Szkic' }, { value: 'sent', label: 'Wysłany' }, { value: 'accepted', label: 'Akceptacja' }, { value: 'rejected', label: 'Odrzucony' }]}
+        />
+        <Select
+          label="Rodzaj wyceny"
+          value={estimateType}
+          onChange={(e) => setEstimateType((e.target.value || 'preliminary') as 'preliminary' | 'final')}
+          options={[{ value: 'preliminary', label: 'Wstępna (informacyjna)' }, { value: 'final', label: 'Właściwa' }]}
         />
         <div className="form-grid--full">
           <label style={{ display: 'block', fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 4, fontWeight: 500 }}>Notatki</label>

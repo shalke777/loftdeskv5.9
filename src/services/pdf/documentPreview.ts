@@ -223,7 +223,7 @@ export function buildEstimatePreview(estimate: Estimate, client?: Party, company
         <div class="totals-line"><span>Razem VAT (${vatRate}%):</span><span>${formatCurrency(totalVat)}</span></div>
         <div class="totals-line"><strong>RAZEM BRUTTO:</strong><strong>${formatCurrency(estimate.total_gross)}</strong></div>
       </div>
-      <div class="notice"><strong>Uwaga:</strong> Wycena ma charakter informacyjny. Ostateczna cena może ulec zmianie po wizji lokalnej.</div>
+      ${estimate.estimate_type !== 'final' ? '<div class="notice"><strong>Uwaga:</strong> Wycena ma charakter informacyjny. Ostateczna cena może ulec zmianie po wizji lokalnej.</div>' : ''}
     </div>
     ${footer(company)}
   </section>`

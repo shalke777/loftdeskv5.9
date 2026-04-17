@@ -20,6 +20,7 @@ export const EstimateSchema = z.object({
   number: z.string(),
   name: z.string().min(1, 'Nazwa jest wymagana'),
   status: z.enum(['draft', 'sent', 'accepted', 'rejected']),
+  estimate_type: z.enum(['preliminary', 'final']).default('preliminary'),
   total_net: z.number(),
   total_gross: z.number(),
   notes: z.string().optional(),
@@ -33,6 +34,7 @@ export type EstimateItem = z.infer<typeof EstimateItemSchema>
 export type CreateEstimateInput = Pick<Estimate, 'name' | 'client_id' | 'notes' | 'status' | 'valid_until'> & {
   company_id:        string
   project_id?:       string | null
+  estimate_type?:    'preliminary' | 'final'
   items?:            EstimateItem[]
   /** Sprint 4: links this draft to the AI analysis run that produced it. */
   ai_source_run_id?: string | null

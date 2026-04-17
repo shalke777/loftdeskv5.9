@@ -102,12 +102,12 @@ const seedState: DemoState = {
     { id: 'p2', company_id: 'cmp-wisniewski', client_id: 'c2', number: 'PRJ/2026/002', name: 'Remont łazienki – Kowalski', status: 'done', start_date: dateOnly(), end_date: null, address: 'Warszawa, ul. Słoneczna 5', notes: 'Oferta wygrana, projekt gotowy do fakturowania.', created_at: now() },
   ],
   estimates: [
-    { id: 'ke1', company_id: 'cmp-wisniewski', client_id: 'c2', project_id: 'p2', number: 'KE/2026/001', name: 'Remont łazienki – Kowalski', status: 'accepted', total_net: 3830, total_gross: 4710.9, notes: 'Termin realizacji 2 tygodnie', valid_until: plusDays(14), created_at: now(), items: [
+    { id: 'ke1', company_id: 'cmp-wisniewski', client_id: 'c2', project_id: 'p2', number: 'KE/2026/001', name: 'Remont łazienki – Kowalski', status: 'accepted', estimate_type: 'preliminary' as const, total_net: 3830, total_gross: 4710.9, notes: 'Termin realizacji 2 tygodnie', valid_until: plusDays(14), created_at: now(), items: [
       { id: 'i1', name: 'Układanie płytek 60x60', description: 'Łazienka', unit: 'm²', quantity: 12, unit_price: 180, vat_rate: 23, sort_order: 1 },
       { id: 'i2', name: 'Montaż kabiny prysznicowej', description: '', unit: 'szt', quantity: 1, unit_price: 1200, vat_rate: 23, sort_order: 2 },
       { id: 'i3', name: 'Materiały', description: 'klej, fuga', unit: 'kpl', quantity: 1, unit_price: 650, vat_rate: 23, sort_order: 3 },
     ] },
-    { id: 'ke2', company_id: 'cmp-wisniewski', client_id: 'c1', project_id: 'p1', number: 'KE/2026/002', name: 'Wykończenie mieszkania – Budrem', status: 'draft', total_net: 12825, total_gross: 15774.75, notes: 'Projekt powiązany z realizacją', valid_until: plusDays(10), created_at: now(), items: [
+    { id: 'ke2', company_id: 'cmp-wisniewski', client_id: 'c1', project_id: 'p1', number: 'KE/2026/002', name: 'Wykończenie mieszkania – Budrem', status: 'draft', estimate_type: 'preliminary' as const, total_net: 12825, total_gross: 15774.75, notes: 'Projekt powiązany z realizacją', valid_until: plusDays(10), created_at: now(), items: [
       { id: 'i4', name: 'Tynkowanie ścian', description: '', unit: 'm²', quantity: 120, unit_price: 35, vat_rate: 23, sort_order: 1 },
       { id: 'i5', name: 'Wylewka podłogowa', description: '', unit: 'm²', quantity: 85, unit_price: 55, vat_rate: 23, sort_order: 2 },
     ] },
