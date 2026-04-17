@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, Plus, Trash2 } from 'lucide-react'
 import { Input } from '@/shared/ui/Input/Input'
 import { Button } from '@/shared/ui/Button/Button'
 import { Select } from '@/shared/ui/Select/Select'
@@ -9,6 +9,7 @@ import { useClients } from '@/features/clients/hooks/useClients'
 import { useEstimates } from '@/features/estimates/hooks/useEstimates'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { formatCurrency } from '@/shared/lib/formatters'
+import { createTimelineEvent } from '@/features/projects/lib/timeline'
 
 const TRANCHE_COUNT_OPTIONS = [
   { value: '2', label: '2 (Zaliczka + końcowa)' },
@@ -60,6 +61,7 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
   const [projectId, setProjectId] = useState(initialContract?.project_id || initialProjectId || '')
   const [penaltyPerDay, setPenaltyPerDay] = useState(String(initialContract?.penalty_per_day_pct ?? 0.1))
   const [maxPenalty, setMaxPenalty] = useState(String(initialContract?.max_penalty_pct ?? 10))
+  const [diffAccepted, setDiffAccepted] = useState(false)
 
   const { data: estimates = [] } = useEstimates()
   const { data: clients = [] } = useClients()
@@ -78,6 +80,8 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
   // Tranche sum validation
   const tranchesSum = tranches.reduce((sum, t) => sum + (Number(t.amount) || 0), 0)
   const tranchesError = totalGross > 0 && tranches.length > 0 && Math.abs(tranchesSum - totalGross) > 0.5
+  // When tranches change, reset acceptance so user must re-confirm new difference
+  useEffect(() => { setDiffAccepted(false) }, [tranchesSum])
 
   // Auto-generate template name
   const templateName = selectedEstimate
@@ -135,7 +139,7 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
   }
 
   async function handleSubmit() {
-    if (tranchesError) return
+    if (tranchesError && !diffAccepted) return
     await onSubmit({
       company_id: companyId,
       estimate_id: estimateId || null,
@@ -157,6 +161,26 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
       penalty_per_day_pct: Number(penaltyPerDay) || 0.1,
       max_penalty_pct: Number(maxPenalty) || 10,
     })
+    // Log amendment to timeline if operator accepted a tranche difference
+    if (tranchesError && diffAccepted && (projectId || initialContract?.project_id)) {
+      const diff = tranchesSum - totalGross
+      createTimelineEvent({
+        company_id: companyId,
+        project_id: (projectId || initialContract?.project_id)!,
+        event_type: 'contract_amended',
+        visibility: 'internal',
+        title: 'Zmiana wartości transz umowy',
+        description: `Suma transz (${formatCurrency(tranchesSum)}) różni się od wartości umowy (${formatCurrency(totalGross)}) o ${formatCurrency(Math.abs(diff))}. Różnica zaakceptowana przez operatora.`,
+        actor_type: 'operator',
+        reference_type: 'document',
+        reference_id: initialContract?.id ?? undefined,
+        payload: {
+          tranches_sum: tranchesSum,
+          contract_value: totalGross,
+          difference: diff,
+        },
+      }).catch((err) => console.warn('[timeline] contract_amended event failed:', err))
+    }
   }
 
   return (
@@ -234,6 +258,7 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
         </div>
         {/* Suma transz */}
         {tranches.length > 0 && totalGross > 0 && (
+          <>
           <div style={{
             marginTop: 10,
             padding: '10px 14px',
@@ -268,6 +293,33 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
               )}
             </div>
           </div>
+          {/* Soft acceptance for intentional tranche difference (e.g. negotiated discount) */}
+          {tranchesError && (
+            <label style={{
+              display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 10,
+              padding: '12px 14px', borderRadius: 8,
+              border: diffAccepted ? '1px solid var(--color-warning)' : '1px solid var(--color-error)',
+              background: diffAccepted ? 'rgba(234,179,8,0.08)' : 'rgba(220,38,38,0.06)',
+              cursor: 'pointer',
+            }}>
+              <input
+                type="checkbox"
+                checked={diffAccepted}
+                onChange={(e) => setDiffAccepted(e.target.checked)}
+                style={{ marginTop: 2, width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
+              />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: diffAccepted ? 'var(--color-warning)' : 'var(--color-error)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <AlertTriangle size={14} />
+                  Akceptuję różnicę kwot ({formatCurrency(Math.abs(tranchesSum - totalGross))})
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 3 }}>
+                  Różnica zostanie odnotowana na osi czasu projektu jako zmiana umowy. Upewnij się, że jest to świadoma decyzja (np. rabat, ugoda).
+                </div>
+              </div>
+            </label>
+          )}
+          </>
         )}
       </div>
 
@@ -330,8 +382,8 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
       </div>
 
       <div className="actions-row">
-        <Button onClick={handleSubmit} disabled={tranchesError}>{initialContract ? 'Zapisz zmiany' : 'Zapisz umowę'}</Button>
-        {tranchesError && <span style={{ fontSize: 13, color: 'var(--color-error)' }}>Wyrównaj sumy transz przed zapisem</span>}
+        <Button onClick={handleSubmit} disabled={tranchesError && !diffAccepted}>{initialContract ? 'Zapisz zmiany' : 'Zapisz umowę'}</Button>
+        {tranchesError && !diffAccepted && <span style={{ fontSize: 13, color: 'var(--color-error)' }}>Wyrównaj sumy transz lub zaakceptuj różnicę</span>}
       </div>
     </div>
   )
