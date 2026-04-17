@@ -4,7 +4,7 @@
 
 import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { operatorNotificationsApi } from '@/features/notifications/api/operator-notifications.api'
+import { operatorNotificationsApi, type OperatorNotification } from '@/features/notifications/api/operator-notifications.api'
 import { supabase, isDemoMode } from '@/shared/lib/supabase'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 
@@ -70,24 +70,54 @@ export function useMarkAllOperatorNotificationsRead() {
   })
 }
 
-/** Usuń pojedyncze powiadomienie */
+/** Usuń pojedyncze powiadomienie — optimistic update */
 export function useDeleteOperatorNotification() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => operatorNotificationsApi.delete(id),
-    onSuccess: () => {
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: operatorNotificationKeys.all })
+      const prev = queryClient.getQueryData<OperatorNotification[]>(operatorNotificationKeys.all)
+      queryClient.setQueryData<OperatorNotification[]>(
+        operatorNotificationKeys.all,
+        (old = []) => old.filter((n) => n.id !== id),
+      )
+      const prevCount = queryClient.getQueryData<number>(operatorNotificationKeys.unreadCount) ?? 0
+      const removed = prev?.find((n) => n.id === id)
+      if (removed && !removed.read_at) {
+        queryClient.setQueryData(operatorNotificationKeys.unreadCount, Math.max(0, prevCount - 1))
+      }
+      return { prev, prevCount }
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(operatorNotificationKeys.all, ctx.prev)
+      if (ctx?.prevCount !== undefined) queryClient.setQueryData(operatorNotificationKeys.unreadCount, ctx.prevCount)
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: operatorNotificationKeys.all })
       void queryClient.invalidateQueries({ queryKey: operatorNotificationKeys.unreadCount })
     },
   })
 }
 
-/** Usuń wszystkie powiadomienia */
+/** Usuń wszystkie powiadomienia — optimistic update */
 export function useDeleteAllOperatorNotifications() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => operatorNotificationsApi.deleteAll(),
-    onSuccess: () => {
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: operatorNotificationKeys.all })
+      const prev = queryClient.getQueryData<OperatorNotification[]>(operatorNotificationKeys.all)
+      const prevCount = queryClient.getQueryData<number>(operatorNotificationKeys.unreadCount)
+      queryClient.setQueryData(operatorNotificationKeys.all, [])
+      queryClient.setQueryData(operatorNotificationKeys.unreadCount, 0)
+      return { prev, prevCount }
+    },
+    onError: (_err, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(operatorNotificationKeys.all, ctx.prev)
+      if (ctx?.prevCount !== undefined) queryClient.setQueryData(operatorNotificationKeys.unreadCount, ctx.prevCount)
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: operatorNotificationKeys.all })
       void queryClient.invalidateQueries({ queryKey: operatorNotificationKeys.unreadCount })
     },
