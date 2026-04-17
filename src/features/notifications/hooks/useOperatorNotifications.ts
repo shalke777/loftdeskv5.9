@@ -70,6 +70,30 @@ export function useMarkAllOperatorNotificationsRead() {
   })
 }
 
+/** Usuń pojedyncze powiadomienie */
+export function useDeleteOperatorNotification() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => operatorNotificationsApi.delete(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: operatorNotificationKeys.all })
+      void queryClient.invalidateQueries({ queryKey: operatorNotificationKeys.unreadCount })
+    },
+  })
+}
+
+/** Usuń wszystkie powiadomienia */
+export function useDeleteAllOperatorNotifications() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => operatorNotificationsApi.deleteAll(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: operatorNotificationKeys.all })
+      void queryClient.invalidateQueries({ queryKey: operatorNotificationKeys.unreadCount })
+    },
+  })
+}
+
 /** Suma nieprzeczytanych wiadomości w wątkach chatu (unread_count_operator) */
 export function useUnreadChatCount() {
   return useQuery<number>({

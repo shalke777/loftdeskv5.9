@@ -13,8 +13,10 @@
   Moon,
   Settings,
   Sun,
+  Trash2,
   Users,
   Wallet,
+  X,
 } from 'lucide-react'
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { Button } from '@/shared/ui/Button/Button'
@@ -28,6 +30,8 @@ import {
   useOperatorNotifications,
   useOperatorUnreadCount,
   useMarkAllOperatorNotificationsRead,
+  useDeleteOperatorNotification,
+  useDeleteAllOperatorNotifications,
   useUnreadChatCount,
 } from '@/features/notifications/hooks/useOperatorNotifications'
 import { useEffect, useRef, useState } from 'react'
@@ -83,6 +87,8 @@ export function AuthLayout() {
   const { data: unreadCount = 0 } = useOperatorUnreadCount()
   const { data: chatUnreadCount = 0 } = useUnreadChatCount()
   const markAllReadMutation = useMarkAllOperatorNotificationsRead()
+  const deleteNotifMutation = useDeleteOperatorNotification()
+  const deleteAllNotifMutation = useDeleteAllOperatorNotifications()
   function markAllRead() { markAllReadMutation.mutate() }
   const [showNotifications, setShowNotifications] = useState(false)
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null)
@@ -234,8 +240,20 @@ export function AuthLayout() {
                   maxHeight: `min(400px, calc(100dvh - ${dropdownPos.top + 8}px))`,
                   display: 'flex', flexDirection: 'column', overflow: 'hidden',
                 }}>
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 14, flexShrink: 0 }}>
-                    Powiadomienia
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 14, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>Powiadomienia</span>
+                    {notifications.length > 0 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteAllNotifMutation.mutate() }}
+                        title="Wyczyść wszystkie"
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', fontSize: 11, padding: '2px 4px', borderRadius: 4 }}
+                        onMouseEnter={e => e.currentTarget.style.color = 'var(--color-danger, #ef4444)'}
+                        onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-secondary)'}
+                      >
+                        <Trash2 size={13} />
+                        Wyczyść
+                      </button>
+                    )}
                   </div>
                   <div style={{ overflowY: 'auto', flex: 1 }}>
                   {notifications.length === 0 ? (
@@ -244,32 +262,53 @@ export function AuthLayout() {
                     </div>
                   ) : (
                     notifications.slice(0, 20).map((n) => (
-                      <button key={n.id} onClick={() => {
-                        setShowNotifications(false)
-                        navigate({ to: n.project_id ? `/projects/${n.project_id}` as any : '/projects' as any })
-                      }} style={{
-                        display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer',
-                        padding: '10px 16px', borderBottom: '1px solid var(--color-border)',
-                        background: n.read_at ? 'var(--color-card)' : 'var(--color-sidebar-active)',
-                        fontSize: 13, border: 'none',
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 600, fontSize: 12, color: n.type === 'client_approval_response' ? 'var(--color-success)' : n.type === 'missing_costs' ? 'var(--color-warning)' : 'var(--color-brand)' }}>
-                            {n.type === 'client_approval_response' ? '✅ Odpowiedź klienta' : n.type === 'missing_costs' ? '⚠ Brakujące koszty' : '💬 Wiadomość od klienta'}
-                          </span>
-                          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
-                            {new Date(n.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        {n.project_name && (
-                          <div style={{ marginTop: 3, fontWeight: 500, fontSize: 12, color: 'var(--color-text-primary)' }}>{n.project_name}</div>
-                        )}
-                        {n.body && (
-                          <div style={{ marginTop: 2, fontSize: 12, color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {n.body}
+                      <div key={n.id} style={{ position: 'relative', borderBottom: '1px solid var(--color-border)' }}>
+                        <button onClick={() => {
+                          setShowNotifications(false)
+                          if (n.project_id) {
+                            navigate({ to: `/projects/${n.project_id}` as any })
+                          }
+                          // if no project_id — just close, don't navigate to 404
+                        }} style={{
+                          display: 'block', width: '100%', textAlign: 'left', cursor: n.project_id ? 'pointer' : 'default',
+                          padding: '10px 40px 10px 16px',
+                          background: n.read_at ? 'var(--color-card)' : 'var(--color-sidebar-active)',
+                          fontSize: 13, border: 'none',
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 600, fontSize: 12, color: n.type === 'client_approval_response' ? 'var(--color-success)' : n.type === 'missing_costs' ? 'var(--color-warning)' : 'var(--color-brand)' }}>
+                              {n.type === 'client_approval_response' ? '✅ Odpowiedź klienta' : n.type === 'missing_costs' ? '⚠ Brakujące koszty' : '💬 Wiadomość od klienta'}
+                            </span>
+                            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                              {new Date(n.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
                           </div>
-                        )}
-                      </button>
+                          {n.project_name && (
+                            <div style={{ marginTop: 3, fontWeight: 500, fontSize: 12, color: 'var(--color-text-primary)' }}>{n.project_name}</div>
+                          )}
+                          {n.body && (
+                            <div style={{ marginTop: 2, fontSize: 12, color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {n.body}
+                            </div>
+                          )}
+                        </button>
+                        {/* Delete single notification */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteNotifMutation.mutate(n.id) }}
+                          title="Usuń powiadomienie"
+                          style={{
+                            position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 24, height: 24, borderRadius: 4, border: 'none',
+                            background: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)',
+                            opacity: 0.5,
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--color-danger, #ef4444)'; e.currentTarget.style.background = 'var(--color-surface-soft, rgba(0,0,0,0.06))' }}
+                          onMouseLeave={e => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = 'var(--color-text-secondary)'; e.currentTarget.style.background = 'none' }}
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
                     ))
                   )}
                   </div>

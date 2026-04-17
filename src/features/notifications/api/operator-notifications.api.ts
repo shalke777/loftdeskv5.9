@@ -73,4 +73,24 @@ export const operatorNotificationsApi = {
       .is('read_at', null)
     if (error) throw error
   },
+
+  /** Usuń pojedyncze powiadomienie */
+  async delete(id: string): Promise<void> {
+    if (!supabase || isDemoMode) return
+    const { error } = await supabase
+      .from('operator_notifications')
+      .delete()
+      .eq('id', id)
+    if (error) throw error
+  },
+
+  /** Usuń wszystkie powiadomienia (clear all) */
+  async deleteAll(): Promise<void> {
+    if (!supabase || isDemoMode) return
+    const { error } = await supabase
+      .from('operator_notifications')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000') // delete all rows visible to RLS
+    if (error) throw error
+  },
 }
