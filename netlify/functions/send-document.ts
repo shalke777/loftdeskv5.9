@@ -47,6 +47,13 @@ const DOC_LABEL_PL: Record<string, string> = {
   package:  'Pakiet dokumentów',
 }
 
+const DOC_ACCUSATIVE_PL: Record<string, string> = {
+  estimate: 'wycenę',
+  contract: 'umowę',
+  invoice:  'fakturę',
+  package:  'pakiet dokumentów',
+}
+
 export const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: HEADERS, body: '' }
   if (event.httpMethod !== 'POST')    return json(405, { ok: false, error: 'method_not_allowed' })
@@ -116,7 +123,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
   }
 
   const docLabel  = DOC_LABEL_PL[documentType] ?? 'Dokument'
-  const greeting  = `Przesyłamy ${docLabel.toLowerCase()}`
+  const greeting  = `Przesyłamy ${DOC_ACCUSATIVE_PL[documentType] ?? docLabel.toLowerCase()}`
   const msgBlock  = userMessage
     ? `<p style="font-size:14px;color:#374151;line-height:1.65;margin:0 0 20px">${userMessage.replace(/\n/g, '<br />')}</p>`
     : ''

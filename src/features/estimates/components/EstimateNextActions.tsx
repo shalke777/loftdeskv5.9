@@ -7,7 +7,7 @@
 // Jeśli ma project_id → przycisk "Wyślij klientowi" (email via send-document)
 //                      + przycisk "Otwórz chat z klientem".
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Send, MessageSquare, AlertTriangle } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/shared/ui/Button/Button'
@@ -18,6 +18,9 @@ import { translateError } from '@/shared/lib/errorMessages'
 import { threadsApi } from '@/features/projects/api/threads.api'
 import type { Estimate } from '@/entities/estimate/model'
 import { useClients } from '@/features/clients/hooks/useClients'
+import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
+import { buildEstimatePreview } from '@/services/pdf/documentPreview'
+import { getAppOrigin } from '@/shared/lib/native'
 import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
 
 // ─── Sub-komponenty ───────────────────────────────────────────────────────
@@ -53,7 +56,31 @@ export function EstimateNextActions({ estimate }: { estimate: Estimate }) {
   const toast = useToast()
   const navigate = useNavigate()
   const { data: clients = [] } = useClients()
+  const companyMeta = useCompanyMeta()
   const client = clients.find((c) => c.id === estimate.client_id)
+
+  const pdfHtml = useMemo(() => buildEstimatePreview(
+    estimate,
+    client ? {
+      name: client.name, address: client.address,
+      postalCity: `${client.postal_code || ''} ${client.city || ''}`.trim(),
+      nip: client.nip, email: client.email, phone: client.phone,
+    } : undefined,
+    {
+      name: companyMeta.name || user?.companyName,
+      nip: companyMeta.nip,
+      address: companyMeta.address,
+      postalCity: companyMeta.postalCity,
+      email: companyMeta.email || user?.email,
+      phone: companyMeta.phone,
+      bankAccount: companyMeta.bankAccount,
+      logoUrl: companyMeta.logoUrl,
+    },
+  ), [client, companyMeta, estimate, user?.companyName, user?.email])
+
+  const portalUrl = estimate.project_id
+    ? `${getAppOrigin()}/client/project/${estimate.project_id}`
+    : undefined
 
   const [sendOpen, setSendOpen] = useState(false)
 
@@ -140,6 +167,8 @@ export function EstimateNextActions({ estimate }: { estimate: Estimate }) {
       documentType="estimate"
       documentName={`${estimate.number} \u2013 ${estimate.name}`}
       defaultEmail={client?.email}
+      pdfHtml={pdfHtml}
+      portalUrl={portalUrl}
     />
     </>
   )
