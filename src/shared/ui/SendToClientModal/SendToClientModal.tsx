@@ -14,6 +14,7 @@ import { Modal } from '@/shared/ui/Modal/Modal'
 import { Button } from '@/shared/ui/Button/Button'
 import { supabase } from '@/shared/lib/supabase'
 import { useToast } from '@/shared/hooks/useToast'
+import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 
 import { netlifyFn } from '@/shared/lib/functions'
 
@@ -24,6 +25,20 @@ const DOC_LABEL: Record<string, string> = {
   contract: 'Umowa',
   invoice:  'Faktura',
   package:  'Pakiet dokumentów',
+}
+
+function buildDefaultMessage(companyName: string) {
+  const name = companyName.trim() || 'LoftDesk'
+  return `Dzień dobry,
+
+Serdecznie witamy i dziękujemy za zaufanie.
+
+W załączeniu przesyłamy przygotowany dokument do wglądu. Prosimy o zapoznanie się z jego treścią. W razie jakichkolwiek pytań lub potrzeby wyjaśnień pozostajemy do pełnej dyspozycji.
+
+Cieszymy się na możliwość współpracy i jesteśmy do Państwa dyspozycji na każdym etapie realizacji.
+
+Z wyrazami szacunku,
+Zespół ${name}`
 }
 
 interface Props {
@@ -41,6 +56,7 @@ interface Props {
 
 export function SendToClientModal({ open, onClose, documentType, documentName, defaultEmail, portalUrl, pdfHtml, docSummary }: Props) {
   const toast = useToast()
+  const companyMeta = useCompanyMeta()
   const [email,   setEmail]   = useState(defaultEmail ?? '')
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
@@ -48,15 +64,14 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
   useEffect(() => {
     if (open) {
       setEmail(defaultEmail ?? '')
-      // Pre-fill message for package sends with list of selected docs
       if (documentType === 'package' && docSummary && docSummary.length > 0) {
         setMessage(`W załączeniu przesyłam pakiet dokumentów projektu:\n${docSummary.map(n => `• ${n}`).join('\n')}`)
       } else {
-        setMessage('')
+        setMessage(buildDefaultMessage(companyMeta.name || ''))
       }
       setSending(false)
     }
-  }, [open, defaultEmail, documentType, docSummary])
+  }, [open, defaultEmail, documentType, docSummary, companyMeta.name])
 
   async function handleSend() {
     const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -177,7 +192,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
           <textarea
             id="stc-msg"
             className="input"
-            rows={3}
+            rows={8}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Dzień dobry, przesyłamy dokumenty do zapoznania..."
