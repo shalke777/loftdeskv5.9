@@ -71,6 +71,7 @@ export function useClientMessages(projectId: string) {
     queryFn:  () => clientPortalApi.listMessages(projectId),
     enabled:  Boolean(projectId),
     refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
     staleTime: 5_000,
   })
 }
@@ -133,6 +134,7 @@ export function useClientTimeline(projectId: string) {
     queryFn:  () => clientPortalApi.listTimelineEvents(projectId),
     enabled:  Boolean(projectId),
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
     staleTime: 10_000,
   })
 }
@@ -143,6 +145,7 @@ export function useClientDocSignatureRequests(projectId: string) {
     queryFn:  () => clientPortalApi.listDocSignatureRequests(projectId),
     enabled:  Boolean(projectId),
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
     staleTime: 15_000,
   })
 }

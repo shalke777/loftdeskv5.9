@@ -17,6 +17,7 @@ export function useClientNotifications() {
     queryFn:  () => clientNotificationsApi.list(),
     staleTime: 10_000,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 
@@ -27,6 +28,7 @@ export function useClientUnreadCount() {
     queryFn:  () => clientNotificationsApi.unreadCount(),
     staleTime: 10_000,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 

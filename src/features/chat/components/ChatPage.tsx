@@ -195,6 +195,7 @@ export function ChatPage() {
     queryFn:         () => threadsApi.listInboxThreads(companyId),
     staleTime:       20_000,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 
   const threads = useMemo<InboxThread[]>(() => {

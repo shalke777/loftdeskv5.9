@@ -34,7 +34,8 @@ export const projectsApi = {
   async list(companyId: string): Promise<Project[]> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.projects.list(companyId))
     const scope = await getDataScope(companyId)
-    const query = applyScope(supabase.from('projects').select('*').is('deleted_at', null).order('created_at', { ascending: false }), scope)
+    const cols = 'id, company_id, client_id, number, name, status, start_date, end_date, address, investment_address, notes, completeness_score, completeness_flags, archived_at, created_at'
+    const query = applyScope(supabase.from('projects').select(cols).is('deleted_at', null).order('created_at', { ascending: false }).limit(50), scope)
     const { data, error } = await query
     if (error) throw error
     return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, number: row.number, name: row.name, status: row.status, start_date: row.start_date, end_date: row.end_date, address: row.address ?? '', investment_address: row.investment_address ?? null, notes: row.notes ?? '', completeness_score: Number(row.completeness_score ?? 0), completeness_flags: row.completeness_flags ?? null, archived_at: row.archived_at ?? null, created_at: row.created_at }))

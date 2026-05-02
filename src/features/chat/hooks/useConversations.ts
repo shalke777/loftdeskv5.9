@@ -10,8 +10,8 @@ export function useConversations(companyId: string) {
     queryKey: CONVERSATIONS_KEY(companyId),
     queryFn: () => conversationsApi.list(companyId),
     enabled: Boolean(companyId),
-    refetchInterval: 15_000,
-    refetchIntervalInBackground: true,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 
@@ -20,8 +20,8 @@ export function useConversationMessages(conversationId: string | null) {
     queryKey: MESSAGES_KEY(conversationId ?? ''),
     queryFn: () => conversationsApi.getMessages(conversationId!),
     enabled: Boolean(conversationId),
-    refetchInterval: 8_000,
-    refetchIntervalInBackground: true,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 

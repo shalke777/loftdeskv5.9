@@ -45,6 +45,7 @@ export function useOperatorNotifications() {
     queryFn:  () => operatorNotificationsApi.list(),
     staleTime: 10_000,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 
@@ -55,6 +56,7 @@ export function useOperatorUnreadCount() {
     queryFn:  () => operatorNotificationsApi.unreadCount(),
     staleTime: 10_000,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 
@@ -139,5 +141,6 @@ export function useUnreadChatCount() {
     },
     staleTime: 10_000,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }

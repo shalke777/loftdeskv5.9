@@ -11,5 +11,6 @@ export function useProjectExpenses(projectId: string | null) {
     enabled:  Boolean(projectId),
     staleTime: 30_000,
     refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
   })
 }

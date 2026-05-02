@@ -21,6 +21,7 @@ export function useThreads(projectId: string | null) {
     staleTime: 30_000,
     // Polling fallback na wypadek gdy realtime jest niedostępny
     refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
   })
 
   // Supabase Realtime — nasłuchuje INSERT/UPDATE na project_threads dla projektu

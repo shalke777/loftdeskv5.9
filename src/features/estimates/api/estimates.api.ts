@@ -9,7 +9,8 @@ export const estimatesApi = {
   async list(companyId: string): Promise<Estimate[]> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.estimates.list(companyId))
     const scope = await getDataScope(companyId)
-    const query = applyScope(supabase.from('cost_estimates').select('*, items:cost_estimate_items(*)').order('created_at', { ascending: false }), scope)
+    const cols = 'id, company_id, client_id, project_id, number, name, status, estimate_type, total_net, total_gross, notes, valid_until, created_at, items:cost_estimate_items(id, name, description, unit, quantity, unit_price, vat_rate, sort_order, catalog_item_id)'
+    const query = applyScope(supabase.from('cost_estimates').select(cols).order('created_at', { ascending: false }).limit(50), scope)
     const { data, error } = await query
     if (error) throw error
     return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, project_id: row.project_id ?? null, number: row.number, name: row.name, status: row.status, estimate_type: (row.estimate_type ?? 'preliminary') as 'preliminary' | 'final', total_net: Number(row.total_net ?? 0), total_gross: Number(row.total_gross ?? 0), notes: row.notes ?? '', valid_until: row.valid_until ?? null, created_at: row.created_at, items: (row.items ?? []).map((item: any, index: number) => ({ id: item.id, name: item.name ?? item.description, description: item.description ?? '', unit: item.unit, quantity: Number(item.quantity), unit_price: Number(item.unit_price), vat_rate: Number(item.vat_rate ?? 23), sort_order: item.sort_order ?? index, catalog_item_id: item.catalog_item_id ?? null })) }))

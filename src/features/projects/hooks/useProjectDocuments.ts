@@ -81,6 +81,7 @@ export function useAssignmentQueue() {
     queryKey: ['assignment_queue', companyId],
     queryFn: () => projectDocumentsApi.getPendingForCompany(companyId),
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }
 

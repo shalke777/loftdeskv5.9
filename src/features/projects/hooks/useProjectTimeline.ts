@@ -12,5 +12,6 @@ export function useProjectTimeline(projectId: string | null) {
     enabled:         Boolean(projectId),
     staleTime:       15_000,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 }

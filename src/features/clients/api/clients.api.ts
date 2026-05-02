@@ -7,7 +7,8 @@ export const clientsApi = {
   async list(companyId: string): Promise<Client[]> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.clients.list(companyId))
     const scope = await getDataScope(companyId)
-    const query = applyScope(supabase.from('clients').select('*').order('created_at', { ascending: false }), scope)
+    const cols = 'id, company_id, name, email, phone, city, address, postal_code, nip, pesel, contact_person, created_at'
+    const query = applyScope(supabase.from('clients').select(cols).order('created_at', { ascending: false }).limit(50), scope)
     const { data, error } = await query
     if (error) throw error
     return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, name: row.name, email: row.email ?? '', phone: row.phone ?? '', city: row.city ?? row.address ?? '', address: row.address ?? '', postal_code: row.postal_code ?? '', nip: row.nip ?? '', pesel: row.pesel ?? '', contact_person: row.contact_person ?? '', created_at: row.created_at }))

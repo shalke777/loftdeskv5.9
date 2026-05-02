@@ -29,6 +29,7 @@ export function useThreadMessages(threadId: string | null) {
     staleTime: 10_000,
     // Polling fallback — rzadszy, bo realtime jest main channel
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 
   // Supabase Realtime — nowe wiadomości w wątku
