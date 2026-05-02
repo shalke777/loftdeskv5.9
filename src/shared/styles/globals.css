@@ -6019,7 +6019,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 /* ─── Causal event visualization (Phase 3C) ────────────────────────────────── */
 
-/* Highlighted cause event — applied via classList.add on hover, no re-render */
+/* Highlighted cause event — hover causedBy target */
 .ws-stream-item--highlighted {
   background: var(--color-accent-soft, rgba(99, 102, 241, 0.07));
   border-radius: 6px;
@@ -6036,6 +6036,34 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   flex-shrink: 0;
   line-height: 1;
   user-select: none;
+}
+
+/* ─── Cluster-aware click highlighting (Phase 3D) ───────────────────────────── */
+
+/* Clickable event rows */
+.ws-stream-clickable {
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+.ws-stream-clickable:hover {
+  background: var(--color-surface-soft, #f8f8f8);
+  border-radius: 4px;
+}
+
+/* Primary: events in the direct causal chain of the selected event */
+.ws-chain-highlight {
+  background: var(--color-accent-soft, rgba(99, 102, 241, 0.10)) !important;
+  border-radius: 6px;
+  outline: 1.5px solid var(--color-accent, #6366f1);
+  outline-offset: 1px;
+}
+
+/* Secondary: related events (descendants / siblings in cluster) */
+.ws-related-highlight {
+  background: var(--color-surface-soft, rgba(99, 102, 241, 0.04)) !important;
+  border-radius: 6px;
+  outline: 1px dashed var(--color-border, #d1d5db);
+  outline-offset: 1px;
 }
 
 @keyframes ws-shimmer {

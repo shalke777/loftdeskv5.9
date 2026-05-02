@@ -6,16 +6,24 @@
 // The hook returns a single sorted array; this component filters by type
 // to populate the three dedicated sections.
 //
-// Phase 3C — causal visualization:
+// Phase 3C — causal hover visualization:
 //   · Each event row carries data-stream-id for DOM targeting
 //   · ↳ indicator rendered inline when event.causedBy is set
 //   · Hover highlights the cause event via direct classList toggle (no re-render)
-//   · All logic scoped to the <aside> containerRef — no document-wide queries
+//   · All logic scoped to the <aside> containerRef
+//
+// Phase 3D — cluster-aware click highlighting:
+//   · Click computes getEventChain + getRelatedEvents (pure util, no fetch)
+//   · Chain events → .ws-chain-highlight (primary)
+//   · Related events → .ws-related-highlight (secondary)
+//   · Selection stored in ref only — zero React state changes on click
+//   · Click same event again → clears selection
 // =============================================================================
 
-import { useRef } from 'react'
+import { useRef, useCallback } from 'react'
 import { MessageSquare, CheckCircle2, Clock, ChevronRight } from 'lucide-react'
 import { getTimelineEventMeta } from '@/features/projects/lib/timelineMeta'
+import { getEventChain, getRelatedEvents } from '@/features/projects/lib/eventChain'
 import {
   useProjectEventStream,
   asThread,
@@ -24,7 +32,7 @@ import {
 } from '@/features/projects/hooks/useProjectEventStream'
 import type { ProjectStreamEvent, StreamEventType } from '@/features/projects/hooks/useProjectEventStream'
 
-// ─── Causal hover helpers (DOM-based, zero React state changes) ───────────────
+// ─── DOM helpers ──────────────────────────────────────────────────────────────
 
 const TYPE_PREFIX: Record<StreamEventType, string> = {
   timeline: 'tl',
@@ -32,29 +40,33 @@ const TYPE_PREFIX: Record<StreamEventType, string> = {
   approval: 'ap',
 }
 
-/** Returns the data-stream-id value for the causal parent, if any. */
 function causedByDomId(ev: ProjectStreamEvent): string | undefined {
   if (!ev.causedBy) return undefined
   return `${TYPE_PREFIX[ev.causedBy.type]}:${ev.causedBy.id}`
 }
 
-const HIGHLIGHT_CLASS = 'ws-stream-item--highlighted'
+// Hover highlight (Phase 3C)
+const HOVER_CLASS   = 'ws-stream-item--highlighted'
+// Cluster click highlights (Phase 3D)
+const CHAIN_CLASS   = 'ws-chain-highlight'
+const RELATED_CLASS = 'ws-related-highlight'
 
 function applyHighlight(container: HTMLElement | null, domId: string | undefined, add: boolean) {
   if (!container || !domId) return
-  const el = container.querySelector(`[data-stream-id="${CSS.escape(domId)}"]`)
-  el?.classList.toggle(HIGHLIGHT_CLASS, add)
+  container.querySelector(`[data-stream-id="${CSS.escape(domId)}"]`)?.classList.toggle(HOVER_CLASS, add)
 }
 
-// ─── Causal link badge ────────────────────────────────────────────────────────
+function clearClusterHighlights(container: HTMLElement) {
+  container.querySelectorAll(`.${CHAIN_CLASS}, .${RELATED_CLASS}`).forEach(el => {
+    el.classList.remove(CHAIN_CLASS, RELATED_CLASS)
+  })
+}
+
+// ─── Causal badge ─────────────────────────────────────────────────────────────
 
 function CausalBadge() {
   return (
-    <span
-      className="ws-causal-badge"
-      aria-label="powiązane zdarzenie"
-      title="To zdarzenie jest powiązane z innym"
-    >
+    <span className="ws-causal-badge" aria-label="powiązane zdarzenie" title="To zdarzenie jest powiązane z innym">
       ↳
     </span>
   )
@@ -69,19 +81,19 @@ function relTime(iso: string): string {
   if (m < 60) return `${m} min temu`
   const h = Math.floor(m / 60)
   if (h < 24) return `${h} godz. temu`
-  const d = Math.floor(h / 24)
-  return `${d} dni temu`
+  return `${Math.floor(h / 24)} dni temu`
 }
 
-// ─── Section: latest messages ─────────────────────────────────────────────────
+// ─── Section: messages ────────────────────────────────────────────────────────
 
 interface MessagesProps {
-  events:       ProjectStreamEvent[]
-  containerRef: React.RefObject<HTMLElement | null>
+  events:        ProjectStreamEvent[]
+  containerRef:  React.RefObject<HTMLElement | null>
+  onEventClick:  (id: string) => void
   onOpenThreads: () => void
 }
 
-function StreamMessages({ events, containerRef, onOpenThreads }: MessagesProps) {
+function StreamMessages({ events, containerRef, onEventClick, onOpenThreads }: MessagesProps) {
   const recentMsgs = events.filter(ev => ev.type === 'message').slice(0, 4)
 
   if (recentMsgs.length === 0) {
@@ -102,8 +114,9 @@ function StreamMessages({ events, containerRef, onOpenThreads }: MessagesProps) 
         return (
           <div
             key={ev.id}
-            className="ws-stream-msg"
+            className="ws-stream-msg ws-stream-clickable"
             data-stream-id={ev.id}
+            onClick={() => onEventClick(ev.id)}
             onMouseEnter={causeId ? () => applyHighlight(containerRef.current, causeId, true)  : undefined}
             onMouseLeave={causeId ? () => applyHighlight(containerRef.current, causeId, false) : undefined}
           >
@@ -125,15 +138,16 @@ function StreamMessages({ events, containerRef, onOpenThreads }: MessagesProps) 
   )
 }
 
-// ─── Section: pending approvals ───────────────────────────────────────────────
+// ─── Section: approvals ───────────────────────────────────────────────────────
 
 interface ApprovalsProps {
   events:          ProjectStreamEvent[]
   containerRef:    React.RefObject<HTMLElement | null>
+  onEventClick:    (id: string) => void
   onOpenApprovals: () => void
 }
 
-function StreamApprovals({ events, containerRef, onOpenApprovals }: ApprovalsProps) {
+function StreamApprovals({ events, containerRef, onEventClick, onOpenApprovals }: ApprovalsProps) {
   const pending = events.filter(ev => ev.type === 'approval' && asApproval(ev).status === 'pending_client')
 
   if (pending.length === 0) return null
@@ -148,8 +162,10 @@ function StreamApprovals({ events, containerRef, onOpenApprovals }: ApprovalsPro
           return (
             <div
               key={ev.id}
+              className="ws-stream-clickable"
               data-stream-id={ev.id}
               style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, alignItems: 'center' }}
+              onClick={() => onEventClick(ev.id)}
               onMouseEnter={causeId ? () => applyHighlight(containerRef.current, causeId, true)  : undefined}
               onMouseLeave={causeId ? () => applyHighlight(containerRef.current, causeId, false) : undefined}
             >
@@ -172,16 +188,17 @@ function StreamApprovals({ events, containerRef, onOpenApprovals }: ApprovalsPro
   )
 }
 
-// ─── Section: timeline events ─────────────────────────────────────────────────
+// ─── Section: timeline ────────────────────────────────────────────────────────
 
 interface TimelineProps {
   events:             ProjectStreamEvent[]
   containerRef:       React.RefObject<HTMLElement | null>
+  onEventClick:       (id: string) => void
   totalTimelineCount: number
   onOpenTimeline:     () => void
 }
 
-function StreamTimeline({ events, containerRef, totalTimelineCount, onOpenTimeline }: TimelineProps) {
+function StreamTimeline({ events, containerRef, onEventClick, totalTimelineCount, onOpenTimeline }: TimelineProps) {
   const recent = events.filter(ev => ev.type === 'timeline').slice(0, 8)
 
   return (
@@ -198,8 +215,9 @@ function StreamTimeline({ events, containerRef, totalTimelineCount, onOpenTimeli
           return (
             <div
               key={ev.id}
-              className="ws-timeline-item"
+              className="ws-timeline-item ws-stream-clickable"
               data-stream-id={ev.id}
+              onClick={() => onEventClick(ev.id)}
               onMouseEnter={causeId ? () => applyHighlight(containerRef.current, causeId, true)  : undefined}
               onMouseLeave={causeId ? () => applyHighlight(containerRef.current, causeId, false) : undefined}
             >
@@ -236,8 +254,42 @@ interface Props {
 
 export function WorkspaceActivityStream({ projectId, onOpenThreads, onOpenApprovals, onOpenTimeline }: Props) {
   const { events } = useProjectEventStream(projectId)
-  // Scoped container ref — all querySelector calls stay inside this <aside>
-  const containerRef = useRef<HTMLElement>(null)
+  const containerRef  = useRef<HTMLElement>(null)
+  const selectedRef   = useRef<string | null>(null)
+  // Always-fresh events ref — avoids stale closure without useCallback deps
+  const eventsRef     = useRef(events)
+  eventsRef.current   = events
+
+  // Stable click handler — reads eventsRef.current so never stale
+  const handleEventClick = useCallback((clickedId: string) => {
+    const container = containerRef.current
+    if (!container) return
+
+    // Clear any existing cluster highlights
+    clearClusterHighlights(container)
+
+    // Toggle: clicking the same event again deselects
+    if (selectedRef.current === clickedId) {
+      selectedRef.current = null
+      return
+    }
+    selectedRef.current = clickedId
+
+    const evs      = eventsRef.current
+    const chain    = getEventChain(clickedId, evs)
+    const related  = getRelatedEvents(clickedId, evs)
+    const chainIds = new Set(chain.map(e => e.id))
+
+    for (const ev of chain) {
+      container.querySelector(`[data-stream-id="${CSS.escape(ev.id)}"]`)?.classList.add(CHAIN_CLASS)
+    }
+    for (const ev of related) {
+      // Related-only (not already in chain) get the secondary class
+      if (!chainIds.has(ev.id)) {
+        container.querySelector(`[data-stream-id="${CSS.escape(ev.id)}"]`)?.classList.add(RELATED_CLASS)
+      }
+    }
+  }, []) // empty deps — intentional, reads via refs
 
   const timelineCount = events.filter(ev => ev.type === 'timeline').length
 
@@ -246,9 +298,9 @@ export function WorkspaceActivityStream({ projectId, onOpenThreads, onOpenApprov
       <div className="ws-stream-header">
         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>Aktywność</span>
       </div>
-      <StreamApprovals events={events} containerRef={containerRef} onOpenApprovals={onOpenApprovals} />
-      <StreamMessages  events={events} containerRef={containerRef} onOpenThreads={onOpenThreads}  />
-      <StreamTimeline  events={events} containerRef={containerRef} totalTimelineCount={timelineCount} onOpenTimeline={onOpenTimeline} />
+      <StreamApprovals events={events} containerRef={containerRef} onEventClick={handleEventClick} onOpenApprovals={onOpenApprovals} />
+      <StreamMessages  events={events} containerRef={containerRef} onEventClick={handleEventClick} onOpenThreads={onOpenThreads}  />
+      <StreamTimeline  events={events} containerRef={containerRef} onEventClick={handleEventClick} totalTimelineCount={timelineCount} onOpenTimeline={onOpenTimeline} />
     </aside>
   )
 }
