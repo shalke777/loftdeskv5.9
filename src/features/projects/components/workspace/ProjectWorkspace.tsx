@@ -11,7 +11,14 @@
 // =============================================================================
 
 import { useState } from 'react'
+// ─── Event Intelligence Layer feature flag ────────────────────────────────────
+// true  → useProjectEventStreamV2 (global event layer, Commit 3+)
+// false → original useProjectEventStream (safe rollback)
+// Set to false and redeploy to instantly revert to the previous event layer.
+const USE_GLOBAL_EVENTS = true
+// ─────────────────────────────────────────────────────────────────────────────
 import { WorkspaceSkeleton } from './WorkspaceSkeleton'
+
 import {
   CalendarCheck, FileDown, QrCode, ClipboardCheck, Loader2,
   ClipboardList, ArrowLeft, MoreHorizontal,
@@ -41,6 +48,9 @@ import { InvoiceForm } from '@/features/invoices/components/InvoiceModal/Invoice
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { supabase } from '@/shared/lib/supabase'
+import { useProjectEventStream } from '@/features/projects/hooks/useProjectEventStream'
+import { useProjectEventStreamV2 } from '@/features/events/core/useProjectEventStreamV2'
+import type { GlobalEvent } from '@/features/events/core/types'
 
 // ─── Type / constants ────────────────────────────────────────────────────────
 
@@ -120,10 +130,17 @@ export function ProjectWorkspace({ project, onEdit, onClose }: Props) {
   const { data: contracts = [], isLoading: contractsLoading } = useContracts()
   const { data: allInvoices = [], isLoading: invoicesLoading } = useInvoices()
 
-  if (!project) return null
+  // ─── Event stream (feature-flagged) ─────────────────────────────────────
+  // USE_GLOBAL_EVENTS=true  → Event Intelligence Layer (useProjectEventStreamV2)
+  // USE_GLOBAL_EVENTS=false → original per-hook stream (safe rollback)
+  // Both hooks respect null projectId by disabling their queries — safe before early return.
+  const streamV1 = useProjectEventStream(USE_GLOBAL_EVENTS ? null : (project?.id ?? null))
+  const streamV2 = useProjectEventStreamV2(USE_GLOBAL_EVENTS ? (project?.id ?? null) : null)
+  const activityEvents: GlobalEvent[] = USE_GLOBAL_EVENTS
+    ? streamV2.events
+    : (streamV1.events as unknown as GlobalEvent[])
 
-  // Show skeleton only when there is genuinely no data yet (first load).
-  // If data is already cached, React Query's isLoading stays false → no flash.
+  if (!project) return null
   const isHydrating = clientsLoading || estimatesLoading || contractsLoading || invoicesLoading
   if (isHydrating && !clients && !estimates.length && !contracts.length && !allInvoices.length) {
     return <WorkspaceSkeleton />
@@ -339,7 +356,7 @@ export function ProjectWorkspace({ project, onEdit, onClose }: Props) {
 
         {/* Right: activity stream */}
         <WorkspaceActivityStream
-          projectId={project.id}
+          events={activityEvents}
           onOpenThreads={() => {
             // Chat is removed from segment pills — open as modal-style or navigate
             // For now, we open the threads tab approach via the "Wątki" stream button
