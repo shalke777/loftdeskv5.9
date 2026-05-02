@@ -23,7 +23,9 @@
     "security:audit": "node scripts/security-audit.mjs",
     "db:apply": "node scripts/db-apply.mjs",
     "db:apply:dry": "node scripts/db-apply.mjs -- --dry-run",
-    "db:apply:seed": "node scripts/db-apply.mjs -- --seed"
+    "db:apply:seed": "node scripts/db-apply.mjs -- --seed",
+    "db:watch": "node scripts/db-watch.mjs",
+    "db:watch:dry": "node scripts/db-watch.mjs --dry-run"
   },
   "dependencies": {
     "@capacitor/app": "^8.0.1",
