@@ -42,11 +42,56 @@ export const invoicesApi = {
   async list(companyId: string): Promise<Invoice[]> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.invoices.list(companyId))
     const scope = await getDataScope(companyId)
-    const cols = 'id, company_id, client_id, project_id, contract_id, number, invoice_type, status, issue_date, sale_date, issue_place, due_date, payment_method, bank_account, tranche_id, advance_total, corrected_invoice_id, correction_reason, original_items, original_data, ksef_status, ksef_ref, notes, created_at, items:invoice_items(id, description, unit, quantity, unit_price, vat_rate, sort_order, tranche_label)'
+    // LIST endpoint: NO nested items (perf RULE: payload < 20KB, no nested *).
+    // Items are loaded lazily on-demand via invoicesApi.get(id) when row is expanded.
+    const cols = 'id, company_id, client_id, project_id, contract_id, number, invoice_type, status, issue_date, sale_date, issue_place, due_date, payment_method, bank_account, tranche_id, advance_total, corrected_invoice_id, correction_reason, total_net, total_gross, ksef_status, ksef_ref, notes, created_at'
     const query = applyScope(supabase.from('invoices').select(cols).order('created_at', { ascending: false }).limit(50), scope)
     const { data, error } = await query
     if (error) throw error
-    return (data ?? []).map((row: any) => { const items = (row.items ?? []).map((item: any, index: number) => ({ id: item.id, description: item.description, unit: item.unit, quantity: Number(item.quantity), unit_price: Number(item.unit_price), vat_rate: Number(item.vat_rate ?? 23), sort_order: item.sort_order ?? index, tranche_label: item.tranche_label ?? '' })); const totals = sumInvoiceItems(items); const originalItems = Array.isArray(row.original_items) ? row.original_items.map((item: any, index: number) => ({ id: item.id ?? String(index), description: item.description ?? '', unit: item.unit ?? 'szt', quantity: Number(item.quantity), unit_price: Number(item.unit_price), vat_rate: Number(item.vat_rate ?? 23), sort_order: item.sort_order ?? index, tranche_label: item.tranche_label ?? '' })) : null; const originalData = row.original_data && typeof row.original_data === 'object' && !Array.isArray(row.original_data) ? row.original_data as Record<string, string | null> : null; return { id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, project_id: row.project_id, contract_id: row.contract_id ?? null, number: row.number, invoice_type: row.invoice_type ?? 'standard', status: row.status, issue_date: row.issue_date, sale_date: row.sale_date ?? null, issue_place: row.issue_place ?? null, due_date: row.due_date, payment_method: row.payment_method ?? 'transfer', bank_account: row.bank_account ?? null, tranche_id: row.tranche_id ?? null, advance_total: row.advance_total ?? null, corrected_invoice_id: row.corrected_invoice_id ?? null, correction_reason: row.correction_reason ?? null, original_items: originalItems, original_data: originalData, total_net: totals.totalNet, total_gross: totals.totalGross, ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, notes: row.notes ?? '', created_at: row.created_at, items } })
+    return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, project_id: row.project_id, contract_id: row.contract_id ?? null, number: row.number, invoice_type: row.invoice_type ?? 'standard', status: row.status, issue_date: row.issue_date, sale_date: row.sale_date ?? null, issue_place: row.issue_place ?? null, due_date: row.due_date, payment_method: row.payment_method ?? 'transfer', bank_account: row.bank_account ?? null, tranche_id: row.tranche_id ?? null, advance_total: row.advance_total ?? null, corrected_invoice_id: row.corrected_invoice_id ?? null, correction_reason: row.correction_reason ?? null, original_items: null, original_data: null, total_net: Number(row.total_net ?? 0), total_gross: Number(row.total_gross ?? 0), ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, notes: row.notes ?? '', created_at: row.created_at, items: [] }))
+  },
+  async get(id: string, companyId: string): Promise<Invoice | null> {
+    if (isDemoMode || !supabase) {
+      const all = demoDb.invoices.list(companyId)
+      return Promise.resolve(all.find(i => i.id === id) ?? null)
+    }
+    const scope = await getDataScope(companyId)
+    const query = applyScope(supabase.from('invoices').select('*, items:invoice_items(id, description, unit, quantity, unit_price, vat_rate, sort_order, tranche_label)').eq('id', id), scope)
+    const { data, error } = await query.maybeSingle()
+    if (error) throw error
+    if (!data) return null
+    const row: any = data
+    const items = (row.items ?? []).map((item: any, index: number) => ({
+      id: item.id, description: item.description, unit: item.unit,
+      quantity: Number(item.quantity), unit_price: Number(item.unit_price),
+      vat_rate: Number(item.vat_rate ?? 23), sort_order: item.sort_order ?? index,
+      tranche_label: item.tranche_label ?? '',
+    }))
+    const totals = sumInvoiceItems(items)
+    const originalItems = Array.isArray(row.original_items)
+      ? row.original_items.map((item: any, index: number) => ({
+          id: item.id ?? String(index), description: item.description ?? '', unit: item.unit ?? 'szt',
+          quantity: Number(item.quantity), unit_price: Number(item.unit_price),
+          vat_rate: Number(item.vat_rate ?? 23), sort_order: item.sort_order ?? index,
+          tranche_label: item.tranche_label ?? '',
+        }))
+      : null
+    const originalData = row.original_data && typeof row.original_data === 'object' && !Array.isArray(row.original_data)
+      ? row.original_data as Record<string, string | null>
+      : null
+    return {
+      id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id,
+      project_id: row.project_id, contract_id: row.contract_id ?? null, number: row.number,
+      invoice_type: row.invoice_type ?? 'standard', status: row.status, issue_date: row.issue_date,
+      sale_date: row.sale_date ?? null, issue_place: row.issue_place ?? null, due_date: row.due_date,
+      payment_method: row.payment_method ?? 'transfer', bank_account: row.bank_account ?? null,
+      tranche_id: row.tranche_id ?? null, advance_total: row.advance_total ?? null,
+      corrected_invoice_id: row.corrected_invoice_id ?? null, correction_reason: row.correction_reason ?? null,
+      original_items: originalItems, original_data: originalData,
+      total_net: totals.totalNet, total_gross: totals.totalGross,
+      ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, notes: row.notes ?? '',
+      created_at: row.created_at, items,
+    }
   },
   async create(input: CreateInvoiceInput): Promise<Invoice> {
     if (isDemoMode || !supabase) { const totals = calcInvoiceTotals(input.items); return Promise.resolve(demoDb.invoices.create({ ...input, total_net: totals.totalNet, total_gross: totals.totalGross, ksef_status: 'ksef_pending', ksef_ref: null })) }

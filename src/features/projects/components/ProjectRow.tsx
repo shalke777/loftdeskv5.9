@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { ChevronDown, ChevronRight, Copy, Edit2, FileText, Trash2 } from 'lucide-react'
 import type { Project } from '@/entities/project/model'
 import { ProjectDetail } from '@/features/projects/components/ProjectDetail'
@@ -37,7 +37,7 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ProjectRow({
+export function ProjectRowImpl({
   project,
   clientName,
   onEdit,
@@ -159,3 +159,6 @@ export function ProjectRow({
     </div>
   )
 }
+
+export const ProjectRow = memo(ProjectRowImpl)
+

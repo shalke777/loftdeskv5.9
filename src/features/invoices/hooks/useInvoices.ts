@@ -8,6 +8,15 @@ import type { Invoice } from '@/entities/invoice/model'
 
 const invoiceKeys = { all: ['invoices'] as const, list: (companyId: string) => [...invoiceKeys.all, companyId] as const }
 export function useInvoices() { const companyId = useCompanyId(); return useQuery({ queryKey: invoiceKeys.list(companyId), queryFn: () => invoicesApi.list(companyId) }) }
+export function useInvoiceDetail(id: string | undefined, enabled = true) {
+  const companyId = useCompanyId()
+  return useQuery({
+    queryKey: ['invoices', 'detail', companyId, id],
+    queryFn: () => invoicesApi.get(id as string, companyId),
+    enabled: !!id && !!companyId && enabled,
+    staleTime: 30_000,
+  })
+}
 export function useCreateInvoice() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: invoicesApi.create, onSuccess: (data) => { qc.invalidateQueries({ queryKey: invoiceKeys.list(companyId) }); qc.invalidateQueries({ queryKey: ['dashboard', companyId] }); toast.success('Faktura utworzona'); if (data.project_id) qc.invalidateQueries({ queryKey: ['project_documents', data.project_id] }); autoLinkService.link({ type: 'invoice', id: data.id, companyId, clientId: data.client_id, projectId: data.project_id ?? null, sourceType: 'contract', sourceId: data.contract_id ?? null }).then(() => { if (data.project_id) qc.invalidateQueries({ queryKey: ['projects', companyId] }) }).catch((err) => console.warn('[autoLink] invoice link failed:', err)) }, onError: (error) => toast.error('Nie udało się utworzyć faktury', translateError(error)) }) }
 export function useUpdateInvoice() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: ({ id, input }: { id: string; input: Partial<Invoice> }) => invoicesApi.update(id, input, companyId), onSuccess: () => { qc.invalidateQueries({ queryKey: invoiceKeys.list(companyId) }); toast.success('Faktura zaktualizowana') }, onError: (error) => toast.error('Nie udało się zaktualizować faktury', translateError(error)) }) }
 export function useDeleteInvoice() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: (id: string) => invoicesApi.delete(id, companyId), onSuccess: () => { qc.invalidateQueries({ queryKey: invoiceKeys.list(companyId) }); qc.invalidateQueries({ queryKey: ['dashboard', companyId] }); qc.invalidateQueries({ queryKey: ['project_documents'] }); toast.info('Faktura usunięta') }, onError: (error) => toast.error('Nie udało się usunąć faktury', translateError(error)) }) }

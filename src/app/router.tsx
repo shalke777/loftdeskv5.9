@@ -3,8 +3,6 @@ import { RootDocument, RootErrorFallback } from '@/app/routes/__root'
 import { AuthLayout } from '@/app/routes/_auth'
 import { PublicLayout } from '@/app/routes/_public'
 import { AuthScreen } from '@/features/auth/components/AuthScreen'
-import { LandingRoutePage } from '@/app/routes/index'
-import { DashboardRoutePage } from '@/app/routes/dashboard'
 
 
 const rootRoute = createRootRoute({ component: RootDocument, errorComponent: RootErrorFallback })
@@ -13,7 +11,7 @@ const loginRoute = createRoute({ getParentRoute: () => rootRoute, path: 'login',
 const authLayoutRoute = createRoute({ getParentRoute: () => rootRoute, id: '_auth', component: AuthLayout })
 const publicLayoutRoute = createRoute({ getParentRoute: () => rootRoute, id: '_public', component: PublicLayout })
 
-const landingRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: '/', component: LandingRoutePage })
+const landingRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: '/', component: lazyRouteComponent(() => import('@/app/routes/index'), 'LandingRoutePage') })
 const portalRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'portal/$token', component: lazyRouteComponent(() => import('@/app/routes/portal/$token'), 'PortalTokenRoutePage') })
 const joinRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'join/$token', component: lazyRouteComponent(() => import('@/app/routes/join.$token'), 'JoinInvitationRoutePage') })
 const colorDemoRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'color-demo', component: lazyRouteComponent(() => import('@/app/routes/color-demo'), 'ColorDemoRoutePage') })
@@ -21,7 +19,7 @@ const authCallbackRoute = createRoute({ getParentRoute: () => publicLayoutRoute,
 const legalIndexRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'legal', component: lazyRouteComponent(() => import('@/app/routes/legal'), 'LegalIndexRoutePage') })
 const legalDocRoute = createRoute({ getParentRoute: () => publicLayoutRoute, path: 'legal/$doc', component: lazyRouteComponent(() => import('@/app/routes/legal'), 'LegalDocRoutePage') })
 
-const dashboardRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'dashboard', component: DashboardRoutePage })
+const dashboardRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'dashboard', component: lazyRouteComponent(() => import('@/app/routes/dashboard'), 'DashboardRoutePage') })
 const clientsRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'clients', component: lazyRouteComponent(() => import('@/app/routes/clients'), 'ClientsRoutePage') })
 const estimatesRoute = createRoute({
   getParentRoute: () => authLayoutRoute,

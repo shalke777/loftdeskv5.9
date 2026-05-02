@@ -9,6 +9,7 @@ import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useCreateCorrection, useCreateInvoice, useDeleteInvoice, useFinalizeInvoice, useInvoices, useMarkInvoicePaid, useSendInvoiceToKsef, useUpdateInvoice } from '@/features/invoices/hooks/useInvoices'
 import { InvoiceRow } from '@/features/invoices/components/InvoiceRow'
+import { VirtualList } from '@/shared/ui/VirtualList/VirtualList'
 import { InvoiceForm } from '@/features/invoices/components/InvoiceModal/InvoiceForm'
 import { InvoiceImportModal } from '@/features/invoices/components/InvoiceImportModal'
 import { useCan } from '@/features/auth/hooks/usePermissions'
@@ -121,8 +122,12 @@ export function InvoicesPage() {
             : undefined}
         />
       ) : (
-        <div className="proj-list">
-          {visible.map(invoice => (
+        <VirtualList
+          className="proj-list"
+          items={visible}
+          getKey={(invoice) => invoice.id}
+          estimateSize={140}
+          renderItem={(invoice) => (
             <InvoiceRow
               key={invoice.id}
               invoice={invoice}
@@ -137,8 +142,8 @@ export function InvoicesPage() {
               canMarkPaid={canMarkPaid}
               canSendToKsef={canSendToKsef}
             />
-          ))}
-        </div>
+          )}
+        />
       )}
 
       {canCreate && (

@@ -17,6 +17,7 @@ import {
   useUpdateProjectStatus,
 } from '@/features/projects/hooks/useProjects'
 import { ProjectRow } from '@/features/projects/components/ProjectRow'
+import { VirtualList } from '@/shared/ui/VirtualList/VirtualList'
 import { AssignmentQueueBanner } from '@/features/projects/components/AssignmentQueueBanner'
 import { ProjectForm } from '@/features/projects/components/ProjectModal/ProjectForm'
 import { ProjectTemplatePicker } from '@/features/projects/components/ProjectModal/ProjectTemplatePicker'
@@ -166,8 +167,12 @@ export function ProjectsPage() {
           }
         />
       ) : (
-        <div className="proj-list">
-          {visible.map((project) => (
+        <VirtualList
+          className="proj-list"
+          items={visible}
+          getKey={(project) => project.id}
+          estimateSize={140}
+          renderItem={(project) => (
             <ProjectRow
               key={project.id}
               project={project}
@@ -180,8 +185,8 @@ export function ProjectsPage() {
               canAdvance={canUpdateStatus}
               canDelete={canDelete}
             />
-          ))}
-        </div>
+          )}
+        />
       )}
 
       {/* Add / edit modal */}

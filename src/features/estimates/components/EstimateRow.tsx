@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, ClipboardCheck, Edit2, FileText, Mail, Trash2 } from 'lucide-react'
 import type { Estimate } from '@/entities/estimate/model'
 import { Button } from '@/shared/ui/Button/Button'
@@ -13,6 +13,7 @@ import { SendToApprovalModal } from '@/features/signatures/components/SendToAppr
 import { SignatureStatusBadge } from '@/features/signatures/components/SignatureStatusBadge'
 import { ApprovalEventList } from '@/features/signatures/components/ApprovalEventList'
 import { useSignatureRequestsForDocumentWithParts } from '@/features/signatures/hooks/useSignatureRequests'
+import { useEstimateDetail } from '@/features/estimates/hooks/useEstimates'
 import { EstimateNextActions } from './EstimateNextActions'
 import { getAppOrigin } from '@/shared/lib/native'
 
@@ -35,7 +36,7 @@ interface Props {
   onCreateContract?: (id: string) => void
 }
 
-export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelete, onCreateContract }: Props) {
+export function EstimateRowImpl({ estimate, clientName, projectName, onEdit, onDelete, onCreateContract }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -47,12 +48,18 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
   const companyMeta = useCompanyMeta()
   const { data: sigReqs } = useSignatureRequestsForDocumentWithParts('estimate', estimate.id)
 
+  // Lazy detail fetch: items are NOT in the LIST payload anymore.
+  // Fetch full estimate (with items) only when user actually needs them.
+  const needsDetail = expanded || previewOpen || sendOpen || approvalOpen
+  const { data: detail } = useEstimateDetail(estimate.id, needsDetail)
+  const fullEstimate = detail ?? estimate
+
   const client = clients.find(c => c.id === estimate.client_id)
 
   const tabs = useMemo(() => [{
     key: 'pdf', label: 'Podgląd PDF', type: 'html' as const,
     content: buildEstimatePreview(
-      estimate,
+      fullEstimate,
       client ? {
         name: client.name, address: client.address,
         postalCity: `${client.postal_code || ''} ${client.city || ''}`.trim(),
@@ -65,7 +72,7 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
         bankAccount: companyMeta.bankAccount, logoUrl: companyMeta.logoUrl,
       },
     ),
-  }], [client, companyMeta, estimate, user?.companyName, user?.email])
+  }], [client, companyMeta, fullEstimate, user?.companyName, user?.email])
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation()
@@ -148,13 +155,13 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
 
       {expanded && (
         <div className="proj-row__detail">
-          {estimate.items.length > 0 && (
+          {fullEstimate.items.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 8 }}>
-                Pozycje ({estimate.items.length})
+                Pozycje ({fullEstimate.items.length})
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {estimate.items.map(item => (
+                {fullEstimate.items.map(item => (
                   <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, gap: 16 }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                       {item.name}
@@ -219,7 +226,7 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
           name: estimate.name,
           total_gross: estimate.total_gross,
           valid_until: estimate.valid_until ?? null,
-          items: estimate.items.map(i => ({
+          items: fullEstimate.items.map(i => ({
             id: i.id, name: i.name, quantity: i.quantity,
             unit: i.unit, unit_price: i.unit_price, vat_rate: i.vat_rate,
           })),
@@ -231,3 +238,5 @@ export function EstimateRow({ estimate, clientName, projectName, onEdit, onDelet
     </div>
   )
 }
+
+export const EstimateRow = memo(EstimateRowImpl)

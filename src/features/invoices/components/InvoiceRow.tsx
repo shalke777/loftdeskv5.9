@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, CheckCircle, Edit2, FileText, FileMinus, Mail, Trash2, Bell, Download } from 'lucide-react'
 import type { Invoice } from '@/entities/invoice/model'
 import { Button } from '@/shared/ui/Button/Button'
@@ -8,6 +8,7 @@ import { formatCurrency } from '@/shared/lib/formatters'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
+import { useInvoiceDetail } from '@/features/invoices/hooks/useInvoices'
 import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
 import { getAppOrigin } from '@/shared/lib/native'
 import { downloadBlob } from '@/shared/lib/downloads'
@@ -49,18 +50,23 @@ interface Props {
   canSendToKsef?: boolean
 }
 
-export function InvoiceRow({
-  invoice, clientName,
+export function InvoiceRowImpl({
+  invoice: invoiceProp, clientName,
   onEdit, onDelete, onMarkPaid, onSendToKsef, onFinalize, onCreateCorrection,
   canDelete = true, canMarkPaid = true, canSendToKsef = true,
 }: Props) {
-  const isDraft = invoice.status === 'draft'
-  const isCorrection = invoice.invoice_type === 'correction'
+  const isDraft = invoiceProp.status === 'draft'
+  const isCorrection = invoiceProp.invoice_type === 'correction'
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
+
+  // Lazy detail fetch: items are NOT in the LIST payload anymore.
+  const needsDetail = expanded || previewOpen || sendOpen || downloadingPdf
+  const { data: detail } = useInvoiceDetail(invoiceProp.id, needsDetail)
+  const invoice = detail ?? invoiceProp
 
   // Compute days overdue from due_date (client-side, for display only)
   const daysOverdue = useMemo(() => {
@@ -392,3 +398,5 @@ export function InvoiceRow({
     </div>
   )
 }
+
+export const InvoiceRow = memo(InvoiceRowImpl)

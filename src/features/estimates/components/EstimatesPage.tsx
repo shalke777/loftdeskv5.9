@@ -11,6 +11,7 @@ import { Spinner } from '@/shared/ui/Spinner/Spinner'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import { QueryError } from '@/shared/ui/QueryError/QueryError'
 import { EstimateRow } from '@/features/estimates/components/EstimateRow'
+import { VirtualList } from '@/shared/ui/VirtualList/VirtualList'
 import { EstimateForm, clearDraft as clearEstimateDraft } from '@/features/estimates/components/EstimateModal/EstimateForm'
 import { useEstimateToContract } from '@/workflows/estimate-to-contract/useEstimateToContract'
 import { useCan } from '@/features/auth/hooks/usePermissions'
@@ -118,8 +119,12 @@ export function EstimatesPage() {
             : undefined}
         />
       ) : (
-        <div className="proj-list">
-          {visible.map(estimate => (
+        <VirtualList
+          className="proj-list"
+          items={visible}
+          getKey={(estimate) => estimate.id}
+          estimateSize={120}
+          renderItem={(estimate) => (
             <EstimateRow
               key={estimate.id}
               estimate={estimate}
@@ -129,8 +134,8 @@ export function EstimatesPage() {
               onDelete={canDelete ? id => deleteEstimate.mutate(id) : undefined}
               onCreateContract={canConvert ? id => estimateToContract.mutate(id) : undefined}
             />
-          ))}
-        </div>
+          )}
+        />
       )}
 
       {canCreate && (
