@@ -1,7 +1,7 @@
 import { memo, useState } from 'react'
 import { ChevronDown, ChevronRight, Copy, Edit2, FileText, Trash2 } from 'lucide-react'
 import type { Project } from '@/entities/project/model'
-import { ProjectDetail } from '@/features/projects/components/ProjectDetail'
+import { ProjectWorkspace } from '@/features/projects/components/workspace/ProjectWorkspace'
 import { ProjectCompleteness } from '@/features/projects/components/ProjectCompleteness'
 import { QuickPhotoButton } from '@/features/projects/components/QuickPhotoButton'
 
@@ -147,12 +147,13 @@ export function ProjectRowImpl({
         </div>
       </div>
 
-      {/* ── Expanded detail ──────────────────────────────────────────────── */}
+      {/* ── Expanded workspace ───────────────────────────────────────────── */}
       {expanded && (
         <div className="proj-row__detail">
-          <ProjectDetail
+          <ProjectWorkspace
             project={project}
-            onCreateInvoice={onCreateInvoice}
+            onEdit={onEdit}
+            onClose={() => setExpanded(false)}
           />
         </div>
       )}
