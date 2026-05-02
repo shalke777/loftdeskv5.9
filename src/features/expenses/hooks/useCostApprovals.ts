@@ -1,23 +1,47 @@
-import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { costApprovalsApi } from '@/features/expenses/api/cost-approvals.api'
 import { useCompanyId } from '@/features/auth'
+import { supabase, isDemoMode } from '@/shared/lib/supabase'
 import type { CostApproval } from '@/features/expenses/api/cost-approvals.api'
 
 export type { CostApproval }
 
 /**
  * Lists all cost approvals for a project (operator view).
- * Refetches every 30 seconds to pick up client responses.
+ * Realtime primary — client responses arrive instantly.
+ * Slow polling fallback only in case Realtime channel drops.
  */
 export function useCostApprovals(projectId: string | null) {
-  const companyId = useCompanyId()
+  const companyId   = useCompanyId()
+  const queryClient = useQueryClient()
+  const queryKey    = ['cost-approvals', projectId, companyId] as const
+
+  // Realtime: client accepted/declined → refresh approval list immediately
+  useEffect(() => {
+    if (!projectId || !supabase || isDemoMode) return
+    const channel = supabase
+      .channel(`cost-approvals:${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event:  '*',
+          schema: 'public',
+          table:  'cost_approvals',
+          filter: `project_id=eq.${projectId}`,
+        },
+        () => { void queryClient.invalidateQueries({ queryKey }) },
+      )
+      .subscribe()
+    return () => { void supabase?.removeChannel(channel) }
+  }, [projectId, queryClient]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return useQuery<CostApproval[]>({
-    queryKey:      ['cost-approvals', projectId, companyId],
+    queryKey,
     queryFn:       () => costApprovalsApi.listForProject(projectId!, companyId),
     enabled:       Boolean(projectId),
-    staleTime:     15_000,
-    refetchInterval: 30_000,
+    staleTime:     30_000,
+    refetchInterval: 120_000,
     refetchIntervalInBackground: false,
   })
 }
