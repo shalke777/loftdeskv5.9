@@ -20,7 +20,10 @@
     "post:release:audit": "node scripts/post-release-audit.mjs",
     "test:e2e": "npx playwright test",
     "test:e2e:ui": "npx playwright test --ui",
-    "security:audit": "node scripts/security-audit.mjs"
+    "security:audit": "node scripts/security-audit.mjs",
+    "db:apply": "node scripts/db-apply.mjs",
+    "db:apply:dry": "node scripts/db-apply.mjs -- --dry-run",
+    "db:apply:seed": "node scripts/db-apply.mjs -- --seed"
   },
   "dependencies": {
     "@capacitor/app": "^8.0.1",
