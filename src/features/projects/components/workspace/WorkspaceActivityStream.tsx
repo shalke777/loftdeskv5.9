@@ -2,22 +2,12 @@
 // WorkspaceActivityStream — right fixed panel in Project Workspace
 // Live messages · Pending approvals · Recent timeline events
 //
-// Data layer: all three sources are merged via useProjectEventStream.
-// The hook returns a single sorted array; this component filters by type
-// to populate the three dedicated sections.
-//
-// Phase 3C — causal hover visualization:
-//   · Each event row carries data-stream-id for DOM targeting
-//   · ↳ indicator rendered inline when event.causedBy is set
-//   · Hover highlights the cause event via direct classList toggle (no re-render)
-//   · All logic scoped to the <aside> containerRef
-//
-// Phase 3D — cluster-aware click highlighting:
-//   · Click computes getEventChain + getRelatedEvents (pure util, no fetch)
-//   · Chain events → .ws-chain-highlight (primary)
-//   · Related events → .ws-related-highlight (secondary)
-//   · Selection stored in ref only — zero React state changes on click
-//   · Click same event again → clears selection
+// Phase 3C — causal hover: ↳ badge + highlighted causedBy target
+// Phase 3D — cluster click: chain + related CSS highlighting
+// Phase 3E — Figma Dev Mode overlay:
+//   · SVG line overlay connecting chain / related events
+//   · Hover dims non-cluster events + shows relational tooltip
+//   · All interaction via DOM refs — zero React state / re-renders
 // =============================================================================
 
 import { useRef, useCallback } from 'react'
@@ -32,6 +22,13 @@ import {
 } from '@/features/projects/hooks/useProjectEventStream'
 import type { ProjectStreamEvent, StreamEventType } from '@/features/projects/hooks/useProjectEventStream'
 
+// ─── CSS class constants ──────────────────────────────────────────────────────
+
+const CHAIN_CLASS   = 'ws-chain-highlight'
+const RELATED_CLASS = 'ws-related-highlight'
+const HOVERED_CLASS = 'ws-stream-item--hovered'
+const DIMMED_CLASS  = 'ws-stream-item--dimmed'
+
 // ─── DOM helpers ──────────────────────────────────────────────────────────────
 
 const TYPE_PREFIX: Record<StreamEventType, string> = {
@@ -45,21 +42,123 @@ function causedByDomId(ev: ProjectStreamEvent): string | undefined {
   return `${TYPE_PREFIX[ev.causedBy.type]}:${ev.causedBy.id}`
 }
 
-// Hover highlight (Phase 3C)
-const HOVER_CLASS   = 'ws-stream-item--highlighted'
-// Cluster click highlights (Phase 3D)
-const CHAIN_CLASS   = 'ws-chain-highlight'
-const RELATED_CLASS = 'ws-related-highlight'
+function getItemEl(container: HTMLElement, streamId: string): Element | null {
+  return container.querySelector(`[data-stream-id="${CSS.escape(streamId)}"]`)
+}
 
-function applyHighlight(container: HTMLElement | null, domId: string | undefined, add: boolean) {
-  if (!container || !domId) return
-  container.querySelector(`[data-stream-id="${CSS.escape(domId)}"]`)?.classList.toggle(HOVER_CLASS, add)
+function getAllItemEls(container: HTMLElement): NodeListOf<Element> {
+  return container.querySelectorAll('[data-stream-id]')
 }
 
 function clearClusterHighlights(container: HTMLElement) {
-  container.querySelectorAll(`.${CHAIN_CLASS}, .${RELATED_CLASS}`).forEach(el => {
-    el.classList.remove(CHAIN_CLASS, RELATED_CLASS)
-  })
+  container.querySelectorAll(`.${CHAIN_CLASS},.${RELATED_CLASS}`)
+    .forEach(el => el.classList.remove(CHAIN_CLASS, RELATED_CLASS))
+}
+
+// ─── SVG overlay engine ───────────────────────────────────────────────────────
+
+/**
+ * Returns the center of a stream-item node in ws-graph-root coordinate space.
+ * getBoundingClientRect subtraction is scroll-independent: both rects share
+ * the same scroll offset, so the difference is always relative to the container.
+ */
+function getNodeCenter(
+  container: HTMLElement,
+  streamId: string,
+): { x: number; y: number } | null {
+  const el = getItemEl(container, streamId)
+  if (!el) return null
+  const er = el.getBoundingClientRect()
+  const cr = container.getBoundingClientRect()
+  return { x: er.left - cr.left + er.width / 2, y: er.top - cr.top + er.height / 2 }
+}
+
+function renderSvgLines(
+  svg:        SVGSVGElement,
+  container:  HTMLElement,
+  selectedId: string,
+  chain:      ProjectStreamEvent[],
+  related:    ProjectStreamEvent[],
+  chainIds:   Set<string>,
+) {
+  // Size SVG to cover the full content height (not just viewport)
+  svg.setAttribute('width',  String(container.offsetWidth))
+  svg.setAttribute('height', String(container.scrollHeight))
+
+  const from = getNodeCenter(container, selectedId)
+  if (!from) { svg.innerHTML = ''; return }
+
+  const parts: string[] = []
+
+  for (const ev of chain) {
+    if (ev.id === selectedId) continue
+    const to = getNodeCenter(container, ev.id)
+    if (!to) continue
+    parts.push(
+      `<line x1="${from.x.toFixed(1)}" y1="${from.y.toFixed(1)}" ` +
+      `x2="${to.x.toFixed(1)}" y2="${to.y.toFixed(1)}" ` +
+      `stroke="#1a5c32" stroke-width="2" stroke-opacity="0.75" stroke-linecap="round"/>`,
+    )
+  }
+
+  for (const ev of related) {
+    if (chainIds.has(ev.id)) continue
+    const to = getNodeCenter(container, ev.id)
+    if (!to) continue
+    parts.push(
+      `<line x1="${from.x.toFixed(1)}" y1="${from.y.toFixed(1)}" ` +
+      `x2="${to.x.toFixed(1)}" y2="${to.y.toFixed(1)}" ` +
+      `stroke="rgba(26,92,50,0.25)" stroke-width="1" stroke-dasharray="3 3" stroke-linecap="round"/>`,
+    )
+  }
+
+  svg.innerHTML = parts.join('')
+}
+
+function clearSvg(svg: SVGSVGElement) {
+  svg.innerHTML = ''
+}
+
+// ─── Tooltip engine ───────────────────────────────────────────────────────────
+
+const TYPE_LABEL: Record<StreamEventType, string> = {
+  timeline: 'Zdarzenie',
+  message:  'Wiadomość',
+  approval: 'Akceptacja',
+}
+
+function showTooltip(
+  tooltip:      HTMLDivElement,
+  container:    HTMLElement,
+  ev:           ProjectStreamEvent,
+  chainDepth:   number,
+  relatedCount: number,
+) {
+  const el = getItemEl(container, ev.id)
+  if (!el) return
+
+  const er      = el.getBoundingClientRect()
+  const cr      = container.getBoundingClientRect()
+  const relTop  = Math.max(4, er.top - cr.top)
+
+  const causeRow = ev.causedBy
+    ? `<div class="ws-gtt-cause">↳&nbsp;${TYPE_LABEL[ev.causedBy.type]}</div>`
+    : ''
+
+  tooltip.innerHTML =
+    `<div class="ws-gtt-type">${TYPE_LABEL[ev.type]}</div>` +
+    causeRow +
+    `<div class="ws-gtt-row"><span>Łańcuch</span><b>${chainDepth}</b></div>` +
+    `<div class="ws-gtt-row"><span>Powiązane</span><b>${relatedCount}</b></div>`
+
+  // Pin to left edge of container at element's vertical midpoint
+  tooltip.style.top     = `${relTop}px`
+  tooltip.style.left    = '4px'
+  tooltip.style.display = 'block'
+}
+
+function hideTooltip(tooltip: HTMLDivElement) {
+  tooltip.style.display = 'none'
 }
 
 // ─── Causal badge ─────────────────────────────────────────────────────────────
@@ -84,16 +183,22 @@ function relTime(iso: string): string {
   return `${Math.floor(h / 24)} dni temu`
 }
 
+// ─── Section interaction interface ───────────────────────────────────────────
+
+interface SectionInteraction {
+  onEventHover:    (id: string) => void
+  onEventHoverEnd: (id: string) => void
+  onEventClick:    (id: string) => void
+}
+
 // ─── Section: messages ────────────────────────────────────────────────────────
 
-interface MessagesProps {
+interface MessagesProps extends SectionInteraction {
   events:        ProjectStreamEvent[]
-  containerRef:  React.RefObject<HTMLElement | null>
-  onEventClick:  (id: string) => void
   onOpenThreads: () => void
 }
 
-function StreamMessages({ events, containerRef, onEventClick, onOpenThreads }: MessagesProps) {
+function StreamMessages({ events, onEventHover, onEventHoverEnd, onEventClick, onOpenThreads }: MessagesProps) {
   const recentMsgs = events.filter(ev => ev.type === 'message').slice(0, 4)
 
   if (recentMsgs.length === 0) {
@@ -117,8 +222,8 @@ function StreamMessages({ events, containerRef, onEventClick, onOpenThreads }: M
             className="ws-stream-msg ws-stream-clickable"
             data-stream-id={ev.id}
             onClick={() => onEventClick(ev.id)}
-            onMouseEnter={causeId ? () => applyHighlight(containerRef.current, causeId, true)  : undefined}
-            onMouseLeave={causeId ? () => applyHighlight(containerRef.current, causeId, false) : undefined}
+            onMouseEnter={() => onEventHover(ev.id)}
+            onMouseLeave={() => onEventHoverEnd(ev.id)}
           >
             <div className="ws-avatar-xs">{(thread.title ?? '?').charAt(0).toUpperCase()}</div>
             <div style={{ minWidth: 0, flex: 1 }}>
@@ -140,14 +245,12 @@ function StreamMessages({ events, containerRef, onEventClick, onOpenThreads }: M
 
 // ─── Section: approvals ───────────────────────────────────────────────────────
 
-interface ApprovalsProps {
+interface ApprovalsProps extends SectionInteraction {
   events:          ProjectStreamEvent[]
-  containerRef:    React.RefObject<HTMLElement | null>
-  onEventClick:    (id: string) => void
   onOpenApprovals: () => void
 }
 
-function StreamApprovals({ events, containerRef, onEventClick, onOpenApprovals }: ApprovalsProps) {
+function StreamApprovals({ events, onEventHover, onEventHoverEnd, onEventClick, onOpenApprovals }: ApprovalsProps) {
   const pending = events.filter(ev => ev.type === 'approval' && asApproval(ev).status === 'pending_client')
 
   if (pending.length === 0) return null
@@ -166,8 +269,8 @@ function StreamApprovals({ events, containerRef, onEventClick, onOpenApprovals }
               data-stream-id={ev.id}
               style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, alignItems: 'center' }}
               onClick={() => onEventClick(ev.id)}
-              onMouseEnter={causeId ? () => applyHighlight(containerRef.current, causeId, true)  : undefined}
-              onMouseLeave={causeId ? () => applyHighlight(containerRef.current, causeId, false) : undefined}
+              onMouseEnter={() => onEventHover(ev.id)}
+              onMouseLeave={() => onEventHoverEnd(ev.id)}
             >
               <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                 {causeId && <CausalBadge />}
@@ -190,15 +293,13 @@ function StreamApprovals({ events, containerRef, onEventClick, onOpenApprovals }
 
 // ─── Section: timeline ────────────────────────────────────────────────────────
 
-interface TimelineProps {
+interface TimelineProps extends SectionInteraction {
   events:             ProjectStreamEvent[]
-  containerRef:       React.RefObject<HTMLElement | null>
-  onEventClick:       (id: string) => void
   totalTimelineCount: number
   onOpenTimeline:     () => void
 }
 
-function StreamTimeline({ events, containerRef, onEventClick, totalTimelineCount, onOpenTimeline }: TimelineProps) {
+function StreamTimeline({ events, onEventHover, onEventHoverEnd, onEventClick, totalTimelineCount, onOpenTimeline }: TimelineProps) {
   const recent = events.filter(ev => ev.type === 'timeline').slice(0, 8)
 
   return (
@@ -218,8 +319,8 @@ function StreamTimeline({ events, containerRef, onEventClick, totalTimelineCount
               className="ws-timeline-item ws-stream-clickable"
               data-stream-id={ev.id}
               onClick={() => onEventClick(ev.id)}
-              onMouseEnter={causeId ? () => applyHighlight(containerRef.current, causeId, true)  : undefined}
-              onMouseLeave={causeId ? () => applyHighlight(containerRef.current, causeId, false) : undefined}
+              onMouseEnter={() => onEventHover(ev.id)}
+              onMouseLeave={() => onEventHoverEnd(ev.id)}
             >
               <div className="ws-timeline-dot" style={{ background: meta?.dotColor ?? 'var(--color-brand)' }} />
               {i < recent.length - 1 && <div className="ws-timeline-line" />}
@@ -254,21 +355,74 @@ interface Props {
 
 export function WorkspaceActivityStream({ projectId, onOpenThreads, onOpenApprovals, onOpenTimeline }: Props) {
   const { events } = useProjectEventStream(projectId)
-  const containerRef  = useRef<HTMLElement>(null)
-  const selectedRef   = useRef<string | null>(null)
-  // Always-fresh events ref — avoids stale closure without useCallback deps
-  const eventsRef     = useRef(events)
-  eventsRef.current   = events
 
-  // Stable click handler — reads eventsRef.current so never stale
-  const handleEventClick = useCallback((clickedId: string) => {
-    const container = containerRef.current
+  // DOM refs — zero React state for all interaction
+  const graphRootRef = useRef<HTMLDivElement>(null)
+  const svgRef       = useRef<SVGSVGElement>(null)
+  const tooltipRef   = useRef<HTMLDivElement>(null)
+  const selectedRef  = useRef<string | null>(null)
+  // Always-fresh events snapshot — avoids stale closures without re-creating callbacks
+  const eventsRef    = useRef<ProjectStreamEvent[]>(events)
+  eventsRef.current  = events
+
+  // ─ Hover: dim non-cluster + SVG lines + tooltip ───────────────────────────
+
+  const handleEventHover = useCallback((id: string) => {
+    const container = graphRootRef.current
+    const svg       = svgRef.current
+    const tooltip   = tooltipRef.current
     if (!container) return
 
-    // Clear any existing cluster highlights
+    const evs     = eventsRef.current
+    const ev      = evs.find(e => e.id === id)
+    if (!ev) return
+
+    const chain    = getEventChain(id, evs)
+    const related  = getRelatedEvents(id, evs)
+    const chainIds = new Set(chain.map(e => e.id))
+
+    // Ids that should NOT be dimmed (hovered + full cluster)
+    const visibleIds = new Set([id, ...chain.map(e => e.id), ...related.map(e => e.id)])
+
+    getAllItemEls(container).forEach(el => {
+      const sid = el.getAttribute('data-stream-id') ?? ''
+      if (sid === id) {
+        el.classList.add(HOVERED_CLASS)
+        el.classList.remove(DIMMED_CLASS)
+      } else if (visibleIds.has(sid)) {
+        el.classList.remove(HOVERED_CLASS, DIMMED_CLASS)
+      } else {
+        el.classList.add(DIMMED_CLASS)
+        el.classList.remove(HOVERED_CLASS)
+      }
+    })
+
+    if (svg) renderSvgLines(svg, container, id, chain, related, chainIds)
+
+    if (tooltip) {
+      const relatedOnlyCount = related.filter(e => !chainIds.has(e.id)).length
+      showTooltip(tooltip, container, ev, chain.length, relatedOnlyCount)
+    }
+  }, [])
+
+  const handleEventHoverEnd = useCallback((_id: string) => {
+    const container = graphRootRef.current
+    if (!container) return
+
+    getAllItemEls(container).forEach(el => el.classList.remove(HOVERED_CLASS, DIMMED_CLASS))
+
+    if (svgRef.current)    clearSvg(svgRef.current)
+    if (tooltipRef.current) hideTooltip(tooltipRef.current)
+  }, [])
+
+  // ─ Click: persistent cluster selection ───────────────────────────────────
+
+  const handleEventClick = useCallback((clickedId: string) => {
+    const container = graphRootRef.current
+    if (!container) return
+
     clearClusterHighlights(container)
 
-    // Toggle: clicking the same event again deselects
     if (selectedRef.current === clickedId) {
       selectedRef.current = null
       return
@@ -281,26 +435,33 @@ export function WorkspaceActivityStream({ projectId, onOpenThreads, onOpenApprov
     const chainIds = new Set(chain.map(e => e.id))
 
     for (const ev of chain) {
-      container.querySelector(`[data-stream-id="${CSS.escape(ev.id)}"]`)?.classList.add(CHAIN_CLASS)
+      getItemEl(container, ev.id)?.classList.add(CHAIN_CLASS)
     }
     for (const ev of related) {
-      // Related-only (not already in chain) get the secondary class
       if (!chainIds.has(ev.id)) {
-        container.querySelector(`[data-stream-id="${CSS.escape(ev.id)}"]`)?.classList.add(RELATED_CLASS)
+        getItemEl(container, ev.id)?.classList.add(RELATED_CLASS)
       }
     }
-  }, []) // empty deps — intentional, reads via refs
+  }, [])
 
   const timelineCount = events.filter(ev => ev.type === 'timeline').length
 
   return (
-    <aside className="ws-right-stream" ref={containerRef}>
-      <div className="ws-stream-header">
-        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>Aktywność</span>
+    <aside className="ws-right-stream">
+      {/* ws-graph-root: position:relative context for SVG overlay + tooltip */}
+      <div className="ws-graph-root" ref={graphRootRef}>
+        {/* SVG line overlay — pointer-events:none, scrolls with content */}
+        <svg className="ws-graph-svg" ref={svgRef} aria-hidden="true" />
+        {/* Figma-style inspect tooltip — positioned by JS, hidden by default */}
+        <div className="ws-graph-tooltip" ref={tooltipRef} style={{ display: 'none' }} aria-hidden="true" />
+
+        <div className="ws-stream-header">
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>Aktywność</span>
+        </div>
+        <StreamApprovals events={events} onEventHover={handleEventHover} onEventHoverEnd={handleEventHoverEnd} onEventClick={handleEventClick} onOpenApprovals={onOpenApprovals} />
+        <StreamMessages  events={events} onEventHover={handleEventHover} onEventHoverEnd={handleEventHoverEnd} onEventClick={handleEventClick} onOpenThreads={onOpenThreads}  />
+        <StreamTimeline  events={events} onEventHover={handleEventHover} onEventHoverEnd={handleEventHoverEnd} onEventClick={handleEventClick} totalTimelineCount={timelineCount} onOpenTimeline={onOpenTimeline} />
       </div>
-      <StreamApprovals events={events} containerRef={containerRef} onEventClick={handleEventClick} onOpenApprovals={onOpenApprovals} />
-      <StreamMessages  events={events} containerRef={containerRef} onEventClick={handleEventClick} onOpenThreads={onOpenThreads}  />
-      <StreamTimeline  events={events} containerRef={containerRef} onEventClick={handleEventClick} totalTimelineCount={timelineCount} onOpenTimeline={onOpenTimeline} />
     </aside>
   )
 }

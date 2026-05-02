@@ -6019,15 +6019,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 /* ─── Causal event visualization (Phase 3C) ────────────────────────────────── */
 
-/* Highlighted cause event — hover causedBy target */
-.ws-stream-item--highlighted {
-  background: var(--color-accent-soft, rgba(99, 102, 241, 0.07));
-  border-radius: 6px;
-  outline: 1px solid var(--color-accent, #6366f1);
-  outline-offset: 1px;
-  transition: background 0.15s ease, outline 0.15s ease;
-}
-
 /* ↳ causal link badge — inline, no layout impact */
 .ws-causal-badge {
   font-size: 10px;
@@ -6036,6 +6027,78 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   flex-shrink: 0;
   line-height: 1;
   user-select: none;
+}
+
+/* ─── Figma Dev Mode overlay (Phase 3E) ──────────────────────────────────────
+   ws-graph-root is the position:relative wrapper that acts as the SVG canvas.
+   ws-graph-svg is absolutely positioned over the content (pointer-events:none).
+   ws-graph-tooltip is the inspect tooltip, positioned by JS on hover.
+ ─────────────────────────────────────────────────────────────────────────── */
+
+.ws-graph-root {
+  position: relative;
+}
+
+.ws-graph-svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: visible;
+}
+
+/* Figma-style inspect tooltip */
+.ws-graph-tooltip {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  background: rgba(15, 17, 20, 0.88);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 6px 9px;
+  min-width: 120px;
+  max-width: 160px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #e8eaf0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+.ws-graph-tooltip .ws-gtt-type {
+  font-weight: 600;
+  font-size: 11px;
+  color: #a8f0c0;
+  margin-bottom: 3px;
+}
+.ws-graph-tooltip .ws-gtt-cause {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 3px;
+}
+.ws-graph-tooltip .ws-gtt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.55);
+}
+.ws-graph-tooltip .ws-gtt-row b {
+  color: #e8eaf0;
+  font-weight: 600;
+}
+
+/* Hover: active node */
+.ws-stream-item--hovered {
+  background: rgba(26, 92, 50, 0.08) !important;
+  border-radius: 4px;
+  transition: background 0.1s ease;
+}
+
+/* Hover: non-cluster nodes — dimmed */
+.ws-stream-item--dimmed {
+  opacity: 0.32;
+  transition: opacity 0.15s ease;
 }
 
 /* ─── Cluster-aware click highlighting (Phase 3D) ───────────────────────────── */
@@ -6052,17 +6115,17 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 /* Primary: events in the direct causal chain of the selected event */
 .ws-chain-highlight {
-  background: var(--color-accent-soft, rgba(99, 102, 241, 0.10)) !important;
+  background: rgba(26, 92, 50, 0.10) !important;
   border-radius: 6px;
-  outline: 1.5px solid var(--color-accent, #6366f1);
+  outline: 1px solid #1a5c32;
   outline-offset: 1px;
 }
 
 /* Secondary: related events (descendants / siblings in cluster) */
 .ws-related-highlight {
-  background: var(--color-surface-soft, rgba(99, 102, 241, 0.04)) !important;
+  background: rgba(26, 92, 50, 0.05) !important;
   border-radius: 6px;
-  outline: 1px dashed var(--color-border, #d1d5db);
+  outline: 1px dashed rgba(26, 92, 50, 0.35);
   outline-offset: 1px;
 }
 
