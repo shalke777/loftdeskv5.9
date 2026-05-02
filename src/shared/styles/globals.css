@@ -6016,3 +6016,31 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .ws-canvas { grid-template-columns: 1fr; }
   .ws-left-panel, .ws-right-stream { display: none; }
 }
+
+/* ─── Skeleton shimmer ─────────────────────────────────────── */
+@keyframes ws-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.ws-skel {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-soft, #f0f0f0) 25%,
+    var(--color-border-light, #e4e4e4) 50%,
+    var(--color-surface-soft, #f0f0f0) 75%
+  );
+  background-size: 800px 100%;
+  animation: ws-shimmer 1.4s infinite linear;
+  flex-shrink: 0;
+}
+
+.ws-skel--sm {
+  opacity: 0.7;
+}
+
+.ws-skeleton .ws-header,
+.ws-skeleton .ws-action-bar {
+  pointer-events: none;
+}
+

@@ -11,6 +11,7 @@
 // =============================================================================
 
 import { useState } from 'react'
+import { WorkspaceSkeleton } from './WorkspaceSkeleton'
 import {
   CalendarCheck, FileDown, QrCode, ClipboardCheck, Loader2,
   ClipboardList, ArrowLeft, MoreHorizontal,
@@ -108,18 +109,25 @@ export function ProjectWorkspace({ project, onEdit, onClose }: Props) {
   const [showHandover, setShowHandover] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
 
-  const { data: clients } = useClients()
+  const { data: clients, isLoading: clientsLoading } = useClients()
   const linkedClient = clients?.find(c => c.id === project?.client_id) ?? null
   const companyId = useCompanyId()
   const companyMeta = useCompanyMeta()
   const createEstimate = useCreateEstimate()
   const createContract = useCreateContract()
   const createInvoice  = useCreateInvoice()
-  const { data: estimates = [] } = useEstimates()
-  const { data: contracts = [] } = useContracts()
-  const { data: allInvoices = [] } = useInvoices()
+  const { data: estimates = [], isLoading: estimatesLoading } = useEstimates()
+  const { data: contracts = [], isLoading: contractsLoading } = useContracts()
+  const { data: allInvoices = [], isLoading: invoicesLoading } = useInvoices()
 
   if (!project) return null
+
+  // Show skeleton only when there is genuinely no data yet (first load).
+  // If data is already cached, React Query's isLoading stays false → no flash.
+  const isHydrating = clientsLoading || estimatesLoading || contractsLoading || invoicesLoading
+  if (isHydrating && !clients && !estimates.length && !contracts.length && !allInvoices.length) {
+    return <WorkspaceSkeleton />
+  }
 
   const flags = (project.completeness_flags ?? {}) as Record<string, boolean>
   const projectEstimates = estimates.filter(e => e.project_id === project.id)
