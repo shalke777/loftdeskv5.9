@@ -8,19 +8,20 @@
 //   · SVG line overlay connecting chain / related events
 //   · Hover dims non-cluster events + shows relational tooltip
 //   · All interaction via DOM refs — zero React state / re-renders
+// Commit 5 — Events are passed as props (ProjectWorkspace owns hook selection
+//   via USE_GLOBAL_EVENTS flag). No per-hook calls inside this component.
 // =============================================================================
 
 import { useRef, useCallback } from 'react'
 import { MessageSquare, CheckCircle2, Clock, ChevronRight } from 'lucide-react'
 import { getTimelineEventMeta } from '@/features/projects/lib/timelineMeta'
-import { getEventChain, getRelatedEvents } from '@/features/projects/lib/eventChain'
+import { getEventChain, getRelatedEvents } from '@/features/events/core/eventGraph'
 import {
-  useProjectEventStream,
-  asThread,
-  asApproval,
-  asTimelineEvent,
-} from '@/features/projects/hooks/useProjectEventStream'
-import type { ProjectStreamEvent, StreamEventType } from '@/features/projects/hooks/useProjectEventStream'
+  asGlobalThread,
+  asGlobalApproval,
+  asGlobalTimeline,
+} from '@/features/events/core/types'
+import type { GlobalEvent, GlobalEventType } from '@/features/events/core/types'
 
 // ─── CSS class constants ──────────────────────────────────────────────────────
 
@@ -31,13 +32,13 @@ const DIMMED_CLASS  = 'ws-stream-item--dimmed'
 
 // ─── DOM helpers ──────────────────────────────────────────────────────────────
 
-const TYPE_PREFIX: Record<StreamEventType, string> = {
+const TYPE_PREFIX: Record<GlobalEventType, string> = {
   timeline: 'tl',
   message:  'msg',
   approval: 'ap',
 }
 
-function causedByDomId(ev: ProjectStreamEvent): string | undefined {
+function causedByDomId(ev: GlobalEvent): string | undefined {
   if (!ev.causedBy) return undefined
   return `${TYPE_PREFIX[ev.causedBy.type]}:${ev.causedBy.id}`
 }
@@ -77,8 +78,8 @@ function renderSvgLines(
   svg:        SVGSVGElement,
   container:  HTMLElement,
   selectedId: string,
-  chain:      ProjectStreamEvent[],
-  related:    ProjectStreamEvent[],
+  chain:      GlobalEvent[],
+  related:    GlobalEvent[],
   chainIds:   Set<string>,
 ) {
   // Size SVG to cover the full content height (not just viewport)
@@ -121,7 +122,7 @@ function clearSvg(svg: SVGSVGElement) {
 
 // ─── Tooltip engine ───────────────────────────────────────────────────────────
 
-const TYPE_LABEL: Record<StreamEventType, string> = {
+const TYPE_LABEL: Record<GlobalEventType, string> = {
   timeline: 'Zdarzenie',
   message:  'Wiadomość',
   approval: 'Akceptacja',
@@ -130,7 +131,7 @@ const TYPE_LABEL: Record<StreamEventType, string> = {
 function showTooltip(
   tooltip:      HTMLDivElement,
   container:    HTMLElement,
-  ev:           ProjectStreamEvent,
+  ev:           GlobalEvent,
   chainDepth:   number,
   relatedCount: number,
 ) {
@@ -194,7 +195,7 @@ interface SectionInteraction {
 // ─── Section: messages ────────────────────────────────────────────────────────
 
 interface MessagesProps extends SectionInteraction {
-  events:        ProjectStreamEvent[]
+  events:        GlobalEvent[]
   onOpenThreads: () => void
 }
 
@@ -214,7 +215,7 @@ function StreamMessages({ events, onEventHover, onEventHoverEnd, onEventClick, o
     <div className="ws-stream-section">
       <div className="ws-stream-section-hd"><MessageSquare size={13} />Wiadomości</div>
       {recentMsgs.map(ev => {
-        const thread  = asThread(ev)
+        const thread  = asGlobalThread(ev)
         const causeId = causedByDomId(ev)
         return (
           <div
@@ -246,12 +247,12 @@ function StreamMessages({ events, onEventHover, onEventHoverEnd, onEventClick, o
 // ─── Section: approvals ───────────────────────────────────────────────────────
 
 interface ApprovalsProps extends SectionInteraction {
-  events:          ProjectStreamEvent[]
+  events:          GlobalEvent[]
   onOpenApprovals: () => void
 }
 
 function StreamApprovals({ events, onEventHover, onEventHoverEnd, onEventClick, onOpenApprovals }: ApprovalsProps) {
-  const pending = events.filter(ev => ev.type === 'approval' && asApproval(ev).status === 'pending_client')
+  const pending = events.filter(ev => ev.type === 'approval' && asGlobalApproval(ev).status === 'pending_client')
 
   if (pending.length === 0) return null
 
@@ -260,7 +261,7 @@ function StreamApprovals({ events, onEventHover, onEventHoverEnd, onEventClick, 
       <div className="ws-stream-section-hd"><CheckCircle2 size={13} />Oczekuje na akceptację</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
         {pending.slice(0, 3).map(ev => {
-          const a       = asApproval(ev)
+          const a       = asGlobalApproval(ev)
           const causeId = causedByDomId(ev)
           return (
             <div
@@ -294,7 +295,7 @@ function StreamApprovals({ events, onEventHover, onEventHoverEnd, onEventClick, 
 // ─── Section: timeline ────────────────────────────────────────────────────────
 
 interface TimelineProps extends SectionInteraction {
-  events:             ProjectStreamEvent[]
+  events:             GlobalEvent[]
   totalTimelineCount: number
   onOpenTimeline:     () => void
 }
@@ -310,7 +311,7 @@ function StreamTimeline({ events, onEventHover, onEventHoverEnd, onEventClick, t
       )}
       <div className="ws-timeline-feed">
         {recent.map((ev, i) => {
-          const te      = asTimelineEvent(ev)
+          const te      = asGlobalTimeline(ev)
           const meta    = getTimelineEventMeta(te.event_type)
           const causeId = causedByDomId(ev)
           return (
@@ -347,22 +348,21 @@ function StreamTimeline({ events, onEventHover, onEventHoverEnd, onEventClick, t
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  projectId:       string
+  /** Normalized events from useProjectEventStreamV2 (or V1 via feature flag) */
+  events:          GlobalEvent[]
   onOpenThreads:   () => void
   onOpenApprovals: () => void
   onOpenTimeline:  () => void
 }
 
-export function WorkspaceActivityStream({ projectId, onOpenThreads, onOpenApprovals, onOpenTimeline }: Props) {
-  const { events } = useProjectEventStream(projectId)
-
+export function WorkspaceActivityStream({ events, onOpenThreads, onOpenApprovals, onOpenTimeline }: Props) {
   // DOM refs — zero React state for all interaction
   const graphRootRef = useRef<HTMLDivElement>(null)
   const svgRef       = useRef<SVGSVGElement>(null)
   const tooltipRef   = useRef<HTMLDivElement>(null)
   const selectedRef  = useRef<string | null>(null)
   // Always-fresh events snapshot — avoids stale closures without re-creating callbacks
-  const eventsRef    = useRef<ProjectStreamEvent[]>(events)
+  const eventsRef    = useRef<GlobalEvent[]>(events)
   eventsRef.current  = events
 
   // ─ Hover: dim non-cluster + SVG lines + tooltip ───────────────────────────
