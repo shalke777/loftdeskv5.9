@@ -47,6 +47,7 @@ export const InvoiceSchema = z.object({
   total_gross: z.number(),
   ksef_status: z.enum(['ksef_sent', 'ksef_pending', 'ksef_error']).nullable(),
   ksef_ref: z.string().nullable(),
+  ksef_last_error: z.string().nullable().optional(),
   notes: z.string().optional(),
   created_at: z.string(),
   items: z.array(InvoiceItemSchema),

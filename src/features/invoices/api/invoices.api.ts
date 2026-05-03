@@ -44,7 +44,7 @@ export const invoicesApi = {
     const scope = await getDataScope(companyId)
     // LIST endpoint: NO nested items (perf RULE: payload < 20KB, no nested *).
     // Items are loaded lazily on-demand via invoicesApi.get(id) when row is expanded.
-    const cols = 'id, company_id, client_id, project_id, contract_id, number, invoice_type, status, issue_date, sale_date, issue_place, due_date, payment_method, bank_account, tranche_id, advance_total, corrected_invoice_id, correction_reason, total_net, total_gross, ksef_status, ksef_ref, notes, created_at'
+    const cols = 'id, company_id, client_id, project_id, contract_id, number, invoice_type, status, issue_date, sale_date, issue_place, due_date, payment_method, bank_account, tranche_id, advance_total, corrected_invoice_id, correction_reason, total_net, total_gross, ksef_status, ksef_ref, ksef_last_error, notes, created_at'
     const query = applyScope(supabase.from('invoices').select(cols).order('created_at', { ascending: false }).limit(50), scope)
     const { data, error } = await query
     if (error) throw error
@@ -94,6 +94,7 @@ export const invoicesApi = {
     }
   },
   async create(input: CreateInvoiceInput): Promise<Invoice> {
+    if (!input.company_id) throw new Error('Brak company_id — nie można utworzyć faktury bez przypisanej firmy. Zaloguj się ponownie.')
     if (isDemoMode || !supabase) { const totals = calcInvoiceTotals(input.items); return Promise.resolve(demoDb.invoices.create({ ...input, total_net: totals.totalNet, total_gross: totals.totalGross, ksef_status: 'ksef_pending', ksef_ref: null })) }
     const scope = await getDataScope(input.company_id)
 

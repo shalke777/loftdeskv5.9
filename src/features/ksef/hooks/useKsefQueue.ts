@@ -67,11 +67,42 @@ export function useKsefQueue() {
             address: client?.address || '',
           }
 
+          // ── Pre-flight guards: never attempt KSeF send for invoices that
+          //    can't possibly succeed. Record the reason in ksef_last_error.
+          const guardErrors: string[] = []
+          if (!invoice.company_id) guardErrors.push('Brak company_id — faktura niepowiązana z firmą.')
+          if (!seller.nip) guardErrors.push('Brak NIP sprzedawcy — uzupełnij dane firmy w Ustawieniach.')
+          if (!seller.name) guardErrors.push('Brak nazwy sprzedawcy — uzupełnij dane firmy w Ustawieniach.')
+          if (!buyer.name && !buyer.nip) guardErrors.push('Brak danych nabywcy — przypisz klienta do faktury.')
+          if (!invoice.number) guardErrors.push('Faktura jest szkicem (brak numeru) — najpierw ją wystaw.')
+          if (guardErrors.length > 0) {
+            const reason = guardErrors.join(' ')
+            console.warn('[useKsefQueue] pre-flight guard blocked:', invoice.id, reason)
+            try {
+              await invoicesApi.update(invoice.id, { ksef_status: 'ksef_error', ksef_last_error: reason } as Partial<Invoice>, companyId)
+            } catch (dbErr: unknown) {
+              const msg = dbErr instanceof Error ? dbErr.message : String(dbErr)
+              console.error('[useKsefQueue] pre-flight DB update failed:', invoice.id, msg)
+            }
+            ksefService.appendHistory({
+              invoiceId: invoice.id,
+              invoiceNumber: invoice.number ?? '',
+              timestamp: new Date().toISOString(),
+              action: 'send',
+              status: 'error',
+              ksefRef: null,
+              error: reason,
+            })
+            result.errors++
+            result.items.push({ invoice, status: 'error', error: reason })
+            continue
+          }
+
           if (isDemo) {
             const ksefRef = `DEMO-${invoice.id.slice(0, 8)}-${Date.now().toString(36)}`
             let dbError: string | undefined
             try {
-              await invoicesApi.update(invoice.id, { ksef_status: 'ksef_sent', ksef_ref: ksefRef }, companyId)
+              await invoicesApi.update(invoice.id, { ksef_status: 'ksef_sent', ksef_ref: ksefRef, ksef_last_error: null } as Partial<Invoice>, companyId)
             } catch (e: unknown) {
               const msg = e instanceof Error ? e.message : String(e)
               console.error('[useKsefQueue] DEMO post-send DB update failed:', invoice.id, msg)
@@ -109,9 +140,10 @@ export function useKsefQueue() {
               try {
                 await invoicesApi.update(
                   invoice.id,
-                  { ksef_status: 'ksef_sent', ksef_ref: ksefRef },
+                  { ksef_status: 'ksef_sent', ksef_ref: ksefRef, ksef_last_error: null } as Partial<Invoice>,
                   companyId,
                 )
+                console.info('[useKsefQueue] DB updated: ksef_sent', { invoiceId: invoice.id, ksefRef })
               } catch (dbErr: unknown) {
                 const msg = dbErr instanceof Error ? dbErr.message : String(dbErr)
                 console.error('[useKsefQueue] CRITICAL: invoice sent to KSeF but DB update failed.', {
@@ -142,7 +174,8 @@ export function useKsefQueue() {
 
           if (!sent) {
             try {
-              await invoicesApi.update(invoice.id, { ksef_status: 'ksef_error' }, companyId)
+              await invoicesApi.update(invoice.id, { ksef_status: 'ksef_error', ksef_last_error: lastError || 'Wysyłka nie powiodła się po 3 próbach.' } as Partial<Invoice>, companyId)
+              console.info('[useKsefQueue] DB updated: ksef_error', { invoiceId: invoice.id, error: lastError })
             } catch (dbErr: unknown) {
               const msg = dbErr instanceof Error ? dbErr.message : String(dbErr)
               console.error('[useKsefQueue] Failed to mark ksef_error in DB (error-path):', invoice.id, msg)
