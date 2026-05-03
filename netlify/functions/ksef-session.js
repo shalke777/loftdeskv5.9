@@ -320,14 +320,15 @@ exports.handler = async (event) => {
       const encryptedAesKey = rsaOaepEncrypt(aesKey, symEncKey.certificate).toString('base64')
 
       // 9. Open online interactive session with accessToken (NOT authenticationToken)
+      // KSeF v2: /sessions/online takes ONLY encryption — no formCode field (v1 artefact).
+      // Passing formCode causes error 21405 "Wskazany kod formularza nie jest wspierany."
       const sessionBody = {
-        formCode: { systemCode: 'FA (2)', schemaVersion: '1-0E', value: 'FA' },
         encryption: {
           encryptedSymmetricKey: encryptedAesKey,
           initializationVector: iv.toString('base64'),
         },
       }
-      console.log(`[ksef-session] Step 9: POST ${base}/sessions/online (Bearer=accessToken len=${accessToken.length})`)
+      console.log(`[ksef-session] Step 9: POST ${base}/sessions/online (Bearer=accessToken len=${accessToken.length}) body=${JSON.stringify(sessionBody).slice(0,120)}`)
       const sessionRes = await ksefFetch(`${base}/sessions/online`, {
         method: 'POST',
         headers: {
