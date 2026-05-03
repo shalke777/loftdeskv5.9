@@ -134,14 +134,13 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
     })
     .join('\n')
 
-  const stawki = Array.from(vatMap.entries())
+  // FA(3) Stawki: flat P_13_x / P_14_x directly inside <fa:Stawki> — no <fa:Stawka> wrapper, no P_12_XII
+  // FA(2) used <Stawka><P_12_XII>rate</P_12_XII><P_13_x>...</P_13_x></Stawka> — FA(3) dropped that wrapper
+  const stawkiInner = Array.from(vatMap.entries())
     .map(([rate, { net, vat }]) => {
       const s = vatSuffix(rate)
-      return `        <fa:Stawka>
-          <fa:P_12_XII>${rate}</fa:P_12_XII>
-          <fa:P_13${s}>${fmt(net)}</fa:P_13${s}>
-          <fa:P_14${s}>${fmt(vat)}</fa:P_14${s}>
-        </fa:Stawka>`
+      return `        <fa:P_13${s}>${fmt(net)}</fa:P_13${s}>
+        <fa:P_14${s}>${fmt(vat)}</fa:P_14${s}>`
     })
     .join('\n')
 
@@ -207,7 +206,7 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
 ${lines}
     <fa:Rozliczenie>
       <fa:Stawki>
-${stawki}
+${stawkiInner}
       </fa:Stawki>
       <fa:P_15>${fmt(invoice.total_gross)}</fa:P_15>
     </fa:Rozliczenie>
