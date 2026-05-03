@@ -146,12 +146,41 @@ export const invoicesApi = {
   async update(id: string, input: Partial<Invoice>, companyId?: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.invoices.update(id, input))
     const scope = await getDataScope(companyId)
+    const effectiveCompanyId = companyId ?? scope.companyId
     const items = input.items
     const payload: any = { ...input }
-    // Strip fields that are not DB columns or must not be overwritten on update
+    // Strip fields that are not DB columns or must not be overwritten via generic update
     for (const f of ['items', 'id', 'draft', 'total_net', 'total_gross', 'created_at'] as const) delete payload[f]
+
+    // Recalculate totals whenever items are being updated
+    if (items && items.length > 0) {
+      const totals = calcInvoiceTotals(items)
+      payload.total_net = totals.totalNet
+      payload.total_gross = totals.totalGross
+    }
+
+    // Assign KOR/ number + ksef_pending when a correction draft is being finalized
+    if (input.status !== 'draft' && input.invoice_type === 'correction') {
+      const { data: current } = await supabase.from('invoices').select('number, status').eq('id', id).single()
+      if (current?.status === 'draft' && !current?.number) {
+        const { data: numData } = await supabase.rpc('next_doc_number', {
+          p_company_id: effectiveCompanyId,
+          p_doc_type: 'correction',
+          p_issue_date: input.issue_date ?? null,
+        })
+        if (numData) {
+          payload.number = numData as string
+          payload.ksef_status = 'ksef_pending'
+        }
+      }
+    }
+
+    console.info('[invoicesApi.update] UPDATE payload', { id, status: payload.status, invoice_type: payload.invoice_type, number: payload.number, payloadKeys: Object.keys(payload) })
     const { data, error } = await supabase.from('invoices').update(payload).eq('id', id).select('*').single()
-    if (error) throw error
+    if (error) {
+      console.error('[invoicesApi.update] UPDATE failed', { code: (error as any).code, message: error.message, details: (error as any).details, hint: (error as any).hint, payloadKeys: Object.keys(payload) })
+      throw error
+    }
     if (items) {
       await supabase.from('invoice_items').delete().eq('invoice_id', id)
       if (items.length > 0) {
