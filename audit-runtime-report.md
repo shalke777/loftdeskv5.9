@@ -185,6 +185,47 @@ No Netlify log export was supplied in this snapshot, so this map remains static 
 | `ksef-debug` | likely diagnostic/dev-only |
 | `ksef-mock` | likely diagnostic/dev-only |
 
+## Phase 3 — Legacy Portal RPC Cleanup (2026-05-03)
+
+### Executed SQL
+
+```sql
+DROP FUNCTION IF EXISTS public.portal_get_by_token(text) CASCADE;
+DROP FUNCTION IF EXISTS public.portal_send_message(text, text, text) CASCADE;
+DROP FUNCTION IF EXISTS public.portal_decide(text, text) CASCADE;
+DROP TABLE IF EXISTS public.portal_messages CASCADE;
+```
+
+Result: `Success. No rows returned` — all 4 were no-ops (none existed in production).
+
+### Classification
+
+| Element | Production status | Action |
+|---|---|---|
+| `portal_get_by_token(text)` | Never deployed | ✅ `DROP IF EXISTS` (no-op) |
+| `portal_send_message(text,text,text)` | Never deployed | ✅ `DROP IF EXISTS` (no-op) |
+| `portal_decide(text,text)` | Never deployed | ✅ `DROP IF EXISTS` (no-op) |
+| `portal_messages` table | Never deployed | ✅ `DROP IF EXISTS` (no-op) |
+| `delete_portal_message(uuid)` | **LIVE** (2 callers) | 🔒 KEPT — soft-deletes `project_messages` |
+| `client_send_message(uuid,uuid,text,text)` | **LIVE** | 🔒 KEPT — portal chat backbone |
+
+### Scope correction noted
+
+`delete_portal_message` has a misleading name — it operates on `project_messages` (soft delete), NOT `portal_messages`. Callers: `client-portal.api.ts` + `threads.api.ts`. Must never be dropped.
+
+### Migration applied
+
+- File: `supabase/migrations/139_phase3_drop_legacy_portal_rpcs.sql`
+- Commit: `3a52c728`
+
+### Remaining for Phase 4
+
+| Table | Blocker |
+|---|---|
+| `client_decisions` | Trigger `trg_client_decision_to_memory` (migration 114). Drop trigger + function first, then table. |
+
+---
+
 ## Phase 2 — DB Ghost Table Cleanup Results (2026-05-03)
 
 ### Classification summary

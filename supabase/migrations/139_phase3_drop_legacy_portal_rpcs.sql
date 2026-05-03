@@ -49,13 +49,9 @@
 
 BEGIN;
 
--- ─── STEP 1: Revoke grants before dropping ────────────────────────────────────
-
-REVOKE ALL ON FUNCTION public.portal_get_by_token(text) FROM anon, authenticated;
-REVOKE ALL ON FUNCTION public.portal_send_message(text, text, text) FROM anon, authenticated;
-REVOKE ALL ON FUNCTION public.portal_decide(text, text) FROM anon, authenticated;
-
--- ─── STEP 2: Drop legacy portal RPC functions ─────────────────────────────────
+-- ─── STEP 1: Drop legacy portal RPC functions ─────────────────────────────────
+-- Note: REVOKE not needed — DROP CASCADE removes all grants automatically.
+-- IF EXISTS guards make this idempotent (functions never existed in production).
 
 DROP FUNCTION IF EXISTS public.portal_get_by_token(text) CASCADE;
 DROP FUNCTION IF EXISTS public.portal_send_message(text, text, text) CASCADE;
