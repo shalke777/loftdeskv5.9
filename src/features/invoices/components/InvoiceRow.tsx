@@ -242,7 +242,7 @@ export function InvoiceRowImpl({
             {isDraft && (
               <button
                 className="proj-action-btn proj-action-btn--primary"
-                title="Wystaw fakturę — nadaj numer"
+                title={isCorrection ? "Wystaw korektę — nadaj numer" : "Wystaw fakturę — nadaj numer"}
                 onClick={e => { e.stopPropagation(); onFinalize(invoice.id) }}
               >
                 <CheckCircle size={14} />
@@ -368,7 +368,7 @@ export function InvoiceRowImpl({
 
           <div className="actions-row">
             {isDraft ? (
-              <Button onClick={() => onFinalize(invoice.id)}>Wystaw fakturę</Button>
+              <Button onClick={() => onFinalize(invoice.id)}>{isCorrection ? 'Wystaw korektę' : 'Wystaw fakturę'}</Button>
             ) : (
               <>
                 <Button variant="secondary" onClick={() => setPreviewOpen(true)}>PDF / XML</Button>
