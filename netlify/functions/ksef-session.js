@@ -321,7 +321,7 @@ exports.handler = async (event) => {
 
       // 9. Open online interactive session with accessToken (NOT authenticationToken)
       const sessionBody = {
-        formCode: { systemCode: 'FA (3)', schemaVersion: '1-0E', value: 'FA' },
+        formCode: { systemCode: 'FA (2)', schemaVersion: '1-0E', value: 'FA' },
         encryption: {
           encryptedSymmetricKey: encryptedAesKey,
           initializationVector: iv.toString('base64'),

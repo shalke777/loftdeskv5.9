@@ -83,8 +83,8 @@ function buildDiagnosticXml(invoice, items, seller, buyer) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <fa:Faktura xmlns:fa="http://crd.gov.pl/wzor/2023/06/29/12648/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <fa:Naglowek>
-    <fa:KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</fa:KodFormularza>
-    <fa:WariantFormularza>3</fa:WariantFormularza>
+    <fa:KodFormularza kodSystemowy="FA (2)" wersjaSchemy="1-0E">FA</fa:KodFormularza>
+    <fa:WariantFormularza>2</fa:WariantFormularza>
     <fa:DataWytworzeniaFa>${new Date().toISOString().slice(0, 23)}</fa:DataWytworzeniaFa>
     <fa:SystemInfo>LoftDesk v5.9 (debug)</fa:SystemInfo>
   </fa:Naglowek>
