@@ -96,7 +96,7 @@ export function validateNip(nip: string): boolean {
  * Aplikacja Podatnika). FA(3) migration is tracked as a separate epic.
  */
 export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuyer = {}): string {
-  const now = new Date().toISOString().slice(0, 23)
+  const now = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
   const issueDate = invoice.issue_date || new Date().toISOString().slice(0, 10)
   const saleDate = invoice.sale_date || issueDate
   const payCode = invoice.payment_method === 'cash' ? '1' : invoice.payment_method === 'card' ? '7' : '6'
@@ -172,14 +172,14 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
       <fa:NIP>${escXml(seller.nip)}</fa:NIP>
       <fa:Nazwa>${escXml(seller.name)}</fa:Nazwa>
     </fa:DaneIdentyfikacyjne>
-    <fa:Adres><fa:AdresL1>${escXml(seller.address)}</fa:AdresL1></fa:Adres>
+    <fa:Adres><fa:KodKraju>PL</fa:KodKraju><fa:AdresL1>${escXml(seller.address)}</fa:AdresL1></fa:Adres>
   </fa:Podmiot1>
   <fa:Podmiot2>
     <fa:DaneIdentyfikacyjne>
       ${buyer.nip ? `<fa:NIP>${escXml(buyer.nip)}</fa:NIP>` : '<fa:BrakID>1</fa:BrakID>'}
       <fa:Nazwa>${escXml(buyer.name)}</fa:Nazwa>
     </fa:DaneIdentyfikacyjne>
-    ${buyer.address ? `<fa:Adres><fa:AdresL1>${escXml(buyer.address)}</fa:AdresL1></fa:Adres>` : ''}
+    ${buyer.address ? `<fa:Adres><fa:KodKraju>PL</fa:KodKraju><fa:AdresL1>${escXml(buyer.address)}</fa:AdresL1></fa:Adres>` : ''}
     <fa:JST>2</fa:JST>
     <fa:GV>2</fa:GV>
   </fa:Podmiot2>
