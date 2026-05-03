@@ -142,6 +142,25 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
     </fa:ZaliczkiCzesciowe>`
       : ''
 
+  const paid = invoice.status === 'paid'
+  const platnosSection = paid
+    ? `    <fa:Platnosc>
+      <fa:Zaplacono>1</fa:Zaplacono>
+      <fa:ZaplataNaleznosci>
+        <fa:DataZaplaty>${issueDate}</fa:DataZaplaty>
+        <fa:FormaPlatnosci>${payCode}</fa:FormaPlatnosci>
+        ${invoice.bank_account && payCode === '6' ? `<fa:NumerRachunku>${escXml(invoice.bank_account)}</fa:NumerRachunku>` : ''}
+      </fa:ZaplataNaleznosci>
+    </fa:Platnosc>`
+    : `    <fa:Platnosc>
+      <fa:Zaplacono>2</fa:Zaplacono>
+      <fa:TerminPlatnosci>
+        <fa:Termin>${invoice.due_date || issueDate}</fa:Termin>
+        <fa:FormaPlatnosci>${payCode}</fa:FormaPlatnosci>
+        ${invoice.bank_account && payCode === '6' ? `<fa:NumerRachunku>${escXml(invoice.bank_account)}</fa:NumerRachunku>` : ''}
+      </fa:TerminPlatnosci>
+    </fa:Platnosc>`
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <fa:Faktura xmlns:fa="http://crd.gov.pl/wzor/2023/12/13/13644/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <fa:Naglowek>
@@ -182,14 +201,7 @@ ${stawki}
       <fa:P_15>${fmt(invoice.total_gross)}</fa:P_15>
     </fa:Rozliczenie>
 ${advanceSection}
-    <fa:Platnosc>
-      <fa:Zaplacono>${invoice.status === 'paid' ? '1' : '2'}</fa:Zaplacono>
-      <fa:ZaplataNaleznosci>
-        <fa:DataZaplaty>${invoice.due_date || issueDate}</fa:DataZaplaty>
-        <fa:FormaPlatnosci>${payCode}</fa:FormaPlatnosci>
-        ${invoice.bank_account ? `<fa:NumerRachunku>${escXml(invoice.bank_account)}</fa:NumerRachunku>` : ''}
-      </fa:ZaplataNaleznosci>
-    </fa:Platnosc>
+${platnosSection}
     <fa:Adnotacje>
       <fa:P_16>2</fa:P_16>
       <fa:P_17>2</fa:P_17>
