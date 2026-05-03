@@ -183,7 +183,6 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
       <fa:Nazwa>${escXml(seller.name)}</fa:Nazwa>
     </fa:DaneIdentyfikacyjne>
     <fa:Adres><fa:AdresL1>${escXml(seller.address)}</fa:AdresL1></fa:Adres>
-    <fa:RolaPodmiotu1>1</fa:RolaPodmiotu1>
   </fa:Podmiot1>
   <fa:Podmiot2>
     <fa:DaneIdentyfikacyjne>
@@ -191,7 +190,6 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
       <fa:Nazwa>${escXml(buyer.name)}</fa:Nazwa>
     </fa:DaneIdentyfikacyjne>
     ${buyer.address ? `<fa:Adres><fa:AdresL1>${escXml(buyer.address)}</fa:AdresL1></fa:Adres>` : ''}
-    <fa:RolaPodmiotu2>2</fa:RolaPodmiotu2>
     <fa:JST>2</fa:JST>
     <fa:GV>2</fa:GV>
   </fa:Podmiot2>
