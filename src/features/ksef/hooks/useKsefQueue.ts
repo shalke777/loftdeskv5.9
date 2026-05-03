@@ -6,12 +6,13 @@ import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useSettings } from '@/features/settings/hooks/useSettings'
 import { invoicesApi } from '@/features/invoices/api/invoices.api'
 import { ksefService } from '@/services/ksef/ksef.service'
+import { logKsefEvent } from '@/features/ksef/lib/ksefEvents'
 import type { KsefSession } from './useKsefSession'
 import type { Invoice } from '@/entities/invoice/model'
 
 export interface QueueItemResult {
   invoice: Invoice
-  status: 'sent' | 'error'
+  status: 'sent' | 'error' | 'skipped'
   ksefRef?: string
   error?: string
   /** Set when KSeF accepted the invoice but persisting ksef_status to DB failed.
@@ -23,6 +24,7 @@ export interface ProcessResult {
   total: number
   sent: number
   errors: number
+  skipped: number
   items: QueueItemResult[]
 }
 
@@ -45,7 +47,7 @@ export function useKsefQueue() {
   const processQueue = useCallback(
     async (session: KsefSession, isDemo = false): Promise<ProcessResult> => {
       setProcessing(true)
-      const result: ProcessResult = { total: pending.length, sent: 0, errors: 0, items: [] }
+      const result: ProcessResult = { total: pending.length, sent: 0, errors: 0, skipped: 0, items: [] }
 
       try {
         // Empty queue — finish immediately
@@ -55,6 +57,25 @@ export function useKsefQueue() {
         }
 
         for (const invoice of pending) {
+          // ── Idempotency guard ────────────────────────────────────────────
+          // Never re-send an invoice that already has a KSeF reference. To
+          // force a re-send the operator must explicitly clear ksef_ref in DB.
+          if (invoice.ksef_ref) {
+            console.info('[useKsefQueue] Skipping send, already has ksef_ref:', { invoiceId: invoice.id, ksefRef: invoice.ksef_ref })
+            void logKsefEvent({ companyId, invoiceId: invoice.id, action: 'skip_idempotent', ksefRef: invoice.ksef_ref, env: session.env as 'demo' | 'test' | 'prod', message: 'Invoice already has ksef_ref — skipped' })
+            // Self-heal: if ksef_status drifted out of ksef_sent despite having a ref
+            if (invoice.ksef_status !== 'ksef_sent') {
+              try {
+                await invoicesApi.update(invoice.id, { ksef_status: 'ksef_sent', ksef_last_error: null } as Partial<Invoice>, companyId)
+              } catch (e) {
+                console.warn('[useKsefQueue] self-heal status failed:', e)
+              }
+            }
+            result.skipped++
+            result.items.push({ invoice, status: 'skipped', ksefRef: invoice.ksef_ref })
+            continue
+          }
+
           const client = clients.find((c) => c.id === invoice.client_id)
           const seller = {
             nip: (profile as Record<string, unknown>)?.nip as string || (profile as Record<string, unknown>)?.ksef_nip as string || '',
@@ -78,6 +99,7 @@ export function useKsefQueue() {
           if (guardErrors.length > 0) {
             const reason = guardErrors.join(' ')
             console.warn('[useKsefQueue] pre-flight guard blocked:', invoice.id, reason)
+            void logKsefEvent({ companyId, invoiceId: invoice.id, action: 'guard_block', env: session.env as 'demo' | 'test' | 'prod', message: reason, meta: { guards: guardErrors } })
             try {
               await invoicesApi.update(invoice.id, { ksef_status: 'ksef_error', ksef_last_error: reason } as Partial<Invoice>, companyId)
             } catch (dbErr: unknown) {
@@ -128,6 +150,7 @@ export function useKsefQueue() {
             if (attempt > 1) {
               await new Promise<void>((r) => setTimeout(r, 1000 * 2 ** (attempt - 2)))
             }
+            void logKsefEvent({ companyId, invoiceId: invoice.id, action: attempt > 1 ? 'retry' : 'send_attempt', attempt, env: session.env as 'demo' | 'test' | 'prod' })
             try {
               const { ksefRef } = await ksefService.sendInvoice(
                 invoice,
@@ -154,6 +177,7 @@ export function useKsefQueue() {
                 })
                 dbError = msg
               }
+              void logKsefEvent({ companyId, invoiceId: invoice.id, action: 'send_success', attempt, ksefRef, env: session.env as 'demo' | 'test' | 'prod', message: dbError ? `KSeF OK; DB update failed: ${dbError}` : 'OK' })
               ksefService.appendHistory({
                 invoiceId: invoice.id,
                 invoiceNumber: invoice.number ?? "",
@@ -168,7 +192,8 @@ export function useKsefQueue() {
               sent = true
             } catch (e: unknown) {
               lastError = e instanceof Error ? e.message : String(e)
-              console.warn(`[useKsefQueue] sendInvoice failed (attempt ${attempt}/3):`, invoice.id, lastError)
+              console.error(`[useKsefQueue] sendInvoice failed (attempt ${attempt}/3):`, invoice.id, lastError)
+              void logKsefEvent({ companyId, invoiceId: invoice.id, action: 'send_error', attempt, env: session.env as 'demo' | 'test' | 'prod', message: lastError })
             }
           }
 
