@@ -127,7 +127,6 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
       <fa:P_8A>${escXml(item.unit || 'kpl')}</fa:P_8A>
       <fa:P_8B>${item.quantity}</fa:P_8B>
       <fa:P_9A>${fmt(item.unit_price)}</fa:P_9A>
-      <fa:P_9B>${fmt(net)}</fa:P_9B>
       <fa:P_11>${fmt(net)}</fa:P_11>
       <fa:P_12>${item.vat_rate}</fa:P_12>
     </fa:FaWiersz>`
@@ -214,9 +213,7 @@ ${advanceSection}
 ${platnosSection}
     <fa:Adnotacje>
       <fa:P_16>2</fa:P_16>
-      <fa:P_17>2</fa:P_17>
-      <fa:Zwolnienie><fa:P_19N>0</fa:P_19N></fa:Zwolnienie>
-      <fa:NoweSrodkiTransportu><fa:P_22N>0</fa:P_22N></fa:NoweSrodkiTransportu>${hasGtu12 ? '\n      <fa:GTU><fa:GTU_12>1</fa:GTU_12></fa:GTU>' : ''}
+      <fa:P_17>2</fa:P_17>${hasGtu12 ? '\n      <fa:GTU><fa:GTU_12>1</fa:GTU_12></fa:GTU>' : ''}
     </fa:Adnotacje>
   </fa:Fa>
 </fa:Faktura>`
