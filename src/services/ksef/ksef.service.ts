@@ -123,7 +123,7 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
     })
     .join('\n')
 
-  // Schema 13775: FaWiersz is a SIBLING of <Fa>, not a child — at <Faktura> level
+  // Schema 13775: FaWiersz is INSIDE <Fa> (confirmed in XSD at offset ~133000)
   const lines = invoice.items
     .map((item, idx) => {
       const net = Math.round(item.quantity * item.unit_price * 100) / 100
@@ -139,9 +139,8 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
     })
     .join('\n')
 
-  // Schema 13775: Platnosc is a SIBLING of <Fa> at <Faktura> level, no <ZaplataNaleznosci> wrapper.
-  // Paid: Zaplacono(1) + DataZaplaty directly, then FormaPlatnosci + RachunekBankowy.
-  // Unpaid: TerminPlatnosci, then FormaPlatnosci + RachunekBankowy.
+  // Schema 13775: Platnosc is INSIDE <Fa> (confirmed via ksefuj semantic.ts XPath //ns:Fa/ns:Platnosc)
+  // No <ZaplataNaleznosci> wrapper. Paid: Zaplacono+DataZaplaty, then FormaPlatnosci + RachunekBankowy.
   const paid = invoice.status === 'paid'
   const nrb = normalizeNrb(invoice.bank_account)
   const nrbXml = nrb && payCode === '6'
@@ -208,9 +207,9 @@ ${stawkiDirect}
       </fa:PMarzy>
     </fa:Adnotacje>
     <fa:RodzajFaktury>${rodzaj}</fa:RodzajFaktury>
-  </fa:Fa>
 ${lines}
 ${platnosSection}
+  </fa:Fa>
 </fa:Faktura>`
 }
 
