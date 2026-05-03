@@ -5,7 +5,7 @@ import { useClients } from '@/features/clients/hooks/useClients'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useSettings } from '@/features/settings/hooks/useSettings'
 import { invoicesApi } from '@/features/invoices/api/invoices.api'
-import { ksefService } from '@/services/ksef/ksef.service'
+import { ksefService, validateNip } from '@/services/ksef/ksef.service'
 import { logKsefEvent } from '@/features/ksef/lib/ksefEvents'
 import type { KsefSession } from './useKsefSession'
 import type { Invoice } from '@/entities/invoice/model'
@@ -93,8 +93,10 @@ export function useKsefQueue() {
           const guardErrors: string[] = []
           if (!invoice.company_id) guardErrors.push('Brak company_id — faktura niepowiązana z firmą.')
           if (!seller.nip) guardErrors.push('Brak NIP sprzedawcy — uzupełnij dane firmy w Ustawieniach.')
+          if (seller.nip && !validateNip(seller.nip)) guardErrors.push(`Nieprawidłowy NIP sprzedawcy (${seller.nip}) — błąd sumy kontrolnej. Popraw NIP w Ustawieniach.`)
           if (!seller.name) guardErrors.push('Brak nazwy sprzedawcy — uzupełnij dane firmy w Ustawieniach.')
           if (!buyer.name && !buyer.nip) guardErrors.push('Brak danych nabywcy — przypisz klienta do faktury.')
+          if (buyer.nip && !validateNip(buyer.nip)) guardErrors.push(`Nieprawidłowy NIP nabywcy (${buyer.nip}) — błąd sumy kontrolnej. Popraw NIP klienta przed wysłaniem do KSeF.`)
           if (!invoice.number) guardErrors.push('Faktura jest szkicem (brak numeru) — najpierw ją wystaw.')
           if (guardErrors.length > 0) {
             const reason = guardErrors.join(' ')
