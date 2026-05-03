@@ -83,6 +83,10 @@ exports.handler = async (event) => {
       }
     }
 
+    const statusCode = invoice.status?.code ?? null
+    const statusDescription = invoice.status?.description || null
+    console.log(`[ksef-upo] invoice=${ksefRef} statusCode=${statusCode} description=${statusDescription}`)
+
     return {
       statusCode: 200,
       headers,
@@ -92,8 +96,8 @@ exports.handler = async (event) => {
         acquisitionTimestamp: invoice.acquisitionDate || invoice.invoicingDate || null,
         hashSHA: invoice.invoiceHash || null,
         upoDownloadUrl: invoice.upoDownloadUrl || null,
-        statusCode: invoice.status?.code ?? null,
-        statusDescription: invoice.status?.description || null,
+        statusCode,
+        statusDescription,
       }),
     }
   } catch (e) {

@@ -53,6 +53,16 @@ function escXml(s: string | null | undefined): string {
     .replace(/"/g, '&quot;')
 }
 
+/**
+ * Normalize a Polish bank account to 26-digit NRB format (no spaces, no PL prefix).
+ * FA(3) Schematron requires exactly 26 digits — IBAN format "PL 82 1050..." will be rejected.
+ * "PL 82 1050 1562 1000 0090 8338 0163" → "82105015621000009083380163"
+ */
+function normalizeNrb(account: string | null | undefined): string {
+  if (!account) return ''
+  return account.replace(/\s+/g, '').replace(/^PL/i, '')
+}
+
 /** Map vat_rate number to FA(2) field suffix: 23→_1, 8→_2, 5→_3, 0→_4, other→_5 */
 function vatSuffix(rate: number): string {
   if (rate === 23) return '_1'
@@ -143,13 +153,14 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
       : ''
 
   const paid = invoice.status === 'paid'
+  const nrb = normalizeNrb(invoice.bank_account)
   const platnosSection = paid
     ? `    <fa:Platnosc>
       <fa:Zaplacono>1</fa:Zaplacono>
       <fa:ZaplataNaleznosci>
         <fa:DataZaplaty>${issueDate}</fa:DataZaplaty>
         <fa:FormaPlatnosci>${payCode}</fa:FormaPlatnosci>
-        ${invoice.bank_account && payCode === '6' ? `<fa:NumerRachunku>${escXml(invoice.bank_account)}</fa:NumerRachunku>` : ''}
+        ${nrb && payCode === '6' ? `<fa:NumerRachunku>${escXml(nrb)}</fa:NumerRachunku>` : ''}
       </fa:ZaplataNaleznosci>
     </fa:Platnosc>`
     : `    <fa:Platnosc>
@@ -157,7 +168,7 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
       <fa:TerminPlatnosci>
         <fa:Termin>${invoice.due_date || issueDate}</fa:Termin>
         <fa:FormaPlatnosci>${payCode}</fa:FormaPlatnosci>
-        ${invoice.bank_account && payCode === '6' ? `<fa:NumerRachunku>${escXml(invoice.bank_account)}</fa:NumerRachunku>` : ''}
+        ${nrb && payCode === '6' ? `<fa:NumerRachunku>${escXml(nrb)}</fa:NumerRachunku>` : ''}
       </fa:TerminPlatnosci>
     </fa:Platnosc>`
 
