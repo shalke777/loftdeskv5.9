@@ -99,12 +99,9 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
   const now = new Date().toISOString().slice(0, 23)
   const issueDate = invoice.issue_date || new Date().toISOString().slice(0, 10)
   const saleDate = invoice.sale_date || issueDate
-  const payCode= invoice.payment_method === 'cash' ? '1' : invoice.payment_method === 'card' ? '7' : '6'
+  const payCode = invoice.payment_method === 'cash' ? '1' : invoice.payment_method === 'card' ? '7' : '6'
   const rodzaj =
     invoice.invoice_type === 'advance' ? 'ZAL' : invoice.invoice_type === 'final' ? 'ROZ' : 'VAT'
-
-  // GTU_12 = usługi budowlane (8% VAT typically indicates construction services)
-  const hasGtu12 = invoice.items.some((item) => item.vat_rate === 8)
 
   // VAT grouping by rate
   const vatMap = new Map<number, { net: number; vat: number }>()
@@ -117,57 +114,51 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
 
   const fmt = (n: number) => n.toFixed(2)
 
+  // Schema 13775: P_13_x / P_14_x go DIRECTLY inside <Fa> — no <Rozliczenie>/<Stawki> wrapper
+  const stawkiDirect = Array.from(vatMap.entries())
+    .map(([rate, { net, vat }]) => {
+      const s = vatSuffix(rate)
+      return `    <fa:P_13${s}>${fmt(net)}</fa:P_13${s}>
+    <fa:P_14${s}>${fmt(vat)}</fa:P_14${s}>`
+    })
+    .join('\n')
+
+  // Schema 13775: FaWiersz is a SIBLING of <Fa>, not a child — at <Faktura> level
   const lines = invoice.items
     .map((item, idx) => {
       const net = Math.round(item.quantity * item.unit_price * 100) / 100
-      return `    <fa:FaWiersz>
-      <fa:NrWierszaFa>${idx + 1}</fa:NrWierszaFa>
-      <fa:P_7>${escXml(item.description)}</fa:P_7>
-      <fa:P_8A>${escXml(item.unit || 'kpl')}</fa:P_8A>
-      <fa:P_8B>${item.quantity}</fa:P_8B>
-      <fa:P_9A>${fmt(item.unit_price)}</fa:P_9A>
-      <fa:P_11>${fmt(net)}</fa:P_11>
-      <fa:P_12>${item.vat_rate}</fa:P_12>
-    </fa:FaWiersz>`
+      return `  <fa:FaWiersz>
+    <fa:NrWierszaFa>${idx + 1}</fa:NrWierszaFa>
+    <fa:P_7>${escXml(item.description)}</fa:P_7>
+    <fa:P_8A>${escXml(item.unit || 'kpl')}</fa:P_8A>
+    <fa:P_8B>${item.quantity}</fa:P_8B>
+    <fa:P_9A>${fmt(item.unit_price)}</fa:P_9A>
+    <fa:P_11>${fmt(net)}</fa:P_11>
+    <fa:P_12>${item.vat_rate}</fa:P_12>
+  </fa:FaWiersz>`
     })
     .join('\n')
 
-  // FA(3) Stawki: flat P_13_x / P_14_x directly inside <fa:Stawki> — no <fa:Stawka> wrapper, no P_12_XII
-  // FA(2) used <Stawka><P_12_XII>rate</P_12_XII><P_13_x>...</P_13_x></Stawka> — FA(3) dropped that wrapper
-  const stawkiInner = Array.from(vatMap.entries())
-    .map(([rate, { net, vat }]) => {
-      const s = vatSuffix(rate)
-      return `        <fa:P_13${s}>${fmt(net)}</fa:P_13${s}>
-        <fa:P_14${s}>${fmt(vat)}</fa:P_14${s}>`
-    })
-    .join('\n')
-
-  const advanceSection =
-    invoice.invoice_type === 'final' && (invoice.advance_total ?? 0) > 0
-      ? `    <fa:ZaliczkiCzesciowe>
-      <fa:KwotaFaZaliczkowej>${fmt(invoice.advance_total ?? 0)}</fa:KwotaFaZaliczkowej>
-    </fa:ZaliczkiCzesciowe>`
-      : ''
-
+  // Schema 13775: Platnosc is a SIBLING of <Fa> at <Faktura> level, no <ZaplataNaleznosci> wrapper.
+  // Paid: Zaplacono(1) + DataZaplaty directly, then FormaPlatnosci + RachunekBankowy.
+  // Unpaid: TerminPlatnosci, then FormaPlatnosci + RachunekBankowy.
   const paid = invoice.status === 'paid'
   const nrb = normalizeNrb(invoice.bank_account)
+  const nrbXml = nrb && payCode === '6'
+    ? `\n    <fa:RachunekBankowy><fa:NrRB>${escXml(nrb)}</fa:NrRB></fa:RachunekBankowy>`
+    : ''
   const platnosSection = paid
-    ? `    <fa:Platnosc>
-      <fa:Zaplacono>1</fa:Zaplacono>
-      <fa:ZaplataNaleznosci>
-        <fa:DataZaplaty>${issueDate}</fa:DataZaplaty>
-        <fa:FormaPlatnosci>${payCode}</fa:FormaPlatnosci>
-        ${nrb && payCode === '6' ? `<fa:NumerRachunku>${escXml(nrb)}</fa:NumerRachunku>` : ''}
-      </fa:ZaplataNaleznosci>
-    </fa:Platnosc>`
-    : `    <fa:Platnosc>
-      <fa:Zaplacono>2</fa:Zaplacono>
-      <fa:TerminPlatnosci>
-        <fa:Termin>${invoice.due_date || issueDate}</fa:Termin>
-        <fa:FormaPlatnosci>${payCode}</fa:FormaPlatnosci>
-        ${nrb && payCode === '6' ? `<fa:NumerRachunku>${escXml(nrb)}</fa:NumerRachunku>` : ''}
-      </fa:TerminPlatnosci>
-    </fa:Platnosc>`
+    ? `  <fa:Platnosc>
+    <fa:Zaplacono>1</fa:Zaplacono>
+    <fa:DataZaplaty>${issueDate}</fa:DataZaplaty>
+    <fa:FormaPlatnosci>${payCode}</fa:FormaPlatnosci>${nrbXml}
+  </fa:Platnosc>`
+    : `  <fa:Platnosc>
+    <fa:TerminPlatnosci>
+      <fa:Termin>${invoice.due_date || issueDate}</fa:Termin>
+    </fa:TerminPlatnosci>
+    <fa:FormaPlatnosci>${payCode}</fa:FormaPlatnosci>${nrbXml}
+  </fa:Platnosc>`
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <fa:Faktura xmlns:fa="http://crd.gov.pl/wzor/2025/06/25/13775/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -198,16 +189,8 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
     <fa:P_1>${issueDate}</fa:P_1>
     <fa:P_2>${escXml(invoice.number)}</fa:P_2>
     <fa:P_6>${saleDate}</fa:P_6>
-    <fa:RodzajFaktury>${rodzaj}</fa:RodzajFaktury>
-${lines}
-    <fa:Rozliczenie>
-      <fa:Stawki>
-${stawkiInner}
-      </fa:Stawki>
-      <fa:P_15>${fmt(invoice.total_gross)}</fa:P_15>
-    </fa:Rozliczenie>
-${advanceSection}
-${platnosSection}
+${stawkiDirect}
+    <fa:P_15>${fmt(invoice.total_gross)}</fa:P_15>
     <fa:Adnotacje>
       <fa:P_16>2</fa:P_16>
       <fa:P_17>2</fa:P_17>
@@ -222,9 +205,12 @@ ${platnosSection}
       <fa:P_23>2</fa:P_23>
       <fa:PMarzy>
         <fa:P_PMarzyN>1</fa:P_PMarzyN>
-      </fa:PMarzy>${hasGtu12 ? '\n      <fa:GTU><fa:GTU_12>1</fa:GTU_12></fa:GTU>' : ''}
+      </fa:PMarzy>
     </fa:Adnotacje>
+    <fa:RodzajFaktury>${rodzaj}</fa:RodzajFaktury>
   </fa:Fa>
+${lines}
+${platnosSection}
 </fa:Faktura>`
 }
 
