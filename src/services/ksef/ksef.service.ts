@@ -187,7 +187,7 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
     <fa:KodWaluty>PLN</fa:KodWaluty>
     <fa:P_1>${issueDate}</fa:P_1>
     <fa:P_2>${escXml(invoice.number)}</fa:P_2>
-    <fa:P_6>${saleDate}</fa:P_6>
+    ${saleDate !== issueDate ? `<fa:P_6>${saleDate}</fa:P_6>` : ''}
 ${stawkiDirect}
     <fa:P_15>${fmt(invoice.total_gross)}</fa:P_15>
     <fa:Adnotacje>
