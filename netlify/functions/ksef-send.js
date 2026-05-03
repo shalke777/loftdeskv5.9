@@ -123,17 +123,22 @@ exports.handler = async (event) => {
     const detail = e.message || 'upstream_error'
     const isConnectionError = /ECONNREFUSED|ENOTFOUND|Timeout|nie można|socket hang up|ECONNRESET|503|502/i.test(detail)
 
-    // Auto-fallback to mock for non-prod when KSeF is unreachable
-    if (isConnectionError && env !== 'prod') {
-      console.warn(`[ksef-send] Connection failed (${env}), falling back to mock:`, detail)
+    // Mock fallback gated behind explicit env flag KSEF_ALLOW_MOCK=true.
+    // Without the flag, ALL connection errors surface as real 502 — no fake success.
+    const mockAllowed = process.env.KSEF_ALLOW_MOCK === 'true'
+    if (isConnectionError && env !== 'prod' && mockAllowed) {
+      console.warn(`[ksef-send] Connection failed (${env}), KSEF_ALLOW_MOCK=true → falling back to mock:`, detail)
       const mock = mockApi.sendInvoice(invoiceNumber, '')
       console.log(`[ksef-send] MOCK fallback: ksefRef=${mock.body.ksefRef}`)
       return { statusCode: 200, headers, body: JSON.stringify(mock.body) }
+    }
+    if (isConnectionError && env !== 'prod' && !mockAllowed) {
+      console.error(`[ksef-send] Connection failed (${env}). Mock fallback DISABLED (set KSEF_ALLOW_MOCK=true to enable). Detail:`, detail)
     }
 
     const friendly = isConnectionError
       ? `Nie można połączyć się z serwerem KSeF. ${detail}`
       : detail
-    return { statusCode: 502, headers, body: JSON.stringify({ error: friendly, detail }) }
+    return { statusCode: 502, headers, body: JSON.stringify({ error: friendly, detail, env, mockFallback: false }) }
   }
 }
