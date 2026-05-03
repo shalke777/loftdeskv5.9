@@ -99,8 +99,7 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
   const now = new Date().toISOString().slice(0, 23)
   const issueDate = invoice.issue_date || new Date().toISOString().slice(0, 10)
   const saleDate = invoice.sale_date || issueDate
-  const [year, month] = issueDate.split('-')
-  const payCode = invoice.payment_method === 'cash' ? '1' : invoice.payment_method === 'card' ? '7' : '6'
+  const payCode= invoice.payment_method === 'cash' ? '1' : invoice.payment_method === 'card' ? '7' : '6'
   const rodzaj =
     invoice.invoice_type === 'advance' ? 'ZAL' : invoice.invoice_type === 'final' ? 'ROZ' : 'VAT'
 
@@ -171,7 +170,7 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
     </fa:Platnosc>`
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<fa:Faktura xmlns:fa="http://crd.gov.pl/wzor/2023/12/13/13644/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<fa:Faktura xmlns:fa="http://crd.gov.pl/wzor/2025/06/25/13775/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <fa:Naglowek>
     <fa:KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</fa:KodFormularza>
     <fa:WariantFormularza>3</fa:WariantFormularza>
@@ -193,12 +192,12 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
     </fa:DaneIdentyfikacyjne>
     ${buyer.address ? `<fa:Adres><fa:AdresL1>${escXml(buyer.address)}</fa:AdresL1></fa:Adres>` : ''}
     <fa:RolaPodmiotu2>2</fa:RolaPodmiotu2>
+    <fa:JST>2</fa:JST>
+    <fa:GV>2</fa:GV>
   </fa:Podmiot2>
   <fa:Fa>
     <fa:KodWaluty>PLN</fa:KodWaluty>
     <fa:P_1>${issueDate}</fa:P_1>
-    <fa:P_1M>${month}</fa:P_1M>
-    <fa:P_1R>${year}</fa:P_1R>
     <fa:P_2>${escXml(invoice.number)}</fa:P_2>
     <fa:P_6>${saleDate}</fa:P_6>
     <fa:RodzajFaktury>${rodzaj}</fa:RodzajFaktury>
@@ -213,7 +212,19 @@ ${advanceSection}
 ${platnosSection}
     <fa:Adnotacje>
       <fa:P_16>2</fa:P_16>
-      <fa:P_17>2</fa:P_17>${hasGtu12 ? '\n      <fa:GTU><fa:GTU_12>1</fa:GTU_12></fa:GTU>' : ''}
+      <fa:P_17>2</fa:P_17>
+      <fa:P_18>2</fa:P_18>
+      <fa:P_18A>2</fa:P_18A>
+      <fa:Zwolnienie>
+        <fa:P_19N>1</fa:P_19N>
+      </fa:Zwolnienie>
+      <fa:NoweSrodkiTransportu>
+        <fa:P_22N>1</fa:P_22N>
+      </fa:NoweSrodkiTransportu>
+      <fa:P_23>2</fa:P_23>
+      <fa:PMarzy>
+        <fa:P_PMarzyN>1</fa:P_PMarzyN>
+      </fa:PMarzy>${hasGtu12 ? '\n      <fa:GTU><fa:GTU_12>1</fa:GTU_12></fa:GTU>' : ''}
     </fa:Adnotacje>
   </fa:Fa>
 </fa:Faktura>`
