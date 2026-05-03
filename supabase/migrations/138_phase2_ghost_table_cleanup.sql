@@ -70,15 +70,37 @@
 BEGIN;
 
 -- ─── STEP 1: Soft deprecation comments (non-destructive, applied first) ──────
+-- Wrapped in DO blocks: safe even if table doesn't exist in production
 
-COMMENT ON TABLE public.handover_protocols IS
-  'DEPRECATED_2026_AUDIT — feature never shipped, zero code consumers, safe to drop';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables
+             WHERE table_schema='public' AND table_name='handover_protocols') THEN
+    EXECUTE $q$COMMENT ON TABLE public.handover_protocols IS
+      'DEPRECATED_2026_AUDIT — feature never shipped, zero code consumers, safe to drop'$q$;
+  END IF;
+END;
+$$;
 
-COMMENT ON TABLE public.technical_standards IS
-  'DEPRECATED_2026_AUDIT — feature never shipped, zero code consumers, safe to drop';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables
+             WHERE table_schema='public' AND table_name='technical_standards') THEN
+    EXECUTE $q$COMMENT ON TABLE public.technical_standards IS
+      'DEPRECATED_2026_AUDIT — feature never shipped, zero code consumers, safe to drop'$q$;
+  END IF;
+END;
+$$;
 
-COMMENT ON TABLE public.company_memory_feedback IS
-  'DEPRECATED_2026_AUDIT — AI feedback scaffold, never wired to UI, zero code consumers';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables
+             WHERE table_schema='public' AND table_name='company_memory_feedback') THEN
+    EXECUTE $q$COMMENT ON TABLE public.company_memory_feedback IS
+      'DEPRECATED_2026_AUDIT — AI feedback scaffold, never wired to UI, zero code consumers'$q$;
+  END IF;
+END;
+$$;
 
 -- ─── STEP 2: DROP SAFE tables ──────────────────────────────────────────────────
 --
