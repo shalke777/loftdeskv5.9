@@ -143,10 +143,10 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
       : ''
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<fa:Faktura xmlns:fa="http://crd.gov.pl/wzor/2023/06/29/12648/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<fa:Faktura xmlns:fa="http://crd.gov.pl/wzor/2023/12/13/13644/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <fa:Naglowek>
-    <fa:KodFormularza kodSystemowy="FA (2)" wersjaSchemy="1-0E">FA</fa:KodFormularza>
-    <fa:WariantFormularza>2</fa:WariantFormularza>
+    <fa:KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</fa:KodFormularza>
+    <fa:WariantFormularza>3</fa:WariantFormularza>
     <fa:DataWytworzeniaFa>${now}</fa:DataWytworzeniaFa>
     <fa:SystemInfo>LoftDesk v5.9</fa:SystemInfo>
   </fa:Naglowek>

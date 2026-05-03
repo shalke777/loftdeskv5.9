@@ -320,9 +320,10 @@ exports.handler = async (event) => {
       const encryptedAesKey = rsaOaepEncrypt(aesKey, symEncKey.certificate).toString('base64')
 
       // 9. Open online interactive session with accessToken (NOT authenticationToken)
-      // KSeF v2: /sessions/online takes ONLY encryption — no formCode field (v1 artefact).
-      // Passing formCode causes error 21405 "Wskazany kod formularza nie jest wspierany."
+      // KSeF v2 PROD requires formCode with systemCode='FA (3)' — FA(2) returns 21405.
+      // The session formCode declares which invoice schema the session will accept.
       const sessionBody = {
+        formCode: { systemCode: 'FA (3)', schemaVersion: '1-0E', value: 'FA' },
         encryption: {
           encryptedSymmetricKey: encryptedAesKey,
           initializationVector: iv.toString('base64'),
