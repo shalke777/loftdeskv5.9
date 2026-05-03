@@ -230,6 +230,7 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
   }
 
   async function handleSubmit() {
+    if (!companyId || companyId === 'demo-company') { toast.error('Brak kontekstu firmy', 'Nie można utworzyć faktury bez przypisanej firmy. Zaloguj się ponownie.'); return }
     if (items.length === 0) { toast.error('Brak pozycji', 'Dodaj co najmniej jedną pozycję do faktury.'); return }
     if (invoiceType === 'correction' && !correctionReason.trim()) { toast.error('Brak powodu korekty', 'Podaj powód korekty faktury.'); return }
     setSubmitting(true)
@@ -240,6 +241,7 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
   }
 
   async function handleSaveDraft() {
+    if (!companyId || companyId === 'demo-company') { toast.error('Brak kontekstu firmy', 'Nie można zapisać faktury bez przypisanej firmy. Zaloguj się ponownie.'); return }
     if (items.length === 0) { toast.error('Brak pozycji', 'Dodaj co najmniej jedną pozycję do faktury.'); return }
     setSubmitting(true)
     try {

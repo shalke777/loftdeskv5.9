@@ -123,7 +123,12 @@ export const invoicesApi = {
     }
 
     const payload = withScope(scope, { number: invoiceNumber, client_id: input.client_id, project_id: input.project_id, contract_id: input.contract_id ?? null, status: isDraft ? 'draft' : (input.status ?? 'unpaid'), invoice_type: input.invoice_type ?? 'standard', issue_date: input.issue_date, sale_date: input.sale_date ?? null, issue_place: input.issue_place ?? null, due_date: input.due_date, payment_method: input.payment_method ?? 'transfer', bank_account: input.bank_account ?? null, tranche_id: input.tranche_id ?? null, advance_total: input.advance_total ?? null, corrected_invoice_id: input.corrected_invoice_id ?? null, correction_reason: input.correction_reason ?? null, original_items: input.original_items ?? null, original_data: input.original_data ?? null, ksef_status: isDraft ? null : 'ksef_pending', ksef_ref: null, notes: input.notes ?? null, total_net: calcInvoiceTotals(input.items ?? []).totalNet, total_gross: calcInvoiceTotals(input.items ?? []).totalGross })
-    const { data: invoice, error } = await supabase.from('invoices').insert(payload).select('*').single(); if (error) throw error
+    console.info('[invoicesApi.create] INSERT payload', { company_id: payload.company_id, client_id: payload.client_id, project_id: payload.project_id, number: payload.number, status: payload.status, isDraft, itemsCount: (input.items ?? []).length })
+    const { data: invoice, error } = await supabase.from('invoices').insert(payload).select('*').single()
+    if (error) {
+      console.error('[invoicesApi.create] INSERT failed', { code: (error as any).code, message: error.message, details: (error as any).details, hint: (error as any).hint, payloadKeys: Object.keys(payload) })
+      throw error
+    }
     const items = input.items ?? []
     if (items.length > 0) {
       const itemRows = items.map((item, index) => ({ invoice_id: invoice.id, description: item.description ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index, tranche_label: item.tranche_label ?? '' }))

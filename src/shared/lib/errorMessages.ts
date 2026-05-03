@@ -38,6 +38,11 @@ const ERROR_MAP: Record<string, string> = {
   'new row violates row-level security policy': 'Brak uprawnień do wykonania tej operacji.',
   'permission denied': 'Brak uprawnień do wykonania tej operacji.',
 
+  // ── Schema mismatch (missing migration on this environment) ───────────
+  'could not find the': 'Baza danych nie ma jeszcze najnowszych zmian (brakująca migracja). Skontaktuj się z administratorem.',
+  'column does not exist': 'Baza danych nie ma jeszcze najnowszych zmian (brakująca migracja). Skontaktuj się z administratorem.',
+  'schema cache': 'Baza danych nie ma jeszcze najnowszych zmian (brakująca migracja). Skontaktuj się z administratorem.',
+
   // ── PKCE / OAuth ──────────────────────────────────────────────────────
   'Both auth code and code verifier should be non-empty': 'Link weryfikacyjny jest niekompletny. Spróbuj ponownie.',
 }
