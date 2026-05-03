@@ -185,6 +185,39 @@ No Netlify log export was supplied in this snapshot, so this map remains static 
 | `ksef-debug` | likely diagnostic/dev-only |
 | `ksef-mock` | likely diagnostic/dev-only |
 
+## Phase 2 — DB Ghost Table Cleanup Results (2026-05-03)
+
+### Classification summary
+
+| Table | Production status | Action taken |
+|---|---|---|
+| `handover_protocols` | EXISTS, 0 rows, no RPC, no triggers | ✅ **DROPPED** |
+| `technical_standards` | EXISTS, 0 rows, no RPC, no triggers | ✅ **DROPPED** |
+| `company_memory_feedback` | MISSING (migration 088 never applied) | ✅ **DROP IF EXISTS** (no-op) |
+| `portal_messages` | EXISTS — live RPCs 026/062/063 reference it | 🔒 KEPT — annotated DEPRECATED |
+| `client_decisions` | EXISTS — trigger `trg_client_decision_to_memory` (migration 114) | 🔒 KEPT — annotated DEPRECATED |
+| `project_portal_sessions` | EXISTS — `delete_project_hard()` RPC uses it | 🔒 KEPT (user constraint) |
+| `conversations` | EXISTS — user constraint + RPC reference | 🔒 KEPT (user constraint) |
+| `invoice_counters` | EXISTS — user constraint | 🔒 KEPT (user constraint) |
+| `assignment_queue` | EXISTS — user constraint | 🔒 KEPT (user constraint) |
+| `export_jobs` | EXISTS — user constraint | 🔒 KEPT (user constraint) |
+
+### Migration applied
+
+- File: `supabase/migrations/138_phase2_ghost_table_cleanup.sql`
+- Commit: `b05ffda3`
+- SQL executed in production Supabase: `DROP TABLE IF EXISTS` for all 3 tables
+- Result: `Success. No rows returned` — clean execution, no errors
+
+### Remaining INVESTIGATE candidates (Phase 3 scope)
+
+| Table | Blocker | Next step |
+|---|---|---|
+| `portal_messages` | Legacy RPCs `portal_send_message`, `delete_portal_message`, `portal_get_conversation` | Drop RPCs first (migration 139), then table |
+| `client_decisions` | Trigger `fn_client_decision_to_memory` wired to `project_memory_entries` | Drop trigger + function first, then table |
+
+---
+
 ## Interpretation
 
 This snapshot proves only a small amount of app runtime activity:
