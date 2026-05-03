@@ -86,6 +86,9 @@ exports.handler = async (event) => {
     const statusCode = invoice.status?.code ?? null
     const statusDescription = invoice.status?.description || null
     console.log(`[ksef-upo] invoice=${ksefRef} statusCode=${statusCode} description=${statusDescription}`)
+    if (statusCode !== 200 && statusCode !== 100) {
+      console.log(`[ksef-upo] FULL invoice object:`, JSON.stringify(invoice, null, 2))
+    }
 
     return {
       statusCode: 200,
