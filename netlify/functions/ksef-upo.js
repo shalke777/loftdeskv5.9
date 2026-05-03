@@ -100,10 +100,16 @@ exports.handler = async (event) => {
     const detail = e.message || 'upstream_error'
     const isConnectionError = /ECONNREFUSED|ENOTFOUND|Timeout|nie można|socket hang up|ECONNRESET|503|502/i.test(detail)
 
-    if (isConnectionError && env !== 'prod') {
-      console.warn(`[ksef-upo] Connection failed (${env}), falling back to mock:`, detail)
+    // Mock fallback gated behind explicit env flag KSEF_ALLOW_MOCK=true.
+    // Without the flag, ALL connection errors surface as real 502 — no fake UPO.
+    const mockAllowed = process.env.KSEF_ALLOW_MOCK === 'true'
+    if (isConnectionError && env !== 'prod' && mockAllowed) {
+      console.warn(`[ksef-upo] Connection failed (${env}), KSEF_ALLOW_MOCK=true → falling back to mock:`, detail)
       const mock = mockApi.fetchUpo(ksefRef);
       return { statusCode: 200, headers, body: JSON.stringify(mock.body) };
+    }
+    if (isConnectionError && env !== 'prod' && !mockAllowed) {
+      console.error(`[ksef-upo] Connection failed (${env}). Mock fallback DISABLED (set KSEF_ALLOW_MOCK=true to enable). Detail:`, detail)
     }
 
     const friendly = isConnectionError

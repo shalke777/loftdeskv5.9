@@ -76,8 +76,14 @@ export function validateNip(nip: string): boolean {
 }
 
 /**
- * Build official FA_VAT(3) XML per Ministry of Finance KSeF v2 schema
- * xmlns: http://crd.gov.pl/wzor/2023/06/29/12648/
+ * Build official FA_VAT(2) XML per Ministry of Finance KSeF v2 schema
+ * xmlns: http://crd.gov.pl/wzor/2023/06/29/12648/  (FA(2) — 2023 schema)
+ *
+ * NOTE: function name `buildFA2Xml` is correct — produces FA(2). Earlier the
+ * header declared `FA (3)` / WariantFormularza=3 which mismatched the FA(2)
+ * namespace and caused MF to silently reject the document at schema validation
+ * (HTTP 202 returned for the session, but invoice never appeared in the KSeF
+ * Aplikacja Podatnika). FA(3) migration is tracked as a separate epic.
  */
 export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuyer = {}): string {
   const now = new Date().toISOString().slice(0, 23)
@@ -139,8 +145,8 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
   return `<?xml version="1.0" encoding="UTF-8"?>
 <fa:Faktura xmlns:fa="http://crd.gov.pl/wzor/2023/06/29/12648/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <fa:Naglowek>
-    <fa:KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</fa:KodFormularza>
-    <fa:WariantFormularza>3</fa:WariantFormularza>
+    <fa:KodFormularza kodSystemowy="FA (2)" wersjaSchemy="1-0E">FA</fa:KodFormularza>
+    <fa:WariantFormularza>2</fa:WariantFormularza>
     <fa:DataWytworzeniaFa>${now}</fa:DataWytworzeniaFa>
     <fa:SystemInfo>LoftDesk v5.9</fa:SystemInfo>
   </fa:Naglowek>
@@ -327,7 +333,7 @@ export const ksefService = {
     buyer: KsefBuyer,
     session: { sessionToken?: string; accessToken?: string; sessionRef?: string; symmetricKey?: string; iv?: string },
     env: KsefEnv = 'test',
-  ): Promise<{ ksefRef: string; invoiceNumber: string }> {
+  ): Promise<{ ksefRef: string; invoiceNumber: string; mfResponse?: Record<string, unknown> }> {
     const xmlPayload = buildFA2Xml(invoice, seller, buyer)
     const token = session.sessionToken || session.accessToken || ''
     const result = await callProxy('ksef-send', {
@@ -339,7 +345,11 @@ export const ksefService = {
       iv: session.iv || '',
       env,
     })
-    return { ksefRef: result.ksefRef as string, invoiceNumber: invoice.number ?? '' }
+    return {
+      ksefRef: result.ksefRef as string,
+      invoiceNumber: invoice.number ?? '',
+      mfResponse: result.mfResponse as Record<string, unknown> | undefined,
+    }
   },
 
   // ── Receive documents ───────────────────────────────────

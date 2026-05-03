@@ -7,6 +7,10 @@ export type KsefEventAction =
   | 'send_error'
   | 'skip_idempotent'
   | 'retry'
+  | 'session_close'
+  | 'session_close_check'
+  | 'validation_error'
+  | 'validation_ok'
 
 export interface KsefEventInput {
   companyId: string

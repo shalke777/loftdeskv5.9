@@ -117,6 +117,9 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         ksefRef,
         invoiceNumber,
+        // Full MF response — surfaced so client can persist it in ksef_events.meta
+        // for forensic diagnostics (e.g. silent schema rejections after HTTP 202).
+        mfResponse: result,
       }),
     }
   } catch (e) {

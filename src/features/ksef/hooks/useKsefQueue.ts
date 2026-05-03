@@ -152,7 +152,7 @@ export function useKsefQueue() {
             }
             void logKsefEvent({ companyId, invoiceId: invoice.id, action: attempt > 1 ? 'retry' : 'send_attempt', attempt, env: session.env as 'demo' | 'test' | 'prod' })
             try {
-              const { ksefRef } = await ksefService.sendInvoice(
+              const { ksefRef, mfResponse } = await ksefService.sendInvoice(
                 invoice,
                 seller,
                 buyer,
@@ -177,7 +177,7 @@ export function useKsefQueue() {
                 })
                 dbError = msg
               }
-              void logKsefEvent({ companyId, invoiceId: invoice.id, action: 'send_success', attempt, ksefRef, env: session.env as 'demo' | 'test' | 'prod', message: dbError ? `KSeF OK; DB update failed: ${dbError}` : 'OK' })
+              void logKsefEvent({ companyId, invoiceId: invoice.id, action: 'send_success', attempt, ksefRef, env: session.env as 'demo' | 'test' | 'prod', message: dbError ? `KSeF OK; DB update failed: ${dbError}` : 'OK', meta: { mfResponse: mfResponse ?? null, sessionRef: session.referenceNumber } })
               ksefService.appendHistory({
                 invoiceId: invoice.id,
                 invoiceNumber: invoice.number ?? "",
@@ -220,6 +220,81 @@ export function useKsefQueue() {
         }
 
         qc.invalidateQueries({ queryKey: ['invoices'] })
+
+        // ── Post-send: auto-close session + verify per-invoice MF status ────
+        // KSeF v2: HTTP 202 from POST /invoices means "accepted to session
+        // queue", NOT "validated". Real schema validation happens only after
+        // the session is closed. Without this step a schema-rejected invoice
+        // looks "ksef_sent" in our DB but never appears in KSeF Aplikacja
+        // Podatnika. This block fixes that silent-failure mode.
+        if (!isDemo && result.sent > 0 && session.referenceNumber && session.sessionToken) {
+          const env = session.env as 'demo' | 'test' | 'prod'
+          try {
+            await ksefService.closeSession(session.sessionToken, session.referenceNumber, env)
+            void logKsefEvent({ companyId, invoiceId: null, action: 'session_close', env, message: 'Session closed for validation', meta: { sessionRef: session.referenceNumber, sentCount: result.sent } })
+          } catch (closeErr: unknown) {
+            const msg = closeErr instanceof Error ? closeErr.message : String(closeErr)
+            console.warn('[useKsefQueue] closeSession failed (non-fatal):', msg)
+            void logKsefEvent({ companyId, invoiceId: null, action: 'session_close', env, message: `close failed: ${msg}`, meta: { sessionRef: session.referenceNumber, error: msg } })
+          }
+
+          // Give MF a moment to run schema validation before polling.
+          await new Promise<void>((r) => setTimeout(r, 3000))
+
+          for (const item of result.items) {
+            if (item.status !== 'sent' || !item.ksefRef) continue
+            try {
+              const upo = await ksefService.fetchUpo(
+                item.ksefRef,
+                session.sessionToken,
+                env,
+                session.referenceNumber,
+              )
+              const statusCode = upo.statusCode as number | null | undefined
+              const statusDesc = (upo.statusDescription as string | null | undefined) ?? null
+              const ksefNumber = (upo.ksefReferenceNumber as string | null | undefined) ?? null
+
+              void logKsefEvent({ companyId, invoiceId: item.invoice.id, action: 'session_close_check', env, ksefRef: item.ksefRef, message: `status=${statusCode ?? 'null'} ${statusDesc ?? ''}`, meta: { statusCode, statusDescription: statusDesc, ksefNumber } })
+
+              if (statusCode === 200) {
+                if (ksefNumber && ksefNumber !== item.ksefRef) {
+                  try {
+                    await invoicesApi.update(item.invoice.id, { ksef_number: ksefNumber } as Partial<Invoice>, companyId)
+                  } catch (e) {
+                    console.warn('[useKsefQueue] persist ksef_number failed:', e)
+                  }
+                }
+                void logKsefEvent({ companyId, invoiceId: item.invoice.id, action: 'validation_ok', env, ksefRef: item.ksefRef, message: 'MF validated', meta: { ksefNumber } })
+              } else if (statusCode != null && statusCode !== 200) {
+                // MF rejected this invoice at validation. Flip status back so the
+                // operator sees it red and knows to fix + resend.
+                const reason = `KSeF odrzucił fakturę przy walidacji schematu (status ${statusCode}). ${statusDesc ?? ''}`.trim()
+                try {
+                  await invoicesApi.update(
+                    item.invoice.id,
+                    { ksef_status: 'ksef_error', ksef_last_error: reason, ksef_ref: null } as Partial<Invoice>,
+                    companyId,
+                  )
+                } catch (e) {
+                  console.error('[useKsefQueue] mark validation_error in DB failed:', e)
+                }
+                void logKsefEvent({ companyId, invoiceId: item.invoice.id, action: 'validation_error', env, ksefRef: item.ksefRef, message: reason, meta: { statusCode, statusDescription: statusDesc } })
+                // Reflect in the in-memory result so the UI summary is honest.
+                item.status = 'error'
+                item.error = reason
+                result.sent = Math.max(0, result.sent - 1)
+                result.errors += 1
+              }
+              // statusCode == null → MF still processing; UI keeps "sent" (yellow)
+            } catch (verifyErr: unknown) {
+              const msg = verifyErr instanceof Error ? verifyErr.message : String(verifyErr)
+              console.warn('[useKsefQueue] post-close verify failed for', item.invoice.id, msg)
+              void logKsefEvent({ companyId, invoiceId: item.invoice.id, action: 'session_close_check', env, ksefRef: item.ksefRef, message: `verify failed: ${msg}` })
+            }
+          }
+          qc.invalidateQueries({ queryKey: ['invoices'] })
+        }
+
         setLastResult(result)
       } catch (outerErr) {
         // Catch-all: any unhandled error must not leave processing=true
