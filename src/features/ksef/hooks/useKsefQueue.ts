@@ -144,6 +144,19 @@ export function useKsefQueue() {
             continue
           }
 
+          // list() returns items:[] for perf — fetch full invoice with items before building XML
+          let fullInvoice: Invoice = invoice
+          try {
+            const fetched = await invoicesApi.get(invoice.id, companyId)
+            if (fetched && fetched.items.length > 0) {
+              fullInvoice = fetched
+            } else {
+              console.warn('[useKsefQueue] get() returned no items for invoice', invoice.id, '— falling back to list data')
+            }
+          } catch (fetchErr) {
+            console.warn('[useKsefQueue] get() failed, using list invoice (items may be empty):', fetchErr)
+          }
+
           let sent = false
           let lastError = ''
           for (let attempt = 1; attempt <= 3 && !sent; attempt++) {
@@ -153,7 +166,7 @@ export function useKsefQueue() {
             void logKsefEvent({ companyId, invoiceId: invoice.id, action: attempt > 1 ? 'retry' : 'send_attempt', attempt, env: session.env as 'demo' | 'test' | 'prod' })
             try {
               const { ksefRef, mfResponse } = await ksefService.sendInvoice(
-                invoice,
+                fullInvoice,
                 seller,
                 buyer,
                 session,
