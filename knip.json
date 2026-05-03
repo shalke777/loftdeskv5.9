@@ -1,0 +1,38 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/main.tsx",
+    "src/App.tsx",
+    "netlify/functions/**/*.{ts,js}",
+    "scripts/**/*.{ts,js,mjs}",
+    "tests/**/*.{ts,tsx}",
+    "playwright.config.ts",
+    "vite.config.ts",
+    "tailwind.config.ts"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "netlify/functions/**/*.{ts,js}"
+  ],
+  "ignore": [
+    "Adjust Dashboard Color Scheme/**",
+    "android/**",
+    "ios/**",
+    "dist/**",
+    "legacy/**",
+    "public/**",
+    "node_modules/**",
+    "netlify/functions/node_modules/**",
+    "mcp/**",
+    "tasks/**",
+    "docs/**",
+    "scripts/**",
+    "tests/**"
+  ],
+  "ignoreDependencies": [
+    "@capacitor/.*",
+    "tailwindcss",
+    "postcss",
+    "autoprefixer"
+  ]
+}

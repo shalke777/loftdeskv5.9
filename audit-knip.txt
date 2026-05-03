@@ -1,0 +1,215 @@
+Unused files (81)
+src/app/routes/admin.tsx: src/app/routes/admin.tsx
+src/app/routes/go-live.tsx: src/app/routes/go-live.tsx
+src/app/routes/health.tsx: src/app/routes/health.tsx
+src/app/routes/release.tsx: src/app/routes/release.tsx
+src/entities/company/model.ts: src/entities/company/model.ts
+src/entities/estimate/api.ts: src/entities/estimate/api.ts
+src/entities/invitation/index.ts: src/entities/invitation/index.ts
+src/entities/invitation/model.ts: src/entities/invitation/model.ts
+src/entities/user/model.ts: src/entities/user/model.ts
+src/features/admin/components/AdminPage.tsx: src/features/admin/components/AdminPage.tsx
+src/features/admin/index.ts: src/features/admin/index.ts
+src/features/auth/model/auth.schema.ts: src/features/auth/model/auth.schema.ts
+src/features/billing/components/UpgradeBanner.tsx: src/features/billing/components/UpgradeBanner.tsx
+src/features/billing/index.ts: src/features/billing/index.ts
+src/features/chat/api/conversations.api.ts: src/features/chat/api/conversations.api.ts
+src/features/chat/hooks/useConversations.ts: src/features/chat/hooks/useConversations.ts
+src/features/client-portal/components/ClientIdentifyCTA.tsx: src/features/client-portal/components/ClientIdentifyCTA.tsx
+src/features/clients/index.ts: src/features/clients/index.ts
+src/features/contracts/components/ContractCard.tsx: src/features/contracts/components/ContractCard.tsx
+src/features/contracts/components/ContractDetail.tsx: src/features/contracts/components/ContractDetail.tsx
+src/features/contracts/index.ts: src/features/contracts/index.ts
+src/features/dashboard/index.ts: src/features/dashboard/index.ts
+src/features/documentation/index.ts: src/features/documentation/index.ts
+src/features/estimates/components/EstimateCard.tsx: src/features/estimates/components/EstimateCard.tsx
+src/features/estimates/index.ts: src/features/estimates/index.ts
+src/features/estimates/model/estimate.schema.ts: src/features/estimates/model/estimate.schema.ts
+src/features/events/core/index.ts: src/features/events/core/index.ts
+src/features/invoices/components/InvoiceCard.tsx: src/features/invoices/components/InvoiceCard.tsx
+src/features/invoices/components/InvoiceDetail.tsx: src/features/invoices/components/InvoiceDetail.tsx
+src/features/invoices/index.ts: src/features/invoices/index.ts
+src/features/ksef/index.ts: src/features/ksef/index.ts
+src/features/onboarding/components/OnboardingChecklist.tsx: src/features/onboarding/components/OnboardingChecklist.tsx
+src/features/onboarding/components/WelcomeBanner.tsx: src/features/onboarding/components/WelcomeBanner.tsx
+src/features/onboarding/index.ts: src/features/onboarding/index.ts
+src/features/portal/api/portal-project.api.ts: src/features/portal/api/portal-project.api.ts
+src/features/portal/hooks/usePortalInbox.ts: src/features/portal/hooks/usePortalInbox.ts
+src/features/portal/hooks/usePortalNotifications.ts: src/features/portal/hooks/usePortalNotifications.ts
+src/features/portal/index.ts: src/features/portal/index.ts
+src/features/portal/model/portal.schema.ts: src/features/portal/model/portal.schema.ts
+src/features/projects/components/KanbanBoard.tsx: src/features/projects/components/KanbanBoard.tsx
+src/features/projects/components/ProjectCard.tsx: src/features/projects/components/ProjectCard.tsx
+src/features/projects/components/ProjectDetail.tsx: src/features/projects/components/ProjectDetail.tsx
+src/features/projects/components/ProjectDocuments.tsx: src/features/projects/components/ProjectDocuments.tsx
+src/features/projects/components/ProjectNotes.tsx: src/features/projects/components/ProjectNotes.tsx
+src/features/projects/components/ProjectPortalCTA.tsx: src/features/projects/components/ProjectPortalCTA.tsx
+src/features/projects/components/ProjectTimeline.tsx: src/features/projects/components/ProjectTimeline.tsx
+src/features/projects/components/ProjectWeatherWidget.tsx: src/features/projects/components/ProjectWeatherWidget.tsx
+src/features/projects/index.ts: src/features/projects/index.ts
+src/features/projects/lib/eventChain.ts: src/features/projects/lib/eventChain.ts
+src/features/release/components/GoLivePage.tsx: src/features/release/components/GoLivePage.tsx
+src/features/release/components/ReleaseCenterPage.tsx: src/features/release/components/ReleaseCenterPage.tsx
+src/features/release/components/SystemHealthPage.tsx: src/features/release/components/SystemHealthPage.tsx
+src/features/release/index.ts: src/features/release/index.ts
+src/features/reports/index.ts: src/features/reports/index.ts
+src/features/settings/components/AuthBridgeCard.tsx: src/features/settings/components/AuthBridgeCard.tsx
+src/features/settings/index.ts: src/features/settings/index.ts
+src/features/signatures/providers/signature-provider.interface.ts: src/features/signatures/providers/signature-provider.interface.ts
+src/features/team/index.ts: src/features/team/index.ts
+src/services/ai/ai.service.ts: src/services/ai/ai.service.ts
+src/services/ai/composite/call-extract-asset.ts: src/services/ai/composite/call-extract-asset.ts
+src/services/ai/composite/dev-extractor-stub.ts: src/services/ai/composite/dev-extractor-stub.ts
+src/services/ai/engines/bathroom-dependency.ts: src/services/ai/engines/bathroom-dependency.ts
+src/services/ai/input-classifier.ts: src/services/ai/input-classifier.ts
+src/services/ai/model-config.ts: src/services/ai/model-config.ts
+src/services/ai/prompts/classifier.prompt.ts: src/services/ai/prompts/classifier.prompt.ts
+src/services/ai/prompts/document.prompt.ts: src/services/ai/prompts/document.prompt.ts
+src/services/ai/prompts/project.prompt.ts: src/services/ai/prompts/project.prompt.ts
+src/services/ai/prompts/room-scope.prompt.ts: src/services/ai/prompts/room-scope.prompt.ts
+src/services/ai/testing/golden-test-plan.ts: src/services/ai/testing/golden-test-plan.ts
+src/shared/hooks/useOfflineMutation.ts: src/shared/hooks/useOfflineMutation.ts
+src/shared/lib/deployReadiness.ts: src/shared/lib/deployReadiness.ts
+src/shared/lib/env.ts: src/shared/lib/env.ts
+src/shared/lib/finalProduction.ts: src/shared/lib/finalProduction.ts
+src/shared/lib/validators.ts: src/shared/lib/validators.ts
+src/shared/types/common.types.ts: src/shared/types/common.types.ts
+src/shared/types/database.types.ts: src/shared/types/database.types.ts
+src/shared/types/index.ts: src/shared/types/index.ts
+src/shared/ui/ConfirmDialog/ConfirmDialog.tsx: src/shared/ui/ConfirmDialog/ConfirmDialog.tsx
+src/workflows/estimate-to-contract/EstimateToContractFlow.tsx: src/workflows/estimate-to-contract/EstimateToContractFlow.tsx
+src/workflows/estimate-to-invoice/EstimateToInvoiceFlow.tsx: src/workflows/estimate-to-invoice/EstimateToInvoiceFlow.tsx
+src/workflows/estimate-to-invoice/useEstimateToInvoice.ts: src/workflows/estimate-to-invoice/useEstimateToInvoice.ts
+Unused dependencies (1)
+package.json: @hookform/resolvers, @radix-ui/react-dialog, @radix-ui/react-slot, @types/jszip, motion, react-hook-form
+Unused devDependencies (1)
+package.json: @tanstack/react-query-devtools, @tanstack/router-devtools, eslint-plugin-react-hooks, eslint-plugin-react-refresh, madge, ts-prune
+Unlisted dependencies (2)
+netlify.toml: tesseract.js
+netlify/functions/parse-invoice.ts: tesseract.js
+Unused exports (60)
+src/app/router.tsx: router
+src/entities/client/model.ts: ClientSchema
+src/entities/contract/model.ts: CustomParagraphSchema, ContractTrancheSchema, ContractSchema
+src/entities/documentation/model.ts: ClientDecisionSchema, HandoverChecklistItemSchema, HandoverProtocolSchema, PhotoDocumentationSchema, TechnicalStandardSchema
+src/entities/estimate/model.ts: EstimateItemSchema, EstimateSchema
+src/entities/invoice/model.ts: InvoiceItemSchema, InvoiceSchema
+src/entities/project/model.ts: ProjectCompletenessSchema, ProjectSchema, ProjectDocumentSchema, ProjectTimelineEntrySchema, AssignmentQueueItemSchema
+src/entities/service_catalog/model.ts: ServiceCatalogItemSchema
+src/features/ai-review/api/ai-bundle.api.ts: getExtractionResultsForBundle
+src/features/ai-review/api/ai-review.api.ts: getAiRunById, getAiInputAssets
+src/features/ai-review/hooks/useAiBundles.ts: useBundleWithAssets, useBundleEvidenceSummary, useBundleReadiness
+src/features/ai-review/hooks/useAiReview.ts: aiKeys
+src/features/ai-review/lib/uploadAiInput.ts: AI_INPUT_MAX_BYTES, AI_INPUT_ALLOWED_TYPES
+src/features/auth/hooks/useAuth.ts: useSession, useIsClient, useCurrentRole
+src/features/auth/hooks/usePermissions.ts: usePermissions
+src/features/client-portal/hooks/useClientNotifications.ts: notificationKeys
+src/features/client-portal/hooks/useClientPortal.ts: clientKeys, useClientApprovals, useClientRespondApproval
+src/features/estimates/components/EstimateRow.tsx: EstimateRowImpl
+src/features/estimates/hooks/useEstimates.ts: estimateKeys
+src/features/events/core/eventGraph.ts: buildEventGraph
+src/features/expenses/api/cost-approvals.api.ts: getOrCreateApprovalsThread
+src/features/expenses/api/expenses.api.ts: toAnalysisResult, flattenAnalysisResult, classifyInputType
+src/features/expenses/hooks/useAnalyzeProject.ts: callAnalyzeProject
+src/features/expenses/hooks/useAnalyzeRoomPhoto.ts: callAnalyzeRoomPhoto, callAnalyzeRoomPhotos
+src/features/expenses/hooks/useParseInvoice.ts: useParseAndNormalize, callParseInvoiceAINormalized
+src/features/invoices/components/InvoiceRow.tsx: InvoiceRowImpl
+src/features/invoices/hooks/useInvoices.ts: useCreateInvoiceFromEstimate
+src/features/marketing/components/LandingPage.tsx: default
+src/features/notifications/hooks/useOperatorNotifications.ts: operatorNotificationKeys
+src/features/portal/hooks/usePortalData.ts: useProjectPortalAccess, useRevokeProjectAccess, usePortalTokens, useDeactivatePortalToken
+src/features/projects/api/timeline.api.ts: createTimelineEvent, buildTimelineEvent, getDemoTimeline
+src/features/projects/components/ProjectRow.tsx: ProjectRowImpl
+src/features/projects/components/ThreadList.tsx: ThreadListItem
+src/features/projects/hooks/useProjectDocuments.ts: useProjectDocuments, useLinkDocument, useUnlinkDocument, useProjectTimeline, useProjectExport
+src/features/projects/hooks/useProjectEventStream.ts: asTimelineEvent, asThread, asApproval
+src/features/projects/hooks/useProjects.ts: useCreateProjectFromEstimate, useDeleteProject
+src/features/projects/lib/timeline.ts: buildTimelineEvent, getDemoTimeline
+src/features/projects/lib/timelineMeta.ts: formatTimelineDateShort
+src/features/service-catalog/hooks/useServiceCatalog.ts: useServiceCatalogByCategory
+src/features/service-catalog/index.ts: useServiceCatalogByCategory, serviceCatalogApi, matchAllItems, SERVICE_CATALOG_CATEGORIES, CATEGORY_LABELS
+src/features/service-catalog/lib/catalog-matcher.ts: matchAllItems
+src/features/signatures/hooks/useSignatureRequests.ts: signatureKeys, useSignatureRequestsForDocument, useSignatureRequest, useRecordApproval
+src/services/ai/analysis.types.ts: flattenAnalysisResult
+src/services/ai/bathroom-task-library.ts: BATHROOM_TASKS, getTasksByCategory, getRequiredTasks, getLikelyTasks, buildLibraryPromptBlock, calculateQuantityHints
+src/services/ai/composite/bundle.service.ts: createBundle, registerAsset, updateAssetStatus, updateBundleStatus, persistExtractionOutput
+src/services/ai/composite/bundle.types.ts: SOURCE_PRIORITY
+src/services/ai/engines/reliability.ts: deriveReliabilityState, computeDocumentReliability, computeRoomReliability
+src/services/ai/room-types.ts: getRoomType
+src/services/ksef/ksef.service.ts: buildFA2Xml, buildUpoHtml
+src/shared/lib/constants.ts: APP_TAGLINE, DEFAULT_CURRENCY, STATUS_META
+src/shared/lib/dataScope.ts: compact
+src/shared/lib/downloads.ts: stripHtml, createSimplePdfBlob
+src/shared/lib/formatters.ts: formatDate
+src/shared/lib/monitoring.ts: setMonitoringRoute, captureWarning, addBreadcrumb, Sentry
+src/shared/lib/offlineQueue.ts: getQueue, clearQueue
+src/shared/lib/releaseReadiness.ts: buildBillingReadiness
+src/shared/lib/stripe.ts: getStripe
+src/shared/lib/supabase.ts: hasSupabaseConfig, getSupabaseUserId
+src/shared/lib/uploadProjectAsset.ts: PHOTO_COMPRESS_TRIGGER, PHOTO_MAX_DIMENSION, PHOTO_JPEG_QUALITY, ALLOWED_IMAGE_TYPES, ALLOWED_MIME_TYPES
+src/shared/ui/AiGuidance/index.tsx: categorizeAiError
+Unused exported types (62)
+src/app/providers.tsx: UserRole
+src/entities/service_catalog/model.ts: ServiceCatalogCategory
+src/features/ai-review/api/ai-bundle.api.ts: AiExtractionResultRow, BundleWithAssets, BundleEvidenceSummary
+src/features/ai-review/api/ai-review.api.ts: AiInputAsset
+src/features/ai-review/hooks/useAiReview.ts: CreateEstimateFromRunInput, CreateEstimateFromRunResult
+src/features/billing/hooks/usePlanLimits.ts: PlanLimits
+src/features/client-portal/api/client-notifications.api.ts: ClientNotificationType
+src/features/client-portal/api/client-portal.api.ts: ClientEstimateItem, ClientInvoiceItem, ClientApproval, ClientTimelineEvent
+src/features/events/core/eventGraph.ts: EventGraph
+src/features/events/core/types.ts: GlobalEventSeverity
+src/features/events/core/useGlobalEventStream.ts: GlobalEventType, GlobalEventSeverity, GlobalEventCausedBy
+src/features/events/core/useProjectEventStreamV2.ts: GlobalEvent
+src/features/expenses/api/expenses.api.ts: ExpenseApprovalStatus, ParseInvoiceLineItem, ParseDocumentResult, AnalysisResult, AnalysisInputType, AnalysisDocumentType, DocumentFields, DetectedEntity, DetectedMaterial, WorkScopeItem, SuggestedEstimateItem, SectionConfidence
+src/features/expenses/hooks/useCostApprovals.ts: CostApproval
+src/features/ksef/hooks/useKsefQueue.ts: ProcessResult
+src/features/ksef/lib/ksefEvents.ts: KsefEventAction, KsefEventInput
+src/features/legal/api/legal.api.ts: AcceptanceRecord
+src/features/legal/config/legalDocuments.ts: LegalDocument
+src/features/notes/api/voice-notes.api.ts: VoiceNoteExtractedResult, CreateVoiceNoteInput
+src/features/notifications/api/operator-notifications.api.ts: OperatorNotificationType
+src/features/onboarding/hooks/useOnboardingProgress.ts: OnboardingStep, OnboardingProgress
+src/features/portal/api/portal.api.ts: PortalAccessClient, PortalProjectSummary, CompanyPortalToken
+src/features/portal/model/project-portal.types.ts: PortalScope, TimelineActorType, TimelineReferenceType, ExpenseSourceType, ExpenseCostType, ExpenseApprovalStatus, ParserSource, ProjectPortalToken, CreatePortalTokenInput, CreateThreadInput, SendMessageInput, RespondToApprovalInput, ExpenseInvoicePortalFields, ExpenseInvoiceV2, ParsedInvoiceAI
+src/features/projects/api/timeline.api.ts: GetTimelineOptions
+src/features/projects/components/ProjectInvoiceModal.tsx: InvoiceTranche
+src/features/projects/components/ProjectMemoryPanel.tsx: MemoryEntry
+src/features/projects/hooks/useProjectEventStream.ts: StreamEventType, StreamSeverity, StreamCausedBy, ProjectStreamEvent
+src/features/projects/lib/timeline.ts: GetTimelineOptions
+src/features/projects/lib/timelineMeta.ts: LucideIcon, TimelineEventMeta
+src/features/service-catalog/hooks/useCompanyPriceList.ts: CompanyPriceEntry
+src/features/service-catalog/index.ts: CatalogMatch, CatalogMatchResult, MatchTier, ServiceCatalogItem, ServiceCatalogCategory
+src/features/service-catalog/lib/catalog-matcher.ts: MatchTier, CatalogMatch
+src/features/settings/hooks/useCompanyMeta.ts: CompanyMetaForDocs
+src/features/signatures/types/signature.types.ts: SignatureRequestMode, SignatureRequestStatus, SignatureProviderName, ParticipantRole, ParticipantStatus, ArtifactType, ApprovalDecision, SignatureEventType, SignatureParticipant
+src/services/ai/analysis.types.ts: AnalysisInputType, AnalysisDocumentType, DocumentFields, DetectedEntity, SectionConfidence, ParseInvoiceLineItem, ParseDocumentResult
+src/services/ai/bathroom-task-library.ts: ScopeGroup, LaborOrMaterial, BathroomTask, TaskCategory, QuantityHints
+src/services/ai/composite/bundle-readiness.ts: EligibilityReason
+src/services/ai/composite/bundle.types.ts: AssetSourceType, AssetExtractionStatus
+src/services/ai/composite/extraction.contract.ts: DimensionEvidence, FixtureEvidence, MaterialEvidence, TileSpecEvidence, LightingFixtureSpecEvidence, InstallationEvidence, ScopeHintEvidence, MissingDataEvidence, ConflictEvidence, HypothesisEvidence, EvidenceContent, EvidenceType, ExtractorType, ExtractedEvidenceItem
+src/services/ai/engines/clarification.types.ts: QuestionAnswerType, QuestionCategory, AnswerValue
+src/services/ai/engines/document.types.ts: PartyRole, Party, DocumentSubtype, DocumentAmount, PaymentInfo, DocumentLineItem
+src/services/ai/engines/project.types.ts: ProjectDocumentType
+src/services/ai/engines/reliability.ts: ReliabilityIssue, ReliabilityEvidence
+src/services/ai/engines/room.types.ts: StageOfWork, DetectedElement, DetectedMaterial, QuantityHint, SuggestedEstimateItem
+src/services/ai/prompts/evidence.prompt.ts: EvidenceSourceRole, EvidenceAssetContext
+src/services/ai/room-types.ts: RoomType
+src/services/ksef/ksef.service.ts: KsefSeller, KsefBuyer, KsefSessionData
+src/services/pdf/documentPreview.ts: BudgetReportData, ProjectReportData
+src/services/project/autoLinkService.ts: DocType, AutoLinkInput
+src/shared/lib/backend.ts: ResolvedSession
+src/shared/lib/confidence-model.ts: ConfidenceBand, ConfidenceBandResult, ConfidenceInput
+src/shared/lib/dataScope.ts: DataScope
+src/shared/lib/demoDb.ts: DemoUser, PortalThreadMessage, ClientTokenRecord, DemoInvitation
+src/shared/lib/monitoring.ts: ErrorArea
+src/shared/lib/offlineQueue.ts: QueueEntry
+src/shared/lib/permissions.ts: AppPlan, AppRole
+src/shared/lib/releaseReadiness.ts: WorkspaceReadinessInput, ReadinessCheck
+src/shared/lib/uploadProjectAsset.ts: UploadFolder
+src/shared/ui/AiGuidance/index.tsx: PreflightRules, PreflightResult, AiUploadRulesConfig
+src/shared/ui/DocumentPreview/DocumentPreviewModal.tsx: DocumentPreviewTab
+src/shared/ui/Select/Select.tsx: SelectOption
+src/shared/ui/StatusFilter/StatusFilter.tsx: FilterOption
+Duplicate exports (1)
+src/features/marketing/components/LandingPage.tsx: LandingPage, default
