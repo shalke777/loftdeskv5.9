@@ -267,7 +267,7 @@ export function InvoiceRowImpl({
                 {confirmDelete && <span className="proj-action-btn__label">Potwierdź</span>}
               </button>
             )}
-            {!isDraft && !isCorrection && onCreateCorrection && invoice.ksef_status !== 'ksef_sent' && (
+            {!isDraft && !isCorrection && onCreateCorrection && (
               <button
                 className="proj-action-btn"
                 title="Wystaw fakturę korygującą"
