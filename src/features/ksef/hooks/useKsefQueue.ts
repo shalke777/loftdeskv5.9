@@ -14,6 +14,9 @@ export interface QueueItemResult {
   status: 'sent' | 'error'
   ksefRef?: string
   error?: string
+  /** Set when KSeF accepted the invoice but persisting ksef_status to DB failed.
+   *  Critical: invoice IS sent but the DB does not know — manual reconciliation needed. */
+  dbError?: string
 }
 
 export interface ProcessResult {
@@ -66,9 +69,14 @@ export function useKsefQueue() {
 
           if (isDemo) {
             const ksefRef = `DEMO-${invoice.id.slice(0, 8)}-${Date.now().toString(36)}`
+            let dbError: string | undefined
             try {
               await invoicesApi.update(invoice.id, { ksef_status: 'ksef_sent', ksef_ref: ksefRef }, companyId)
-            } catch { /* DB update failed — continue */ }
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : String(e)
+              console.error('[useKsefQueue] DEMO post-send DB update failed:', invoice.id, msg)
+              dbError = msg
+            }
             ksefService.appendHistory({
               invoiceId: invoice.id,
               invoiceNumber: invoice.number ?? "",
@@ -76,10 +84,10 @@ export function useKsefQueue() {
               action: 'send',
               status: 'success',
               ksefRef,
-              error: null,
+              error: dbError ? `DB update failed: ${dbError}` : null,
             })
             result.sent++
-            result.items.push({ invoice, status: 'sent', ksefRef })
+            result.items.push({ invoice, status: 'sent', ksefRef, dbError })
             continue
           }
 
@@ -97,13 +105,23 @@ export function useKsefQueue() {
                 session,
                 session.env,
               )
+              let dbError: string | undefined
               try {
                 await invoicesApi.update(
                   invoice.id,
                   { ksef_status: 'ksef_sent', ksef_ref: ksefRef },
                   companyId,
                 )
-              } catch { /* DB update failed — invoice sent but status not saved */ }
+              } catch (dbErr: unknown) {
+                const msg = dbErr instanceof Error ? dbErr.message : String(dbErr)
+                console.error('[useKsefQueue] CRITICAL: invoice sent to KSeF but DB update failed.', {
+                  invoiceId: invoice.id,
+                  invoiceNumber: invoice.number,
+                  ksefRef,
+                  dbError: msg,
+                })
+                dbError = msg
+              }
               ksefService.appendHistory({
                 invoiceId: invoice.id,
                 invoiceNumber: invoice.number ?? "",
@@ -111,20 +129,24 @@ export function useKsefQueue() {
                 action: attempt > 1 ? 'retry' : 'send',
                 status: 'success',
                 ksefRef,
-                error: null,
+                error: dbError ? `DB update failed (invoice IS sent to KSeF): ${dbError}` : null,
               })
               result.sent++
-              result.items.push({ invoice, status: 'sent', ksefRef })
+              result.items.push({ invoice, status: 'sent', ksefRef, dbError })
               sent = true
             } catch (e: unknown) {
               lastError = e instanceof Error ? e.message : String(e)
+              console.warn(`[useKsefQueue] sendInvoice failed (attempt ${attempt}/3):`, invoice.id, lastError)
             }
           }
 
           if (!sent) {
             try {
               await invoicesApi.update(invoice.id, { ksef_status: 'ksef_error' }, companyId)
-            } catch { /* DB update failed — continue */ }
+            } catch (dbErr: unknown) {
+              const msg = dbErr instanceof Error ? dbErr.message : String(dbErr)
+              console.error('[useKsefQueue] Failed to mark ksef_error in DB (error-path):', invoice.id, msg)
+            }
             ksefService.appendHistory({
               invoiceId: invoice.id,
               invoiceNumber: invoice.number ?? "",
