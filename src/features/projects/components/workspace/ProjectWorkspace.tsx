@@ -54,7 +54,7 @@ import type { GlobalEvent } from '@/features/events/core/types'
 
 // ─── Type / constants ────────────────────────────────────────────────────────
 
-type Segment = 'overview' | 'expenses' | 'budget' | 'photos' | 'approvals' | 'timeline' | 'memory'
+type Segment = 'overview' | 'expenses' | 'budget' | 'photos' | 'approvals' | 'timeline' | 'memory' | 'threads'
 
 const SEGMENTS: { key: Segment; label: string }[] = [
   { key: 'overview',   label: 'Przegląd'       },
@@ -63,6 +63,7 @@ const SEGMENTS: { key: Segment; label: string }[] = [
   { key: 'photos',     label: 'Zdjęcia'        },
   { key: 'approvals',  label: 'Akceptacje'     },
   { key: 'timeline',   label: 'Oś czasu'       },
+  { key: 'threads',    label: 'Wątki'          },
   { key: 'memory',     label: 'Pamięć'         },
 ]
 
@@ -350,6 +351,7 @@ export function ProjectWorkspace({ project, onEdit, onClose }: Props) {
             {segment === 'photos'    && <ProjectPhotosSection project={project} />}
             {segment === 'approvals' && <ProjectApprovalsTab projectId={project.id} />}
             {segment === 'timeline'  && <ProjectTimelineTab  projectId={project.id} onRequestInvoice={() => setShowInvoiceModal(true)} />}
+            {segment === 'threads'   && <ProjectThreadsTab   projectId={project.id} />}
             {segment === 'memory'    && <ProjectMemoryPanel  projectId={project.id} />}
           </div>
         </div>
@@ -357,11 +359,7 @@ export function ProjectWorkspace({ project, onEdit, onClose }: Props) {
         {/* Right: activity stream */}
         <WorkspaceActivityStream
           events={activityEvents}
-          onOpenThreads={() => {
-            // Chat is removed from segment pills — open as modal-style or navigate
-            // For now, we open the threads tab approach via the "Wątki" stream button
-            setSegment('overview')
-          }}
+          onOpenThreads={() => setSegment('threads')}
           onOpenApprovals={() => setSegment('approvals')}
           onOpenTimeline={() => setSegment('timeline')}
         />
