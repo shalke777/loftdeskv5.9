@@ -142,11 +142,13 @@ export const projectsApi = {
   },
   async updateStatus(id: string, status: Project['status'], companyId?: string) { if (isDemoMode || !supabase) { demoDb.projects.updateStatus(id, status); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('projects').update({ status }).eq('id', id), scope); const { error } = await query; if (error) throw error; if (companyId) createTimelineEvent({ company_id: companyId, project_id: id, event_type: 'project_status_changed', visibility: 'internal', title: 'Zmiana statusu projektu', actor_type: 'operator', payload: { new_status: status } }).catch((err) => console.warn('[projects] timeline event failed:', err)) },
   async delete(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.projects.delete(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('projects').update({ deleted_at: new Date().toISOString() }).eq('id', id), scope); const { error } = await query; if (error) throw error },
-  async hardDelete(id: string, companyId: string) {
+  async hardDelete(id: string, _companyId?: string) {
+    // Note: companyId arg kept for backward compatibility with existing callers
+    // but ignored — server derives company from project_id and authorizes via auth.uid()
+    // (see migration 140_security_hardening_p0).
     if (isDemoMode || !supabase) { demoDb.projects.delete(id); return Promise.resolve() }
     const { error } = await supabase.rpc('delete_project_hard', {
       p_project_id: id,
-      p_company_id: companyId,
     })
     if (error) throw error
   },

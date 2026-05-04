@@ -111,17 +111,14 @@ export const settingsApi = {
   },
   async acceptInvitation(token: string, email?: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.invitations.accept(token, email))
-    const { data: invite, error: inviteError } = await supabase.from('company_invitations').select('*').eq('token', token).eq('status', 'pending').maybeSingle()
-    if (inviteError) throw inviteError
-    if (!invite) throw new Error('Zaproszenie nie istnieje albo wygasło.')
     const { data: authData, error: authError } = await supabase.auth.getUser()
     if (authError) throw authError
-    const authUser = authData.user
-    if (!authUser) throw new Error('Zaloguj się, aby przyjąć zaproszenie.')
-    const { error: memberError } = await supabase.from('company_members').upsert({ company_id: invite.company_id, user_id: authUser.id, role: invite.role }, { onConflict: 'company_id,user_id' })
-    if (memberError) throw memberError
-    const { error: updateError } = await supabase.from('company_invitations').update({ status: 'accepted' }).eq('id', invite.id)
-    if (updateError) throw updateError
+    if (!authData.user) throw new Error('Zaloguj się, aby przyjąć zaproszenie.')
+    // SECURITY: route through SECURITY DEFINER RPC so privileged roles
+    // (admin/manager) bypass the strict members_insert RLS policy
+    // introduced in migration 142. Direct upsert would now be rejected.
+    const { error } = await supabase.rpc('accept_company_invitation', { invite_token: token })
+    if (error) throw error
     return true
   },
 
