@@ -1,18 +1,8 @@
 // daily-report.ts — Raport dzienny projektu
 // POST { project_id: string, date?: string (YYYY-MM-DD, default: today) } + Bearer auth
 // Returns HTML blob suitable for print/PDF
-import type { Handler, HandlerEvent } from '@netlify/functions'
-import { createClient } from '@supabase/supabase-js'
-
-async function getUserId(event: HandlerEvent, url: string, anonKey: string): Promise<string | null> {
-  const authHeader = event.headers['authorization'] ?? event.headers['Authorization']
-  if (!authHeader?.startsWith('Bearer ')) return null
-  try {
-    const sb = createClient(url, anonKey, { auth: { persistSession: false } })
-    const { data: { user } } = await sb.auth.getUser(authHeader.slice(7))
-    return user?.id ?? null
-  } catch { return null }
-}
+import type { Handler } from '@netlify/functions'
+import { assertProjectAccess, isScopeError, scopeErrorResponse } from '../lib/scope/assertProjectAccess'
 
 function formatCurrency(val: number | null | undefined): string {
   if (val == null) return '—'
@@ -145,9 +135,7 @@ export const handler: Handler = async (event) => {
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? ''
   const anonKey    = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY ?? ''
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
-
-  const userId = await getUserId(event, supabaseUrl, anonKey)
-  if (!userId) return { statusCode: 401, headers: cors, body: JSON.stringify({ error: 'Unauthorized' }) }
+  void supabaseUrl; void anonKey; void serviceKey
 
   let body: { project_id?: string; date?: string }
   try { body = JSON.parse(event.body ?? '{}') } catch {
@@ -155,37 +143,36 @@ export const handler: Handler = async (event) => {
   }
   if (!body.project_id) return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'project_id required' }) }
 
+  // Sprint P2-FIX: scoped access — JWT + membership + project ownership.
+  const scope = await assertProjectAccess(event, body.project_id)
+  if (isScopeError(scope)) return scopeErrorResponse(scope, cors)
+  const { sb, project: projectRow } = scope
+  const projectId = projectRow.id as string
+
   const date = body.date ?? new Date().toISOString().slice(0, 10)
-  const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
 
-  // Fetch project info
-  const { data: project } = await sb
-    .from('projects')
-    .select('id, name, number')
-    .eq('id', body.project_id)
-    .single()
-
+  const project = projectRow as { id: string; name?: string; number?: string }
   if (!project) return { statusCode: 404, headers: cors, body: JSON.stringify({ error: 'Project not found' }) }
 
   // Fetch all data for the day in parallel
   const [photosRes, expensesRes, voiceRes] = await Promise.all([
     sb.from('project_photo_docs')
       .select('title, image_url, category, note')
-      .eq('project_id', body.project_id)
+      .eq('project_id', projectId)
       .gte('created_at', `${date}T00:00:00.000Z`)
       .lte('created_at', `${date}T23:59:59.999Z`)
       .order('created_at', { ascending: true }),
 
     sb.from('expense_invoices')
       .select('vendor, invoice_number, amount_gross, description')
-      .eq('project_id', body.project_id)
+      .eq('project_id', projectId)
       .gte('created_at', `${date}T00:00:00.000Z`)
       .lte('created_at', `${date}T23:59:59.999Z`)
       .order('created_at', { ascending: true }),
 
     sb.from('voice_notes')
       .select('title, extracted_result')
-      .eq('project_id', body.project_id)
+      .eq('project_id', projectId)
       .eq('status', 'processed')
       .gte('created_at', `${date}T00:00:00.000Z`)
       .lte('created_at', `${date}T23:59:59.999Z`)
@@ -202,7 +189,7 @@ export const handler: Handler = async (event) => {
   }))
 
   const html = buildHtml({
-    projectName: project.name,
+    projectName: project.name ?? '',
     projectNumber: project.number ?? '',
     date,
     photos,

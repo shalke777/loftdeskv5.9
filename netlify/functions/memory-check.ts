@@ -1,18 +1,8 @@
 // memory-check.ts — Rule-based contradiction detection
 // POST { project_id, new_content, topic? } + Bearer auth
 // Returns { conflict: boolean, existing_entry?, description? }
-import type { Handler, HandlerEvent } from '@netlify/functions'
-import { createClient } from '@supabase/supabase-js'
-
-async function getUserId(event: HandlerEvent, url: string, anonKey: string): Promise<string | null> {
-  const authHeader = event.headers['authorization'] ?? event.headers['Authorization']
-  if (!authHeader?.startsWith('Bearer ')) return null
-  try {
-    const sb = createClient(url, anonKey, { auth: { persistSession: false } })
-    const { data: { user } } = await sb.auth.getUser(authHeader.slice(7))
-    return user?.id ?? null
-  } catch { return null }
-}
+import type { Handler } from '@netlify/functions'
+import { assertProjectAccess, isScopeError, scopeErrorResponse } from '../lib/scope/assertProjectAccess'
 
 // Extract amounts (Polish: 1000 zł, 5 000 PLN, 2500.00, etc.)
 function extractAmounts(text: string): number[] {
@@ -47,9 +37,7 @@ export const handler: Handler = async (event) => {
 
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? ''
   const anonKey    = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY ?? ''
-
-  const userId = await getUserId(event, supabaseUrl, anonKey)
-  if (!userId) return { statusCode: 401, headers: cors, body: JSON.stringify({ error: 'Unauthorized' }) }
+  void supabaseUrl; void anonKey
 
   let body: { project_id?: string; new_content?: string; topic?: string }
   try { body = JSON.parse(event.body ?? '{}') } catch {
@@ -58,13 +46,16 @@ export const handler: Handler = async (event) => {
   if (!body.project_id) return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'project_id required' }) }
   if (!body.new_content?.trim()) return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'new_content required' }) }
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
-  const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+  // Sprint P2-FIX: scoped access — JWT + membership + project ownership.
+  const scope = await assertProjectAccess(event, body.project_id)
+  if (isScopeError(scope)) return scopeErrorResponse(scope, cors)
+  const { sb, project } = scope
+  const projectId = project.id as string
 
   const { data: entries } = await sb
     .from('project_memory_entries')
     .select('id, memory_type, topic, content, created_at')
-    .eq('project_id', body.project_id)
+    .eq('project_id', projectId)
     .in('memory_type', ['decision', 'amount', 'preference'])
     .order('created_at', { ascending: false })
     .limit(20)

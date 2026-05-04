@@ -1,7 +1,7 @@
 // voice-extract.ts — Ekstrakcja ustaleń z transkryptu notatki głosowej
 // POST { note_id: string } + Bearer auth
-import type { Handler, HandlerEvent } from '@netlify/functions'
-import { createClient } from '@supabase/supabase-js'
+import type { Handler } from '@netlify/functions'
+import { assertVoiceNoteAccess, isScopeError, scopeErrorResponse } from '../lib/scope/assertProjectAccess'
 
 // Chunk transcript into segments of max CHUNK_SIZE chars for GPT context safety
 const CHUNK_SIZE = 40_000
@@ -75,17 +75,10 @@ function mergeChunkResults(results: Record<string, unknown>[]) {
   }
 }
 
-async function verifyAuth(event: HandlerEvent): Promise<string | null> {
-  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
-  const key = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
-  if (!url || !key) return 'dev'
-  const authHeader = event.headers['authorization'] ?? event.headers['Authorization']
-  if (!authHeader?.startsWith('Bearer ')) return null
-  try {
-    const sb = createClient(url, key, { auth: { persistSession: false } })
-    const { data: { user } } = await sb.auth.getUser(authHeader.slice(7))
-    return user?.id ?? null
-  } catch { return null }
+async function verifyAuth(): Promise<string | null> {
+  // Deprecated by Sprint P2-FIX — replaced by assertVoiceNoteAccess.
+  // Kept as no-op stub to avoid accidental imports.
+  return 'deprecated'
 }
 
 export const handler: Handler = async (event) => {
@@ -97,35 +90,24 @@ export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors, body: '' }
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers: cors, body: 'Method Not Allowed' }
 
-  const userId = await verifyAuth(event)
-  if (!userId) return { statusCode: 401, headers: cors, body: JSON.stringify({ error: 'Unauthorized' }) }
-
   const openaiKey = process.env.OPENAI_API_KEY
   if (!openaiKey) return { statusCode: 500, headers: cors, body: JSON.stringify({ error: 'OpenAI not configured' }) }
-
-  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? ''
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
-  if (!serviceKey) return { statusCode: 500, headers: cors, body: JSON.stringify({ error: 'Service key not configured' }) }
 
   let body: { note_id?: string }
   try { body = JSON.parse(event.body ?? '{}') } catch {
     return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'Invalid JSON' }) }
   }
-
   if (!body.note_id) return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'note_id required' }) }
 
-  const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+  // Sprint P2-FIX: scoped access — JWT + voice_notes ownership via project.company_id.
+  const scope = await assertVoiceNoteAccess(event, body.note_id)
+  if (isScopeError(scope)) return scopeErrorResponse(scope, cors)
+  const { sb, note } = scope
+  const noteId = note.id
 
-  const { data: note, error: fetchErr } = await sb
-    .from('voice_notes')
-    .select('id, transcript, status')
-    .eq('id', body.note_id)
-    .single()
-
-  if (fetchErr || !note) return { statusCode: 404, headers: cors, body: JSON.stringify({ error: 'Note not found' }) }
   if (!note.transcript) return { statusCode: 422, headers: cors, body: JSON.stringify({ error: 'Empty transcript' }) }
 
-  await sb.from('voice_notes').update({ status: 'processing' }).eq('id', body.note_id)
+  await sb.from('voice_notes').update({ status: 'processing' }).eq('id', noteId)
 
   const systemPrompt = `Jesteś asystentem firmy budowlano-wykończeniowej w Polsce.
 Przeanalizuj transkrypt notatki głosowej i wyciągnij:
@@ -148,7 +130,7 @@ Zwróć TYLKO JSON bez dodatkowego tekstu.`
       status: 'processed',
       extracted_result: result,
       updated_at: new Date().toISOString(),
-    }).eq('id', body.note_id)
+    }).eq('id', noteId)
 
     return {
       statusCode: 200,
@@ -156,7 +138,7 @@ Zwróć TYLKO JSON bez dodatkowego tekstu.`
       body: JSON.stringify(result),
     }
   } catch (err) {
-    await sb.from('voice_notes').update({ status: 'error' }).eq('id', body.note_id)
+    await sb.from('voice_notes').update({ status: 'error' }).eq('id', noteId)
     const detail = err instanceof Error ? err.message : String(err)
     return { statusCode: 502, headers: cors, body: JSON.stringify({ error: 'Extraction failed', detail }) }
   }

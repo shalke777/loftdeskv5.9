@@ -37,8 +37,8 @@ export const handler: Handler = async (event) => {
   }
 
   let body: {
-    company_id: string
-    project_id?: string
+    company_id?: string
+    project_id: string
     project_name?: string
     document_label?: string
     decision: string
@@ -50,20 +50,32 @@ export const handler: Handler = async (event) => {
   try { body = JSON.parse(event.body ?? '{}') } catch {
     return json(400, { error: 'Invalid JSON' })
   }
-  if (!body.company_id || !body.decision) return json(400, { error: 'Missing required fields' })
+  if (!body.project_id || !body.decision) return json(400, { error: 'Missing required fields' })
 
   const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+
+  // Sprint P2-FIX (P2-6): derive company_id from project_id (server-side lookup).
+  // Previously trusted body.company_id → unauthenticated attacker could enumerate
+  // operator emails for any tenant. project_id is a secret UUID and bound to one
+  // company, so we use it as the trust anchor.
+  const { data: project } = await sb
+    .from('projects')
+    .select('id, company_id')
+    .eq('id', body.project_id)
+    .maybeSingle()
+  if (!project) return json(404, { error: 'Project not found' })
+  const companyId = project.company_id as string
 
   // Fetch operator email from company record
   const { data: company } = await sb
     .from('companies')
     .select('name, email')
-    .eq('id', body.company_id)
+    .eq('id', companyId)
     .single()
 
   const operatorEmail = company?.email ?? null
   if (!operatorEmail || !EMAIL_RE.test(operatorEmail)) {
-    console.warn('[notify-approval] No valid operator email for company', body.company_id)
+    console.warn('[notify-approval] No valid operator email for company', companyId)
     return json(200, { ok: true, email_sent: false, reason: 'no_operator_email' })
   }
 

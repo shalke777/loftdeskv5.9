@@ -1,18 +1,8 @@
 // memory-context.ts — Build L1+L2 project context for AI assistant
 // POST { project_id: string } + Bearer auth
 // Returns { summary: string, recent: MemEntry[], fresh: boolean }
-import type { Handler, HandlerEvent } from '@netlify/functions'
-import { createClient } from '@supabase/supabase-js'
-
-async function getUserId(event: HandlerEvent, url: string, anonKey: string): Promise<string | null> {
-  const authHeader = event.headers['authorization'] ?? event.headers['Authorization']
-  if (!authHeader?.startsWith('Bearer ')) return null
-  try {
-    const sb = createClient(url, anonKey, { auth: { persistSession: false } })
-    const { data: { user } } = await sb.auth.getUser(authHeader.slice(7))
-    return user?.id ?? null
-  } catch { return null }
-}
+import type { Handler } from '@netlify/functions'
+import { assertProjectAccess, isScopeError, scopeErrorResponse } from '../lib/scope/assertProjectAccess'
 
 export const handler: Handler = async (event) => {
   const cors = {
@@ -23,13 +13,7 @@ export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors, body: '' }
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers: cors, body: 'Method Not Allowed' }
 
-  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? ''
-  const anonKey    = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY ?? ''
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
   const openaiKey  = process.env.OPENAI_API_KEY ?? ''
-
-  const userId = await getUserId(event, supabaseUrl, anonKey)
-  if (!userId) return { statusCode: 401, headers: cors, body: JSON.stringify({ error: 'Unauthorized' }) }
 
   let body: { project_id?: string }
   try { body = JSON.parse(event.body ?? '{}') } catch {
@@ -37,33 +21,31 @@ export const handler: Handler = async (event) => {
   }
   if (!body.project_id) return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'project_id required' }) }
 
-  const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
-
-  // Fetch project L1 summary
-  const { data: project } = await sb
-    .from('projects')
-    .select('id, name, ai_context_summary, ai_context_updated_at, company_id')
-    .eq('id', body.project_id)
-    .single()
-
-  if (!project) return { statusCode: 404, headers: cors, body: JSON.stringify({ error: 'Project not found' }) }
+  // Sprint P2-FIX: scoped access — JWT + membership + project ownership.
+  const scope = await assertProjectAccess(event, body.project_id)
+  if (isScopeError(scope)) return scopeErrorResponse(scope, cors)
+  const { sb, project } = scope
+  const projectId = project.id as string
 
   // Fetch L2: last 10 memory entries
   const { data: entries } = await sb
     .from('project_memory_entries')
     .select('id, memory_type, topic, content, source_type, created_at')
-    .eq('project_id', body.project_id)
+    .eq('project_id', projectId)
     .order('created_at', { ascending: false })
     .limit(10)
 
   const recent = entries ?? []
 
   // Check if L1 summary needs refresh (null or older than 24h)
-  const needsRefresh = !project.ai_context_summary
-    || !project.ai_context_updated_at
-    || (Date.now() - new Date(project.ai_context_updated_at).getTime()) > 24 * 60 * 60 * 1000
+  const ctxSummary = (project as { ai_context_summary?: string | null }).ai_context_summary ?? ''
+  const ctxUpdated = (project as { ai_context_updated_at?: string | null }).ai_context_updated_at ?? null
+  const projectName = (project as { name?: string }).name ?? ''
+  const needsRefresh = !ctxSummary
+    || !ctxUpdated
+    || (Date.now() - new Date(ctxUpdated).getTime()) > 24 * 60 * 60 * 1000
 
-  let summary = project.ai_context_summary ?? ''
+  let summary = ctxSummary
   let fresh = false
 
   if (needsRefresh && openaiKey && recent.length > 0) {
@@ -86,7 +68,7 @@ export const handler: Handler = async (event) => {
             },
             {
               role: 'user',
-              content: `Projekt: ${project.name}\n\nWpisy pamięci:\n${entriesText}`,
+              content: `Projekt: ${projectName}\n\nWpisy pamięci:\n${entriesText}`,
             },
           ],
         }),
@@ -99,7 +81,7 @@ export const handler: Handler = async (event) => {
           await sb.from('projects').update({
             ai_context_summary: summary,
             ai_context_updated_at: new Date().toISOString(),
-          }).eq('id', body.project_id)
+          }).eq('id', projectId)
           fresh = true
         }
       }

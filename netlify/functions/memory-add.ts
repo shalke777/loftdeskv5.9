@@ -51,6 +51,18 @@ export const handler: Handler = async (event) => {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
   const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
 
+  // Sprint P2-FIX (P2-5): verify project belongs to caller's company.
+  // Closes confused-deputy bug: previously trusted body.project_id and stamped
+  // auth.companyId — operator could write memory entries onto other tenants' projects.
+  const { data: project } = await sb
+    .from('projects')
+    .select('id, company_id')
+    .eq('id', body.project_id)
+    .maybeSingle()
+  if (!project || project.company_id !== auth.companyId) {
+    return { statusCode: 403, headers: cors, body: JSON.stringify({ error: 'Forbidden: project not in your company' }) }
+  }
+
   const { data, error } = await sb
     .from('project_memory_entries')
     .insert({
