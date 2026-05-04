@@ -29,7 +29,8 @@ export function useInviteMember() {
     mutationFn: ({ email, role }: { email: string; role: 'owner' | 'admin' | 'manager' | 'worker' | 'accountant' }) => settingsApi.inviteMember({ companyId, email, role }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: settingsKeys.team(companyId) })
-      toast.success('Członek zespołu dodany')
+      qc.invalidateQueries({ queryKey: settingsKeys.invitations(companyId) })
+      toast.success('Zaproszenie wysłane')
     },
     onError: (error) => toast.error('Nie udało się dodać członka', translateError(error)),
   })

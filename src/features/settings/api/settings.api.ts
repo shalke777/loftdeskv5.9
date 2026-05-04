@@ -91,8 +91,23 @@ export const settingsApi = {
       throw new Error('Zapraszanie członków wymaga migracji companies/company_members i istniejących użytkowników.')
     }
     const token = `invite-${Math.random().toString(36).slice(2, 12)}`
-    const { data, error } = await supabase.from('company_invitations').insert({ company_id: scope.companyId, email: input.email.toLowerCase(), role: input.role, token }).select('*').single()
+    const { data, error } = await supabase.from('company_invitations').insert({ company_id: scope.companyId, email: input.email.toLowerCase(), role: input.role, token }).select('*, companies(name)').single()
     if (error) throw error
+
+    // Dispatch invitation email (non-fatal — never blocks the invite flow).
+    const companyName = (data as Record<string, unknown> & { companies?: { name?: string } })?.companies?.name ?? ''
+    fetch('/.netlify/functions/send-invitation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: input.email,
+        token,
+        role: input.role,
+        company_name: companyName,
+        origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+      }),
+    }).catch((err) => console.warn('[inviteMember] email dispatch failed (non-fatal):', err))
+
     return data
   },
   async revokeInvitation(companyId: string, invitationId: string) {
