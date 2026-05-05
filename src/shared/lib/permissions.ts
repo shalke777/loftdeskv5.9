@@ -49,6 +49,8 @@ function hasRole(role: AppRole, allowed: AppRole[]) {
 
 export function canAccessFeature(user: SessionUser | null | undefined, feature: AppFeature) {
   if (!user) return false
+  // Owner override — full access to every feature.
+  if (user.isOwnerOverride) return feature !== 'admin'
   switch (feature) {
     case 'billing':
       return hasRole(user.role, ['owner', 'admin', 'manager', 'accountant'])
@@ -69,6 +71,8 @@ export function canAccessFeature(user: SessionUser | null | undefined, feature: 
 
 export function canPerformAction(user: SessionUser | null | undefined, action: AppAction) {
   if (!user) return false
+  // Owner override — can perform every action.
+  if (user.isOwnerOverride) return true
   switch (action) {
     case 'clients.create':
     case 'clients.delete':

@@ -11,6 +11,19 @@ function roleFromLegacyPlan(plan?: string | null): DemoRole {
   return 'owner'
 }
 
+const OWNER_OVERRIDE_EMAIL = 'loftbau@gmail.com'
+
+/** Applies full business-unlimited access for the designated owner account. */
+function applyOwnerOverride(user: SessionUser): SessionUser {
+  if (user.email !== OWNER_OVERRIDE_EMAIL) return user
+  return {
+    ...user,
+    role: 'owner' as DemoRole,
+    plan: 'business',
+    isOwnerOverride: true,
+  }
+}
+
 export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   if (!supabase) return { user: null }
 
@@ -119,7 +132,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
         })
       }
       return {
-        user: {
+        user: applyOwnerOverride({
           id: authUser.id,
           email: authUser.email ?? clientAccount.email ?? '',
           companyId: clientAccount.company_id,
@@ -127,10 +140,8 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
           role: 'client' as const,
           plan: 'free' as const,
           fullName: clientAccount.full_name ?? authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Klient',
-          // project_id zapisywany przez client-identify.ts via generateLink data — używany do
-          // jednorazowego przekierowania na właściwy projekt po zalogowaniu z zaproszenia.
           pendingProjectId: (authUser.user_metadata?.project_id as string | undefined) ?? null,
-        },
+        }),
       }
     }
 
@@ -169,7 +180,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
     // Użytkownik jest operatorem — ignorujemy client_accounts całkowicie
     const companies = memberRow.companies
     return {
-      user: {
+      user: applyOwnerOverride({
         id: authUser.id,
         email: authUser.email ?? '',
         companyId: memberRow.company_id,
@@ -177,7 +188,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
         role: (memberRow.role as DemoRole) ?? 'worker',
         plan: (companies?.plan as SessionUser['plan']) ?? 'free',
         fullName: authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Użytkownik',
-      },
+      }),
     }
   }
 
@@ -190,7 +201,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   if (profileRow) {
     const plan = (profileRow.plan as SessionUser['plan']) || 'free'
     return {
-      user: {
+      user: applyOwnerOverride({
         id: profileRow.id,
         email: profileRow.email || authUser.email || '',
         companyId: profileRow.id,
@@ -198,12 +209,12 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
         role: roleFromLegacyPlan(profileRow.plan),
         plan,
         fullName: profileRow.full_name || authUser.email?.split('@')[0] || 'Użytkownik',
-      },
+      }),
     }
   }
 
   return {
-    user: {
+    user: applyOwnerOverride({
       id: authUser.id,
       email: authUser.email ?? '',
       companyId: authUser.id,
@@ -211,6 +222,6 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
       role: 'owner',
       plan: 'free',
       fullName: authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Użytkownik',
-    },
+    }),
   }
 }

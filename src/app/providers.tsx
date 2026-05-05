@@ -25,6 +25,8 @@ export interface SessionUser {
   // Ustawiane jednorazowo po kliknięciu zaproszenia — używane do nawigacji na właściwy projekt.
   // Wartość pochodzi z user_metadata.project_id (zapisywanego przez client-identify.ts).
   pendingProjectId?: string | null
+  // Owner override — pełny dostęp business niezależnie od subskrypcji firmy.
+  isOwnerOverride?: boolean
 }
 
 interface AuthContextValue {
