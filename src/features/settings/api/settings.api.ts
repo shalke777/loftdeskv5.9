@@ -159,9 +159,27 @@ export const settingsApi = {
   },
   async pendingInvitationsByEmail(email: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.invitations.pendingByEmail(email))
-    const { data, error } = await supabase.from('company_invitations').select('*, companies(name)').eq('email', email.toLowerCase()).eq('status', 'pending').order('created_at', { ascending: false })
-    if (error) throw error
-    return data ?? []
+    // First attempt: full query with companies(name) join (requires migration 148 RLS policy).
+    const { data, error } = await supabase
+      .from('company_invitations')
+      .select('*, companies(name)')
+      .eq('email', email.toLowerCase())
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+    if (!error) return data ?? []
+    // Fallback: 403 means the companies join is blocked (invited user, migration 148 not yet
+    // applied or company RLS not updated). Return invitations without company name — still functional.
+    if ((error as { code?: string }).code === 'PGRST301' || error.message?.includes('permission denied') || error.message?.includes('403')) {
+      const { data: fallback, error: fallbackError } = await supabase
+        .from('company_invitations')
+        .select('*')
+        .eq('email', email.toLowerCase())
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+      if (fallbackError) throw fallbackError
+      return fallback ?? []
+    }
+    throw error
   },
   async acceptInvitation(token: string, email?: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.invitations.accept(token, email))
