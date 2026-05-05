@@ -74,10 +74,12 @@ export function useCreateEstimate() {
         created_at: new Date().toISOString(),
       } as unknown as Estimate
       queryClient.setQueryData<Estimate[]>(key, (old = []) => [optimistic, ...old])
-      const cancelWatchdog = scheduleOptimisticCleanup<Estimate>(queryClient, key, optimisticId)
-      return { previous, optimisticId, cancelWatchdog }
+      let mutationActive = true
+      const cancelWatchdog = scheduleOptimisticCleanup<Estimate>(queryClient, key, optimisticId, () => mutationActive)
+      return { previous, optimisticId, cancelWatchdog, _deactivate() { mutationActive = false } }
     },
     onSuccess(data, _vars, context) {
+      context?._deactivate?.()
       context?.cancelWatchdog?.()
       const key = estimateKeys.list(companyId)
       queryClient.setQueryData<Estimate[]>(key, (old = []) =>
@@ -93,6 +95,7 @@ export function useCreateEstimate() {
       }).catch((err) => console.warn('[autoLink] estimate link failed:', err))
     },
     onError(error: any, _vars, context) {
+      context?._deactivate?.()
       context?.cancelWatchdog?.()
       if (context?.previous !== undefined)
         queryClient.setQueryData(estimateKeys.list(companyId), context.previous)

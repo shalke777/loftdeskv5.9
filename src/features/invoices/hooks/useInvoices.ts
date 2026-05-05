@@ -43,10 +43,12 @@ export function useCreateInvoice() {
         created_at: new Date().toISOString(),
       } as unknown as Invoice
       qc.setQueryData<Invoice[]>(key, (old = []) => [optimistic, ...old])
-      const cancelWatchdog = scheduleOptimisticCleanup<Invoice>(qc, key, optimisticId)
-      return { previous, optimisticId, cancelWatchdog }
+      let mutationActive = true
+      const cancelWatchdog = scheduleOptimisticCleanup<Invoice>(qc, key, optimisticId, () => mutationActive)
+      return { previous, optimisticId, cancelWatchdog, _deactivate() { mutationActive = false } }
     },
     onSuccess(data, _vars, context) {
+      context?._deactivate?.()
       context?.cancelWatchdog?.()
       const key = invoiceKeys.list(companyId)
       qc.setQueryData<Invoice[]>(key, (old = []) =>
@@ -64,6 +66,7 @@ export function useCreateInvoice() {
       }).catch((err) => console.warn('[autoLink] invoice link failed:', err))
     },
     onError(_err, _vars, context) {
+      context?._deactivate?.()
       context?.cancelWatchdog?.()
       if (context?.previous !== undefined)
         qc.setQueryData(invoiceKeys.list(companyId), context.previous)

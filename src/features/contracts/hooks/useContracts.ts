@@ -36,10 +36,12 @@ export function useCreateContract() {
         created_at: new Date().toISOString(),
       } as unknown as Contract
       qc.setQueryData<Contract[]>(key, (old = []) => [optimistic, ...old])
-      const cancelWatchdog = scheduleOptimisticCleanup<Contract>(qc, key, optimisticId)
-      return { previous, optimisticId, cancelWatchdog }
+      let mutationActive = true
+      const cancelWatchdog = scheduleOptimisticCleanup<Contract>(qc, key, optimisticId, () => mutationActive)
+      return { previous, optimisticId, cancelWatchdog, _deactivate() { mutationActive = false } }
     },
     onSuccess(data, _vars, context) {
+      context?._deactivate?.()
       context?.cancelWatchdog?.()
       const key = contractKeys.list(companyId)
       qc.setQueryData<Contract[]>(key, (old = []) =>
@@ -57,6 +59,7 @@ export function useCreateContract() {
       }).catch((err) => console.warn('[autoLink] contract link failed:', err))
     },
     onError(error: any, _vars, context) {
+      context?._deactivate?.()
       context?.cancelWatchdog?.()
       if (context?.previous !== undefined)
         qc.setQueryData(contractKeys.list(companyId), context.previous)
