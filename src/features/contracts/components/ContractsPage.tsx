@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { Button } from '@/shared/ui/Button/Button'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
@@ -104,21 +105,31 @@ export function ContractsPage() {
         />
       ) : (
         <div className="proj-list">
-          {visible.map(contract => (
-            <ContractRow
-              key={contract.id}
-              contract={contract}
-              clientName={contract.client_id ? (clientMap[contract.client_id]?.name ?? null) : null}
-              client={contract.client_id ? (clientMap[contract.client_id] ?? null) : null}
-              projectName={contract.project_id ? (projectMap[contract.project_id] ?? null) : null}
-              onEdit={c => { setEditing(c); setOpen(true) }}
-              onDelete={id => deleteContract.mutate(id)}
-              onSign={id => signContract.mutate(id)}
-              onCreateInvoice={id => createInvoiceFromContract.mutate(id)}
-              canDelete={canDelete}
-              canSign={canSign}
-            />
-          ))}
+          <AnimatePresence initial={false}>
+            {visible.map(contract => (
+              <motion.div
+                key={contract.id}
+                layout
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18, ease: 'easeOut' as const }}
+              >
+                <ContractRow
+                  contract={contract}
+                  clientName={contract.client_id ? (clientMap[contract.client_id]?.name ?? null) : null}
+                  client={contract.client_id ? (clientMap[contract.client_id] ?? null) : null}
+                  projectName={contract.project_id ? (projectMap[contract.project_id] ?? null) : null}
+                  onEdit={c => { setEditing(c); setOpen(true) }}
+                  onDelete={id => deleteContract.mutate(id)}
+                  onSign={id => signContract.mutate(id)}
+                  onCreateInvoice={id => createInvoiceFromContract.mutate(id)}
+                  canDelete={canDelete}
+                  canSign={canSign}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
 

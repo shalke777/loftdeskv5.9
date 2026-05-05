@@ -1,5 +1,13 @@
 import { useRef, type ReactNode } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { AnimatePresence, motion } from 'framer-motion'
+
+const ROW_VARIANTS = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit:    { opacity: 0, y: -8 },
+}
+const ROW_TRANSITION = { duration: 0.18, ease: 'easeOut' as const }
 
 interface VirtualListProps<T> {
   items: T[]
@@ -40,9 +48,21 @@ export function VirtualList<T>({
   if (!enabled) {
     return (
       <div className={className}>
-        {items.map((item, i) => (
-          <div key={getKey(item, i)}>{renderItem(item, i)}</div>
-        ))}
+        <AnimatePresence initial={false}>
+          {items.map((item, i) => (
+            <motion.div
+              key={getKey(item, i)}
+              layout
+              variants={ROW_VARIANTS}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={ROW_TRANSITION}
+            >
+              {renderItem(item, i)}
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     )
   }
