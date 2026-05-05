@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
-import { LIST_ENTER, LIST_VISIBLE, LIST_EXIT } from '@/shared/motion/tokens'
 import { Button } from '@/shared/ui/Button/Button'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import { Modal } from '@/shared/ui/Modal/Modal'
@@ -105,35 +103,24 @@ export function ContractsPage() {
             : undefined}
         />
       ) : (
-        <motion.div layout className="proj-list">
-          <AnimatePresence initial={false}>
-            {visible.map(contract => (
-              <motion.div
-                key={contract.id}
-                layout
-                initial={LIST_ENTER}
-                animate={LIST_VISIBLE}
-                exit={LIST_EXIT}
-                transition={{ type: 'spring', stiffness: 420, damping: 28, mass: 0.9 }}
-                whileHover={{ scale: 1.015, y: -2, zIndex: 10 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <ContractRow
-                  contract={contract}
-                  clientName={contract.client_id ? (clientMap[contract.client_id]?.name ?? null) : null}
-                  client={contract.client_id ? (clientMap[contract.client_id] ?? null) : null}
-                  projectName={contract.project_id ? (projectMap[contract.project_id] ?? null) : null}
-                  onEdit={c => { setEditing(c); setOpen(true) }}
-                  onDelete={id => deleteContract.mutate(id)}
-                  onSign={id => signContract.mutate(id)}
-                  onCreateInvoice={id => createInvoiceFromContract.mutate(id)}
-                  canDelete={canDelete}
-                  canSign={canSign}
-                />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
+        <div className="proj-list">
+          {visible.map(contract => (
+            <div key={contract.id}>
+              <ContractRow
+                contract={contract}
+                clientName={contract.client_id ? (clientMap[contract.client_id]?.name ?? null) : null}
+                client={contract.client_id ? (clientMap[contract.client_id] ?? null) : null}
+                projectName={contract.project_id ? (projectMap[contract.project_id] ?? null) : null}
+                onEdit={c => { setEditing(c); setOpen(true) }}
+                onDelete={id => deleteContract.mutate(id)}
+                onSign={id => signContract.mutate(id)}
+                onCreateInvoice={id => createInvoiceFromContract.mutate(id)}
+                canDelete={canDelete}
+                canSign={canSign}
+              />
+            </div>
+          ))}
+        </div>
       )}
 
       {canCreate && (

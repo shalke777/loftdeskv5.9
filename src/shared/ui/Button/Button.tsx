@@ -1,7 +1,7 @@
 import { ButtonHTMLAttributes, ReactNode } from 'react'
 import clsx from 'clsx'
 import { motion } from 'framer-motion'
-import { BTN_HOVER, BTN_TAP } from '@/shared/motion/tokens'
+import { BTN_HOVER, BTN_TAP, BTN_TRANSITION } from '@/shared/motion/tokens'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
 type Size = 'sm' | 'md' | 'lg'
@@ -31,6 +31,7 @@ export function Button({
       disabled={loading || props.disabled}
       whileHover={!loading && !props.disabled ? BTN_HOVER : undefined}
       whileTap={!loading && !props.disabled ? BTN_TAP : undefined}
+      transition={BTN_TRANSITION}
       {...props}
     >
       {icon ? <span className="btn__icon">{icon}</span> : null}

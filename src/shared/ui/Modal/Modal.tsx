@@ -1,13 +1,16 @@
 import { ReactNode, useEffect, useRef } from 'react'
 import clsx from 'clsx'
 import { AnimatePresence, motion } from 'framer-motion'
-import {
-  SPRING,
-  BACKDROP_VARIANTS,
-  MODAL_ENTER,
-  MODAL_VISIBLE,
-  MODAL_EXIT,
-} from '@/shared/motion/tokens'
+
+const BACKDROP_VARIANTS = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 },
+}
+
+const MODAL_INITIAL = { opacity: 0, scale: 0.98 }
+const MODAL_ANIMATE = { opacity: 1, scale: 1 }
+const MODAL_EXIT    = { opacity: 0, scale: 0.98 }
+const MODAL_TRANSITION = { duration: 0.15 }
 
 interface Props {
   title: string
@@ -48,16 +51,16 @@ export function Modal({ title, open, onClose, children, size = 'lg', className }
           initial="hidden"
           animate="visible"
           exit="hidden"
-          transition={SPRING}
+          transition={{ duration: 0.15 }}
           onClick={onClose}
         >
           <motion.div
             className={clsx('modal', `modal--${size}`, className)}
             onClick={(e) => e.stopPropagation()}
-            initial={MODAL_ENTER}
-            animate={MODAL_VISIBLE}
+            initial={MODAL_INITIAL}
+            animate={MODAL_ANIMATE}
             exit={MODAL_EXIT}
-            transition={SPRING}
+            transition={MODAL_TRANSITION}
           >
             <div className="modal__header">
               <h3>{title}</h3>

@@ -1,7 +1,5 @@
 import { useRef, type ReactNode } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { AnimatePresence, motion } from 'framer-motion'
-import { SPRING, LIST_ENTER, LIST_VISIBLE, LIST_EXIT, LIST_HOVER, LIST_TAP } from '@/shared/motion/tokens'
 
 interface VirtualListProps<T> {
   items: T[]
@@ -17,7 +15,7 @@ interface VirtualListProps<T> {
  * dynamically-measured row lists (expandable cards, etc).
  *
  * Activates virtualization only when there are enough items to make it worth it
- * (>= 20). Below that threshold it falls back to a plain mapped list — no
+ * (>= 100). Below that threshold it falls back to a plain mapped list — no
  * scroll-container required, no measurement overhead, no UI regression.
  */
 export function VirtualList<T>({
@@ -41,24 +39,13 @@ export function VirtualList<T>({
 
   if (!enabled) {
     return (
-      <motion.div layout className={className}>
-        <AnimatePresence initial={false}>
-          {items.map((item, i) => (
-            <motion.div
-              key={getKey(item, i)}
-              layout
-              initial={LIST_ENTER}
-              animate={LIST_VISIBLE}
-              exit={LIST_EXIT}
-              transition={SPRING}
-              whileHover={LIST_HOVER}
-              whileTap={LIST_TAP}
-            >
-              {renderItem(item, i)}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </motion.div>
+      <div className={className}>
+        {items.map((item, i) => (
+          <div key={getKey(item, i)}>
+            {renderItem(item, i)}
+          </div>
+        ))}
+      </div>
     )
   }
 
