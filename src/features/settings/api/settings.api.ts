@@ -166,11 +166,12 @@ export const settingsApi = {
     if (authError) throw authError
     if (!authData.user) throw new Error('Zaloguj się, aby przyjąć zaproszenie.')
     // SECURITY: route through SECURITY DEFINER RPC so privileged roles
-    // (admin/manager) bypass the strict members_insert RLS policy
-    // introduced in migration 142. Direct upsert would now be rejected.
-    const { error } = await supabase.rpc('accept_company_invitation', { invite_token: token })
+    // (admin/manager) bypass the strict members_insert RLS policy (mig 142).
+    // IDEMPOTENT: mig 145 makes the RPC safe to call twice — already-accepted
+    // tokens heal the membership row and return company_id without error.
+    const { data: companyId, error } = await supabase.rpc('accept_company_invitation', { invite_token: token })
     if (error) throw error
-    return true
+    return companyId as string
   },
 
   async getDocNumberConfig(companyId: string): Promise<DocNumberConfig | null> {

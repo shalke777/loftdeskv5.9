@@ -8,7 +8,7 @@ import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
 import { isDemoMode } from '@/shared/lib/supabase'
 import { PendingInvitesNotice } from '@/features/auth/components/PendingInvitesNotice'
-import { getPendingInviteToken, clearPendingInviteToken } from '@/shared/lib/inviteIntent'
+import { getPendingInviteTokens, clearPendingInviteTokens } from '@/shared/lib/inviteIntent'
 import { settingsApi } from '@/features/settings/api/settings.api'
 import {
   SignupConsentCheckboxes,
@@ -33,13 +33,29 @@ export function RegisterForm() {
   const handleConsentChange = (key: SignupKey, val: boolean) =>
     setConsents((prev) => ({ ...prev, [key]: val }))
 
-  const finalizeInviteIfNeeded = async () => {
-    const token = getPendingInviteToken()
-    if (!token) return '/onboarding'
-    await settingsApi.acceptInvitation(token, email)
-    clearPendingInviteToken()
-    toast.success('Zaproszenie zaakceptowane', 'Nowe konto zostało przypięte do zaproszonej firmy.')
-    return '/settings'
+  const finalizeInviteIfNeeded = async (): Promise<string> => {
+    const tokens = getPendingInviteTokens()
+    if (tokens.length === 0) return '/onboarding'
+
+    let successCount = 0
+    for (const token of tokens) {
+      const short = token.slice(0, 12) + '…'
+      try {
+        console.log('[invite] INVITE_ACCEPT_START', { token: short })
+        await settingsApi.acceptInvitation(token, email)
+        console.log('[invite] INVITE_ACCEPT_SUCCESS', { token: short })
+        successCount++
+      } catch (err) {
+        console.warn('[invite] INVITE_ACCEPT_FAIL', { token: short, reason: (err as any)?.message })
+      }
+    }
+    clearPendingInviteTokens()
+
+    if (successCount > 0) {
+      toast.success('Zaproszenie zaakceptowane', 'Nowe konto zostało przypięte do zaproszonej firmy.')
+      return '/settings'
+    }
+    return '/onboarding'
   }
 
   return (

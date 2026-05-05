@@ -1,16 +1,45 @@
-const INVITE_INTENT_KEY = "loftdesk-pending-invite-token"
+// Multi-token storage (v2) — handles multiple pending invitations.
+// Legacy single-token key kept for backward compatibility with in-flight sessions.
+const INVITE_TOKENS_KEY = 'loftdesk-pending-invite-tokens'
+const LEGACY_KEY        = 'loftdesk-pending-invite-token'
 
-export function setPendingInviteToken(token: string) {
+/** Add a token to the pending invite queue (deduplicates). */
+export function addPendingInviteToken(token: string): void {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(INVITE_INTENT_KEY, token)
+  const current = getPendingInviteTokens()
+  if (!current.includes(token)) {
+    localStorage.setItem(INVITE_TOKENS_KEY, JSON.stringify([...current, token]))
+  }
 }
 
-export function getPendingInviteToken() {
-  if (typeof window === 'undefined') return null
-  return window.localStorage.getItem(INVITE_INTENT_KEY)
+/** Backward-compat alias for addPendingInviteToken. */
+export const setPendingInviteToken = addPendingInviteToken
+
+/** Return all pending invite tokens. Migrates legacy single-token storage. */
+export function getPendingInviteTokens(): string[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(INVITE_TOKENS_KEY)
+    if (raw) return JSON.parse(raw) as string[]
+    // Migrate legacy single-token entry on first read.
+    const legacy = localStorage.getItem(LEGACY_KEY)
+    return legacy ? [legacy] : []
+  } catch {
+    return []
+  }
 }
 
-export function clearPendingInviteToken() {
+/** Backward-compat: return first pending token. */
+export function getPendingInviteToken(): string | null {
+  return getPendingInviteTokens()[0] ?? null
+}
+
+/** Clear all pending invite tokens (both keys). */
+export function clearPendingInviteTokens(): void {
   if (typeof window === 'undefined') return
-  window.localStorage.removeItem(INVITE_INTENT_KEY)
+  localStorage.removeItem(INVITE_TOKENS_KEY)
+  localStorage.removeItem(LEGACY_KEY)
 }
+
+/** Backward-compat alias for clearPendingInviteTokens. */
+export const clearPendingInviteToken = clearPendingInviteTokens

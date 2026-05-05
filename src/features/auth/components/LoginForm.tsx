@@ -7,7 +7,7 @@ import { authApi } from '@/features/auth/api/auth.api'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
-import { getPendingInviteToken, clearPendingInviteToken } from '@/shared/lib/inviteIntent'
+import { getPendingInviteTokens, clearPendingInviteTokens } from '@/shared/lib/inviteIntent'
 import { settingsApi } from '@/features/settings/api/settings.api'
 import { isDemoMode } from '@/shared/lib/supabase'
 
@@ -18,13 +18,29 @@ export function LoginForm() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const finalizeInviteIfNeeded = async () => {
-    const token = getPendingInviteToken()
-    if (!token) return '/dashboard'
-    await settingsApi.acceptInvitation(token, email)
-    clearPendingInviteToken()
-    toast.success('Zaproszenie zaakceptowane', 'Konto zostało przypięte do właściwej firmy.')
-    return '/settings'
+  const finalizeInviteIfNeeded = async (): Promise<string> => {
+    const tokens = getPendingInviteTokens()
+    if (tokens.length === 0) return '/dashboard'
+
+    let successCount = 0
+    for (const token of tokens) {
+      const short = token.slice(0, 12) + '…'
+      try {
+        console.log('[invite] INVITE_ACCEPT_START', { token: short })
+        await settingsApi.acceptInvitation(token, email)
+        console.log('[invite] INVITE_ACCEPT_SUCCESS', { token: short })
+        successCount++
+      } catch (err) {
+        console.warn('[invite] INVITE_ACCEPT_FAIL', { token: short, reason: (err as any)?.message })
+      }
+    }
+    clearPendingInviteTokens()
+
+    if (successCount > 0) {
+      toast.success('Zaproszenie zaakceptowane', 'Konto zostało przypięte do właściwej firmy.')
+      return '/settings'
+    }
+    return '/dashboard'
   }
 
   return (
