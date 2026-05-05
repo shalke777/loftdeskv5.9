@@ -59,64 +59,22 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
     memberRows[0] ??
     null
 
-  // Operator — company_members ma pierwszeństwo
+  // SECURITY RULE: operator (company_members) ALWAYS wins over client_accounts.
+  // If the user has ANY row in company_members they are an operator — full stop.
+  // We do NOT apply the client_accounts guard here because it's unreliable:
+  //
+  //   • An operator can have client_accounts in a DIFFERENT company (they were
+  //     invited as a client somewhere else). The old guard would incorrectly
+  //     treat them as a client.
+  //
+  //   • Pure clients are protected BEFORE reaching this code:
+  //       – client invite flow sets user_metadata.client_account_id
+  //       – bootstrap_my_company is blocked for those users (see metadata guard below)
+  //       – So a pure client never has a real company_members row
+  //
+  // Consequence: if a user somehow has both, they entered as an operator.
+  // The client portal is accessible through a separate /client/* route.
   let memberRow: typeof pickedMember | null = pickedMember
-
-  // ── Guard: client_accounts vs company_members priority ──────────────────────
-  // Przypadki:
-  //   A) Prawdziwy klient z bootstrap-ghost company:
-  //      company_members.company_id = X (ghost), client_accounts.company_id = Y (operator)
-  //      → różne company_id → wyczyść memberRow → rola 'client'
-  //
-  //   B) Operator testujący własne zaproszenie swoim mailem:
-  //      company_members.company_id = Y (prawdziwa firma operatora)
-  //      client_accounts.company_id = Y (zaproszenie do własnej firmy)
-  //      → ten sam company_id → zostaje operatorem
-  //
-  //   C) Klient bez żadnego company_members → memberRow = null → wpada w ścieżkę klienta niżej
-  if (memberRow) {
-    const { data: clientByRpcData } = clientByRpc
-
-    // Pobierz client_accounts z company_id — RPC (migration 054) lub bezpośrednio
-    let clientAccountCompanyId: string | null = null
-    if (clientByRpcData && typeof clientByRpcData === 'object' && 'company_id' in (clientByRpcData as object)) {
-      clientAccountCompanyId = (clientByRpcData as { company_id: string }).company_id
-    } else {
-      const { data: directLookup } = await supabase
-        .from('client_accounts')
-        .select('id, company_id')
-        .eq('auth_user_id', authUser.id)
-        .limit(1)
-        .maybeSingle()
-      clientAccountCompanyId = directLookup?.company_id ?? null
-    }
-
-    // Guard logic — three cases:
-    //   A) Real client with bootstrap ghost company:
-    //      company_members = [{ghost_G, owner}], client_accounts.company_id = operator_O
-    //      ghost_G is NOT in client_accounts company → guard fires → client ✓
-    //
-    //   B) Operator self-testing client portal:
-    //      company_members = [{own_company, owner}], client_accounts.company_id = own_company
-    //      own_company IS in memberships → guard does NOT fire → stays operator ✓
-    //
-    //   C) Invited operator who also has ghost bootstrap + client_accounts on ghost:
-    //      company_members = [{invited_I, worker}, {ghost_G, owner}]
-    //      client_accounts.company_id = ghost_G (from self-test during registration)
-    //      ghost_G IS in memberships → guard does NOT fire → stays operator (invited) ✓
-    //
-    // Key: only clear memberRow when client_accounts.company_id is NOT in ANY membership.
-    // That is the only reliable signal that the user is truly a pure client, not an operator.
-    const clientCompanyIsAlsoMembership = clientAccountCompanyId
-      ? memberRows.some((r) => r.company_id === clientAccountCompanyId)
-      : false
-
-    if (clientAccountCompanyId && !clientCompanyIsAlsoMembership) {
-      // client_accounts points to a company where user has NO membership → real client
-      memberRow = null
-    }
-    // Has membership in client_accounts company → stays operator
-  }
 
   if (!memberRow) {
     // ── Sprawdź client_accounts PRZED bootstrap ───────────────────────────────
