@@ -43,6 +43,10 @@ const ERROR_MAP: Record<string, string> = {
   'column does not exist': 'Baza danych nie ma jeszcze najnowszych zmian (brakująca migracja). Skontaktuj się z administratorem.',
   'schema cache': 'Baza danych nie ma jeszcze najnowszych zmian (brakująca migracja). Skontaktuj się z administratorem.',
 
+  // ── Invitations ───────────────────────────────────────────────────────
+  'INVITATION_NOT_FOUND': 'Zaproszenie nie istnieje, wygasło lub zostało już zaakceptowane.',
+  'AUTH_REQUIRED': 'Zaloguj się, aby zaakceptować zaproszenie.',
+
   // ── PKCE / OAuth ──────────────────────────────────────────────────────
   'Both auth code and code verifier should be non-empty': 'Link weryfikacyjny jest niekompletny. Spróbuj ponownie.',
 }

@@ -43,7 +43,14 @@ export function LoginForm() {
               setLoading(true)
               await authApi.signIn(email, password)
               if (isDemoMode) signInDemo(email)
-              const target = await finalizeInviteIfNeeded()
+              // Isolate invite finalization — a failed/expired invite must not
+              // surface as a login failure since sign-in already succeeded.
+              let target = '/dashboard'
+              try {
+                target = await finalizeInviteIfNeeded()
+              } catch {
+                // invite accept failed (expired/not found) — proceed to dashboard
+              }
               toast.success('Zalogowano', 'Możesz od razu przejść do pracy w aplikacji.')
               window.location.assign(target)
             } catch (error) {
