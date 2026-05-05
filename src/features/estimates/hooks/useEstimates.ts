@@ -5,7 +5,6 @@ import { estimatesApi } from '@/features/estimates/api/estimates.api'
 import { autoLinkService } from '@/services/project/autoLinkService'
 import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
-import { scheduleOptimisticCleanup } from '@/shared/lib/optimisticHelpers'
 import { supabase } from '@/shared/lib/supabase'
 import type { Estimate } from '@/entities/estimate/model'
 
@@ -58,10 +57,9 @@ export function useCreateEstimate() {
     async onMutate(variables) {
       const key = estimateKeys.list(companyId)
       await queryClient.cancelQueries({ queryKey: key })
-      const previous = queryClient.getQueryData<Estimate[]>(key)
-      const optimisticId = `temp-${crypto.randomUUID()}`
+      const tempId = crypto.randomUUID()
       const optimistic = {
-        id: optimisticId, company_id: companyId, _status: 'creating',
+        id: tempId, company_id: companyId,
         client_id: variables.client_id ?? null,
         project_id: variables.project_id ?? null,
         number: '…', name: variables.name,
@@ -72,16 +70,17 @@ export function useCreateEstimate() {
         valid_until: variables.valid_until ?? null,
         items: variables.items ?? [],
         created_at: new Date().toISOString(),
+        _optimistic: true,
       } as unknown as Estimate
       queryClient.setQueryData<Estimate[]>(key, (old = []) => [optimistic, ...old])
-      const cancelWatchdog = scheduleOptimisticCleanup<Estimate>(queryClient, key, optimisticId)
-      return { previous, optimisticId, cancelWatchdog }
+      return { tempId }
     },
     onSuccess(data, _vars, context) {
-      context?.cancelWatchdog?.()
       const key = estimateKeys.list(companyId)
       queryClient.setQueryData<Estimate[]>(key, (old = []) =>
-        old.map(e => e.id === context?.optimisticId ? data : e)
+        old.map(e => e.id === context?.tempId
+          ? { ...e, ...data, id: context.tempId, serverId: data.id, _optimistic: false }
+          : e)
       )
       queryClient.invalidateQueries({ queryKey: ['onboarding-progress', companyId] })
       toast.success('Kosztorys utworzony')
@@ -93,15 +92,14 @@ export function useCreateEstimate() {
       }).catch((err) => console.warn('[autoLink] estimate link failed:', err))
     },
     onError(error: any, _vars, context) {
-      context?.cancelWatchdog?.()
-      if (context?.previous !== undefined)
-        queryClient.setQueryData(estimateKeys.list(companyId), context.previous)
+      if (context?.tempId) {
+        queryClient.setQueryData<Estimate[]>(estimateKeys.list(companyId), (old = []) =>
+          old.filter(e => e.id !== context.tempId)
+        )
+      }
       const msg = error?.message ?? error?.details ?? 'Sprawdź połączenie i spróbuj ponownie'
       toast.error('Nie udało się utworzyć kosztorysu', msg)
       console.error('[estimates] create error:', error)
-    },
-    onSettled() {
-      queryClient.invalidateQueries({ queryKey: estimateKeys.list(companyId) })
     },
   })
 }

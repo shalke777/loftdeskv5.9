@@ -76,7 +76,10 @@ export function EstimatesPage() {
   }), [data])
 
   const visible = useMemo(
-    () => filterStatus === 'all' ? (data ?? []) : (data ?? []).filter(e => e.status === filterStatus),
+    () => {
+      const arr = filterStatus === 'all' ? (data ?? []) : (data ?? []).filter(e => e.status === filterStatus)
+      return [...arr].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+    },
     [data, filterStatus],
   )
 

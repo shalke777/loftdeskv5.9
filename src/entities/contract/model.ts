@@ -40,6 +40,8 @@ export const ContractSchema = z.object({
   created_at: z.string(),
   tranches: z.array(ContractTrancheSchema).optional().default([]),
   custom_paragraphs: z.array(CustomParagraphSchema).optional().default([]),
+  serverId: z.string().optional(),
+  _optimistic: z.boolean().optional(),
 })
 
 export type Contract = z.infer<typeof ContractSchema>

@@ -25,6 +25,8 @@ export const ProjectSchema = z.object({
   completeness_flags: ProjectCompletenessSchema.nullable().optional(),
   archived_at: z.string().nullable().optional(),
   created_at: z.string(),
+  serverId: z.string().optional(),
+  _optimistic: z.boolean().optional(),
 })
 
 export const ProjectDocumentSchema = z.object({

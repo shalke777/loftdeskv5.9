@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, CheckCircle, ClipboardCheck, Edit2, FileText, Mail, ReceiptText, Trash2 } from 'lucide-react'
 import type { Client } from '@/entities/client/model'
 import type { Contract } from '@/entities/contract/model'
@@ -42,7 +42,7 @@ interface Props {
   canSign?: boolean
 }
 
-export function ContractRow({
+export function ContractRowImpl({
   contract, clientName, client, projectName,
   onEdit, onDelete, onSign, onCreateInvoice,
   canDelete = true, canSign = true,
@@ -289,3 +289,6 @@ export function ContractRow({
     </div>
   )
 }
+
+export const ContractRow = memo(ContractRowImpl)
+

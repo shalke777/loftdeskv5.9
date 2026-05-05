@@ -54,6 +54,8 @@ export const InvoiceSchema = z.object({
   notes: z.string().optional(),
   created_at: z.string(),
   items: z.array(InvoiceItemSchema),
+  serverId: z.string().optional(),
+  _optimistic: z.boolean().optional(),
 })
 
 export type Invoice = z.infer<typeof InvoiceSchema>

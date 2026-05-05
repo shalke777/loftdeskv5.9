@@ -65,10 +65,12 @@ export function InvoicesPage() {
 
   const visible = useMemo(() => {
     if (!data) return []
-    if (filterStatus === 'all') return data
-    if (filterStatus === 'ksef') return data.filter(i => i.ksef_status === 'ksef_sent')
-    if (filterStatus === 'correction') return data.filter(i => i.invoice_type === 'correction')
-    return data.filter(i => i.status === filterStatus)
+    let arr: Invoice[]
+    if (filterStatus === 'all') arr = data
+    else if (filterStatus === 'ksef') arr = data.filter(i => i.ksef_status === 'ksef_sent')
+    else if (filterStatus === 'correction') arr = data.filter(i => i.invoice_type === 'correction')
+    else arr = data.filter(i => i.status === filterStatus)
+    return [...arr].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
   }, [data, filterStatus])
 
   async function submit(input: any) {

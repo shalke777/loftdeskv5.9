@@ -73,7 +73,10 @@ export function ProjectsPage() {
   }), [data])
 
   const visible = useMemo(
-    () => filterStatus === 'all' ? (data ?? []) : (data ?? []).filter((p) => p.status === filterStatus),
+    () => {
+      const arr = filterStatus === 'all' ? (data ?? []) : (data ?? []).filter((p) => p.status === filterStatus)
+      return [...arr].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+    },
     [data, filterStatus],
   )
 

@@ -4,7 +4,6 @@ import { invoicesApi } from '@/features/invoices/api/invoices.api'
 import { autoLinkService } from '@/services/project/autoLinkService'
 import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
-import { scheduleOptimisticCleanup } from '@/shared/lib/optimisticHelpers'
 import type { Invoice } from '@/entities/invoice/model'
 
 const invoiceKeys = { all: ['invoices'] as const, list: (companyId: string) => [...invoiceKeys.all, companyId] as const }
@@ -27,10 +26,9 @@ export function useCreateInvoice() {
     async onMutate(variables) {
       const key = invoiceKeys.list(companyId)
       await qc.cancelQueries({ queryKey: key })
-      const previous = qc.getQueryData<Invoice[]>(key)
-      const optimisticId = `temp-${crypto.randomUUID()}`
+      const tempId = crypto.randomUUID()
       const optimistic = {
-        id: optimisticId, company_id: companyId, _status: 'creating',
+        id: tempId, company_id: companyId,
         client_id: variables.client_id ?? null,
         project_id: variables.project_id ?? null,
         contract_id: variables.contract_id ?? null,
@@ -41,16 +39,17 @@ export function useCreateInvoice() {
         ksef_status: null, ksef_ref: null,
         items: variables.items ?? [],
         created_at: new Date().toISOString(),
+        _optimistic: true,
       } as unknown as Invoice
       qc.setQueryData<Invoice[]>(key, (old = []) => [optimistic, ...old])
-      const cancelWatchdog = scheduleOptimisticCleanup<Invoice>(qc, key, optimisticId)
-      return { previous, optimisticId, cancelWatchdog }
+      return { tempId }
     },
     onSuccess(data, _vars, context) {
-      context?.cancelWatchdog?.()
       const key = invoiceKeys.list(companyId)
       qc.setQueryData<Invoice[]>(key, (old = []) =>
-        old.map(i => i.id === context?.optimisticId ? data : i)
+        old.map(i => i.id === context?.tempId
+          ? { ...i, ...data, id: context.tempId, serverId: data.id, _optimistic: false }
+          : i)
       )
       qc.invalidateQueries({ queryKey: ['dashboard', companyId] })
       if (data.project_id) qc.invalidateQueries({ queryKey: ['project_documents', data.project_id] })
@@ -64,13 +63,12 @@ export function useCreateInvoice() {
       }).catch((err) => console.warn('[autoLink] invoice link failed:', err))
     },
     onError(_err, _vars, context) {
-      context?.cancelWatchdog?.()
-      if (context?.previous !== undefined)
-        qc.setQueryData(invoiceKeys.list(companyId), context.previous)
+      if (context?.tempId) {
+        qc.setQueryData<Invoice[]>(invoiceKeys.list(companyId), (old = []) =>
+          old.filter(i => i.id !== context.tempId)
+        )
+      }
       toast.error('Nie udało się utworzyć faktury', translateError(_err))
-    },
-    onSettled() {
-      qc.invalidateQueries({ queryKey: invoiceKeys.list(companyId) })
     },
   })
 }

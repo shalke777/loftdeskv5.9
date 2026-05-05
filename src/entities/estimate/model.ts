@@ -27,6 +27,8 @@ export const EstimateSchema = z.object({
   valid_until: z.string().nullable(),
   created_at: z.string(),
   items: z.array(EstimateItemSchema),
+  serverId: z.string().optional(),
+  _optimistic: z.boolean().optional(),
 })
 
 export type Estimate = z.infer<typeof EstimateSchema>

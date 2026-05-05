@@ -3,7 +3,6 @@ import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { contractsApi } from '@/features/contracts/api/contracts.api'
 import { autoLinkService } from '@/services/project/autoLinkService'
 import { useToast } from '@/shared/hooks/useToast'
-import { scheduleOptimisticCleanup } from '@/shared/lib/optimisticHelpers'
 import type { Contract } from '@/entities/contract/model'
 
 const contractKeys = { all: ['contracts'] as const, list: (companyId: string) => [...contractKeys.all, companyId] as const }
@@ -17,10 +16,9 @@ export function useCreateContract() {
     async onMutate(variables) {
       const key = contractKeys.list(companyId)
       await qc.cancelQueries({ queryKey: key })
-      const previous = qc.getQueryData<Contract[]>(key)
-      const optimisticId = `temp-${crypto.randomUUID()}`
+      const tempId = crypto.randomUUID()
       const optimistic = {
-        id: optimisticId, company_id: companyId, _status: 'creating',
+        id: tempId, company_id: companyId,
         client_id: variables.client_id ?? null,
         project_id: variables.project_id ?? null,
         estimate_id: variables.estimate_id ?? null,
@@ -34,16 +32,17 @@ export function useCreateContract() {
         tranches: variables.tranches ?? [],
         custom_paragraphs: variables.custom_paragraphs ?? [],
         created_at: new Date().toISOString(),
+        _optimistic: true,
       } as unknown as Contract
       qc.setQueryData<Contract[]>(key, (old = []) => [optimistic, ...old])
-      const cancelWatchdog = scheduleOptimisticCleanup<Contract>(qc, key, optimisticId)
-      return { previous, optimisticId, cancelWatchdog }
+      return { tempId }
     },
     onSuccess(data, _vars, context) {
-      context?.cancelWatchdog?.()
       const key = contractKeys.list(companyId)
       qc.setQueryData<Contract[]>(key, (old = []) =>
-        old.map(c => c.id === context?.optimisticId ? data : c)
+        old.map(c => c.id === context?.tempId
+          ? { ...c, ...data, id: context.tempId, serverId: data.id, _optimistic: false }
+          : c)
       )
       qc.invalidateQueries({ queryKey: ['dashboard', companyId] })
       if (data.project_id) qc.invalidateQueries({ queryKey: ['project_documents', data.project_id] })
@@ -57,13 +56,12 @@ export function useCreateContract() {
       }).catch((err) => console.warn('[autoLink] contract link failed:', err))
     },
     onError(error: any, _vars, context) {
-      context?.cancelWatchdog?.()
-      if (context?.previous !== undefined)
-        qc.setQueryData(contractKeys.list(companyId), context.previous)
+      if (context?.tempId) {
+        qc.setQueryData<Contract[]>(contractKeys.list(companyId), (old = []) =>
+          old.filter(c => c.id !== context.tempId)
+        )
+      }
       toast.error('Nie udało się utworzyć umowy', error?.message ?? 'Spróbuj ponownie.')
-    },
-    onSettled() {
-      qc.invalidateQueries({ queryKey: contractKeys.list(companyId) })
     },
   })
 }

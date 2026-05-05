@@ -4,7 +4,6 @@ import { projectsApi } from '@/features/projects/api/projects.api'
 import { invoicesApi } from '@/features/invoices/api/invoices.api'
 import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
-import { scheduleOptimisticCleanup } from '@/shared/lib/optimisticHelpers'
 import type { Project } from '@/entities/project/model'
 import type { InvoiceFromProjectConfig } from '@/features/projects/components/ProjectInvoiceModal'
 
@@ -19,10 +18,9 @@ export function useCreateProject() {
     async onMutate(variables) {
       const key = projectKeys.list(companyId)
       await qc.cancelQueries({ queryKey: key })
-      const previous = qc.getQueryData<Project[]>(key)
-      const optimisticId = `temp-${crypto.randomUUID()}`
+      const tempId = crypto.randomUUID()
       const optimistic = {
-        id: optimisticId, company_id: companyId, _status: 'creating',
+        id: tempId, company_id: companyId,
         client_id: variables.client_id ?? null,
         number: '…', name: variables.name,
         status: variables.status,
@@ -30,29 +28,29 @@ export function useCreateProject() {
         address: variables.address, notes: variables.notes,
         completeness_score: 0, completeness_flags: null, archived_at: null,
         created_at: new Date().toISOString(),
+        _optimistic: true,
       } as unknown as Project
       qc.setQueryData<Project[]>(key, (old = []) => [optimistic, ...old])
-      const cancelWatchdog = scheduleOptimisticCleanup<Project>(qc, key, optimisticId)
-      return { previous, optimisticId, cancelWatchdog }
+      return { tempId }
     },
     onSuccess(data, _vars, context) {
-      context?.cancelWatchdog?.()
       const key = projectKeys.list(companyId)
       qc.setQueryData<Project[]>(key, (old = []) =>
-        old.map(p => p.id === context?.optimisticId ? data : p)
+        old.map(p => p.id === context?.tempId
+          ? { ...p, ...data, id: context.tempId, serverId: data.id, _optimistic: false }
+          : p)
       )
+      qc.invalidateQueries({ queryKey: ['dashboard', companyId] })
+      qc.invalidateQueries({ queryKey: ['onboarding-progress', companyId] })
       toast.success('Projekt utworzony')
     },
     onError(_err, _vars, context) {
-      context?.cancelWatchdog?.()
-      if (context?.previous !== undefined)
-        qc.setQueryData(projectKeys.list(companyId), context.previous)
+      if (context?.tempId) {
+        qc.setQueryData<Project[]>(projectKeys.list(companyId), (old = []) =>
+          old.filter(p => p.id !== context.tempId)
+        )
+      }
       toast.error('Nie udało się utworzyć projektu')
-    },
-    onSettled() {
-      qc.invalidateQueries({ queryKey: projectKeys.list(companyId) })
-      qc.invalidateQueries({ queryKey: ['dashboard', companyId] })
-      qc.invalidateQueries({ queryKey: ['onboarding-progress', companyId] })
     },
   })
 }
