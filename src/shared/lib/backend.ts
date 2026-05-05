@@ -91,11 +91,31 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
       clientAccountCompanyId = directLookup?.company_id ?? null
     }
 
-    if (clientAccountCompanyId && clientAccountCompanyId !== memberRow.company_id) {
-      // Różne firmy → company_members to artefakt bootstrap → traktuj jako klient
+    // Guard logic — three cases:
+    //   A) Real client with bootstrap ghost company:
+    //      company_members = [{ghost_G, owner}], client_accounts.company_id = operator_O
+    //      ghost_G is NOT in client_accounts company → guard fires → client ✓
+    //
+    //   B) Operator self-testing client portal:
+    //      company_members = [{own_company, owner}], client_accounts.company_id = own_company
+    //      own_company IS in memberships → guard does NOT fire → stays operator ✓
+    //
+    //   C) Invited operator who also has ghost bootstrap + client_accounts on ghost:
+    //      company_members = [{invited_I, worker}, {ghost_G, owner}]
+    //      client_accounts.company_id = ghost_G (from self-test during registration)
+    //      ghost_G IS in memberships → guard does NOT fire → stays operator (invited) ✓
+    //
+    // Key: only clear memberRow when client_accounts.company_id is NOT in ANY membership.
+    // That is the only reliable signal that the user is truly a pure client, not an operator.
+    const clientCompanyIsAlsoMembership = clientAccountCompanyId
+      ? memberRows.some((r) => r.company_id === clientAccountCompanyId)
+      : false
+
+    if (clientAccountCompanyId && !clientCompanyIsAlsoMembership) {
+      // client_accounts points to a company where user has NO membership → real client
       memberRow = null
     }
-    // Ten sam company_id lub brak client_accounts → zostaje operatorem
+    // Has membership in client_accounts company → stays operator
   }
 
   if (!memberRow) {
