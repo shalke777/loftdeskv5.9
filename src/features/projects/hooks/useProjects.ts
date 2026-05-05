@@ -19,9 +19,9 @@ export function useCreateProject() {
       const key = projectKeys.list(companyId)
       await qc.cancelQueries({ queryKey: key })
       const previous = qc.getQueryData<Project[]>(key)
-      const optimisticId = `temp-${Date.now()}`
+      const optimisticId = `temp-${crypto.randomUUID()}`
       const optimistic = {
-        id: optimisticId, company_id: companyId,
+        id: optimisticId, company_id: companyId, _status: 'creating',
         client_id: variables.client_id ?? null,
         number: '…', name: variables.name,
         status: variables.status,

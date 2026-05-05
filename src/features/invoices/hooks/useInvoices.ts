@@ -27,9 +27,9 @@ export function useCreateInvoice() {
       const key = invoiceKeys.list(companyId)
       await qc.cancelQueries({ queryKey: key })
       const previous = qc.getQueryData<Invoice[]>(key)
-      const optimisticId = `temp-${Date.now()}`
+      const optimisticId = `temp-${crypto.randomUUID()}`
       const optimistic = {
-        id: optimisticId, company_id: companyId,
+        id: optimisticId, company_id: companyId, _status: 'creating',
         client_id: variables.client_id ?? null,
         project_id: variables.project_id ?? null,
         contract_id: variables.contract_id ?? null,

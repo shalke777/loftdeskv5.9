@@ -58,9 +58,9 @@ export function useCreateEstimate() {
       const key = estimateKeys.list(companyId)
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<Estimate[]>(key)
-      const optimisticId = `temp-${Date.now()}`
+      const optimisticId = `temp-${crypto.randomUUID()}`
       const optimistic = {
-        id: optimisticId, company_id: companyId,
+        id: optimisticId, company_id: companyId, _status: 'creating',
         client_id: variables.client_id ?? null,
         project_id: variables.project_id ?? null,
         number: '…', name: variables.name,

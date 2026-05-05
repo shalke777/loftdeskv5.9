@@ -17,9 +17,9 @@ export function useCreateContract() {
       const key = contractKeys.list(companyId)
       await qc.cancelQueries({ queryKey: key })
       const previous = qc.getQueryData<Contract[]>(key)
-      const optimisticId = `temp-${Date.now()}`
+      const optimisticId = `temp-${crypto.randomUUID()}`
       const optimistic = {
-        id: optimisticId, company_id: companyId,
+        id: optimisticId, company_id: companyId, _status: 'creating',
         client_id: variables.client_id ?? null,
         project_id: variables.project_id ?? null,
         estimate_id: variables.estimate_id ?? null,
