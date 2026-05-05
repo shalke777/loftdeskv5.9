@@ -104,16 +104,18 @@ export function ContractsPage() {
             : undefined}
         />
       ) : (
-        <div className="proj-list">
+        <motion.div layout className="proj-list">
           <AnimatePresence initial={false}>
             {visible.map(contract => (
               <motion.div
                 key={contract.id}
                 layout
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.18, ease: 'easeOut' as const }}
+                initial={{ scale: 0.9, y: -20, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.9, y: -20, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 28, mass: 0.8 }}
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
               >
                 <ContractRow
                   contract={contract}
@@ -130,7 +132,7 @@ export function ContractsPage() {
               </motion.div>
             ))}
           </AnimatePresence>
-        </div>
+        </motion.div>
       )}
 
       {canCreate && (

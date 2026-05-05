@@ -2,12 +2,7 @@ import { useRef, type ReactNode } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { AnimatePresence, motion } from 'framer-motion'
 
-const ROW_VARIANTS = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit:    { opacity: 0, y: -8 },
-}
-const ROW_TRANSITION = { duration: 0.18, ease: 'easeOut' as const }
+const ROW_SPRING = { type: 'spring' as const, stiffness: 500, damping: 28, mass: 0.8 }
 
 interface VirtualListProps<T> {
   items: T[]
@@ -47,23 +42,24 @@ export function VirtualList<T>({
 
   if (!enabled) {
     return (
-      <div className={className}>
+      <motion.div layout className={className}>
         <AnimatePresence initial={false}>
           {items.map((item, i) => (
             <motion.div
               key={getKey(item, i)}
               layout
-              variants={ROW_VARIANTS}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={ROW_TRANSITION}
+              initial={{ scale: 0.9, y: -20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: -20, opacity: 0 }}
+              transition={ROW_SPRING}
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
             >
               {renderItem(item, i)}
             </motion.div>
           ))}
         </AnimatePresence>
-      </div>
+      </motion.div>
     )
   }
 
