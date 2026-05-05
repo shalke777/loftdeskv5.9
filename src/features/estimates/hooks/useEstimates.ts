@@ -5,6 +5,7 @@ import { estimatesApi } from '@/features/estimates/api/estimates.api'
 import { autoLinkService } from '@/services/project/autoLinkService'
 import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
+import { scheduleOptimisticCleanup } from '@/shared/lib/optimisticHelpers'
 import { supabase } from '@/shared/lib/supabase'
 import type { Estimate } from '@/entities/estimate/model'
 
@@ -73,9 +74,11 @@ export function useCreateEstimate() {
         created_at: new Date().toISOString(),
       } as unknown as Estimate
       queryClient.setQueryData<Estimate[]>(key, (old = []) => [optimistic, ...old])
-      return { previous, optimisticId }
+      const cancelWatchdog = scheduleOptimisticCleanup<Estimate>(queryClient, key, optimisticId)
+      return { previous, optimisticId, cancelWatchdog }
     },
     onSuccess(data, _vars, context) {
+      context?.cancelWatchdog?.()
       const key = estimateKeys.list(companyId)
       queryClient.setQueryData<Estimate[]>(key, (old = []) =>
         old.map(e => e.id === context?.optimisticId ? data : e)
@@ -90,6 +93,7 @@ export function useCreateEstimate() {
       }).catch((err) => console.warn('[autoLink] estimate link failed:', err))
     },
     onError(error: any, _vars, context) {
+      context?.cancelWatchdog?.()
       if (context?.previous !== undefined)
         queryClient.setQueryData(estimateKeys.list(companyId), context.previous)
       const msg = error?.message ?? error?.details ?? 'Sprawdź połączenie i spróbuj ponownie'

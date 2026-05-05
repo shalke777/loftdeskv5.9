@@ -3,6 +3,7 @@ import { useCompanyId } from '@/features/auth/hooks/useAuth'
 import { contractsApi } from '@/features/contracts/api/contracts.api'
 import { autoLinkService } from '@/services/project/autoLinkService'
 import { useToast } from '@/shared/hooks/useToast'
+import { scheduleOptimisticCleanup } from '@/shared/lib/optimisticHelpers'
 import type { Contract } from '@/entities/contract/model'
 
 const contractKeys = { all: ['contracts'] as const, list: (companyId: string) => [...contractKeys.all, companyId] as const }
@@ -35,9 +36,11 @@ export function useCreateContract() {
         created_at: new Date().toISOString(),
       } as unknown as Contract
       qc.setQueryData<Contract[]>(key, (old = []) => [optimistic, ...old])
-      return { previous, optimisticId }
+      const cancelWatchdog = scheduleOptimisticCleanup<Contract>(qc, key, optimisticId)
+      return { previous, optimisticId, cancelWatchdog }
     },
     onSuccess(data, _vars, context) {
+      context?.cancelWatchdog?.()
       const key = contractKeys.list(companyId)
       qc.setQueryData<Contract[]>(key, (old = []) =>
         old.map(c => c.id === context?.optimisticId ? data : c)
@@ -54,6 +57,7 @@ export function useCreateContract() {
       }).catch((err) => console.warn('[autoLink] contract link failed:', err))
     },
     onError(error: any, _vars, context) {
+      context?.cancelWatchdog?.()
       if (context?.previous !== undefined)
         qc.setQueryData(contractKeys.list(companyId), context.previous)
       toast.error('Nie udało się utworzyć umowy', error?.message ?? 'Spróbuj ponownie.')

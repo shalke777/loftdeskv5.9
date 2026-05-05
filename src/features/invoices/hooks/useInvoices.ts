@@ -4,6 +4,7 @@ import { invoicesApi } from '@/features/invoices/api/invoices.api'
 import { autoLinkService } from '@/services/project/autoLinkService'
 import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
+import { scheduleOptimisticCleanup } from '@/shared/lib/optimisticHelpers'
 import type { Invoice } from '@/entities/invoice/model'
 
 const invoiceKeys = { all: ['invoices'] as const, list: (companyId: string) => [...invoiceKeys.all, companyId] as const }
@@ -42,9 +43,11 @@ export function useCreateInvoice() {
         created_at: new Date().toISOString(),
       } as unknown as Invoice
       qc.setQueryData<Invoice[]>(key, (old = []) => [optimistic, ...old])
-      return { previous, optimisticId }
+      const cancelWatchdog = scheduleOptimisticCleanup<Invoice>(qc, key, optimisticId)
+      return { previous, optimisticId, cancelWatchdog }
     },
     onSuccess(data, _vars, context) {
+      context?.cancelWatchdog?.()
       const key = invoiceKeys.list(companyId)
       qc.setQueryData<Invoice[]>(key, (old = []) =>
         old.map(i => i.id === context?.optimisticId ? data : i)
@@ -61,6 +64,7 @@ export function useCreateInvoice() {
       }).catch((err) => console.warn('[autoLink] invoice link failed:', err))
     },
     onError(_err, _vars, context) {
+      context?.cancelWatchdog?.()
       if (context?.previous !== undefined)
         qc.setQueryData(invoiceKeys.list(companyId), context.previous)
       toast.error('Nie udało się utworzyć faktury', translateError(_err))

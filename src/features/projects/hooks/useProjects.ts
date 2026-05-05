@@ -4,6 +4,7 @@ import { projectsApi } from '@/features/projects/api/projects.api'
 import { invoicesApi } from '@/features/invoices/api/invoices.api'
 import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
+import { scheduleOptimisticCleanup } from '@/shared/lib/optimisticHelpers'
 import type { Project } from '@/entities/project/model'
 import type { InvoiceFromProjectConfig } from '@/features/projects/components/ProjectInvoiceModal'
 
@@ -31,9 +32,11 @@ export function useCreateProject() {
         created_at: new Date().toISOString(),
       } as unknown as Project
       qc.setQueryData<Project[]>(key, (old = []) => [optimistic, ...old])
-      return { previous, optimisticId }
+      const cancelWatchdog = scheduleOptimisticCleanup<Project>(qc, key, optimisticId)
+      return { previous, optimisticId, cancelWatchdog }
     },
     onSuccess(data, _vars, context) {
+      context?.cancelWatchdog?.()
       const key = projectKeys.list(companyId)
       qc.setQueryData<Project[]>(key, (old = []) =>
         old.map(p => p.id === context?.optimisticId ? data : p)
@@ -41,6 +44,7 @@ export function useCreateProject() {
       toast.success('Projekt utworzony')
     },
     onError(_err, _vars, context) {
+      context?.cancelWatchdog?.()
       if (context?.previous !== undefined)
         qc.setQueryData(projectKeys.list(companyId), context.previous)
       toast.error('Nie udało się utworzyć projektu')
