@@ -31,7 +31,7 @@ export function VirtualList<T>({
 }: VirtualListProps<T>) {
   const parentRef = useRef<HTMLDivElement>(null)
 
-  const enabled = items.length >= 20
+  const enabled = items.length >= 100
   const virtualizer = useVirtualizer({
     count: enabled ? items.length : 0,
     getScrollElement: () => parentRef.current,
@@ -48,11 +48,11 @@ export function VirtualList<T>({
             <motion.div
               key={getKey(item, i)}
               layout
-              initial={{ scale: 0.9, y: -20, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.9, y: -20, opacity: 0 }}
+              initial={{ scale: 0.9, y: -20, opacity: 0, filter: 'blur(4px)' }}
+              animate={{ scale: 1, y: 0, opacity: 1, filter: 'blur(0px)' }}
+              exit={{ scale: 0.9, y: -20, opacity: 0, filter: 'blur(4px)' }}
               transition={ROW_SPRING}
-              whileHover={{ scale: 1.02, y: -2 }}
+              whileHover={{ scale: 1.02, y: -2, zIndex: 10 }}
               whileTap={{ scale: 0.98 }}
             >
               {renderItem(item, i)}

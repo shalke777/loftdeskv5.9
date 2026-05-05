@@ -110,11 +110,11 @@ export function ContractsPage() {
               <motion.div
                 key={contract.id}
                 layout
-                initial={{ scale: 0.9, y: -20, opacity: 0 }}
-                animate={{ scale: 1, y: 0, opacity: 1 }}
-                exit={{ scale: 0.9, y: -20, opacity: 0 }}
+                initial={{ scale: 0.9, y: -20, opacity: 0, filter: 'blur(4px)' }}
+                animate={{ scale: 1, y: 0, opacity: 1, filter: 'blur(0px)' }}
+                exit={{ scale: 0.9, y: -20, opacity: 0, filter: 'blur(4px)' }}
                 transition={{ type: 'spring', stiffness: 500, damping: 28, mass: 0.8 }}
-                whileHover={{ scale: 1.02, y: -2 }}
+                whileHover={{ scale: 1.02, y: -2, zIndex: 10 }}
                 whileTap={{ scale: 0.98 }}
               >
                 <ContractRow
