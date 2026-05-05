@@ -42,15 +42,14 @@ BEGIN
     SELECT 1 FROM pg_extension WHERE extname = 'pg_cron'
   ) THEN
     -- Remove previous schedule if it exists (idempotent re-run).
-    PERFORM cron.unschedule('cleanup_invite_accept_events')
-    WHERE EXISTS (
-      SELECT 1 FROM cron.job WHERE jobname = 'cleanup_invite_accept_events'
-    );
+    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'cleanup_invite_accept_events') THEN
+      PERFORM cron.unschedule('cleanup_invite_accept_events');
+    END IF;
 
     PERFORM cron.schedule(
       'cleanup_invite_accept_events',
       '15 3 * * *',
-      $$SELECT public.cleanup_old_invite_events()$$
+      $cmd$SELECT public.cleanup_old_invite_events()$cmd$
     );
   END IF;
 END $$;
