@@ -35,8 +35,17 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
 
   // ── Sprawdź company_members i client_accounts RÓWNOLEGLE ─────────────────
   // WAŻNE: operator (company_members) MA ZAWSZE PIERWSZEŃSTWO nad client_accounts.
-  // Jeśli użytkownik jest w obu tabelach (np. operator testował zaproszenie
-  // własnym mailem), musi wchodzić jako operator, nie jako klient.
+  //
+  // CRITICAL: The company_members query does NOT join companies() here.
+  // Reason: the companies_select RLS policy is `USING (id = my_company_id())`
+  // which only covers the ghost/oldest company until migration 150+151 are applied.
+  // The PostgREST embedded join would return HTTP 403 for the invited company row,
+  // making the ENTIRE query fail → memberRows=[] → falls through to client path.
+  //
+  // To be resilient, we:
+  //   1. Fetch company_members WITHOUT the companies join (never 403s)
+  //   2. Pick the active row based on hint / newest
+  //   3. Fetch company details for ONLY that row in a second query
   //
   // Query returns ALL memberships (migration 149: members_select_own_rows).
   // Newest first — so that an accepted invitation (most recent) is preferred
@@ -44,37 +53,46 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   const [memberResult, clientByRpc] = await Promise.all([
     supabase
       .from('company_members')
-      .select('company_id, role, companies(name, plan)')
+      .select('company_id, role')
       .eq('user_id', authUser.id)
       .order('created_at', { ascending: false }),
     supabase.rpc('resolve_my_client_account').maybeSingle(),
   ])
 
+  if (memberResult.error && import.meta.env.DEV) {
+    console.warn('[backend] company_members query error', memberResult.error)
+  }
+
+  // SECURITY RULE: operator (company_members) ALWAYS wins over client_accounts.
+  // If the user has ANY row in company_members they are an operator — full stop.
+  const memberRows = memberResult.data ?? []
+  const isOperator = memberRows.length > 0
+
   // Pick the most appropriate membership row:
   //   1. Matches switchHint (explicitly set after invitation acceptance)
   //   2. Newest row (first after ORDER BY created_at DESC)
-  const memberRows = memberResult.data ?? []
-  const pickedMember =
+  const pickedMemberBase =
     (switchHint ? memberRows.find((r) => r.company_id === switchHint) : undefined) ??
     memberRows[0] ??
     null
 
-  // SECURITY RULE: operator (company_members) ALWAYS wins over client_accounts.
-  // If the user has ANY row in company_members they are an operator — full stop.
-  // We do NOT apply the client_accounts guard here because it's unreliable:
-  //
-  //   • An operator can have client_accounts in a DIFFERENT company (they were
-  //     invited as a client somewhere else). The old guard would incorrectly
-  //     treat them as a client.
-  //
-  //   • Pure clients are protected BEFORE reaching this code:
-  //       – client invite flow sets user_metadata.client_account_id
-  //       – bootstrap_my_company is blocked for those users (see metadata guard below)
-  //       – So a pure client never has a real company_members row
-  //
-  // Consequence: if a user somehow has both, they entered as an operator.
-  // The client portal is accessible through a separate /client/* route.
-  let memberRow: typeof pickedMember | null = pickedMember
+  // Fetch company details (name, plan) only for the picked company.
+  // Done as a SEPARATE query so a companies RLS miss never blocks role resolution.
+  let companyDetails: { name: string | null; plan: string | null } | null = null
+  if (pickedMemberBase) {
+    const { data: cd } = await supabase
+      .from('companies')
+      .select('name, plan')
+      .eq('id', pickedMemberBase.company_id)
+      .maybeSingle()
+    companyDetails = cd ?? null
+  }
+
+  const pickedMember = pickedMemberBase
+    ? { ...pickedMemberBase, companies: companyDetails }
+    : null
+
+  let memberRow: typeof pickedMember | null = isOperator ? pickedMember : null
 
   if (!memberRow) {
     // ── Sprawdź client_accounts PRZED bootstrap ───────────────────────────────
@@ -125,15 +143,22 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
     }
 
     try {
-      const { data: companyId } = await supabase.rpc('bootstrap_my_company', { company_name: '', company_nip: '' })
-      if (companyId) {
+      const { data: bootstrapCompanyId } = await supabase.rpc('bootstrap_my_company', { company_name: '', company_nip: '' })
+      if (bootstrapCompanyId) {
         const res = await supabase
           .from('company_members')
-          .select('company_id, role, companies(name, plan)')
+          .select('company_id, role')
           .eq('user_id', authUser.id)
           .limit(1)
           .maybeSingle()
-        memberRow = res.data ?? null
+        if (res.data) {
+          const { data: cd } = await supabase
+            .from('companies')
+            .select('name, plan')
+            .eq('id', res.data.company_id)
+            .maybeSingle()
+          memberRow = { ...res.data, companies: cd ?? null }
+        }
       }
     } catch {
       // bootstrap may fail if function not yet granted — fall through to profile path
@@ -142,7 +167,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
 
   if (memberRow) {
     // Użytkownik jest operatorem — ignorujemy client_accounts całkowicie
-    const companies = Array.isArray(memberRow.companies) ? memberRow.companies[0] : memberRow.companies
+    const companies = memberRow.companies
     return {
       user: {
         id: authUser.id,
