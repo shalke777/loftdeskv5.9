@@ -1,8 +1,7 @@
 import { useRef, type ReactNode } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { AnimatePresence, motion } from 'framer-motion'
-
-const ROW_SPRING = { type: 'spring' as const, stiffness: 500, damping: 28, mass: 0.8 }
+import { SPRING, LIST_ENTER, LIST_VISIBLE, LIST_EXIT, LIST_HOVER, LIST_TAP } from '@/shared/motion/tokens'
 
 interface VirtualListProps<T> {
   items: T[]
@@ -48,12 +47,12 @@ export function VirtualList<T>({
             <motion.div
               key={getKey(item, i)}
               layout
-              initial={{ scale: 0.9, y: -20, opacity: 0, filter: 'blur(4px)' }}
-              animate={{ scale: 1, y: 0, opacity: 1, filter: 'blur(0px)' }}
-              exit={{ scale: 0.9, y: -20, opacity: 0, filter: 'blur(4px)' }}
-              transition={ROW_SPRING}
-              whileHover={{ scale: 1.02, y: -2, zIndex: 10 }}
-              whileTap={{ scale: 0.98 }}
+              initial={LIST_ENTER}
+              animate={LIST_VISIBLE}
+              exit={LIST_EXIT}
+              transition={SPRING}
+              whileHover={LIST_HOVER}
+              whileTap={LIST_TAP}
             >
               {renderItem(item, i)}
             </motion.div>

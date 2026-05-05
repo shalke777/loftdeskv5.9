@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
+import { LIST_ENTER, LIST_VISIBLE, LIST_EXIT } from '@/shared/motion/tokens'
 import { Button } from '@/shared/ui/Button/Button'
 import { EmptyState } from '@/shared/ui/EmptyState/EmptyState'
 import { Modal } from '@/shared/ui/Modal/Modal'
@@ -110,12 +111,12 @@ export function ContractsPage() {
               <motion.div
                 key={contract.id}
                 layout
-                initial={{ scale: 0.9, y: -20, opacity: 0, filter: 'blur(4px)' }}
-                animate={{ scale: 1, y: 0, opacity: 1, filter: 'blur(0px)' }}
-                exit={{ scale: 0.9, y: -20, opacity: 0, filter: 'blur(4px)' }}
-                transition={{ type: 'spring', stiffness: 500, damping: 28, mass: 0.8 }}
-                whileHover={{ scale: 1.02, y: -2, zIndex: 10 }}
-                whileTap={{ scale: 0.98 }}
+                initial={LIST_ENTER}
+                animate={LIST_VISIBLE}
+                exit={LIST_EXIT}
+                transition={{ type: 'spring', stiffness: 420, damping: 28, mass: 0.9 }}
+                whileHover={{ scale: 1.015, y: -2, zIndex: 10 }}
+                whileTap={{ scale: 0.97 }}
               >
                 <ContractRow
                   contract={contract}

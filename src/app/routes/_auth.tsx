@@ -19,6 +19,8 @@
   X,
 } from 'lucide-react'
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
+import { AnimatePresence, motion } from 'framer-motion'
+import { SPRING, PAGE_ENTER, PAGE_VISIBLE, PAGE_EXIT } from '@/shared/motion/tokens'
 import { Button } from '@/shared/ui/Button/Button'
 import { GlobalSearch } from '@/shared/ui/GlobalSearch/GlobalSearch'
 import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
@@ -355,7 +357,20 @@ export function AuthLayout() {
             </button>
           </div>
         </header>
-        <main className="shell-content"><Outlet /></main>
+        <main className="shell-content">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={pathname}
+              initial={PAGE_ENTER}
+              animate={PAGE_VISIBLE}
+              exit={PAGE_EXIT}
+              transition={SPRING}
+              style={{ height: '100%' }}
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
+        </main>
         <nav className="mobile-nav">
           {visibleMobileNav.map((item) => {
             const Icon = item.icon

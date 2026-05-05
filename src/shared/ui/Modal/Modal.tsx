@@ -1,6 +1,13 @@
 import { ReactNode, useEffect, useRef } from 'react'
 import clsx from 'clsx'
 import { AnimatePresence, motion } from 'framer-motion'
+import {
+  SPRING,
+  BACKDROP_VARIANTS,
+  MODAL_ENTER,
+  MODAL_VISIBLE,
+  MODAL_EXIT,
+} from '@/shared/motion/tokens'
 
 interface Props {
   title: string
@@ -10,13 +17,6 @@ interface Props {
   size?: 'md' | 'lg' | 'xl' | 'full'
   className?: string
 }
-
-const BACKDROP_VARIANTS = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1 },
-}
-
-const MODAL_SPRING = { type: 'spring' as const, stiffness: 400, damping: 25 }
 
 export function Modal({ title, open, onClose, children, size = 'lg', className }: Props) {
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -48,16 +48,16 @@ export function Modal({ title, open, onClose, children, size = 'lg', className }
           initial="hidden"
           animate="visible"
           exit="hidden"
-          transition={{ duration: 0.2 }}
+          transition={SPRING}
           onClick={onClose}
         >
           <motion.div
             className={clsx('modal', `modal--${size}`, className)}
             onClick={(e) => e.stopPropagation()}
-            initial={{ scale: 0.85, opacity: 0, y: 60, filter: 'blur(12px)', transformPerspective: 1200 }}
-            animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)', transformPerspective: 1200 }}
-            exit={{ scale: 0.9, opacity: 0, y: 30, filter: 'blur(8px)', transformPerspective: 1200 }}
-            transition={MODAL_SPRING}
+            initial={MODAL_ENTER}
+            animate={MODAL_VISIBLE}
+            exit={MODAL_EXIT}
+            transition={SPRING}
           >
             <div className="modal__header">
               <h3>{title}</h3>
