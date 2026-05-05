@@ -18,7 +18,7 @@ export function PendingInvitesNotice({ email }: { email: string }) {
           <div key={item.id} className="list-row">
             <div>
               <strong>{item.companies?.name || item.company_name || item.company_id}</strong>
-              <div className="muted">rola: {item.role} · token: {item.token}</div>
+              <div className="muted">rola: {item.role}</div>
             </div>
             <div className="actions-row" style={{ justifyContent: 'flex-end' }}>
               <Button variant="secondary" loading={acceptInvitation.isPending} onClick={() => acceptInvitation.mutate({ token: item.token, email })}>

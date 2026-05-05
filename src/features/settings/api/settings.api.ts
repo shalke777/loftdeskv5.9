@@ -90,15 +90,27 @@ export const settingsApi = {
     if (scope.mode !== 'multi-tenant') {
       throw new Error('Zapraszanie członków wymaga migracji companies/company_members i istniejących użytkowników.')
     }
-    const token = `invite-${Math.random().toString(36).slice(2, 12)}`
+    // Cryptographically secure token — 20 bytes = 160-bit entropy (replaces Math.random())
+    const arr = new Uint8Array(20)
+    if (typeof window !== 'undefined') {
+      window.crypto.getRandomValues(arr)
+    } else {
+      const { randomFillSync } = await import('crypto')
+      randomFillSync(arr)
+    }
+    const token = `invite-${Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('')}`
     const { data, error } = await supabase.from('company_invitations').insert({ company_id: scope.companyId, email: input.email.toLowerCase(), role: input.role, token }).select('*, companies(name)').single()
     if (error) throw error
 
     // Dispatch invitation email (non-fatal — never blocks the invite flow).
     const companyName = (data as Record<string, unknown> & { companies?: { name?: string } })?.companies?.name ?? ''
+    const { data: { session } } = await supabase.auth.getSession()
     fetch('/.netlify/functions/send-invitation', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
       body: JSON.stringify({
         email: input.email,
         token,
@@ -115,6 +127,30 @@ export const settingsApi = {
     const scope = await getDataScope(companyId)
     if (scope.mode !== 'multi-tenant') throw new Error('Revoke invitation wymaga company_invitations.')
     const { error } = await supabase.from('company_invitations').update({ status: 'revoked' }).eq('company_id', scope.companyId).eq('id', invitationId)
+    if (error) throw error
+    return true
+  },
+  async updateMemberRole(companyId: string, userId: string, role: DemoRole) {
+    if (isDemoMode || !supabase) return Promise.resolve(true)
+    const scope = await getDataScope(companyId)
+    if (scope.mode !== 'multi-tenant') throw new Error('Requires multi-tenant mode.')
+    const { error } = await supabase
+      .from('company_members')
+      .update({ role })
+      .eq('company_id', scope.companyId)
+      .eq('user_id', userId)
+    if (error) throw error
+    return true
+  },
+  async removeMember(companyId: string, userId: string) {
+    if (isDemoMode || !supabase) return Promise.resolve(true)
+    const scope = await getDataScope(companyId)
+    if (scope.mode !== 'multi-tenant') throw new Error('Requires multi-tenant mode.')
+    const { error } = await supabase
+      .from('company_members')
+      .delete()
+      .eq('company_id', scope.companyId)
+      .eq('user_id', userId)
     if (error) throw error
     return true
   },

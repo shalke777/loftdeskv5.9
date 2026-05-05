@@ -38,6 +38,13 @@ export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: HEADERS, body: '' }
   if (event.httpMethod !== 'POST')    return json(405, { error: 'Method Not Allowed' })
 
+  // Auth guard — endpoint is called internally by inviteMember() with a Bearer JWT.
+  // Prevents external abuse (spam / phishing from LoftDesk domain).
+  const authHeader = event.headers['authorization'] ?? event.headers['Authorization']
+  if (!authHeader?.startsWith('Bearer ')) {
+    return json(401, { error: 'Unauthorized: Bearer token required' })
+  }
+
   let body: { email?: string; token?: string; role?: string; company_name?: string; origin?: string }
   try { body = JSON.parse(event.body ?? '{}') } catch {
     return json(400, { error: 'Invalid JSON' })
