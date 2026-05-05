@@ -32,12 +32,10 @@ export function useCreateProject() {
         created_at: new Date().toISOString(),
       } as unknown as Project
       qc.setQueryData<Project[]>(key, (old = []) => [optimistic, ...old])
-      let mutationActive = true
-      const cancelWatchdog = scheduleOptimisticCleanup<Project>(qc, key, optimisticId, () => mutationActive)
-      return { previous, optimisticId, cancelWatchdog, _deactivate() { mutationActive = false } }
+      const cancelWatchdog = scheduleOptimisticCleanup<Project>(qc, key, optimisticId)
+      return { previous, optimisticId, cancelWatchdog }
     },
     onSuccess(data, _vars, context) {
-      context?._deactivate?.()
       context?.cancelWatchdog?.()
       const key = projectKeys.list(companyId)
       qc.setQueryData<Project[]>(key, (old = []) =>
@@ -46,7 +44,6 @@ export function useCreateProject() {
       toast.success('Projekt utworzony')
     },
     onError(_err, _vars, context) {
-      context?._deactivate?.()
       context?.cancelWatchdog?.()
       if (context?.previous !== undefined)
         qc.setQueryData(projectKeys.list(companyId), context.previous)
