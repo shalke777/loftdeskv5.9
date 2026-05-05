@@ -9,7 +9,49 @@ import type { InvoiceFromProjectConfig } from '@/features/projects/components/Pr
 
 const projectKeys = { all: ['projects'] as const, list: (companyId: string) => [...projectKeys.all, companyId] as const }
 export function useProjects() { const companyId = useCompanyId(); return useQuery({ queryKey: projectKeys.list(companyId), queryFn: () => projectsApi.list(companyId) }) }
-export function useCreateProject() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: projectsApi.create, onSuccess: () => { qc.invalidateQueries({ queryKey: projectKeys.list(companyId) }); qc.invalidateQueries({ queryKey: ['dashboard', companyId] }); qc.invalidateQueries({ queryKey: ['onboarding-progress', companyId] }); toast.success('Projekt utworzony') }, onError: (error) => toast.error('Nie udało się utworzyć projektu', translateError(error)) }) }
+export function useCreateProject() {
+  const companyId = useCompanyId()
+  const qc        = useQueryClient()
+  const toast      = useToast()
+  return useMutation({
+    mutationFn: projectsApi.create,
+    async onMutate(variables) {
+      const key = projectKeys.list(companyId)
+      await qc.cancelQueries({ queryKey: key })
+      const previous = qc.getQueryData<Project[]>(key)
+      const optimisticId = `temp-${Date.now()}`
+      const optimistic = {
+        id: optimisticId, company_id: companyId,
+        client_id: variables.client_id ?? null,
+        number: '…', name: variables.name,
+        status: variables.status,
+        start_date: variables.start_date ?? null, end_date: variables.end_date ?? null,
+        address: variables.address, notes: variables.notes,
+        completeness_score: 0, completeness_flags: null, archived_at: null,
+        created_at: new Date().toISOString(),
+      } as unknown as Project
+      qc.setQueryData<Project[]>(key, (old = []) => [optimistic, ...old])
+      return { previous, optimisticId }
+    },
+    onSuccess(data, _vars, context) {
+      const key = projectKeys.list(companyId)
+      qc.setQueryData<Project[]>(key, (old = []) =>
+        old.map(p => p.id === context?.optimisticId ? data : p)
+      )
+      toast.success('Projekt utworzony')
+    },
+    onError(_err, _vars, context) {
+      if (context?.previous !== undefined)
+        qc.setQueryData(projectKeys.list(companyId), context.previous)
+      toast.error('Nie udało się utworzyć projektu')
+    },
+    onSettled() {
+      qc.invalidateQueries({ queryKey: projectKeys.list(companyId) })
+      qc.invalidateQueries({ queryKey: ['dashboard', companyId] })
+      qc.invalidateQueries({ queryKey: ['onboarding-progress', companyId] })
+    },
+  })
+}
 export function useCreateProjectFromEstimate() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: (estimateId: string) => projectsApi.createFromEstimate(companyId, estimateId), onSuccess: () => { qc.invalidateQueries({ queryKey: projectKeys.list(companyId) }); qc.invalidateQueries({ queryKey: ['dashboard', companyId] }); qc.invalidateQueries({ queryKey: ['estimates', 'list', companyId] }); qc.invalidateQueries({ queryKey: ['contracts', companyId] }); qc.invalidateQueries({ queryKey: ['invoices', companyId] }); qc.invalidateQueries({ queryKey: ['onboarding-progress', companyId] }); toast.success('Projekt utworzony z kosztorysu') }, onError: (error) => toast.error('Nie udało się utworzyć projektu', translateError(error)) }) }
 export function useUpdateProject() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: ({ id, input }: { id: string; input: Partial<Project> }) => projectsApi.update(id, input, companyId), onSuccess: () => { qc.invalidateQueries({ queryKey: projectKeys.list(companyId) }); qc.invalidateQueries({ queryKey: ['dashboard', companyId] }); toast.success('Projekt zaktualizowany') }, onError: (error) => toast.error('Nie udało się zapisać projektu', translateError(error)) }) }
 export function useUpdateProjectStatus() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: ({ id, status }: { id: string; status: Project['status'] }) => projectsApi.updateStatus(id, status), onSuccess: () => { qc.invalidateQueries({ queryKey: projectKeys.list(companyId) }); qc.invalidateQueries({ queryKey: ['dashboard', companyId] }); toast.info('Status projektu zaktualizowany') }, onError: (error) => toast.error('Nie udało się zmienić statusu projektu', translateError(error)) }) }

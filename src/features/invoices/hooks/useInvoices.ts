@@ -17,7 +17,59 @@ export function useInvoiceDetail(id: string | undefined, enabled = true) {
     staleTime: 30_000,
   })
 }
-export function useCreateInvoice() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: invoicesApi.create, onSuccess: (data) => { qc.invalidateQueries({ queryKey: invoiceKeys.list(companyId) }); qc.invalidateQueries({ queryKey: ['dashboard', companyId] }); toast.success('Faktura utworzona'); if (data.project_id) qc.invalidateQueries({ queryKey: ['project_documents', data.project_id] }); autoLinkService.link({ type: 'invoice', id: data.id, companyId, clientId: data.client_id, projectId: data.project_id ?? null, sourceType: 'contract', sourceId: data.contract_id ?? null }).then(() => { if (data.project_id) qc.invalidateQueries({ queryKey: ['projects', companyId] }) }).catch((err) => console.warn('[autoLink] invoice link failed:', err)) }, onError: (error) => toast.error('Nie udało się utworzyć faktury', translateError(error)) }) }
+export function useCreateInvoice() {
+  const companyId = useCompanyId()
+  const qc        = useQueryClient()
+  const toast     = useToast()
+  return useMutation({
+    mutationFn: invoicesApi.create,
+    async onMutate(variables) {
+      const key = invoiceKeys.list(companyId)
+      await qc.cancelQueries({ queryKey: key })
+      const previous = qc.getQueryData<Invoice[]>(key)
+      const optimisticId = `temp-${Date.now()}`
+      const optimistic = {
+        id: optimisticId, company_id: companyId,
+        client_id: variables.client_id ?? null,
+        project_id: variables.project_id ?? null,
+        contract_id: variables.contract_id ?? null,
+        number: null, status: 'draft',
+        issue_date: variables.issue_date,
+        due_date: variables.due_date ?? null,
+        total_net: 0, total_gross: 0,
+        ksef_status: null, ksef_ref: null,
+        items: variables.items ?? [],
+        created_at: new Date().toISOString(),
+      } as unknown as Invoice
+      qc.setQueryData<Invoice[]>(key, (old = []) => [optimistic, ...old])
+      return { previous, optimisticId }
+    },
+    onSuccess(data, _vars, context) {
+      const key = invoiceKeys.list(companyId)
+      qc.setQueryData<Invoice[]>(key, (old = []) =>
+        old.map(i => i.id === context?.optimisticId ? data : i)
+      )
+      qc.invalidateQueries({ queryKey: ['dashboard', companyId] })
+      if (data.project_id) qc.invalidateQueries({ queryKey: ['project_documents', data.project_id] })
+      toast.success('Faktura utworzona')
+      autoLinkService.link({
+        type: 'invoice', id: data.id, companyId,
+        clientId: data.client_id, projectId: data.project_id ?? null,
+        sourceType: 'contract', sourceId: data.contract_id ?? null,
+      }).then(() => {
+        if (data.project_id) qc.invalidateQueries({ queryKey: ['projects', companyId] })
+      }).catch((err) => console.warn('[autoLink] invoice link failed:', err))
+    },
+    onError(_err, _vars, context) {
+      if (context?.previous !== undefined)
+        qc.setQueryData(invoiceKeys.list(companyId), context.previous)
+      toast.error('Nie udało się utworzyć faktury', translateError(_err))
+    },
+    onSettled() {
+      qc.invalidateQueries({ queryKey: invoiceKeys.list(companyId) })
+    },
+  })
+}
 export function useUpdateInvoice() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: ({ id, input }: { id: string; input: Partial<Invoice> }) => invoicesApi.update(id, input, companyId), onSuccess: () => { qc.invalidateQueries({ queryKey: invoiceKeys.list(companyId) }); toast.success('Faktura zaktualizowana') }, onError: (error) => toast.error('Nie udało się zaktualizować faktury', translateError(error)) }) }
 export function useDeleteInvoice() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: (id: string) => invoicesApi.delete(id, companyId), onSuccess: () => { qc.invalidateQueries({ queryKey: invoiceKeys.list(companyId) }); qc.invalidateQueries({ queryKey: ['dashboard', companyId] }); qc.invalidateQueries({ queryKey: ['project_documents'] }); toast.info('Faktura usunięta') }, onError: (error) => toast.error('Nie udało się usunąć faktury', translateError(error)) }) }
 export function useMarkInvoicePaid() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: (id: string) => invoicesApi.markPaid(id, companyId), onSuccess: () => { qc.invalidateQueries({ queryKey: invoiceKeys.list(companyId) }); qc.invalidateQueries({ queryKey: ['dashboard', companyId] }); toast.success('Faktura oznaczona jako opłacona') }, onError: (error) => toast.error('Nie udało się oznaczyć faktury jako opłaconej', translateError(error)) }) }
