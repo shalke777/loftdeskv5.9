@@ -7,7 +7,13 @@ import { authApi } from '@/features/auth/api/auth.api'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useToast } from '@/shared/hooks/useToast'
 import { translateError } from '@/shared/lib/errorMessages'
-import { getPendingInviteTokens, clearPendingInviteTokens } from '@/shared/lib/inviteIntent'
+import {
+  getInviteRecords,
+  updateInviteRecord,
+  removeInviteTokens,
+  hashToken,
+  withInviteTimeout,
+} from '@/shared/lib/inviteIntent'
 import { settingsApi } from '@/features/settings/api/settings.api'
 import { isDemoMode } from '@/shared/lib/supabase'
 
@@ -19,27 +25,46 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false)
 
   const finalizeInviteIfNeeded = async (): Promise<string> => {
-    const tokens = getPendingInviteTokens()
-    if (tokens.length === 0) return '/dashboard'
+    // Process both pending and previously-failed tokens (retry-on-login).
+    const records = getInviteRecords().filter(r => r.status === 'pending' || r.status === 'failed')
+    if (records.length === 0) return '/dashboard'
 
-    let successCount = 0
-    for (const token of tokens) {
-      const short = token.slice(0, 12) + '…'
+    const succeeded = new Set<string>()
+    for (const record of records) {
+      const tHash = await hashToken(record.token)
       try {
-        console.log('[invite] INVITE_ACCEPT_START', { token: short })
-        await settingsApi.acceptInvitation(token, email)
-        console.log('[invite] INVITE_ACCEPT_SUCCESS', { token: short })
-        successCount++
+        console.log('[invite] INVITE_ACCEPT_START', { tokenHash: tHash })
+        void settingsApi.logInviteEvent('ACCEPT_START', tHash)
+        await withInviteTimeout(settingsApi.acceptInvitation(record.token, email))
+        console.log('[invite] INVITE_ACCEPT_SUCCESS', { tokenHash: tHash })
+        void settingsApi.logInviteEvent('ACCEPT_SUCCESS', tHash)
+        succeeded.add(record.token)
       } catch (err) {
-        console.warn('[invite] INVITE_ACCEPT_FAIL', { token: short, reason: (err as any)?.message })
+        const reason = (err as any)?.message ?? 'unknown'
+        console.warn('[invite] INVITE_ACCEPT_FAIL', { tokenHash: tHash, reason })
+        void settingsApi.logInviteEvent('ACCEPT_FAIL', tHash, reason)
+        updateInviteRecord(record.token, { status: 'failed', failReason: reason })
       }
     }
-    clearPendingInviteTokens()
 
-    if (successCount > 0) {
+    // Remove only succeeded tokens; keep failed ones for next-login retry.
+    removeInviteTokens(succeeded)
+
+    // Final membership verification — do not silently continue to /dashboard
+    // if acceptance appeared to succeed but membership row is missing.
+    const isMember = await settingsApi.verifyMembership()
+    const tHash0 = records[0] ? await hashToken(records[0].token) : 'n/a'
+    if (isMember) {
+      void settingsApi.logInviteEvent('MEMBERSHIP_VERIFIED', tHash0)
+    } else {
+      void settingsApi.logInviteEvent('MEMBERSHIP_MISSING', tHash0)
+    }
+
+    if (succeeded.size > 0 && isMember) {
       toast.success('Zaproszenie zaakceptowane', 'Konto zostało przypięte do właściwej firmy.')
       return '/settings'
     }
+    if (!isMember) return '/onboarding'
     return '/dashboard'
   }
 

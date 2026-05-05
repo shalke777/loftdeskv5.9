@@ -3,7 +3,7 @@ import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
 import { useAuth } from '@/features/auth/hooks/useAuth'
-import { addPendingInviteToken } from '@/shared/lib/inviteIntent'
+import { addPendingInviteToken, hashToken, withInviteTimeout } from '@/shared/lib/inviteIntent'
 import { settingsApi } from '@/features/settings/api/settings.api'
 import { translateError } from '@/shared/lib/errorMessages'
 
@@ -32,24 +32,37 @@ export function AcceptInvitationPage() {
     acceptingRef.current = true
 
     let cancelled = false
-    const short = token.slice(0, 12) + '…'
     const run = async () => {
+      const tHash = await hashToken(token)
       setState('accepting')
-      console.log('[invite] INVITE_ACCEPT_START', { token: short, userId: user.id })
+      console.log('[invite] INVITE_ACCEPT_START', { tokenHash: tHash, userId: user.id })
+      void settingsApi.logInviteEvent('ACCEPT_START', tHash)
       try {
-        await settingsApi.acceptInvitation(token)
+        await withInviteTimeout(settingsApi.acceptInvitation(token))
         if (cancelled) return
-        // refreshSession updates user.companyId to the newly joined company —
-        // this IS the active company switch (no separate active_company_id needed).
+        // refreshSession propagates new company_id into React auth context.
         await refreshSession()
         if (cancelled) return
-        console.log('[invite] INVITE_ACCEPT_SUCCESS', { token: short, userId: user.id })
+        // Direct DB check — do not rely solely on refreshSession().
+        const isMember = await settingsApi.verifyMembership()
+        if (cancelled) return
+        if (!isMember) {
+          void settingsApi.logInviteEvent('MEMBERSHIP_MISSING', tHash)
+          console.warn('[invite] MEMBERSHIP_MISSING after accept', { tokenHash: tHash })
+          setErrorMsg('Przyjęcie zaproszenia się nie powiodło — konto nie zostało dodane do firmy. Spróbuj ponownie lub skontaktuj się z administratorem firmy.')
+          setState('error')
+          acceptingRef.current = false
+          return
+        }
+        void settingsApi.logInviteEvent('ACCEPT_SUCCESS', tHash)
+        console.log('[invite] INVITE_ACCEPT_SUCCESS', { tokenHash: tHash, userId: user.id })
         setState('success')
-        // Give session a tick to propagate, then navigate to dashboard.
         setTimeout(() => window.location.assign('/dashboard'), 800)
       } catch (err) {
         if (cancelled) return
-        console.warn('[invite] INVITE_ACCEPT_FAIL', { token: short, userId: user.id, reason: (err as any)?.message })
+        const reason = (err as any)?.message ?? 'unknown'
+        console.warn('[invite] INVITE_ACCEPT_FAIL', { tokenHash: tHash, userId: user.id, reason })
+        void settingsApi.logInviteEvent('ACCEPT_FAIL', tHash, reason)
         const msg = translateError(err, 'Nie udało się zaakceptować zaproszenia.')
         setErrorMsg(msg)
         setState('error')
@@ -119,6 +132,9 @@ export function AcceptInvitationPage() {
       <Card className="auth-card">
         <PageHeader title="Nie udało się dołączyć" subtitle={errorMsg} />
         <div className="actions-row">
+          <Button onClick={() => window.location.assign('/onboarding')}>
+            Utwórz własną firmę
+          </Button>
           <Button variant="secondary" onClick={() => window.location.assign('/dashboard')}>
             Przejdź do dashboardu
           </Button>

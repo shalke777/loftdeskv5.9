@@ -174,6 +174,39 @@ export const settingsApi = {
     return companyId as string
   },
 
+  /** Verify that the current user has at least one company_members row. */
+  async verifyMembership(): Promise<boolean> {
+    if (isDemoMode || !supabase) return true
+    const { data: auth } = await supabase.auth.getUser()
+    if (!auth.user) return false
+    const { data, error } = await supabase
+      .from('company_members')
+      .select('id')
+      .eq('user_id', auth.user.id)
+      .limit(1)
+      .maybeSingle()
+    if (error) throw error
+    return data !== null
+  },
+
+  /** Fire-and-forget production audit log. Never throws. */
+  async logInviteEvent(
+    eventType: 'ACCEPT_START' | 'ACCEPT_SUCCESS' | 'ACCEPT_FAIL' | 'MEMBERSHIP_VERIFIED' | 'MEMBERSHIP_MISSING',
+    tokenHash: string,
+    errorReason?: string,
+  ): Promise<void> {
+    if (isDemoMode || !supabase) return
+    try {
+      const { data: auth } = await supabase.auth.getUser()
+      await supabase.from('invite_accept_events').insert({
+        user_id:      auth.user?.id ?? null,
+        token_hash:   tokenHash,
+        event_type:   eventType,
+        error_reason: errorReason ?? null,
+      })
+    } catch { /* non-critical — never surface logging failures */ }
+  },
+
   async getDocNumberConfig(companyId: string): Promise<DocNumberConfig | null> {
     if (isDemoMode || !supabase) return null
     const scope = await getDataScope(companyId)
