@@ -63,7 +63,7 @@ export function RegisterForm() {
 
     removeInviteTokens(succeeded)
 
-    const isMember = await settingsApi.verifyMembership()
+    const { isMember } = await settingsApi.verifyMembership()
     const tHash0 = records[0] ? await hashToken(records[0].token) : 'n/a'
     if (isMember) {
       void settingsApi.logInviteEvent('MEMBERSHIP_VERIFIED', tHash0)

@@ -44,7 +44,7 @@ const ERROR_MAP: Record<string, string> = {
   'schema cache': 'Baza danych nie ma jeszcze najnowszych zmian (brakująca migracja). Skontaktuj się z administratorem.',
 
   // ── Invitations ───────────────────────────────────────────────────────
-  'INVITATION_NOT_FOUND': 'Zaproszenie nie istnieje, wygasło lub zostało już zaakceptowane.',
+  'INVITATION_NOT_FOUND': 'Zaproszenie wygasło lub zostało już użyte.',
   'AUTH_REQUIRED': 'Zaloguj się, aby zaakceptować zaproszenie.',
 
   // ── PKCE / OAuth ──────────────────────────────────────────────────────

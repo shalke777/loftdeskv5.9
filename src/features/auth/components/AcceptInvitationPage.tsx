@@ -44,7 +44,7 @@ export function AcceptInvitationPage() {
         await refreshSession()
         if (cancelled) return
         // Direct DB check — do not rely solely on refreshSession().
-        const isMember = await settingsApi.verifyMembership()
+        const { isMember } = await settingsApi.verifyMembership()
         if (cancelled) return
         if (!isMember) {
           void settingsApi.logInviteEvent('MEMBERSHIP_MISSING', tHash)

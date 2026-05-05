@@ -3,6 +3,9 @@ import { demoDb } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { getDataScope } from '@/shared/lib/dataScope'
 
+// Rolling-window timestamp buffer for INVITE_ACCEPT_FAIL rate alerting.
+let _inviteFailTimestamps: number[] = []
+
 export const settingsApi = {
   async profile(companyId: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.companyProfile(companyId))
@@ -174,27 +177,48 @@ export const settingsApi = {
     return companyId as string
   },
 
-  /** Verify that the current user has at least one company_members row. */
-  async verifyMembership(): Promise<boolean> {
-    if (isDemoMode || !supabase) return true
+  /** Verify that the current user has at least one company_members row.
+   *  Returns both a boolean flag and the full list of company IDs so callers
+   *  can switch to the correct active company without a second query. */
+  async verifyMembership(): Promise<{ isMember: boolean; companyIds: string[] }> {
+    if (isDemoMode || !supabase) return { isMember: true, companyIds: [] }
     const { data: auth } = await supabase.auth.getUser()
-    if (!auth.user) return false
+    if (!auth.user) return { isMember: false, companyIds: [] }
     const { data, error } = await supabase
       .from('company_members')
-      .select('id')
+      .select('company_id')
       .eq('user_id', auth.user.id)
-      .limit(1)
-      .maybeSingle()
     if (error) throw error
-    return data !== null
+    const companyIds = (data ?? []).map((r: { company_id: string }) => r.company_id)
+    return { isMember: companyIds.length > 0, companyIds }
   },
 
-  /** Fire-and-forget production audit log. Never throws. */
+  /** Fire-and-forget production audit log. Never throws.
+   *  Tracks ACCEPT_FAIL rate and emits a console.error alert when the
+   *  failure rate exceeds FAIL_ALERT_THRESHOLD within FAIL_WINDOW_MS. */
   async logInviteEvent(
     eventType: 'ACCEPT_START' | 'ACCEPT_SUCCESS' | 'ACCEPT_FAIL' | 'MEMBERSHIP_VERIFIED' | 'MEMBERSHIP_MISSING',
     tokenHash: string,
     errorReason?: string,
   ): Promise<void> {
+    // In-memory rolling window for ACCEPT_FAIL rate alerting.
+    const FAIL_WINDOW_MS    = 60_000  // 60 seconds
+    const FAIL_ALERT_THRESHOLD = 3    // failures within window before alert
+
+    if (eventType === 'ACCEPT_FAIL') {
+      const now = Date.now()
+      // Trim old entries outside the window then push current timestamp.
+      _inviteFailTimestamps = _inviteFailTimestamps.filter(t => now - t < FAIL_WINDOW_MS)
+      _inviteFailTimestamps.push(now)
+      if (_inviteFailTimestamps.length >= FAIL_ALERT_THRESHOLD) {
+        console.error(
+          `[invite] ALERT: ${_inviteFailTimestamps.length} INVITE_ACCEPT_FAIL events in last ${FAIL_WINDOW_MS / 1000}s — ` +
+          'investigate token validity, RLS, or DB availability.',
+          { errorReason, tokenHash },
+        )
+      }
+    }
+
     if (isDemoMode || !supabase) return
     try {
       const { data: auth } = await supabase.auth.getUser()

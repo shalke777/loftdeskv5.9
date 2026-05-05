@@ -87,13 +87,15 @@ export function clearInviteRecords(): void {
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
-/** SHA-256 the token and return first 16 hex chars (safe to log). */
+/** SHA-256 the token and return first 16 hex chars (safe to log).
+ *  Returns the constant 'hash_error' if SubtleCrypto is unavailable —
+ *  never falls back to a substring of the raw token. */
 export async function hashToken(token: string): Promise<string> {
   try {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16)
   } catch {
-    return token.slice(0, 8) + '…'
+    return 'hash_error'
   }
 }
 
