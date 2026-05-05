@@ -22,22 +22,45 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   const authUser = authData.user
   if (!authUser) return { user: null }
 
+  // Read + clear the company switch hint set after invitation acceptance.
+  // This ensures the session resolves to the invited company, not the ghost
+  // bootstrap company that was created on first registration.
+  const switchHint =
+    typeof window !== 'undefined'
+      ? (localStorage.getItem('loftdesk-company-switch-hint') ?? null)
+      : null
+  if (switchHint && typeof window !== 'undefined') {
+    localStorage.removeItem('loftdesk-company-switch-hint')
+  }
+
   // ── Sprawdź company_members i client_accounts RÓWNOLEGLE ─────────────────
   // WAŻNE: operator (company_members) MA ZAWSZE PIERWSZEŃSTWO nad client_accounts.
   // Jeśli użytkownik jest w obu tabelach (np. operator testował zaproszenie
   // własnym mailem), musi wchodzić jako operator, nie jako klient.
+  //
+  // Query returns ALL memberships (migration 149: members_select_own_rows).
+  // Newest first — so that an accepted invitation (most recent) is preferred
+  // over the ghost bootstrap company (oldest) when no hint is present.
   const [memberResult, clientByRpc] = await Promise.all([
     supabase
       .from('company_members')
       .select('company_id, role, companies(name, plan)')
       .eq('user_id', authUser.id)
-      .limit(1)
-      .maybeSingle(),
+      .order('created_at', { ascending: false }),
     supabase.rpc('resolve_my_client_account').maybeSingle(),
   ])
 
+  // Pick the most appropriate membership row:
+  //   1. Matches switchHint (explicitly set after invitation acceptance)
+  //   2. Newest row (first after ORDER BY created_at DESC)
+  const memberRows = memberResult.data ?? []
+  const pickedMember =
+    (switchHint ? memberRows.find((r) => r.company_id === switchHint) : undefined) ??
+    memberRows[0] ??
+    null
+
   // Operator — company_members ma pierwszeństwo
-  let memberRow = memberResult.data
+  let memberRow: typeof pickedMember | null = pickedMember
 
   // ── Guard: client_accounts vs company_members priority ──────────────────────
   // Przypadki:
@@ -132,7 +155,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
           .eq('user_id', authUser.id)
           .limit(1)
           .maybeSingle()
-        memberRow = res.data
+        memberRow = res.data ?? null
       }
     } catch {
       // bootstrap may fail if function not yet granted — fall through to profile path

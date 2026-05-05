@@ -14,12 +14,23 @@ export async function getDataScope(companyIdHint?: string): Promise<DataScope> {
   const userId = await requireSupabaseUserId()
   if (!supabase) throw new Error('Supabase nie jest skonfigurowany')
 
-  let { data: memberRow } = await supabase
+  // Query ALL memberships (migration 149: members_select_own_rows allows this).
+  // Newest first — after an invitation acceptance the invited company is newest.
+  const memberResult = await supabase
     .from('company_members')
     .select('company_id, role')
     .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle()
+    .order('created_at', { ascending: false })
+
+  const memberRows = memberResult.data ?? []
+
+  // Pick the most appropriate row:
+  //   1. Matches companyIdHint (from React session, already resolved to invited company)
+  //   2. Newest row
+  let memberRow: { company_id: string; role: string } | null =
+    (companyIdHint ? memberRows.find((r) => r.company_id === companyIdHint) : undefined) ??
+    memberRows[0] ??
+    null
 
   if (!memberRow?.company_id && !bootstrapAttempted) {
     bootstrapAttempted = true
@@ -31,7 +42,7 @@ export async function getDataScope(companyIdHint?: string): Promise<DataScope> {
         .eq('user_id', userId)
         .limit(1)
         .maybeSingle()
-      memberRow = res.data
+      memberRow = res.data ?? null
     } catch {
       // bootstrap may fail — fall through to legacy
     }

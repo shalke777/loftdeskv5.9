@@ -32,21 +32,33 @@ export function AcceptInvitationPage() {
     acceptingRef.current = true
 
     let cancelled = false
+    let acceptedCompanyId: string | null = null
     const run = async () => {
       const tHash = await hashToken(token)
       setState('accepting')
       console.log('[invite] INVITE_ACCEPT_START', { tokenHash: tHash, userId: user.id })
       void settingsApi.logInviteEvent('ACCEPT_START', tHash)
       try {
-        await withInviteTimeout(settingsApi.acceptInvitation(token))
+        // accept_company_invitation RPC returns the invited company_id (string).
+        // In demo mode it may return a DemoUser object — treat non-string as null.
+        const raw = await withInviteTimeout(settingsApi.acceptInvitation(token))
+        acceptedCompanyId = (typeof raw === 'string' ? raw : null)
         if (cancelled) return
+        // Store switch hint BEFORE refreshSession so resolveSupabaseSession
+        // picks the invited company instead of the ghost bootstrap company.
+        if (acceptedCompanyId && typeof window !== 'undefined') {
+          localStorage.setItem('loftdesk-company-switch-hint', acceptedCompanyId)
+        }
         // refreshSession propagates new company_id into React auth context.
         await refreshSession()
         if (cancelled) return
-        // Direct DB check — do not rely solely on refreshSession().
-        const { isMember } = await settingsApi.verifyMembership()
+        // Direct DB check — verify membership in the INVITED company specifically.
+        const { companyIds } = await settingsApi.verifyMembership()
         if (cancelled) return
-        if (!isMember) {
+        const isInvitedMember = acceptedCompanyId
+          ? companyIds.includes(acceptedCompanyId)
+          : companyIds.length > 0
+        if (!isInvitedMember) {
           void settingsApi.logInviteEvent('MEMBERSHIP_MISSING', tHash)
           console.warn('[invite] MEMBERSHIP_MISSING after accept', { tokenHash: tHash })
           setErrorMsg('Przyjęcie zaproszenia się nie powiodło — konto nie zostało dodane do firmy. Spróbuj ponownie lub skontaktuj się z administratorem firmy.')

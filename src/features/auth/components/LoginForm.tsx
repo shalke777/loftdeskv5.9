@@ -29,16 +29,20 @@ export function LoginForm() {
     const records = getInviteRecords().filter(r => r.status === 'pending' || r.status === 'failed')
     if (records.length === 0) return '/dashboard'
 
+    let lastAcceptedCompanyId: string | null = null
     const succeeded = new Set<string>()
     for (const record of records) {
       const tHash = await hashToken(record.token)
       try {
         console.log('[invite] INVITE_ACCEPT_START', { tokenHash: tHash })
         void settingsApi.logInviteEvent('ACCEPT_START', tHash)
-        await withInviteTimeout(settingsApi.acceptInvitation(record.token, email))
+        const raw = await withInviteTimeout(settingsApi.acceptInvitation(record.token, email))
+        // accept_company_invitation RPC returns company_id string; demo mode may return DemoUser
+        const companyId = typeof raw === 'string' ? raw : null
         console.log('[invite] INVITE_ACCEPT_SUCCESS', { tokenHash: tHash })
         void settingsApi.logInviteEvent('ACCEPT_SUCCESS', tHash)
         succeeded.add(record.token)
+        if (companyId) lastAcceptedCompanyId = companyId
       } catch (err) {
         const reason = (err as any)?.message ?? 'unknown'
         console.warn('[invite] INVITE_ACCEPT_FAIL', { tokenHash: tHash, reason })
@@ -50,17 +54,25 @@ export function LoginForm() {
     // Remove only succeeded tokens; keep failed ones for next-login retry.
     removeInviteTokens(succeeded)
 
-    // Final membership verification — do not silently continue to /dashboard
-    // if acceptance appeared to succeed but membership row is missing.
-    const { isMember } = await settingsApi.verifyMembership()
+    // Store switch hint so resolveSupabaseSession picks the invited company on page reload.
+    if (lastAcceptedCompanyId && typeof window !== 'undefined') {
+      localStorage.setItem('loftdesk-company-switch-hint', lastAcceptedCompanyId)
+    }
+
+    // Final membership verification — check for the invited company specifically.
+    const { companyIds } = await settingsApi.verifyMembership()
+    const isMember = companyIds.length > 0
+    const isInvitedMember = lastAcceptedCompanyId
+      ? companyIds.includes(lastAcceptedCompanyId)
+      : isMember
     const tHash0 = records[0] ? await hashToken(records[0].token) : 'n/a'
-    if (isMember) {
+    if (isInvitedMember) {
       void settingsApi.logInviteEvent('MEMBERSHIP_VERIFIED', tHash0)
     } else {
       void settingsApi.logInviteEvent('MEMBERSHIP_MISSING', tHash0)
     }
 
-    if (succeeded.size > 0 && isMember) {
+    if (succeeded.size > 0 && isInvitedMember) {
       toast.success('Zaproszenie zaakceptowane', 'Konto zostało przypięte do właściwej firmy.')
       return '/settings'
     }
