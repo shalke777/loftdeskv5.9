@@ -30,7 +30,16 @@ export interface PlanLimits {
   anyNearLimit: boolean
 }
 
-function calcStatus(used: number, limit: number | '∞', warnPct = 80): LimitStatus {
+function calcStatus(used: number, limit: number | '∞', plan: string, resource: string, warnPct = 80): LimitStatus {
+  // INVARIANT: non-free plans MUST have unlimited resources.
+  // If we somehow get a numeric limit for a paid plan, it's a data bug — log it and override.
+  if (limit !== '∞' && plan !== 'free') {
+    console.error(
+      `[PLAN LIMITS] INVARIANT VIOLATION: plan="${plan}" resource="${resource}" has numeric limit=${limit}. ` +
+      'Expected "∞". Check billing.api.ts planLimits() and companies.plan in DB. Overriding to ∞.'
+    )
+    return { used, limit: '∞', pct: null, exceeded: false, nearLimit: false }
+  }
   if (limit === '∞') return { used, limit, pct: null, exceeded: false, nearLimit: false }
   const pct = limit === 0 ? 100 : Math.round((used / limit) * 100)
   return {
@@ -58,11 +67,11 @@ export function usePlanLimits(): { data: PlanLimits | null; isLoading: boolean }
 
   const plans: PlanLimits = {
     plan: data.currentPlan,
-    clients:   calcStatus(data.usage.clients,   data.limits.clients),
-    projects:  calcStatus(data.usage.projects,  data.limits.projects),
-    estimates: calcStatus(data.usage.estimates, data.limits.estimates),
-    invoices:  calcStatus(data.usage.invoices,  data.limits.invoices),
-    contracts: calcStatus(data.usage.contracts, data.limits.contracts),
+    clients:   calcStatus(data.usage.clients,   data.limits.clients,   data.currentPlan, 'clients'),
+    projects:  calcStatus(data.usage.projects,  data.limits.projects,  data.currentPlan, 'projects'),
+    estimates: calcStatus(data.usage.estimates, data.limits.estimates, data.currentPlan, 'estimates'),
+    invoices:  calcStatus(data.usage.invoices,  data.limits.invoices,  data.currentPlan, 'invoices'),
+    contracts: calcStatus(data.usage.contracts, data.limits.contracts, data.currentPlan, 'contracts'),
     anyExceeded: false,
     anyNearLimit: false,
   }

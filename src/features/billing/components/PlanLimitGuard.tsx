@@ -10,10 +10,11 @@
 // shows an upgrade tooltip/banner. When unlimited, renders children unchanged.
 // =============================================================================
 
-import { ReactNode } from 'react'
+import { ReactNode, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { TrendingUp, Zap } from 'lucide-react'
 import { usePlanLimits, LimitStatus } from '@/features/billing/hooks/usePlanLimits'
+import { useBillingSummary } from '@/features/billing/hooks/useBilling'
 
 type Resource = 'clients' | 'projects' | 'estimates' | 'invoices' | 'contracts'
 
@@ -34,14 +35,37 @@ interface Props {
 
 export function PlanLimitGuard({ resource, children, mode = 'block' }: Props) {
   const { data } = usePlanLimits()
+  const { data: summary } = useBillingSummary()
   const navigate = useNavigate()
 
-  if (!data) return <>{children}</>
+  const status = data?.[resource]
 
-  const status = data[resource]
-  if (!status.nearLimit && !status.exceeded) return <>{children}</>
+  useEffect(() => {
+    const companyId = summary?.companyId ?? 'unknown'
+    const plan      = summary?.currentPlan ?? 'unknown'
+    const used      = status?.used ?? '?'
+    const limit     = status?.limit ?? '?'
+    const exceeded  = status?.exceeded ?? false
+    const nearLimit = status?.nearLimit ?? false
+    const canCreate = !exceeded
+    console.log(
+      `[PLAN GUARD] resource=${resource} companyId=${companyId} plan=${plan} ` +
+      `used=${used} limit=${limit} exceeded=${exceeded} nearLimit=${nearLimit} canCreate=${canCreate}`
+    )
+  })
+
+  if (!data || !status) {
+    console.log(`[PLAN GUARD] resource=${resource} — no data yet, rendering children (pass-through)`)
+    return <>{children}</>
+  }
+
+  if (!status.nearLimit && !status.exceeded) {
+    console.log(`[PLAN GUARD] resource=${resource} — within limits, rendering children unblocked`)
+    return <>{children}</>
+  }
 
   if (mode === 'banner') {
+    console.log(`[PLAN GUARD] resource=${resource} — near/exceeded, showing banner (children still visible)`)
     return (
       <>
         {children}
@@ -51,6 +75,7 @@ export function PlanLimitGuard({ resource, children, mode = 'block' }: Props) {
   }
 
   // block mode: disable children when exceeded
+  console.log(`[PLAN GUARD] resource=${resource} — exceeded=${status.exceeded}, ${status.exceeded ? 'BLOCKING creation' : 'showing warning'}`)
   return (
     <div style={{ position: 'relative' }}>
       {status.exceeded ? (
