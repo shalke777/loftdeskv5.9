@@ -59,6 +59,14 @@ export function PlanLimitGuard({ resource, children, mode = 'block' }: Props) {
     return <>{children}</>
   }
 
+  // INVARIANT: non-free plans always have unlimited resources.
+  // If the plan is anything other than 'free', never block — regardless of
+  // what usePlanLimits computed. This is the last-resort safety net.
+  if (data.plan !== 'free') {
+    console.log(`[PLAN GUARD] resource=${resource} plan=${data.plan} — non-free plan, always allowing access`)
+    return <>{children}</>
+  }
+
   if (!status.nearLimit && !status.exceeded) {
     console.log(`[PLAN GUARD] resource=${resource} — within limits, rendering children unblocked`)
     return <>{children}</>

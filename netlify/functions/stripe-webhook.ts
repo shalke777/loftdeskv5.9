@@ -81,21 +81,51 @@ async function syncSubscription(admin: AdminClient, sub: Stripe.Subscription) {
     : null
   const custId    = typeof sub.customer === 'string' ? sub.customer : (sub.customer as any)?.id
 
-  const { error } = await admin.from('companies').update({
-    plan,
-    subscription_status:             status,
-    stripe_subscription_id:          sub.id,
-    stripe_customer_id:              custId,
-    subscription_current_period_end: periodEnd,
-    trial_ends_at:                   trialEnd,
-    plan_source:                     'stripe',
-  }).eq('id', companyId)
+  // INVARIANT: plan_source = 'manual' is an admin override that Stripe must NOT overwrite.
+  // Check current plan_source before deciding whether to update companies.plan.
+  const { data: currentRow } = await admin
+    .from('companies')
+    .select('plan_source, plan')
+    .eq('id', companyId)
+    .maybeSingle()
 
-  if (error) {
-    console.error('[webhook] failed to sync company', companyId, error)
-    throw error
+  const isManualPlan = currentRow?.plan_source === 'manual'
+
+  if (isManualPlan) {
+    // Stripe metadata synced (for billing UI), but companies.plan stays unchanged.
+    console.log(
+      `[webhook] company=${companyId} plan_source=manual — keeping plan=${currentRow?.plan}, ` +
+      `syncing only Stripe metadata (status=${status})`
+    )
+    const { error } = await admin.from('companies').update({
+      subscription_status:             status,
+      stripe_subscription_id:          sub.id,
+      stripe_customer_id:              custId,
+      subscription_current_period_end: periodEnd,
+      trial_ends_at:                   trialEnd,
+      // plan and plan_source intentionally NOT updated
+    }).eq('id', companyId)
+    if (error) {
+      console.error('[webhook] failed to sync Stripe metadata for company', companyId, error)
+      throw error
+    }
+  } else {
+    // Stripe controls the plan — write plan + all metadata.
+    const { error } = await admin.from('companies').update({
+      plan,
+      subscription_status:             status,
+      stripe_subscription_id:          sub.id,
+      stripe_customer_id:              custId,
+      subscription_current_period_end: periodEnd,
+      trial_ends_at:                   trialEnd,
+      plan_source:                     'stripe',
+    }).eq('id', companyId)
+    if (error) {
+      console.error('[webhook] failed to sync company', companyId, error)
+      throw error
+    }
+    console.log(`[webhook] synced company=${companyId} plan=${plan} status=${status}`)
   }
-  console.log(`[webhook] synced company=${companyId} plan=${plan} status=${status}`)
 }
 
 export const handler: Handler = async (event: HandlerEvent) => {
@@ -157,14 +187,32 @@ export const handler: Handler = async (event: HandlerEvent) => {
         const sub = stripeEvent.data.object as Stripe.Subscription
         const companyId = sub.metadata?.companyId
         if (!companyId || !admin) break
-        await admin.from('companies').update({
-          plan:                            'free',
-          subscription_status:             'canceled',
-          stripe_subscription_id:          sub.id,
-          subscription_current_period_end: null,
-          plan_source:                     'stripe',
-        }).eq('id', companyId)
-        console.log(`[webhook] subscription canceled for company=${companyId}`)
+
+        // Respect plan_source = 'manual' — don't downgrade manually-set plans.
+        const { data: currentRow } = await admin
+          .from('companies')
+          .select('plan_source')
+          .eq('id', companyId)
+          .maybeSingle()
+
+        if (currentRow?.plan_source === 'manual') {
+          // Only mark subscription as canceled; plan stays
+          await admin.from('companies').update({
+            subscription_status:             'canceled',
+            stripe_subscription_id:          sub.id,
+            subscription_current_period_end: null,
+          }).eq('id', companyId)
+          console.log(`[webhook] subscription.deleted company=${companyId} — plan_source=manual, plan NOT downgraded`)
+        } else {
+          await admin.from('companies').update({
+            plan:                            'free',
+            subscription_status:             'canceled',
+            stripe_subscription_id:          sub.id,
+            subscription_current_period_end: null,
+            plan_source:                     'stripe',
+          }).eq('id', companyId)
+          console.log(`[webhook] subscription canceled for company=${companyId}`)
+        }
         break
       }
 

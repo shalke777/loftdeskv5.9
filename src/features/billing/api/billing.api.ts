@@ -98,9 +98,10 @@ export const billingApi = {
         .maybeSingle()
       const company = fullCompany as Record<string, unknown> | null
       const currentPlan = ((company?.plan as BillingPlan | null) ?? 'free')
+      const planSource  = (company?.plan_source as string | null) ?? 'unknown'
       const limits = planLimits(currentPlan)
 
-      console.log('[PLAN SOURCE]', `companies.plan for ${activeCompanyId} = ${currentPlan}`)
+      console.log('[PLAN SOURCE]', `companies.plan for ${activeCompanyId} = ${currentPlan} (plan_source=${planSource})`)
       console.log('[PROJECT LIMIT]', limits.projects)
 
       return {
