@@ -6,6 +6,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { addPendingInviteToken, hashToken, withInviteTimeout } from '@/shared/lib/inviteIntent'
 import { settingsApi } from '@/features/settings/api/settings.api'
 import { translateError } from '@/shared/lib/errorMessages'
+import { isDemoMode, supabase } from '@/shared/lib/supabase'
 
 function readTokenFromPath() {
   if (typeof window === 'undefined') return ''
@@ -20,17 +21,33 @@ export function AcceptInvitationPage() {
   const { user, refreshSession } = useAuth()
   const [state, setState] = useState<AcceptState>('idle')
   const [errorMsg, setErrorMsg] = useState('')
-  // retryCount increments when the user clicks "Spróbuj ponownie" —
-  // adding it to the effect deps re-triggers the accept attempt.
   const [retryCount, setRetryCount] = useState(0)
-  // Guard: prevent double-accept from React StrictMode double-invoke or
-  // multiple tabs landing on the same /join/<token> URL simultaneously.
   const acceptingRef = useRef(false)
 
-  // Auto-accept as soon as the user session is available.
-  // This covers: user already logged in + user who just completed login/register.
+  // Raw Supabase auth state — independent from the resolved company context.
+  // resolveSupabaseSession() returns {user: null} when a pending invite exists
+  // (to prevent bootstrap), but the browser IS authenticated. We need the raw
+  // auth user ID to detect "logged in, pending invite" vs "not logged in at all".
+  // undefined = still loading, null = not authenticated, string = authenticated.
+  const [rawAuthUserId, setRawAuthUserId] = useState<string | null | undefined>(undefined)
+
   useEffect(() => {
-    if (!token || !user || state !== 'idle') return
+    if (isDemoMode) {
+      // Demo: fall back to resolved user (no raw Supabase auth)
+      setRawAuthUserId(user?.id ?? null)
+      return
+    }
+    supabase?.auth.getUser()
+      .then(({ data }) => setRawAuthUserId(data.user?.id ?? null))
+      .catch(() => setRawAuthUserId(null))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Auto-accept as soon as raw auth is confirmed.
+  // Triggered by rawAuthUserId (not user?.id) to work even when resolveSupabaseSession
+  // returns null due to the pending invite guard (mig 162/163).
+  useEffect(() => {
+    if (!token || !rawAuthUserId || state !== 'idle') return
     if (acceptingRef.current) return
     acceptingRef.current = true
 
@@ -39,11 +56,9 @@ export function AcceptInvitationPage() {
     const run = async () => {
       const tHash = await hashToken(token)
       setState('accepting')
-      console.log('[invite] INVITE_ACCEPT_START', { tokenHash: tHash, userId: user.id })
+      console.log('[invite] INVITE_ACCEPT_START', { tokenHash: tHash, userId: rawAuthUserId })
       void settingsApi.logInviteEvent('ACCEPT_START', tHash)
       try {
-        // accept_company_invitation RPC returns the invited company_id (string).
-        // In demo mode it may return a DemoUser object — treat non-string as null.
         const raw = await withInviteTimeout(settingsApi.acceptInvitation(token))
         acceptedCompanyId = (typeof raw === 'string' ? raw : null)
         if (cancelled) return
@@ -71,13 +86,13 @@ export function AcceptInvitationPage() {
           return
         }
         void settingsApi.logInviteEvent('ACCEPT_SUCCESS', tHash)
-        console.log('[invite] INVITE_ACCEPT_SUCCESS', { tokenHash: tHash, userId: user.id })
+        console.log('[invite] INVITE_ACCEPT_SUCCESS', { tokenHash: tHash, userId: rawAuthUserId })
         setState('success')
         setTimeout(() => window.location.assign('/dashboard'), 100)
       } catch (err) {
         if (cancelled) return
         const reason = (err as any)?.message ?? 'unknown'
-        console.warn('[invite] INVITE_ACCEPT_FAIL', { tokenHash: tHash, userId: user.id, reason })
+        console.warn('[invite] INVITE_ACCEPT_FAIL', { tokenHash: tHash, userId: rawAuthUserId, reason })
         void settingsApi.logInviteEvent('ACCEPT_FAIL', tHash, reason)
 
         // Expired/invalid token: DO NOT offer /dashboard redirect.
@@ -100,7 +115,7 @@ export function AcceptInvitationPage() {
     void run()
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, user?.id, retryCount])
+  }, [token, rawAuthUserId, retryCount])
 
   if (!token) {
     return (
@@ -112,8 +127,21 @@ export function AcceptInvitationPage() {
     )
   }
 
-  // ── Not logged in ────────────────────────────────────────────────────────
-  if (!user) {
+  // ── Still resolving raw auth state ──────────────────────────────────────
+  if (rawAuthUserId === undefined) {
+    return (
+      <main className="auth-shell">
+        <Card className="auth-card">
+          <PageHeader title="Sprawdzam sesję…" subtitle="Poczekaj chwilę." />
+        </Card>
+      </main>
+    )
+  }
+
+  // ── Not logged in (rawAuthUserId = null) ─────────────────────────────────
+  // Uses raw Supabase auth — NOT the resolved company context (which returns
+  // null for pending invite users to prevent ghost company bootstrap).
+  if (rawAuthUserId === null) {
     return (
       <main className="auth-shell">
         <Card className="auth-card">
@@ -136,7 +164,7 @@ export function AcceptInvitationPage() {
     return (
       <main className="auth-shell">
         <Card className="auth-card">
-          <PageHeader title="Dołączanie do zespołu…" subtitle={`Łączę konto ${user.email} z firmą. Poczekaj chwilę.`} />
+          <PageHeader title="Dołączanie do zespołu…" subtitle={`Łączę konto z firmą. Poczekaj chwilę.`} />
         </Card>
       </main>
     )
