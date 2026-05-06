@@ -2,13 +2,18 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import { initMonitoring, captureError } from '@/shared/lib/monitoring'
+import { initTheme } from '@/shared/ui/theme/useTheme'
 import { App } from '@/app/App'
 import '@/shared/styles/tokens.css'
+import '@/shared/ui/theme/theme.css'
 import '@/shared/styles/globals.css'
 
 // Initialize monitoring before anything else — must be first operational call.
 // No-op when VITE_SENTRY_DSN is not set (safe for local dev).
 initMonitoring()
+
+// Apply persisted theme to <html> before React renders — prevents FOUC.
+initTheme()
 
 // Supabase email confirmation may redirect to root (/) with auth tokens.
 // Detect and redirect to /auth/callback before React mounts.

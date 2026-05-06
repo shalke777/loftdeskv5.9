@@ -1,0 +1,325 @@
+/*
+ * LoftDesk — Theme System v1.0
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Mechanism: data-theme attribute on <html> overrides CSS variables defined
+ * in tokens.css. The `.dark` class is managed in parallel for any Tailwind
+ * dark: utilities that exist.
+ *
+ * Themes:
+ *   dark    — Głęboki las nocą (default, dark base)
+ *   ocean   — SaaS premium / niebieski / tech (dark base)
+ *   forest  — Budowlany premium / zieleń / Loftbau (light base)
+ *   sunset  — Sprzedażowy / czerwono-pomarańczowy / CTA (light base)
+ *
+ * Smooth transitions apply to all theme-affected surfaces.
+ * Transition is intentionally short (0.25s) to feel responsive, not sluggish.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+/* ── Transition layer ────────────────────────────────────────────────────── */
+html[data-theme] *,
+html[data-theme] *::before,
+html[data-theme] *::after {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.2s ease,
+    box-shadow 0.25s ease;
+}
+
+/* Exception: disable transition on interactive elements to keep them snappy */
+html[data-theme] button,
+html[data-theme] a,
+html[data-theme] input,
+html[data-theme] select,
+html[data-theme] textarea {
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.1s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+}
+
+/* ── DARK — Głęboki las nocą ─────────────────────────────────────────────── */
+/* Mirrors the existing .dark class in tokens.css */
+[data-theme="dark"] {
+  --color-brand: #3EA85A;
+  --color-brand-hover: #35924E;
+  --color-brand-2: #1E2A1F;
+  --color-brand-light: #5DBF7A;
+  --color-brand-border: rgba(62, 168, 90, 0.2);
+  --color-brand-foreground: #FFFFFF;
+
+  --color-bg: #131610;
+  --color-bg-elevated: #1A1D17;
+  --color-surface: #1A1D17;
+  --color-surface-soft: #1E2219;
+  --color-border: rgba(237, 232, 221, 0.1);
+  --color-border-light: rgba(237, 232, 221, 0.05);
+
+  --color-text-primary: #EDE8DD;
+  --color-text-secondary: #A09880;
+  --color-text-tertiary: #A09880;
+  --color-text-inverse: #131610;
+  --color-text-muted: #A09880;
+
+  --color-success: #3EA85A;
+  --color-success-soft: rgba(62, 168, 90, 0.12);
+  --color-warning: #C8863C;
+  --color-warning-soft: rgba(200, 134, 60, 0.12);
+  --color-error: #C0402E;
+  --color-error-soft: rgba(192, 64, 46, 0.12);
+  --color-info: #5CB87A;
+  --color-info-soft: rgba(93, 191, 122, 0.12);
+  --color-danger: #C0402E;
+  --color-danger-soft: rgba(192, 64, 46, 0.12);
+
+  --color-accent: #C8863C;
+  --color-accent-foreground: #FFFFFF;
+  --color-accent-soft: rgba(200, 134, 60, 0.12);
+
+  --color-card: #1A1D17;
+  --color-card-foreground: #EDE8DD;
+  --color-muted: #1E2219;
+  --color-muted-foreground: #A09880;
+  --color-input-bg: rgba(237, 232, 221, 0.08);
+  --color-switch-bg: #4A4D44;
+
+  --color-chart-1: #3EA85A;
+  --color-chart-2: #C8863C;
+  --color-chart-3: #5DBF7A;
+  --color-chart-4: #DDB870;
+  --color-chart-5: #C0402E;
+
+  --color-sidebar: #1A1D17;
+  --color-sidebar-foreground: #EDE8DD;
+  --color-sidebar-primary: #3EA85A;
+  --color-sidebar-primary-foreground: #FFFFFF;
+  --color-sidebar-accent: #1E2219;
+  --color-sidebar-accent-foreground: #EDE8DD;
+  --color-sidebar-border: rgba(237, 232, 221, 0.07);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.45);
+  --ring-brand: 0 0 0 4px rgba(62, 168, 90, 0.25);
+  --color-ring: #3EA85A;
+
+  --overlay-heavy: rgba(0, 0, 0, 0.72);
+  --overlay-medium: rgba(0, 0, 0, 0.55);
+  --overlay-light: rgba(0, 0, 0, 0.3);
+}
+
+/* ── OCEAN — SaaS premium / niebieski / tech ─────────────────────────────── */
+[data-theme="ocean"] {
+  --color-brand: #3B82F6;
+  --color-brand-hover: #2563EB;
+  --color-brand-2: #1E2A3A;
+  --color-brand-light: #60A5FA;
+  --color-brand-border: rgba(59, 130, 246, 0.25);
+  --color-brand-foreground: #FFFFFF;
+
+  --color-bg: #0B1220;
+  --color-bg-elevated: #111827;
+  --color-surface: #111827;
+  --color-surface-soft: #1A2333;
+  --color-border: rgba(148, 163, 184, 0.12);
+  --color-border-light: rgba(148, 163, 184, 0.06);
+
+  --color-text-primary: #E2E8F0;
+  --color-text-secondary: #94A3B8;
+  --color-text-tertiary: #94A3B8;
+  --color-text-inverse: #0B1220;
+  --color-text-muted: #64748B;
+
+  --color-success: #10B981;
+  --color-success-soft: rgba(16, 185, 129, 0.12);
+  --color-warning: #F59E0B;
+  --color-warning-soft: rgba(245, 158, 11, 0.12);
+  --color-error: #EF4444;
+  --color-error-soft: rgba(239, 68, 68, 0.12);
+  --color-info: #3B82F6;
+  --color-info-soft: rgba(59, 130, 246, 0.12);
+  --color-danger: #EF4444;
+  --color-danger-soft: rgba(239, 68, 68, 0.12);
+
+  --color-accent: #6366F1;
+  --color-accent-foreground: #FFFFFF;
+  --color-accent-soft: rgba(99, 102, 241, 0.15);
+
+  --color-card: #111827;
+  --color-card-foreground: #E2E8F0;
+  --color-muted: #1A2333;
+  --color-muted-foreground: #64748B;
+  --color-input-bg: rgba(148, 163, 184, 0.08);
+  --color-switch-bg: #374151;
+
+  --color-chart-1: #3B82F6;
+  --color-chart-2: #6366F1;
+  --color-chart-3: #10B981;
+  --color-chart-4: #F59E0B;
+  --color-chart-5: #EF4444;
+
+  --color-sidebar: #0F172A;
+  --color-sidebar-foreground: #E2E8F0;
+  --color-sidebar-primary: #3B82F6;
+  --color-sidebar-primary-foreground: #FFFFFF;
+  --color-sidebar-accent: #1E2A3A;
+  --color-sidebar-accent-foreground: #93C5FD;
+  --color-sidebar-border: rgba(148, 163, 184, 0.08);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.5);
+  --ring-brand: 0 0 0 4px rgba(59, 130, 246, 0.3);
+  --color-ring: #3B82F6;
+
+  --overlay-heavy: rgba(0, 0, 0, 0.75);
+  --overlay-medium: rgba(0, 0, 0, 0.55);
+  --overlay-light: rgba(0, 0, 0, 0.3);
+}
+
+/* ── FOREST — Budowlany premium / zieleń / Loftbau ──────────────────────── */
+/* Light base — deep green identity for construction professionals */
+[data-theme="forest"] {
+  --color-brand: #1A5C32;
+  --color-brand-hover: #155226;
+  --color-brand-2: #EAE4D6;
+  --color-brand-light: #3E8C58;
+  --color-brand-border: rgba(26, 92, 50, 0.2);
+  --color-brand-foreground: #FFFFFF;
+
+  --color-bg: #F0F5F1;
+  --color-bg-elevated: #FFFFFF;
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #E4EDE7;
+  --color-border: rgba(26, 50, 30, 0.1);
+  --color-border-light: rgba(26, 50, 30, 0.06);
+
+  --color-text-primary: #141F16;
+  --color-text-secondary: #4A6952;
+  --color-text-tertiary: #5C7B63;
+  --color-text-inverse: #FFFFFF;
+  --color-text-muted: #6B8C72;
+
+  --color-success: #1A5C32;
+  --color-success-soft: rgba(26, 92, 50, 0.1);
+  --color-warning: #966B1A;
+  --color-warning-soft: rgba(150, 107, 26, 0.1);
+  --color-error: #A32B20;
+  --color-error-soft: rgba(163, 43, 32, 0.1);
+  --color-info: #2E7A4F;
+  --color-info-soft: rgba(46, 122, 79, 0.1);
+  --color-danger: #A32B20;
+  --color-danger-soft: rgba(163, 43, 32, 0.1);
+
+  --color-accent: #966B1A;
+  --color-accent-foreground: #FFFFFF;
+  --color-accent-soft: rgba(150, 107, 26, 0.1);
+
+  --color-card: #FFFFFF;
+  --color-card-foreground: #141F16;
+  --color-muted: #DCE8DE;
+  --color-muted-foreground: #5C7B63;
+  --color-input-bg: #E4EDE7;
+  --color-switch-bg: #9BB8A0;
+
+  --color-chart-1: #1A5C32;
+  --color-chart-2: #3E8C58;
+  --color-chart-3: #966B1A;
+  --color-chart-4: #A32B20;
+  --color-chart-5: #5C7B63;
+
+  --color-sidebar: #E8F0EA;
+  --color-sidebar-foreground: #141F16;
+  --color-sidebar-primary: #1A5C32;
+  --color-sidebar-primary-foreground: #FFFFFF;
+  --color-sidebar-accent: #D4E5D8;
+  --color-sidebar-accent-foreground: #1A5C32;
+  --color-sidebar-border: rgba(26, 50, 30, 0.08);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.07);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.09);
+  --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.12);
+  --ring-brand: 0 0 0 4px rgba(26, 92, 50, 0.2);
+  --color-ring: #1A5C32;
+
+  --overlay-heavy: rgba(0, 0, 0, 0.5);
+  --overlay-medium: rgba(0, 0, 0, 0.35);
+  --overlay-light: rgba(0, 0, 0, 0.15);
+}
+
+/* ── SUNSET — Sprzedażowy / czerwono-pomarańczowy / CTA ─────────────────── */
+/* Light base — warm, energetic, high-conversion feel */
+[data-theme="sunset"] {
+  --color-brand: #C0440C;
+  --color-brand-hover: #A33608;
+  --color-brand-2: #FFF3EE;
+  --color-brand-light: #E85D20;
+  --color-brand-border: rgba(192, 68, 12, 0.2);
+  --color-brand-foreground: #FFFFFF;
+
+  --color-bg: #FFF8F4;
+  --color-bg-elevated: #FFFFFF;
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #FEEEE6;
+  --color-border: rgba(100, 30, 10, 0.1);
+  --color-border-light: rgba(100, 30, 10, 0.05);
+
+  --color-text-primary: #1C0F0A;
+  --color-text-secondary: #7A3D22;
+  --color-text-tertiary: #8A4D30;
+  --color-text-inverse: #FFFFFF;
+  --color-text-muted: #A05A3A;
+
+  --color-success: #2E7D46;
+  --color-success-soft: rgba(46, 125, 70, 0.1);
+  --color-warning: #D97706;
+  --color-warning-soft: rgba(217, 119, 6, 0.1);
+  --color-error: #B91C1C;
+  --color-error-soft: rgba(185, 28, 28, 0.1);
+  --color-info: #C0440C;
+  --color-info-soft: rgba(192, 68, 12, 0.1);
+  --color-danger: #B91C1C;
+  --color-danger-soft: rgba(185, 28, 28, 0.1);
+
+  --color-accent: #D97706;
+  --color-accent-foreground: #FFFFFF;
+  --color-accent-soft: rgba(217, 119, 6, 0.1);
+
+  --color-card: #FFFFFF;
+  --color-card-foreground: #1C0F0A;
+  --color-muted: #FEEEE6;
+  --color-muted-foreground: #8A4D30;
+  --color-input-bg: #FEF0E8;
+  --color-switch-bg: #DBA890;
+
+  --color-chart-1: #C0440C;
+  --color-chart-2: #E85D20;
+  --color-chart-3: #D97706;
+  --color-chart-4: #B91C1C;
+  --color-chart-5: #8A4D30;
+
+  --color-sidebar: #FFF0EA;
+  --color-sidebar-foreground: #1C0F0A;
+  --color-sidebar-primary: #C0440C;
+  --color-sidebar-primary-foreground: #FFFFFF;
+  --color-sidebar-accent: #FDDFD3;
+  --color-sidebar-accent-foreground: #C0440C;
+  --color-sidebar-border: rgba(100, 30, 10, 0.08);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.07);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.09);
+  --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.12);
+  --ring-brand: 0 0 0 4px rgba(192, 68, 12, 0.2);
+  --color-ring: #C0440C;
+
+  --overlay-heavy: rgba(0, 0, 0, 0.5);
+  --overlay-medium: rgba(0, 0, 0, 0.35);
+  --overlay-light: rgba(0, 0, 0, 0.15);
+}

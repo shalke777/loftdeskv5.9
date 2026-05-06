@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useRef } from 'react'
-import { Camera, ChartColumn, CreditCard, Moon, ShieldCheck, Sun, Users } from 'lucide-react'
+import { Camera, ChartColumn, CreditCard, ShieldCheck, Users } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
@@ -19,7 +19,7 @@ import { downloadBlob } from '@/shared/lib/downloads'
 import { LegalCenterCard } from '@/features/legal/components/LegalCenterCard'
 import { DocNumberingCard } from '@/features/settings/components/DocNumberingCard'
 import { CompanyPriceListCard } from '@/features/settings/components/CompanyPriceListCard'
-import { useTheme } from '@/shared/hooks/useTheme'
+import { ThemeSwitcher } from '@/shared/ui/theme/ThemeSwitcher'
 
 function HelperCard({ icon, title, text, href }: { icon: ReactNode; title: string; text: string; href: string }) {
   const navigate = useNavigate()
@@ -44,7 +44,6 @@ export function SettingsPage() {
   const { profile } = useSettings()
   const canUseKsef = useFeatureAccess('ksef')
   const importRef = useRef<HTMLInputElement | null>(null)
-  const { theme, toggleTheme } = useTheme()
 
   async function exportBackup() {
     const blob = new Blob([demoDb.exportState()], { type: 'application/json;charset=utf-8' })
@@ -83,15 +82,12 @@ export function SettingsPage() {
         <Card>
           <h3>Preferencje</h3>
           <div style={{ display: 'grid', gap: 12, fontSize: 14, marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div>
                 <strong>Motyw</strong>
-                <div className="field__label" style={{ marginTop: 2 }}>Jasny lub ciemny interfejs aplikacji.</div>
+                <div className="field__label" style={{ marginTop: 2 }}>Wybierz kolorystykę interfejsu.</div>
               </div>
-              <Button variant="ghost" onClick={toggleTheme} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
-                {theme === 'dark' ? 'Ciemny' : 'Jasny'}
-              </Button>
+              <ThemeSwitcher />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>

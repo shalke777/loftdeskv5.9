@@ -1,38 +1,46 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react'
 
-type Theme = 'light' | 'dark'
+export type Theme = 'dark' | 'ocean' | 'forest' | 'sunset'
+export const ALL_THEMES: Theme[] = ['dark', 'ocean', 'forest', 'sunset']
+
+/** Themes that require Tailwind's .dark class for dark: utilities */
+const DARK_BASED: Theme[] = ['dark', 'ocean']
 
 const STORAGE_KEY = 'loftdesk-theme'
+const DEFAULT_THEME: Theme = 'dark'
 
-function getSystemTheme(): Theme {
-  if (typeof window === 'undefined') return 'light'
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+function isValidTheme(v: string | null): v is Theme {
+  return ALL_THEMES.includes(v as Theme)
 }
 
 function getStoredTheme(): Theme | null {
   try {
     const v = localStorage.getItem(STORAGE_KEY)
-    return v === 'light' || v === 'dark' ? v : null
+    // Backward compat: old 'light' value maps to forest
+    if (v === 'light') return 'forest'
+    return isValidTheme(v) ? v : null
   } catch {
     return null
   }
 }
 
 function resolveTheme(): Theme {
-  return getStoredTheme() ?? getSystemTheme()
+  return getStoredTheme() ?? DEFAULT_THEME
 }
 
 function applyTheme(theme: Theme) {
   const html = document.documentElement
-  html.classList.toggle('dark', theme === 'dark')
+  html.setAttribute('data-theme', theme)
+  html.classList.toggle('dark', DARK_BASED.includes(theme))
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) {
-    meta.setAttribute('content', theme === 'dark' ? '#131610' : '#F5F0E8')
+    const isDark = DARK_BASED.includes(theme)
+    meta.setAttribute('content', isDark ? '#131610' : '#F5F0E8')
   }
 }
 
-// Shared state so all consumers stay in sync
-let currentTheme: Theme = typeof window !== 'undefined' ? resolveTheme() : 'light'
+// Shared state — all hook consumers stay in sync via useSyncExternalStore
+let currentTheme: Theme = typeof window !== 'undefined' ? resolveTheme() : DEFAULT_THEME
 const listeners = new Set<() => void>()
 
 function subscribe(cb: () => void) {
@@ -46,12 +54,14 @@ function getSnapshot(): Theme {
 
 function setThemeGlobal(theme: Theme) {
   currentTheme = theme
-  localStorage.setItem(STORAGE_KEY, theme)
+  try {
+    localStorage.setItem(STORAGE_KEY, theme)
+  } catch { /* storage unavailable */ }
   applyTheme(theme)
   listeners.forEach(cb => cb())
 }
 
-// Apply on load
+// Apply on module load (before React renders) — prevents FOUC
 if (typeof window !== 'undefined') {
   applyTheme(currentTheme)
 }
@@ -63,7 +73,7 @@ export function useTheme() {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const handler = () => {
       if (!getStoredTheme()) {
-        setThemeGlobal(mq.matches ? 'dark' : 'light')
+        setThemeGlobal(mq.matches ? 'dark' : 'forest')
       }
     }
     mq.addEventListener('change', handler)
@@ -71,7 +81,8 @@ export function useTheme() {
   }, [])
 
   const toggleTheme = useCallback(() => {
-    setThemeGlobal(theme === 'light' ? 'dark' : 'light')
+    // Legacy toggle: dark ↔ forest
+    setThemeGlobal(theme === 'dark' ? 'forest' : 'dark')
   }, [theme])
 
   const setTheme = useCallback((t: Theme) => {
@@ -80,3 +91,4 @@ export function useTheme() {
 
   return { theme, toggleTheme, setTheme } as const
 }
+
