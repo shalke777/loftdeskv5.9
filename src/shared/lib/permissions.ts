@@ -43,7 +43,8 @@ function hasPlan(plan: AppPlan, minimum: AppPlan) {
   return planOrder[plan] >= planOrder[minimum]
 }
 
-function hasRole(role: AppRole, allowed: AppRole[]) {
+function hasRole(role: AppRole | null | undefined, allowed: AppRole[]) {
+  if (!role) return false
   return allowed.includes(role)
 }
 

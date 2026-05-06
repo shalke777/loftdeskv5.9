@@ -80,7 +80,7 @@ export const settingsApi = {
       }))
     }
     const { data: profile } = await supabase.from('profiles').select('id, email, full_name, company, plan').eq('id', scope.userId).maybeSingle()
-    return profile ? [{ id: profile.id, email: profile.email, full_name: profile.full_name, company_id: companyId, company_name: profile.company, role: 'owner', plan: profile.plan, ksef_env: 'test', ksef_nip: null, ksef_token: null }] : []
+    return profile ? [{ id: profile.id, email: profile.email, full_name: profile.full_name, company_id: companyId, company_name: profile.company, role: undefined, plan: profile.plan, ksef_env: 'test', ksef_nip: null, ksef_token: null }] : []
   },
 
   async invitations(companyId: string) {
