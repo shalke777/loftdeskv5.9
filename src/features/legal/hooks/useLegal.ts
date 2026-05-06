@@ -25,6 +25,30 @@ export function useLegalAcceptances() {
 }
 
 /**
+ * Pure DB guard hook: does the current user have ANY legal acceptance row
+ * for the active company?  Returns undefined while loading.
+ *
+ * The gate uses ONLY this signal — no flow heuristics, no localStorage,
+ * no version_update branching at the access-decision layer.
+ */
+export function useCompanyAcceptanceExists(): boolean | undefined {
+  const { user } = useAuthContext()
+  const companyId = user?.companyId ?? null
+  const enabled = Boolean(user) && user?.role !== 'client' && Boolean(companyId)
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['legal', 'company-acceptance-exists', user?.id, companyId],
+    queryFn: () => legalApi.hasCompanyAcceptance(companyId as string),
+    enabled,
+    staleTime: 5 * 60 * 1_000,
+    retry: 1,
+  })
+  if (!enabled) return true // no company yet → nothing to gate against
+  if (isLoading) return undefined
+  if (isError) return true // fail-open on transient errors
+  return Boolean(data)
+}
+
+/**
  * Returns the list of required document keys not yet accepted at their
  * current version.  Returns undefined while still loading.
  */
@@ -48,6 +72,7 @@ export function useSaveAcceptances() {
     mutationFn: (inputs: SaveInput[]) => legalApi.saveAcceptances(inputs),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ACCEPTANCES_KEY })
+      qc.invalidateQueries({ queryKey: ['legal', 'company-acceptance-exists'] })
     },
     onError: (err: Error) => {
       toast.error('Błąd zapisu akceptacji', err.message)

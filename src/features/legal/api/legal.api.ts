@@ -120,6 +120,36 @@ export const legalApi = {
   },
 
   /**
+   * Pure DB guard: does any legal_acceptance row exist for (user_id, company_id)?
+   *
+   * Architectural invariant (Sprint final hardening):
+   *   user can access company dashboard
+   *   IFF legal_acceptances(user_id, company_id) EXISTS
+   *
+   * No flow heuristics (signup/invite/version_update) — the gate cares only
+   * about presence of consent for the active company.
+   */
+  async hasCompanyAcceptance(companyId: string): Promise<boolean> {
+    if (isDemoMode || !supabase) {
+      return demoAcceptances.length > 0
+    }
+    const { data, error } = await supabase
+      .from('legal_acceptances')
+      .select('id')
+      .eq('company_id', companyId)
+      .limit(1)
+      .maybeSingle()
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[legal] hasCompanyAcceptance error', error.code, error.message)
+      }
+      // Fail-open: do NOT permanently block the user on transient errors.
+      return true
+    }
+    return Boolean(data)
+  },
+
+  /**
    * Given the list of acceptance records already in the DB, return the
    * set of required document keys whose *current* version hasn't been accepted.
    */
