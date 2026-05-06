@@ -191,6 +191,30 @@ export function addBreadcrumb(category: string, message: string, data?: Record<s
   Sentry.addBreadcrumb({ category, message, data, level: 'info' })
 }
 
+// ─── SESSION CONTEXT OBSERVABILITY ─────────────────────────────────────────
+// Fires when get_session_context() resolves but company_id is still null for
+// an authenticated user who should have a company (post-bootstrap anomaly).
+// NEVER triggers a fallback — only records the event.
+
+export function captureSessionContextNull(userId: string) {
+  const extra: Record<string, unknown> = {
+    user_id: userId,
+    timestamp: new Date().toISOString(),
+    environment: IS_PROD ? 'production' : 'development',
+  }
+
+  // Always log to console regardless of Sentry state
+  console.error('[SESSION_CONTEXT_NULL] Authenticated user has no session context after bootstrap', extra)
+
+  if (!sentryActive) return
+  Sentry.withScope((scope) => {
+    scope.setTag('loftdesk.area', 'auth')
+    scope.setLevel('error')
+    scope.setExtras(extra)
+    Sentry.captureMessage('SESSION_CONTEXT_NULL', 'error')
+  })
+}
+
 // ─── RE-EXPORTS for convenience ─────────────────────────────────────────────
 
 export { Sentry }

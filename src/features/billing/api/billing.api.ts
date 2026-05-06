@@ -90,8 +90,13 @@ export const billingApi = {
 
     if (scope.mode === 'multi-tenant') {
       // Sprint B/C: get_session_context() is the single authority (migration 155).
-      const { data: ctxData } = await supabase.rpc('get_session_context').maybeSingle()
+      const { data: ctxData, error: ctxErr } = await supabase.rpc('get_session_context').maybeSingle()
+      if (ctxErr) throw ctxErr
       const company = (ctxData as Record<string, unknown> | null)?.company as Record<string, unknown> | null
+
+      // FAIL LOUD: company null for a multi-tenant user is a session anomaly.
+      // UI shell handles this gracefully; billing/KSeF must not operate blind.
+      if (!company) throw new Error('SESSION_CONTEXT_MISSING')
 
       const currentPlan = ((company?.plan as BillingPlan | null) ?? 'free')
       const planSource  = (company?.plan_source as string | null) ?? 'unknown'

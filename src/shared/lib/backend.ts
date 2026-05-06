@@ -1,6 +1,7 @@
 import { supabase } from '@/shared/lib/supabase'
 import type { DemoRole } from '@/shared/lib/demoDb'
 import type { SessionUser } from '@/app/providers'
+import { captureSessionContextNull } from '@/shared/lib/monitoring'
 
 export interface ResolvedSession {
   user: SessionUser | null
@@ -105,6 +106,9 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
     // bootstrap may fail (already bootstrapped, or function not yet applied) — fall through
   }
 
-  // Fully anonymous / edge case — render as logged-out
+  // Fully anonymous / edge case — user is authenticated but has no context.
+  // This is an anomaly: SESSION_CONTEXT_NULL is captured to Sentry.
+  // NO fallback — fail loud to observability, render as logged-out.
+  captureSessionContextNull(authUser.id)
   return { user: null }
 }

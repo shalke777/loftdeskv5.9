@@ -14,7 +14,10 @@ export const settingsApi = {
       // Sprint B/C: get_session_context() single authority (migration 155).
       const { data, error } = await supabase.rpc('get_session_context').maybeSingle()
       if (error) throw error
-      return (data as Record<string, unknown> | null)?.company ?? null
+      const company = (data as Record<string, unknown> | null)?.company ?? null
+      // FAIL LOUD: profile is used to populate company settings — null is an anomaly.
+      if (!company) throw new Error('SESSION_CONTEXT_MISSING')
+      return company
     }
     const { data, error } = await supabase.from('profiles').select('*').eq('id', scope.userId).maybeSingle()
     if (error) throw error
@@ -92,7 +95,8 @@ export const settingsApi = {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.invitations.invite(input.companyId, null, input.email, input.role))
     const scope = await getDataScope(input.companyId)
     if (scope.mode !== 'multi-tenant') {
-      throw new Error('Zapraszanie członków wymaga migracji companies/company_members i istniejących użytkowników.')
+      // FAIL LOUD: invite requires a company session context — no fallback.
+      throw new Error('SESSION_CONTEXT_MISSING')
     }
     // Cryptographically secure token — 20 bytes = 160-bit entropy (replaces Math.random())
     const arr = new Uint8Array(20)
