@@ -8,11 +8,14 @@ import { hasStripeConfig } from '@/shared/lib/stripe'
 export function useBillingSummary() {
   const companyId = useCompanyId()
   return useQuery({
+    // companyId in the key so invalidation by companyId still works in useChangePlan/useProjects.
+    // billingApi.summary() ignores the param and resolves company via getDataScope() (DB source of truth).
     queryKey: ['billing', 'summary', companyId],
     queryFn: () => billingApi.summary(companyId),
-    // Billing plan may change in DB — 30s stale window keeps UI responsive
-    // while avoiding hammering the 5-count query on every window focus
-    staleTime: 30_000,
+    // staleTime: 0 — billing controls feature access; always fetch fresh data.
+    // This ensures a DB plan change or plan_source update is visible immediately
+    // without requiring a hard refresh.
+    staleTime: 0,
   })
 }
 
