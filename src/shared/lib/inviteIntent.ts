@@ -107,6 +107,11 @@ export function withInviteTimeout<T>(promise: Promise<T>): Promise<T> {
   return Promise.race([promise, timeout])
 }
 
+/** Returns true when at least one pending invite token is queued in localStorage. */
+export function hasInviteIntent(): boolean {
+  return getInviteRecords().some(r => r.status === 'pending')
+}
+
 // ── Backward-compat aliases ────────────────────────────────────────────────────
 /** @deprecated Use addPendingInviteToken */
 export const setPendingInviteToken = addPendingInviteToken

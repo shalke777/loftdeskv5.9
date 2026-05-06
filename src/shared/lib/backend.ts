@@ -2,7 +2,7 @@ import { supabase } from '@/shared/lib/supabase'
 import type { DemoRole } from '@/shared/lib/demoDb'
 import type { SessionUser } from '@/app/providers'
 import { captureSessionContextNull } from '@/shared/lib/monitoring'
-import { getInviteRecords } from '@/shared/lib/inviteIntent'
+import { hasInviteIntent } from '@/shared/lib/inviteIntent'
 
 export interface ResolvedSession {
   user: SessionUser | null
@@ -90,7 +90,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   // create the company_members row via the SECURITY DEFINER RPC, and the page
   // will reload immediately after, at which point get_session_context() returns
   // the invited company.  No Sentry capture — this is expected, not an anomaly.
-  const hasPendingInvite = getInviteRecords().some(r => r.status === 'pending')
+  const hasPendingInvite = hasInviteIntent()
   if (hasPendingInvite) {
     if (import.meta.env.DEV) {
       console.info('[backend] bootstrap skipped — pending invite token detected')
