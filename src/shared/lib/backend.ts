@@ -63,6 +63,8 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   // Newest membership wins. DB is source of truth — no hints, no fallbacks.
   const pickedMemberBase = memberRows[0] ?? null
 
+  console.log('[DEBUG MEMBERS]', memberRows)
+  console.log('[DEBUG ACTIVE COMPANY]', pickedMemberBase?.company_id ?? null)
   if (pickedMemberBase) {
     console.log('[auth] active membership:', pickedMemberBase.company_id)
   }
