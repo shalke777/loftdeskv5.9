@@ -90,12 +90,31 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   // create the company_members row via the SECURITY DEFINER RPC, and the page
   // will reload immediately after, at which point get_session_context() returns
   // the invited company.  No Sentry capture — this is expected, not an anomaly.
+  // Guard 1 (localStorage): pending invite token saved by /join/<token> page.
   const hasPendingInvite = hasInviteIntent()
   if (hasPendingInvite) {
     if (import.meta.env.DEV) {
-      console.info('[backend] bootstrap skipped — pending invite token detected')
+      console.info('[backend] bootstrap skipped — pending invite token (localStorage)')
     }
     return { user: null }
+  }
+
+  // Guard 2 (DB): pending invitation row by email — covers other-device logins
+  // where localStorage is unavailable. A single lightweight SELECT, no join.
+  if (authUser.email) {
+    const { data: pendingInvite } = await supabase
+      .from('company_invitations')
+      .select('id')
+      .eq('email', authUser.email)
+      .eq('status', 'pending')
+      .limit(1)
+      .maybeSingle()
+    if (pendingInvite) {
+      if (import.meta.env.DEV) {
+        console.info('[backend] bootstrap skipped — pending company_invitations row (DB)')
+      }
+      return { user: null }
+    }
   }
 
   try {
