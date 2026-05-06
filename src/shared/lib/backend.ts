@@ -6,11 +6,49 @@ export interface ResolvedSession {
   user: SessionUser | null
 }
 
-// Sprint B: single authority — get_session_context() is the ONLY resolver.
-// OWNER_OVERRIDE_EMAIL, roleFromLegacyPlan, applyOwnerOverride, and
-// the multi-query resolution path have been removed.
-// Session invariant: this function MUST NOT query companies, company_members,
-// or client_accounts directly — only via the get_session_context() RPC.
+// Sprint B: single authority — get_session_context() is the primary resolver.
+// Sprint B.1 safe deploy layer: if mig 155 is not yet applied on the DB,
+// get_session_context() returns PGRST202 (function not found). In that case
+// we fall back to the legacy get_my_company_billing() + company_members path.
+// Once mig 155 is applied, the fallback never fires.
+
+// Returns true if the error indicates mig 155 is not yet on the DB.
+function isFunctionNotFound(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const code = (err as Record<string, unknown>).code
+  // PGRST202 = PostgREST "Could not find the function" (mig 155 not applied)
+  // 42883     = PostgreSQL "undefined_function" (direct Postgres path)
+  return code === 'PGRST202' || code === '42883'
+}
+
+// Legacy fallback: reconstructs session from get_my_company_billing() (mig 153)
+// + company_members. Used ONLY when mig 155 is not yet deployed.
+// Remove in Sprint C after mig 155 is confirmed on all envs.
+async function legacyResolveContext(authUserId: string): Promise<{
+  company_id: string | null
+  company_name: string | null
+  company: Record<string, unknown> | null
+  membership_role: string | null
+} | null> {
+  if (!supabase) return null
+  try {
+    const [{ data: companyRow }, { data: memberRow }] = await Promise.all([
+      supabase.rpc('get_my_company_billing').maybeSingle(),
+      supabase.from('company_members').select('company_id, role').eq('user_id', authUserId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    ])
+    const company = companyRow as Record<string, unknown> | null
+    const member  = memberRow  as { company_id: string; role: string } | null
+    if (!member?.company_id) return null
+    return {
+      company_id:       member.company_id,
+      company_name:     (company?.name as string | null) ?? null,
+      company:          company,
+      membership_role:  member.role,
+    }
+  } catch {
+    return null
+  }
+}
 
 export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   if (!supabase) return { user: null }
@@ -23,6 +61,26 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   const { data: ctx, error: ctxError } = await supabase
     .rpc('get_session_context')
     .maybeSingle()
+
+  // Sprint B.1 safe deploy layer: if mig 155 not yet applied, use legacy path.
+  if (ctxError && isFunctionNotFound(ctxError)) {
+    console.warn('[backend] get_session_context not found — falling back to legacy resolution (apply mig 155 to remove this path)')
+    const legacy = await legacyResolveContext(authUser.id)
+    if (legacy?.company_id) {
+      return {
+        user: {
+          id: authUser.id,
+          email: authUser.email ?? '',
+          companyId: legacy.company_id,
+          companyName: legacy.company_name ?? 'LoftDesk Workspace',
+          role: (legacy.membership_role as DemoRole) ?? 'worker',
+          plan: ((legacy.company?.plan as SessionUser['plan']) ?? 'free'),
+          fullName: authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Użytkownik',
+        },
+      }
+    }
+    return { user: null }
+  }
 
   if (ctxError && import.meta.env.DEV) {
     console.warn('[backend] get_session_context error', ctxError)
