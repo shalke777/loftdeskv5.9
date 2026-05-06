@@ -47,7 +47,7 @@ function clearPendingSignup() {
  *     → tailored messaging, source='version_update'
  */
 export function LegalAcceptanceGate() {
-  const { user } = useAuthContext()
+  const { user, refreshSession } = useAuthContext()
   const { data: allAcceptances } = useLegalAcceptances()
   const missing = useMissingAcceptances()
   const saveAcceptances = useSaveAcceptances()
@@ -121,6 +121,10 @@ export function LegalAcceptanceGate() {
     try {
       await saveAcceptances.mutateAsync(inputs)
       clearPendingSignup()
+      // Refresh session BEFORE the gate unmounts — ensures the auth context
+      // has a valid company_id when the dashboard first renders.
+      // Covers invited workers whose session resolved to null during legal gate.
+      await refreshSession()
     } catch {
       // Error is handled by useSaveAcceptances onError (toast) + isError banner below
     }
