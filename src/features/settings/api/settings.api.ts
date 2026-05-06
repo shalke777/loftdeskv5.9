@@ -11,7 +11,9 @@ export const settingsApi = {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.companyProfile(companyId))
     const scope = await getDataScope(companyId)
     if (scope.mode === 'multi-tenant') {
-      const { data, error } = await supabase.from('companies').select('*').eq('id', scope.companyId).maybeSingle()
+      // Use SECURITY DEFINER RPC (migration 153) — bypasses RLS on companies table.
+      // Returns FULL companies row (SETOF companies) — no field omissions.
+      const { data, error } = await supabase.rpc('get_my_company_billing').maybeSingle()
       if (error) throw error
       return data
     }
@@ -259,9 +261,11 @@ export const settingsApi = {
     if (isDemoMode || !supabase) return null
     const scope = await getDataScope(companyId)
     if (scope.mode !== 'multi-tenant') return null
-    const { data, error } = await supabase.from('companies').select('doc_number_config').eq('id', scope.companyId).maybeSingle()
+    // Use RPC for RLS bypass — direct SELECT on companies returns 403 when
+    // companies_select_for_members policy is missing on live DB.
+    const { data, error } = await supabase.rpc('get_my_company_billing').maybeSingle()
     if (error) throw error
-    return (data?.doc_number_config as DocNumberConfig) ?? null
+    return ((data as Record<string, unknown> | null)?.doc_number_config as DocNumberConfig) ?? null
   },
 
   async updateDocNumberConfig(companyId: string, config: DocNumberConfig): Promise<void> {
