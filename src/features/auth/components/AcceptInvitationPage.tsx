@@ -20,6 +20,9 @@ export function AcceptInvitationPage() {
   const { user, refreshSession } = useAuth()
   const [state, setState] = useState<AcceptState>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  // retryCount increments when the user clicks "Spróbuj ponownie" —
+  // adding it to the effect deps re-triggers the accept attempt.
+  const [retryCount, setRetryCount] = useState(0)
   // Guard: prevent double-accept from React StrictMode double-invoke or
   // multiple tabs landing on the same /join/<token> URL simultaneously.
   const acceptingRef = useRef(false)
@@ -86,7 +89,7 @@ export function AcceptInvitationPage() {
     void run()
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, user?.id])
+  }, [token, user?.id, retryCount])
 
   if (!token) {
     return (
@@ -145,8 +148,8 @@ export function AcceptInvitationPage() {
       <Card className="auth-card">
         <PageHeader title="Nie udało się dołączyć" subtitle={errorMsg} />
         <div className="actions-row">
-          <Button onClick={() => window.location.assign('/onboarding')}>
-            Utwórz własną firmę
+          <Button onClick={() => { setState('idle'); acceptingRef.current = false; setRetryCount(c => c + 1) }}>
+            Spróbuj ponownie
           </Button>
           <Button variant="secondary" onClick={() => window.location.assign('/dashboard')}>
             Przejdź do dashboardu

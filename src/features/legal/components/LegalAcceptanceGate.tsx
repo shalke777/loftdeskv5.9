@@ -22,7 +22,7 @@ import { LEGAL_DOC_BY_KEY, REQUIRED_DOCS } from '@/features/legal/config/legalDo
  * Source for new acceptances is always 'gate'.
  */
 export function LegalAcceptanceGate() {
-  const { user, refreshSession } = useAuthContext()
+  const { user } = useAuthContext()
   const acceptanceExists = useCompanyAcceptanceExists()
   const saveAcceptances = useSaveAcceptances()
   const [checked, setChecked] = useState<Record<string, boolean>>({})
@@ -70,9 +70,11 @@ export function LegalAcceptanceGate() {
 
     try {
       await saveAcceptances.mutateAsync(inputs)
-      // Refresh session BEFORE the gate unmounts — ensures the auth context
-      // has a valid company_id when the dashboard first renders.
-      await refreshSession()
+      // Do NOT call refreshSession() here — it can change user.companyId (race
+      // when multiple company_members rows exist) which shifts the query key of
+      // useCompanyAcceptanceExists, causing the gate to re-appear indefinitely.
+      // The session is already valid at this point; the gate simply unmounts once
+      // the acceptance query confirms the saved row.
     } catch {
       // Error is handled by useSaveAcceptances onError (toast) + isError banner below
     }
