@@ -69,16 +69,15 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
     console.log('[auth] active membership:', pickedMemberBase.company_id)
   }
 
-  // Fetch company details (name, plan) only for the picked company.
-  // Done as a SEPARATE query so a companies RLS miss never blocks role resolution.
+  // Fetch company details (name, plan) via SECURITY DEFINER RPC (migration 153).
+  // Direct SELECT on companies returns 403 when RLS policy is missing/unapplied.
+  // The RPC function bypasses RLS and always returns the caller's company row.
   let companyDetails: { name: string | null; plan: string | null } | null = null
   if (pickedMemberBase) {
     const { data: cd } = await supabase
-      .from('companies')
-      .select('name, plan')
-      .eq('id', pickedMemberBase.company_id)
+      .rpc('get_my_company_billing')
       .maybeSingle()
-    companyDetails = cd ?? null
+    companyDetails = cd ? { name: (cd as any).name ?? null, plan: (cd as any).plan ?? null } : null
   }
 
   const pickedMember = pickedMemberBase
@@ -144,12 +143,8 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
           .limit(1)
           .maybeSingle()
         if (res.data) {
-          const { data: cd } = await supabase
-            .from('companies')
-            .select('name, plan')
-            .eq('id', res.data.company_id)
-            .maybeSingle()
-          memberRow = { ...res.data, companies: cd ?? null }
+          const { data: cd } = await supabase.rpc('get_my_company_billing').maybeSingle()
+          memberRow = { ...res.data, companies: cd ? { name: (cd as any).name ?? null, plan: (cd as any).plan ?? null } : null }
         }
       }
     } catch {

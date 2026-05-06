@@ -89,14 +89,13 @@ export const billingApi = {
     console.log('[PROJECT COUNT]', projects ?? 0)
 
     if (scope.mode === 'multi-tenant') {
-      // Use select('*') so the query never 400s on missing columns
-      // (migrations 027/036 may not be applied yet in production).
-      const { data: fullCompany } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('id', activeCompanyId)
+      // Use SECURITY DEFINER RPC (migration 153) — bypasses RLS completely.
+      // Direct SELECT on companies returns 403 when companies_select_for_members
+      // policy is missing or hasn't been applied to the live DB yet.
+      const { data: companyRow } = await supabase
+        .rpc('get_my_company_billing')
         .maybeSingle()
-      const company = fullCompany as Record<string, unknown> | null
+      const company = companyRow as Record<string, unknown> | null
       const currentPlan = ((company?.plan as BillingPlan | null) ?? 'free')
       const planSource  = (company?.plan_source as string | null) ?? 'unknown'
       const limits = planLimits(currentPlan)
