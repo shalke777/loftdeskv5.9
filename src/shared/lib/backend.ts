@@ -2,7 +2,6 @@ import { supabase } from '@/shared/lib/supabase'
 import type { DemoRole } from '@/shared/lib/demoDb'
 import type { SessionUser } from '@/app/providers'
 import { captureSessionContextNull } from '@/shared/lib/monitoring'
-import { hasInviteIntent } from '@/shared/lib/inviteIntent'
 
 export interface ResolvedSession {
   user: SessionUser | null
@@ -83,24 +82,16 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   // ── New user: no membership yet → trigger bootstrap, then re-resolve ─────────
   // Bootstrap is a one-time operation, NOT part of context resolution.
   //
-  // INVITE GUARD: if the user arrived via an invite link, their pending token is
-  // in localStorage.  Bootstrapping now would create a ghost company (empty owner
-  // shell) that persists after invite acceptance, polluting the DB and billing.
-  // Instead, skip bootstrap entirely — LoginForm.finalizeInviteIfNeeded() will
-  // create the company_members row via the SECURITY DEFINER RPC, and the page
-  // will reload immediately after, at which point get_session_context() returns
-  // the invited company.  No Sentry capture — this is expected, not an anomaly.
-  // Guard 1 (localStorage): pending invite token saved by /join/<token> page.
-  const hasPendingInvite = hasInviteIntent()
-  if (hasPendingInvite) {
-    if (import.meta.env.DEV) {
-      console.info('[backend] bootstrap skipped — pending invite token (localStorage)')
-    }
-    return { user: null }
-  }
-
-  // Guard 2 (DB): pending invitation row by email — covers other-device logins
-  // where localStorage is unavailable. A single lightweight SELECT, no join.
+  // INVITE GUARD (DB-only, deterministic):
+  //   Backend decisions MUST NOT depend on client state (localStorage).
+  //   The single source of truth is `company_invitations` — if a pending
+  //   invitation row exists for this user's email, bootstrap is skipped and
+  //   LoginForm.finalizeInviteIfNeeded() will create the company_members row
+  //   via the SECURITY DEFINER RPC. Page reload after accept → get_session_context()
+  //   returns the invited company.
+  //
+  //   localStorage inviteIntent remains as a UX hint only (queues tokens for
+  //   finalizeInviteIfNeeded), never as a bootstrap gate.
   if (authUser.email) {
     const { data: pendingInvite } = await supabase
       .from('company_invitations')
@@ -116,6 +107,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
       return { user: null }
     }
   }
+  // No DB evidence of a pending invite → safe to bootstrap a new company.
 
   try {
     const { data: bootstrapCompanyId } = await supabase.rpc('bootstrap_my_company', { company_name: '', company_nip: '' })

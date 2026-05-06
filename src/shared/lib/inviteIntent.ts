@@ -107,7 +107,10 @@ export function withInviteTimeout<T>(promise: Promise<T>): Promise<T> {
   return Promise.race([promise, timeout])
 }
 
-/** Returns true when at least one pending invite token is queued in localStorage. */
+/** Returns true when at least one pending invite token is queued in localStorage.
+ *  ⚠ UI/UX HINT ONLY — MUST NOT be used to gate backend decisions
+ *  (e.g. skip bootstrap_my_company). Backend logic must rely solely on
+ *  `company_invitations` / `company_members` (DB source of truth). */
 export function hasInviteIntent(): boolean {
   return getInviteRecords().some(r => r.status === 'pending')
 }
