@@ -49,6 +49,7 @@ export async function getDataScope(_legacyHint?: string): Promise<DataScope> {
   }
 
   if (memberRow?.company_id) {
+    console.log('[DATA SCOPE] resolved companyId:', memberRow.company_id, '| role:', memberRow.role)
     return {
       mode: 'multi-tenant',
       userId,
@@ -56,6 +57,9 @@ export async function getDataScope(_legacyHint?: string): Promise<DataScope> {
       role: memberRow.role,
     }
   }
+
+  // No membership found — legacy mode (single-tenant / demo user)
+  console.warn('[DATA SCOPE] No company_members row found — falling back to legacy mode for userId:', userId)
 
   return {
     mode: 'legacy',

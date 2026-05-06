@@ -2,6 +2,7 @@
 // usePlanLimits — returns current plan limits and usage, with "near limit" flags
 // =============================================================================
 
+import { useEffect } from 'react'
 import { useBillingSummary } from '@/features/billing/hooks/useBilling'
 import type { BillingPlan } from '@/features/billing/api/billing.api'
 
@@ -43,6 +44,15 @@ function calcStatus(used: number, limit: number | '∞', warnPct = 80): LimitSta
 
 export function usePlanLimits(): { data: PlanLimits | null; isLoading: boolean } {
   const { data, isLoading } = useBillingSummary()
+
+  useEffect(() => {
+    if (!data) return
+    console.log('[PLAN LIMITS] companyId:', data.companyId)
+    console.log('[PLAN LIMITS] plan:', data.currentPlan)
+    console.log('[PLAN LIMITS] projects used/limit:', data.usage.projects, '/', data.limits.projects)
+    console.log('[PLAN LIMITS] full usage:', data.usage)
+    console.log('[PLAN LIMITS] full limits:', data.limits)
+  }, [data?.companyId, data?.currentPlan, data?.usage.projects])
 
   if (!data) return { data: null, isLoading }
 

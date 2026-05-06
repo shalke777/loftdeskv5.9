@@ -10,9 +10,9 @@ export function useBillingSummary() {
   return useQuery({
     queryKey: ['billing', 'summary', companyId],
     queryFn: () => billingApi.summary(companyId),
-    // Billing plan changes rarely — 2-minute stale window avoids hammering
-    // the 5-count DB query on every window focus
-    staleTime: 120_000,
+    // Billing plan may change in DB — 30s stale window keeps UI responsive
+    // while avoiding hammering the 5-count query on every window focus
+    staleTime: 30_000,
   })
 }
 
