@@ -110,7 +110,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
     const { data: pendingInvite } = await supabase
       .from('company_invitations')
       .select('id')
-      .eq('email', authUser.email)
+      .ilike('email', authUser.email)
       .eq('status', 'pending')
       .limit(1)
       .maybeSingle()

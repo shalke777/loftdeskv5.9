@@ -136,21 +136,10 @@ BEGIN
     RAISE EXCEPTION 'Not authenticated' USING ERRCODE = '42501';
   END IF;
 
-  -- Guard 0: Previously created a company (owner_user_id match) → restore membership.
-  -- Handles edge case: company_members deleted but company still exists.
-  SELECT id INTO v_company_id
-  FROM   public.companies
-  WHERE  owner_user_id = v_user_id
-  LIMIT  1;
-
-  IF v_company_id IS NOT NULL THEN
-    INSERT INTO public.company_members (company_id, user_id, role)
-    VALUES (v_company_id, v_user_id, 'owner')
-    ON CONFLICT (company_id, user_id) DO NOTHING;
-    RETURN v_company_id;
-  END IF;
-
   -- Guard 1: Already a member of any company → idempotent return.
+  -- Must run first: covers invited users who have accepted the invite
+  -- (company_members row exists) — must not fall through to Guard 0 which
+  -- could return a stale ghost company owned by this user.
   SELECT company_id INTO v_company_id
   FROM   public.company_members
   WHERE  user_id = v_user_id
@@ -160,8 +149,10 @@ BEGIN
     RETURN v_company_id;
   END IF;
 
-  -- Guard 2: Pending or recently-accepted invite → skip bootstrap.
+  -- Guard 2: Pending or recently-accepted invite → skip bootstrap entirely.
   -- Prevents ghost company creation during PgBouncer race window.
+  -- Must run BEFORE Guard 0 so an invited user with a pre-existing ghost
+  -- company (owner_user_id match) is blocked here, not returned as owner.
   v_email := lower(auth.jwt() ->> 'email');
   IF v_email IS NOT NULL AND length(v_email) > 0 THEN
     IF EXISTS (
@@ -180,7 +171,23 @@ BEGIN
     END IF;
   END IF;
 
-  -- No ownership, no membership, no invite → bootstrap a new company.
+  -- Guard 0: Previously created a company (owner_user_id match) → restore membership.
+  -- Handles edge case: company_members deleted but company still exists.
+  -- Runs AFTER Guard 2 — only reached when no pending/recent invite exists,
+  -- meaning user is a genuine owner re-entering (not an invited worker).
+  SELECT id INTO v_company_id
+  FROM   public.companies
+  WHERE  owner_user_id = v_user_id
+  LIMIT  1;
+
+  IF v_company_id IS NOT NULL THEN
+    INSERT INTO public.company_members (company_id, user_id, role)
+    VALUES (v_company_id, v_user_id, 'owner')
+    ON CONFLICT (company_id, user_id) DO NOTHING;
+    RETURN v_company_id;
+  END IF;
+
+  -- No membership, no invite, no prior ownership → bootstrap a new company.
   SELECT * INTO v_profile FROM public.profiles WHERE id = v_user_id;
 
   INSERT INTO public.companies (owner_user_id, name, nip, plan)
@@ -212,9 +219,9 @@ GRANT EXECUTE ON FUNCTION public.bootstrap_my_company(text, text) TO authenticat
 
 COMMENT ON FUNCTION public.bootstrap_my_company(text, text) IS
   'Migration 163: Bootstrap a new company. '
-  'Guard 0: previously owned a company (companies.owner_user_id) → restore membership. '
-  'Guard 1: already a company_members row → idempotent return. '
-  'Guard 2: pending or recently-accepted invite → return NULL (race guard). '
+  'Guard 1: already a company_members row → idempotent return (invited users handled here). '
+  'Guard 2: pending or recently-accepted invite → return NULL (race guard, BEFORE Guard 0). '
+  'Guard 0: previously owned a company (companies.owner_user_id) → restore membership (only after no invite). '
   'Creates company + owner membership only for genuine new users.';
 
 COMMIT;
