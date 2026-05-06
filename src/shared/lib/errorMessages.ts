@@ -46,6 +46,7 @@ const ERROR_MAP: Record<string, string> = {
   // ── Invitations ───────────────────────────────────────────────────────
   'INVITATION_NOT_FOUND': 'Zaproszenie wygasło lub zostało już użyte.',
   'AUTH_REQUIRED': 'Zaloguj się, aby zaakceptować zaproszenie.',
+  'Invalid or expired invitation': 'Token zaproszenia wygasł lub jest nieprawidłowy.',
 
   // ── PKCE / OAuth ──────────────────────────────────────────────────────
   'Both auth code and code verifier should be non-empty': 'Link weryfikacyjny jest niekompletny. Spróbuj ponownie.',
@@ -73,3 +74,4 @@ export function translateError(error: unknown, fallback = 'Wystąpił błąd. Sp
   // Unknown English error — hide technical details
   return fallback
 }
+

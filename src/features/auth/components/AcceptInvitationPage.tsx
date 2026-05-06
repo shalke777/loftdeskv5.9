@@ -13,7 +13,7 @@ function readTokenFromPath() {
   return parts[1] || ''
 }
 
-type AcceptState = 'idle' | 'accepting' | 'success' | 'error'
+type AcceptState = 'idle' | 'accepting' | 'success' | 'error' | 'expired'
 
 export function AcceptInvitationPage() {
   const token = readTokenFromPath()
@@ -79,6 +79,17 @@ export function AcceptInvitationPage() {
         const reason = (err as any)?.message ?? 'unknown'
         console.warn('[invite] INVITE_ACCEPT_FAIL', { tokenHash: tHash, userId: user.id, reason })
         void settingsApi.logInviteEvent('ACCEPT_FAIL', tHash, reason)
+
+        // Expired/invalid token: DO NOT offer /dashboard redirect.
+        // If we redirect without membership, bootstrap_my_company may fire and
+        // create a ghost company. Show a clear message to request a new invite.
+        const isExpired = reason.toLowerCase().includes('invalid or expired')
+        if (isExpired) {
+          setState('expired')
+          acceptingRef.current = false
+          return
+        }
+
         const msg = translateError(err, 'Nie udało się zaakceptować zaproszenia.')
         setErrorMsg(msg)
         setState('error')
@@ -137,6 +148,22 @@ export function AcceptInvitationPage() {
       <main className="auth-shell">
         <Card className="auth-card">
           <PageHeader title="✅ Dołączyłeś do zespołu" subtitle="Przekierowuję do dashboardu…" />
+        </Card>
+      </main>
+    )
+  }
+
+  // ── Expired / invalid token ──────────────────────────────────────────────
+  // Token wygasł lub jest nieprawidłowy — nie oferuj przejścia do dashboardu,
+  // bo bez membership bootstrap mógłby stworzyć ghost company.
+  if (state === 'expired') {
+    return (
+      <main className="auth-shell">
+        <Card className="auth-card">
+          <PageHeader
+            title="Zaproszenie wygasło"
+            subtitle="Ten link zaproszenia jest nieprawidłowy lub wygasł. Poproś administratora firmy o wysłanie nowego zaproszenia na Twój adres e-mail."
+          />
         </Card>
       </main>
     )

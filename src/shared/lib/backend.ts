@@ -40,6 +40,9 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
 
   // ── Client path ─────────────────────────────────────────────────────────────
   if (sessionCtx?.is_client && sessionCtx.company_id) {
+    if (import.meta.env.DEV) {
+      console.info('[iam] path=client', { userId: authUser.id, companyId: sessionCtx.company_id })
+    }
     return {
       user: {
         id: authUser.id,
@@ -58,7 +61,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   // Prevents bootstrap creating an operator account for a stale client invite.
   if (authUser.user_metadata?.client_account_id && !sessionCtx?.company_id) {
     if (import.meta.env.DEV) {
-      console.warn('[backend] metadata_guard — client_account_id w metadata ale brak rekordu w client_accounts', { userId: authUser.id })
+      console.warn('[iam] path=metadata_guard — client_account_id in metadata but no client_accounts row', { userId: authUser.id })
     }
     return { user: null }
   }
@@ -66,13 +69,20 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   // ── Operator path ────────────────────────────────────────────────────────────
   if (sessionCtx?.company_id) {
     const company = sessionCtx.company
+    const resolvedRole = (sessionCtx.membership_role as DemoRole) ?? 'worker'
+    if (!sessionCtx.membership_role) {
+      // Should never happen — company_members always has a role. Log as anomaly.
+      console.warn('[iam] path=operator role_missing — membership_role null, fallback to worker', { userId: authUser.id, companyId: sessionCtx.company_id })
+    } else if (import.meta.env.DEV) {
+      console.info('[iam] path=operator', { userId: authUser.id, companyId: sessionCtx.company_id, role: resolvedRole })
+    }
     return {
       user: {
         id: authUser.id,
         email: authUser.email ?? '',
         companyId: sessionCtx.company_id,
         companyName: sessionCtx.company_name ?? 'LoftDesk Workspace',
-        role: (sessionCtx.membership_role as DemoRole) ?? 'worker',
+        role: resolvedRole,
         plan: ((company?.plan as SessionUser['plan']) ?? 'free'),
         fullName: authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Użytkownik',
       },
@@ -106,13 +116,17 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
       .maybeSingle()
     if (pendingInvite) {
       if (import.meta.env.DEV) {
-        console.info('[backend] bootstrap skipped — pending company_invitations row (DB)')
+        console.info('[iam] path=bootstrap_skipped — pending invite found (DB), waiting for accept', { userId: authUser.id })
       }
       return { user: null }
     }
   }
+
   // No DB evidence of a pending invite → attempt bootstrap.
   // bootstrap_my_company (mig 162) has its own invite guard for the race window.
+  if (import.meta.env.DEV) {
+    console.info('[iam] path=bootstrap_attempt', { userId: authUser.id, email: authUser.email })
+  }
 
   try {
     const { data: bootstrapCompanyId } = await supabase.rpc('bootstrap_my_company', { company_name: '', company_nip: '' })
@@ -122,17 +136,30 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
       const after = ctxAfter as typeof sessionCtx
       if (after?.company_id) {
         const company = after.company
+        // After bootstrap the role MUST be 'owner' from company_members.
+        // ?? 'worker' is a safe fallback (never promotes — only owner can bootstrap).
+        const bootstrapRole = (after.membership_role as DemoRole) ?? 'worker'
+        if (!after.membership_role) {
+          console.warn('[iam] path=bootstrap_role_missing — membership_role null after bootstrap, fallback to worker', { userId: authUser.id })
+        } else if (import.meta.env.DEV) {
+          console.info('[iam] path=bootstrap_success', { userId: authUser.id, companyId: after.company_id, role: bootstrapRole })
+        }
         return {
           user: {
             id: authUser.id,
             email: authUser.email ?? '',
             companyId: after.company_id,
             companyName: after.company_name ?? 'LoftDesk Workspace',
-            role: (after.membership_role as DemoRole) ?? 'owner',
+            role: bootstrapRole,
             plan: ((company?.plan as SessionUser['plan']) ?? 'free'),
             fullName: authUser.user_metadata?.full_name ?? authUser.email?.split('@')[0] ?? 'Użytkownik',
           },
         }
+      }
+    } else {
+      // bootstrap_my_company returned null — invite race guard fired (mig 162).
+      if (import.meta.env.DEV) {
+        console.info('[iam] path=bootstrap_blocked_by_invite — bootstrap returned null (race guard)', { userId: authUser.id })
       }
     }
   } catch {
@@ -142,6 +169,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   // Fully anonymous / edge case — user is authenticated but has no context.
   // This is an anomaly: SESSION_CONTEXT_NULL is captured to Sentry.
   // NO fallback — fail loud to observability, render as logged-out.
+  console.warn('[iam] path=session_context_null', { userId: authUser.id })
   captureSessionContextNull(authUser.id)
   return { user: null }
 }

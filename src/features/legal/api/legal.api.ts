@@ -133,10 +133,13 @@ export const legalApi = {
     if (isDemoMode || !supabase) {
       return demoAcceptances.length > 0
     }
+    // Also match rows saved with company_id=null — these are created by the
+    // 23503 FK retry path in saveAcceptances when the company FK isn't visible yet.
+    // A null-company acceptance means the user consented; it counts for any company.
     const { data, error } = await supabase
       .from('legal_acceptances')
       .select('id')
-      .eq('company_id', companyId)
+      .or(`company_id.eq.${companyId},company_id.is.null`)
       .limit(1)
       .maybeSingle()
     if (error) {

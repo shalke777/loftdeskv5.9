@@ -30,7 +30,9 @@ export function useCompanyId() {
 
 export function useCurrentRole() {
   const { user } = useAuthContext()
-  return user?.role ?? 'owner'
+  // Never default to 'owner' — that would silently promote unprivileged users.
+  // 'worker' is the safe minimal fallback for the brief period before session loads.
+  return user?.role ?? 'worker'
 }
 
 export function useHasRole(roles: string[]) {

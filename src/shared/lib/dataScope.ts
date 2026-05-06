@@ -42,12 +42,12 @@ export async function getDataScope(_legacyHint?: string): Promise<DataScope> {
   }
 
   // No membership — legacy mode (new user pre-bootstrap, or edge case)
-  console.warn('[DATA SCOPE] No company resolved via session_context — legacy mode for userId:', userId)
+  console.warn('[iam] dataScope legacy mode — no company resolved for userId:', userId)
   return {
     mode: 'legacy',
     userId,
     companyId: userId,
-    role: 'owner',
+    role: null,  // Never default to 'owner' — role must come from company_members
   }
 }
 
