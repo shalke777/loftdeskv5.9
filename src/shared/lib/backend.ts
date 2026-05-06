@@ -90,33 +90,29 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   //   via the SECURITY DEFINER RPC. Page reload after accept → get_session_context()
   //   returns the invited company.
   //
-  //   RACE GUARD: also skip bootstrap for RECENTLY ACCEPTED invites (within 5 min).
-  //   Scenario: accept_company_invitation RPC succeeds (invite → 'accepted',
-  //   company_members inserted), but PgBouncer serves a stale connection where
-  //   company_members is not yet visible → get_session_context() returns null →
-  //   invite guard only checked 'pending' → bootstrap ran → ghost company created →
-  //   ORDER BY created_at DESC returned ghost instead of invited company.
-  //   Fix: treat accepted_at < 5 min as still-pending from bootstrap's perspective.
+  //   RACE GUARD (DB-side): bootstrap_my_company itself (migration 162) checks for
+  //   pending OR recently-accepted invites before creating a company. This is the
+  //   authoritative guard — this frontend check is defense-in-depth for pending only.
   //
   //   localStorage inviteIntent remains as a UX hint only (queues tokens for
   //   finalizeInviteIfNeeded), never as a bootstrap gate.
   if (authUser.email) {
-    const recentCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-    const { data: activeInvite } = await supabase
+    const { data: pendingInvite } = await supabase
       .from('company_invitations')
-      .select('id, status')
+      .select('id')
       .eq('email', authUser.email)
-      .or(`status.eq.pending,and(status.eq.accepted,accepted_at.gt.${recentCutoff})`)
+      .eq('status', 'pending')
       .limit(1)
       .maybeSingle()
-    if (activeInvite) {
+    if (pendingInvite) {
       if (import.meta.env.DEV) {
-        console.info('[backend] bootstrap skipped — active invite (DB)', { status: (activeInvite as any).status })
+        console.info('[backend] bootstrap skipped — pending company_invitations row (DB)')
       }
       return { user: null }
     }
   }
-  // No DB evidence of a pending or recently-accepted invite → safe to bootstrap.
+  // No DB evidence of a pending invite → attempt bootstrap.
+  // bootstrap_my_company (mig 162) has its own invite guard for the race window.
 
   try {
     const { data: bootstrapCompanyId } = await supabase.rpc('bootstrap_my_company', { company_name: '', company_nip: '' })
