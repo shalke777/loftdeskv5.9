@@ -1,18 +1,20 @@
-import { useTheme, ALL_THEMES, type Theme } from '@/shared/hooks/useTheme'
+import type { ReactNode } from 'react'
+import { Moon, Droplets, Leaf, Sunset } from 'lucide-react'
+import { useTheme, type Theme } from '@/shared/hooks/useTheme'
 
 interface ThemeOption {
   id: Theme
   label: string
-  emoji: string
+  icon: ReactNode
   bg: string
   accent: string
 }
 
 const OPTIONS: ThemeOption[] = [
-  { id: 'dark',   label: 'Dark',   emoji: '🌙', bg: '#131610', accent: '#3EA85A' },
-  { id: 'ocean',  label: 'Ocean',  emoji: '🌊', bg: '#0B1220', accent: '#3B82F6' },
-  { id: 'forest', label: 'Forest', emoji: '🌲', bg: '#F0F5F1', accent: '#1A5C32' },
-  { id: 'sunset', label: 'Sunset', emoji: '🌅', bg: '#FFF8F4', accent: '#C0440C' },
+  { id: 'dark',   label: 'Ciemny',  icon: <Moon size={13} />,     bg: '#131610', accent: '#3EA85A' },
+  { id: 'ocean',  label: 'Morski',  icon: <Droplets size={13} />, bg: '#0B1220', accent: '#3B82F6' },
+  { id: 'forest', label: 'Leśny',   icon: <Leaf size={13} />,     bg: '#F0F5F1', accent: '#1A5C32' },
+  { id: 'sunset', label: 'Zmierzch', icon: <Sunset size={13} />,  bg: '#FFF8F4', accent: '#C0440C' },
 ]
 
 export function ThemeSwitcher() {
@@ -43,15 +45,8 @@ export function ThemeSwitcher() {
                 : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-brand-border)] hover:text-[var(--color-text-primary)]',
             ].join(' ')}
           >
-            <span
-              aria-hidden="true"
-              className="h-3 w-3 rounded-full flex-shrink-0 border border-black/10"
-              style={{
-                background: `linear-gradient(135deg, ${opt.bg} 50%, ${opt.accent} 50%)`,
-              }}
-            />
+            <span aria-hidden="true" className="flex-shrink-0">{opt.icon}</span>
             <span className="hidden sm:inline">{opt.label}</span>
-            <span className="sm:hidden">{opt.emoji}</span>
           </button>
         )
       })}

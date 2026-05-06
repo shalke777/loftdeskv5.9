@@ -39,7 +39,7 @@ function trialDaysLeft(trialEndsAt: string | null): number | null {
 function subStatusBadge(status: SubscriptionStatus, daysLeft: number | null) {
   switch (status) {
     case 'active':     return { label: 'Aktywna',    variant: 'success' as const }
-    case 'trialing':   return { label: daysLeft !== null ? `Trial • ${daysLeft}d` : 'Trial', variant: 'warning' as const }
+    case 'trialing':   return { label: daysLeft !== null ? `Okres próbny • ${daysLeft}d` : 'Okres próbny', variant: 'warning' as const }
     case 'past_due':   return { label: 'Zaległość',  variant: 'danger'  as const }
     case 'canceled':   return { label: 'Anulowana',  variant: 'danger'  as const }
     case 'unpaid':     return { label: 'Nieopłacona', variant: 'danger'  as const }
@@ -171,8 +171,8 @@ export function BillingPage() {
           {data.subscriptionStatus === 'trialing' && daysLeft !== null && (
             <p style={{ fontSize: 12, color: daysLeft <= 3 ? 'var(--color-error)' : 'var(--color-accent)', marginBottom: 6 }}>
               {daysLeft === 0
-                ? '⏰ Trial wygasa dziś — aktywuj płatność, aby zachować dostęp.'
-                : `⏰ ${daysLeft} • dni trialu pozostało.${daysLeft <= 5 ? ' Aktywuj plan.' : ''}`}
+                ? '⏰ Okres próbny wygasa dziś — aktywuj płatność, aby zachować dostęp.'
+                : `⏰ ${daysLeft} dni okresu próbnego pozostało.${daysLeft <= 5 ? ' Aktywuj plan.' : ''}`}
             </p>
           )}
           {periodEnd && data.subscriptionStatus === 'active' && (
@@ -238,7 +238,7 @@ export function BillingPage() {
             {data.subscriptionStatus === 'active' && data.currentPlan !== 'free'
               ? 'Plan aktywny — masz dostęp do wszystkich funkcji.'
               : data.subscriptionStatus === 'trialing'
-                ? 'Korzystasz z okresu próbnego. Po wygaśnięciu trialu potrzebujesz aktywnej subskrypcji.'
+                ? 'Korzystasz z okresu próbnego. Po wygaśnięciu okresu próbnego potrzebujesz aktywnej subskrypcji.'
                 : data.subscriptionStatus === 'past_due'
                   ? 'Płatność nie powiodła się. Zaktualizuj dane płatności.'
                   : data.subscriptionStatus === 'canceled'
@@ -249,7 +249,7 @@ export function BillingPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: daysLeft <= 2 ? 'rgba(239,68,68,0.12)' : 'rgba(212,150,10,0.12)', border: `1px solid ${daysLeft <= 2 ? 'rgba(239,68,68,0.30)' : 'rgba(212,150,10,0.30)'}`, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>
               <Clock size={13} color={daysLeft <= 2 ? 'var(--color-error)' : 'var(--color-accent)'} />
               <span style={{ color: daysLeft <= 2 ? 'var(--color-error)' : 'var(--color-accent)', flex: 1 }}>
-                {daysLeft === 0 ? 'Trial wygasa dziś.' : `${daysLeft} dni trialu pozostało.`}
+                {daysLeft === 0 ? 'Okres próbny wygasa dziś.' : `${daysLeft} dni okresu próbnego pozostało.`}
               </span>
             </div>
           )}
@@ -261,7 +261,7 @@ export function BillingPage() {
           )}
           <div className="actions-row" style={{ marginTop: 8 }}>
             <Button variant="secondary" onClick={() => navigate({ to: '/settings' })}>Ustawienia firmy</Button>
-            <Button variant="ghost" onClick={() => navigate({ to: '/team' })}>Zeszół</Button>
+            <Button variant="ghost" onClick={() => navigate({ to: '/team' })}>Zespół</Button>
           </div>
         </Card>
       </div>

@@ -60,7 +60,7 @@ export function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Ustawienia" subtitle="Dane firmy, KSeF, zespół, billing i narzędzia dodatkowe." />
+      <PageHeader title="Ustawienia" subtitle="Dane firmy, KSeF, zespół, plan i narzędzia dodatkowe." />
       <div className="settings-grid grid-2">
         <Card>
           <h3>Konto i firma</h3>
@@ -155,7 +155,7 @@ export function SettingsPage() {
           <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
             <HelperCard icon={<ChartColumn size={18} />} title="Raporty" text="Marża, przychód, koszty projektów i podsumowania firmy." href="/reports" />
             <HelperCard icon={<Camera size={18} />} title="Dokumentacja i odbiory" text="Zdjęcia, decyzje klienta, protokoły odbioru i standardy techniczne." href="/documentation" />
-            <HelperCard icon={<CreditCard size={18} />} title="Billing" text="Plan, dostępne limity i rozliczenia produktu." href="/billing" />
+            <HelperCard icon={<CreditCard size={18} />} title="Plan i płatności" text="Plan, dostępne limity i rozliczenia produktu." href="/billing" />
             <HelperCard icon={<Users size={18} />} title="Zespół" text="Zaproszenia, role i administracja członkami firmy." href="/team" />
             <HelperCard icon={<ShieldCheck size={18} />} title="Panel administracyjny" text="Funkcje techniczne, stan wdrożenia i narzędzia operacyjne." href="/admin" />
           </div>

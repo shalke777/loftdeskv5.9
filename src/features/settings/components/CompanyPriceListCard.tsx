@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Check, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
 import { Card } from '@/shared/ui/Card/Card'
 import { Button } from '@/shared/ui/Button/Button'
 import { Spinner } from '@/shared/ui/Spinner/Spinner'
@@ -40,6 +40,7 @@ export function CompanyPriceListCard() {
   const [addPrice, setAddPrice] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [collapsed, setCollapsed] = useState(true)
 
   // CSV import state — includes custom (non-catalog) entries
   const csvInputRef = useRef<HTMLInputElement>(null)
@@ -304,9 +305,21 @@ export function CompanyPriceListCard() {
         onChange={handleCsvFile}
       />
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
-        <h3 style={{ margin: 0 }}>Cennik usług</h3>
-        {!addMode && (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: collapsed ? 0 : 4, gap: 8 }}>
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0, flex: 1, textAlign: 'left' }}
+        >
+          {collapsed ? <ChevronRight size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} /> : <ChevronDown size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />}
+          <h3 style={{ margin: 0 }}>Cennik usług</h3>
+          {collapsed && totalSaved > 0 && (
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 400 }}>
+              ({totalSaved} {totalSaved === 1 ? 'pozycja' : totalSaved < 5 ? 'pozycje' : 'pozycji'})
+            </span>
+          )}
+        </button>
+        {!collapsed && !addMode && (
           <div style={{ display: 'flex', gap: 6 }}>
             <Button variant="secondary" onClick={() => csvInputRef.current?.click()} title="Importuj ceny z pliku CSV">
               <Upload size={14} style={{ marginRight: 5 }} />
@@ -319,6 +332,9 @@ export function CompanyPriceListCard() {
           </div>
         )}
       </div>
+
+      {!collapsed && (
+      <>
       <p style={{ margin: '0 0 16px', fontSize: '0.83rem', color: 'var(--color-text-secondary)' }}>
         Domyślne ceny usług — automatycznie wstawiane do nowych wycen.
         {totalSaved > 0 && (
@@ -705,6 +721,8 @@ export function CompanyPriceListCard() {
       <p style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--color-border)', margin: '14px 0 0' }}>
         Ceny aktualizują się automatycznie gdy dodajesz pozycje do wycen.
       </p>
+      </>
+      )}
     </Card>
   )
 }
