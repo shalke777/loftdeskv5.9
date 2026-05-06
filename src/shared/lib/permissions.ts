@@ -115,12 +115,12 @@ function hasRole(role: AppRole | null | undefined, allowed: AppRole[]) {
 // ── Feature access (plan-gated sections) ─────────────────────────────────────
 export function canAccessFeature(user: SessionUser | null | undefined, feature: AppFeature) {
   if (!user) return false
-  if (user.isOwnerOverride) return feature !== 'admin'
+  if (user.isOwnerOverride) return true
   switch (feature) {
     case 'billing':
       return hasRole(user.role, ['owner', 'admin', 'accountant'])
     case 'admin':
-      return user.role === 'admin'
+      return hasRole(user.role, ['owner', 'admin'])
     case 'ksef':
       return (isDemoMode || hasPlan(user.plan, 'pro')) && hasRole(user.role, ['owner', 'admin', 'accountant'])
     case 'team':
