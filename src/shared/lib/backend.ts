@@ -90,24 +90,33 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   //   via the SECURITY DEFINER RPC. Page reload after accept → get_session_context()
   //   returns the invited company.
   //
+  //   RACE GUARD: also skip bootstrap for RECENTLY ACCEPTED invites (within 5 min).
+  //   Scenario: accept_company_invitation RPC succeeds (invite → 'accepted',
+  //   company_members inserted), but PgBouncer serves a stale connection where
+  //   company_members is not yet visible → get_session_context() returns null →
+  //   invite guard only checked 'pending' → bootstrap ran → ghost company created →
+  //   ORDER BY created_at DESC returned ghost instead of invited company.
+  //   Fix: treat accepted_at < 5 min as still-pending from bootstrap's perspective.
+  //
   //   localStorage inviteIntent remains as a UX hint only (queues tokens for
   //   finalizeInviteIfNeeded), never as a bootstrap gate.
   if (authUser.email) {
-    const { data: pendingInvite } = await supabase
+    const recentCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    const { data: activeInvite } = await supabase
       .from('company_invitations')
-      .select('id')
+      .select('id, status')
       .eq('email', authUser.email)
-      .eq('status', 'pending')
+      .or(`status.eq.pending,and(status.eq.accepted,accepted_at.gt.${recentCutoff})`)
       .limit(1)
       .maybeSingle()
-    if (pendingInvite) {
+    if (activeInvite) {
       if (import.meta.env.DEV) {
-        console.info('[backend] bootstrap skipped — pending company_invitations row (DB)')
+        console.info('[backend] bootstrap skipped — active invite (DB)', { status: (activeInvite as any).status })
       }
       return { user: null }
     }
   }
-  // No DB evidence of a pending invite → safe to bootstrap a new company.
+  // No DB evidence of a pending or recently-accepted invite → safe to bootstrap.
 
   try {
     const { data: bootstrapCompanyId } = await supabase.rpc('bootstrap_my_company', { company_name: '', company_nip: '' })
