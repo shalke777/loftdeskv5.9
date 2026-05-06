@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useRef } from 'react'
-import { Camera, ChartColumn, CreditCard, ShieldCheck, Users } from 'lucide-react'
+import { Camera, ChartColumn, CreditCard, Users } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { Card } from '@/shared/ui/Card/Card'
 import { PageHeader } from '@/shared/ui/PageHeader/PageHeader'
@@ -157,7 +157,8 @@ export function SettingsPage() {
             <HelperCard icon={<Camera size={18} />} title="Dokumentacja i odbiory" text="Zdjęcia, decyzje klienta, protokoły odbioru i standardy techniczne." href="/documentation" />
             <HelperCard icon={<CreditCard size={18} />} title="Plan i płatności" text="Plan, dostępne limity i rozliczenia produktu." href="/billing" />
             <HelperCard icon={<Users size={18} />} title="Zespół" text="Zaproszenia, role i administracja członkami firmy." href="/team" />
-            <HelperCard icon={<ShieldCheck size={18} />} title="Panel administracyjny" text="Funkcje techniczne, stan wdrożenia i narzędzia operacyjne." href="/admin" />
+
+
           </div>
         </Card>
 

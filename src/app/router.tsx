@@ -76,7 +76,6 @@ const documentationRoute = createRoute({ getParentRoute: () => authLayoutRoute, 
 const portalInboxRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'portal-inbox', component: lazyRouteComponent(() => import('@/app/routes/portal-inbox'), 'PortalInboxRoutePage') })
 const notesRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'notes', component: lazyRouteComponent(() => import('@/app/routes/notes'), 'NotesRoutePage') })
 const pdfDesignRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'pdf-design', component: lazyRouteComponent(() => import('@/app/routes/pdf-design'), 'PdfDesignRoute') })
-const adminRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'admin', component: lazyRouteComponent(() => import('@/app/routes/admin'), 'AdminRoutePage') })
 
 const clientDashboardRoute = createRoute({ getParentRoute: () => authLayoutRoute, path: 'client/dashboard', component: lazyRouteComponent(() => import('@/app/routes/client/dashboard'), 'ClientDashboardRoutePage') })
 const clientProjectRoute   = createRoute({ getParentRoute: () => authLayoutRoute, path: 'client/project/$id', component: lazyRouteComponent(() => import('@/app/routes/client/project.$id'), 'ClientProjectRoutePage') })
@@ -108,7 +107,6 @@ const routeTree = rootRoute.addChildren([
     aiRoute,
     notesRoute,
     pdfDesignRoute,
-    adminRoute,
     clientDashboardRoute,
     clientProjectRoute,
     clientProfileRoute,
