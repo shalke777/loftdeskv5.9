@@ -74,7 +74,14 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
       // Should never happen — company_members always has a role. Log as anomaly.
       console.warn('[iam] path=operator role_missing — membership_role null, fallback to worker', { userId: authUser.id, companyId: sessionCtx.company_id })
     } else if (import.meta.env.DEV) {
-      console.info('[iam] path=operator', { userId: authUser.id, companyId: sessionCtx.company_id, role: resolvedRole })
+      console.info('[iam] path=operator', {
+        userId: authUser.id,
+        companyId: sessionCtx.company_id,
+        companyName: sessionCtx.company_name,
+        role: resolvedRole,
+        membershipSince: sessionCtx.membership_since,
+        // mig 165: invite-priority ORDER BY applied in get_session_context — this is the winning company
+      })
     }
     return {
       user: {
