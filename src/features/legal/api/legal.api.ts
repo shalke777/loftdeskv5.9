@@ -66,8 +66,10 @@ export const legalApi = {
 
     const rows = inputs.map((inp) => ({
       user_id: inp.userId,
-      // Null-out company_id when it equals user_id — that's the
+      // Null-out company_id when it equals user_id — that's the legacy
       // resolveSupabaseSession fallback value and won't exist in companies.
+      // With the new get_session_context() architecture this guard rarely fires,
+      // but we keep it for safety.
       company_id: (inp.companyId && inp.companyId !== inp.userId) ? inp.companyId : null,
       document_key: inp.documentKey,
       document_version: inp.documentVersion,
@@ -85,8 +87,29 @@ export const legalApi = {
 
     if (error) {
       if (import.meta.env.DEV) {
-        console.error('[legal] saveAcceptances error', error.code, error.message, error.details)
+        console.error('[legal] saveAcceptances error', error.code, error.message, error.details, 'rows:', rows.map(r => ({ user_id: r.user_id, company_id: r.company_id, doc: r.document_key })))
       }
+
+      // FK violation on company_id (23503): company not yet committed or was
+      // removed.  Retry without company_id — the acceptance is personal to the
+      // user and remains auditable via user_id alone.
+      if (error.code === '23503') {
+        const rowsWithoutCompany = rows.map((r) => ({ ...r, company_id: null }))
+        const { error: retryError } = await supabase
+          .from('legal_acceptances')
+          .upsert(rowsWithoutCompany, { onConflict: 'user_id,document_key,document_version' })
+        if (retryError) {
+          if (import.meta.env.DEV) {
+            console.error('[legal] saveAcceptances retry error', retryError.code, retryError.message)
+          }
+          throw new Error(`Nie udało się zapisać akceptacji (${retryError.code ?? 'UNKNOWN'}). Spróbuj ponownie.`)
+        }
+        if (import.meta.env.DEV) {
+          console.log('[legal] saveAcceptances retry OK (company_id=null)', rowsWithoutCompany.map((r) => `${r.document_key}@${r.document_version}`))
+        }
+        return true
+      }
+
       throw new Error(`Nie udało się zapisać akceptacji (${error.code ?? 'UNKNOWN'}). Spróbuj ponownie.`)
     }
 
