@@ -8,13 +8,14 @@ import { hasStripeConfig } from '@/shared/lib/stripe'
 export function useBillingSummary() {
   const companyId = useCompanyId()
   return useQuery({
-    // companyId in the key so invalidation by companyId still works in useChangePlan/useProjects.
-    // billingApi.summary() ignores the param and resolves company via getDataScope() (DB source of truth).
     queryKey: ['billing', 'summary', companyId],
-    queryFn: () => billingApi.summary(companyId),
-    // staleTime: 0 — billing controls feature access; always fetch fresh data.
-    // This ensures a DB plan change or plan_source update is visible immediately
-    // without requiring a hard refresh.
+    queryFn: async () => {
+      const result = await billingApi.summary(companyId)
+      // SESSION_CONTEXT_MISSING → soft failure: return null, no TanStack error state.
+      // Components and usePlanLimits already handle data: null gracefully.
+      if (!result.ok) return null
+      return result.data
+    },
     staleTime: 0,
   })
 }

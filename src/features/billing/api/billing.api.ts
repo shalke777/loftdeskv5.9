@@ -3,6 +3,7 @@ import { demoDb } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { getDataScope } from '@/shared/lib/dataScope'
 import { getAppOrigin } from '@/shared/lib/native'
+import { sessionOk, sessionMissing, type SessionResult } from '@/shared/lib/sessionResult'
 
 export type BillingPlan = keyof typeof PLAN_DEFS
 
@@ -45,10 +46,10 @@ function planLimits(plan: BillingPlan) {
 }
 
 export const billingApi = {
-  async summary(companyId: string): Promise<BillingSummary> {
+  async summary(companyId: string): Promise<SessionResult<BillingSummary>> {
     if (isDemoMode || !supabase) {
       const dashboard = demoDb.dashboard(companyId)
-      return {
+      return sessionOk({
         companyName: dashboard.companyName,
         companyId,
         currentPlan: dashboard.plan,
@@ -64,7 +65,7 @@ export const billingApi = {
           contracts: dashboard.contractsCount,
         },
         limits: planLimits(dashboard.plan),
-      }
+      })
     }
 
     // DB is the only source of truth: getDataScope() resolves active company
@@ -94,9 +95,8 @@ export const billingApi = {
       if (ctxErr) throw ctxErr
       const company = (ctxData as Record<string, unknown> | null)?.company as Record<string, unknown> | null
 
-      // FAIL LOUD: company null for a multi-tenant user is a session anomaly.
-      // UI shell handles this gracefully; billing/KSeF must not operate blind.
-      if (!company) throw new Error('SESSION_CONTEXT_MISSING')
+      // Session anomaly: company null for a multi-tenant user — signal without throwing.
+      if (!company) return sessionMissing()
 
       const currentPlan = ((company?.plan as BillingPlan | null) ?? 'free')
       const planSource  = (company?.plan_source as string | null) ?? 'unknown'
@@ -105,7 +105,7 @@ export const billingApi = {
       console.log('[PLAN SOURCE]', `companies.plan for ${activeCompanyId} = ${currentPlan} (plan_source=${planSource})`)
       console.log('[PROJECT LIMIT]', limits.projects)
 
-      return {
+      return sessionOk({
         companyName: (company?.name as string | undefined) ?? 'LoftDesk Workspace',
         companyId: activeCompanyId,
         currentPlan,
@@ -115,7 +115,7 @@ export const billingApi = {
         subscriptionPeriodEnd: (company?.subscription_current_period_end as string | null) ?? null,
         usage: { clients: clients ?? 0, projects: projects ?? 0, estimates: estimates ?? 0, invoices: invoices ?? 0, contracts: contracts ?? 0 },
         limits,
-      }
+      })
     }
 
     const { data: profile } = await supabase.from('profiles').select('company, plan').eq('id', scope.userId).maybeSingle()
@@ -125,7 +125,7 @@ export const billingApi = {
     console.log('[PLAN SOURCE]', `profiles.plan for user ${scope.userId} = ${currentPlan}`)
     console.log('[PROJECT LIMIT]', limits.projects)
 
-    return {
+    return sessionOk({
       companyName: profile?.company ?? 'LoftDesk Workspace',
       companyId: activeCompanyId,
       currentPlan,
@@ -135,7 +135,7 @@ export const billingApi = {
       subscriptionPeriodEnd: null,
       usage: { clients: clients ?? 0, projects: projects ?? 0, estimates: estimates ?? 0, invoices: invoices ?? 0, contracts: contracts ?? 0 },
       limits,
-    }
+    })
   },
 
   async changePlan(companyId: string, plan: BillingPlan) {

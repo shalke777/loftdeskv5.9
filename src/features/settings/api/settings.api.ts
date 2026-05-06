@@ -2,26 +2,26 @@ import type { DemoRole } from '@/shared/lib/demoDb'
 import { demoDb } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { getDataScope } from '@/shared/lib/dataScope'
+import { sessionOk, sessionMissing, type SessionResult } from '@/shared/lib/sessionResult'
 
 // Rolling-window timestamp buffer for INVITE_ACCEPT_FAIL rate alerting.
 let _inviteFailTimestamps: number[] = []
 
 export const settingsApi = {
-  async profile(companyId: string) {
-    if (isDemoMode || !supabase) return Promise.resolve(demoDb.companyProfile(companyId))
+  async profile(companyId: string): Promise<SessionResult<unknown>> {
+    if (isDemoMode || !supabase) return sessionOk(demoDb.companyProfile(companyId))
     const scope = await getDataScope(companyId)
     if (scope.mode === 'multi-tenant') {
       // Sprint B/C: get_session_context() single authority (migration 155).
       const { data, error } = await supabase.rpc('get_session_context').maybeSingle()
       if (error) throw error
       const company = (data as Record<string, unknown> | null)?.company ?? null
-      // FAIL LOUD: profile is used to populate company settings — null is an anomaly.
-      if (!company) throw new Error('SESSION_CONTEXT_MISSING')
-      return company
+      if (!company) return sessionMissing()
+      return sessionOk(company)
     }
     const { data, error } = await supabase.from('profiles').select('*').eq('id', scope.userId).maybeSingle()
     if (error) throw error
-    return data
+    return sessionOk(data)
   },
   async updateProfile(companyId: string, input: { company_name: string; nip?: string; address?: string; postal_code?: string; city?: string; iban?: string; phone?: string; email?: string; ksef_env: 'test' | 'demo' | 'prod'; ksef_nip: string; ksef_token: string; logo_url?: string | null }) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.companyProfileUpdate(companyId, input))
@@ -91,12 +91,11 @@ export const settingsApi = {
     if (error) throw error
     return data ?? []
   },
-  async inviteMember(input: { companyId: string; email: string; role: DemoRole }) {
-    if (isDemoMode || !supabase) return Promise.resolve(demoDb.invitations.invite(input.companyId, null, input.email, input.role))
+  async inviteMember(input: { companyId: string; email: string; role: DemoRole }): Promise<SessionResult<unknown>> {
+    if (isDemoMode || !supabase) return sessionOk(demoDb.invitations.invite(input.companyId, null, input.email, input.role))
     const scope = await getDataScope(input.companyId)
     if (scope.mode !== 'multi-tenant') {
-      // FAIL LOUD: invite requires a company session context — no fallback.
-      throw new Error('SESSION_CONTEXT_MISSING')
+      return sessionMissing()
     }
     // Cryptographically secure token — 20 bytes = 160-bit entropy (replaces Math.random())
     const arr = new Uint8Array(20)
@@ -133,7 +132,7 @@ export const settingsApi = {
       }),
     }).catch((err) => console.warn('[inviteMember] email dispatch failed (non-fatal):', err))
 
-    return data
+    return sessionOk(data)
   },
   async revokeInvitation(companyId: string, invitationId: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.invitations.revoke(invitationId))

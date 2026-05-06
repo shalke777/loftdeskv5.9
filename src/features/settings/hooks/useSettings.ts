@@ -15,7 +15,15 @@ const settingsKeys = {
 
 export function useSettings() {
   const companyId = useCompanyId()
-  const profile = useQuery({ queryKey: settingsKeys.profile(companyId), queryFn: () => settingsApi.profile(companyId) })
+  const profile = useQuery({
+    queryKey: settingsKeys.profile(companyId),
+    queryFn: async () => {
+      const result = await settingsApi.profile(companyId)
+      // SESSION_CONTEXT_MISSING → soft failure: null data, no error state in UI.
+      if (!result.ok) return null
+      return result.data
+    },
+  })
   const team = useQuery({ queryKey: settingsKeys.team(companyId), queryFn: () => settingsApi.team(companyId) })
   const invitations = useQuery({ queryKey: settingsKeys.invitations(companyId), queryFn: () => settingsApi.invitations(companyId) })
   return { profile: profile.data, team: team.data ?? [], invitations: invitations.data ?? [], loading: profile.isLoading || team.isLoading || invitations.isLoading }
@@ -26,7 +34,12 @@ export function useInviteMember() {
   const qc = useQueryClient()
   const toast = useToast()
   return useMutation({
-    mutationFn: ({ email, role }: { email: string; role: 'owner' | 'admin' | 'manager' | 'worker' | 'accountant' }) => settingsApi.inviteMember({ companyId, email, role }),
+    mutationFn: async ({ email, role }: { email: string; role: 'owner' | 'admin' | 'manager' | 'worker' | 'accountant' }) => {
+      const result = await settingsApi.inviteMember({ companyId, email, role })
+      // SESSION_CONTEXT_MISSING in a user-triggered action → surface via onError toast.
+      if (!result.ok) throw new Error(result.error)
+      return result.data
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: settingsKeys.team(companyId) })
       qc.invalidateQueries({ queryKey: settingsKeys.invitations(companyId) })
