@@ -102,8 +102,13 @@ export const settingsApi = {
       randomFillSync(arr)
     }
     const token = `invite-${Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('')}`
+    console.log('[inviteMember] inserting invitation', { companyId: scope.companyId, email: input.email.toLowerCase(), role: input.role })
     const { data, error } = await supabase.from('company_invitations').insert({ company_id: scope.companyId, email: input.email.toLowerCase(), role: input.role, token }).select('*, companies(name)').single()
-    if (error) throw error
+    if (error) {
+      console.error('[inviteMember] insert failed', error)
+      throw error
+    }
+    console.log('[inviteMember] invitation created', { id: (data as { id?: string })?.id, companyId: scope.companyId })
 
     // Dispatch invitation email (non-fatal — never blocks the invite flow).
     const companyName = (data as Record<string, unknown> & { companies?: { name?: string } })?.companies?.name ?? ''
@@ -206,6 +211,7 @@ export const settingsApi = {
       .from('company_members')
       .select('company_id')
       .eq('user_id', auth.user.id)
+      .order('created_at', { ascending: false })
     if (error) throw error
     const companyIds = (data ?? []).map((r: { company_id: string }) => r.company_id)
     return { isMember: companyIds.length > 0, companyIds }

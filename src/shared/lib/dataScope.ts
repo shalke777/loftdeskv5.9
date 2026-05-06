@@ -10,11 +10,15 @@ export type DataScope = {
 
 let bootstrapAttempted = false
 
-export async function getDataScope(companyIdHint?: string): Promise<DataScope> {
+export async function getDataScope(_legacyHint?: string): Promise<DataScope> {
+  // _legacyHint param kept for backward compatibility with existing callers
+  // (settings.api.ts and others). It is INTENTIONALLY IGNORED — DB is the
+  // only source of truth: newest company_members row wins.
+  void _legacyHint
   const userId = await requireSupabaseUserId()
   if (!supabase) throw new Error('Supabase nie jest skonfigurowany')
 
-  // Query ALL memberships (migration 149: members_select_own_rows allows this).
+  // Query ALL memberships (migration 152: members_select_own_rows).
   // Newest first — after an invitation acceptance the invited company is newest.
   const memberResult = await supabase
     .from('company_members')
@@ -24,13 +28,8 @@ export async function getDataScope(companyIdHint?: string): Promise<DataScope> {
 
   const memberRows = memberResult.data ?? []
 
-  // Pick the most appropriate row:
-  //   1. Matches companyIdHint (from React session, already resolved to invited company)
-  //   2. Newest row
-  let memberRow: { company_id: string; role: string } | null =
-    (companyIdHint ? memberRows.find((r) => r.company_id === companyIdHint) : undefined) ??
-    memberRows[0] ??
-    null
+  // Newest membership always wins — deterministic, no hints, no fallbacks.
+  let memberRow: { company_id: string; role: string } | null = memberRows[0] ?? null
 
   if (!memberRow?.company_id && !bootstrapAttempted) {
     bootstrapAttempted = true
@@ -40,6 +39,7 @@ export async function getDataScope(companyIdHint?: string): Promise<DataScope> {
         .from('company_members')
         .select('company_id, role')
         .eq('user_id', userId)
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()
       memberRow = res.data ?? null
@@ -60,7 +60,7 @@ export async function getDataScope(companyIdHint?: string): Promise<DataScope> {
   return {
     mode: 'legacy',
     userId,
-    companyId: companyIdHint ?? userId,
+    companyId: userId,
     role: 'owner',
   }
 }

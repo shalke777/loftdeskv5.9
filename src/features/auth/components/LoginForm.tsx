@@ -54,10 +54,8 @@ export function LoginForm() {
     // Remove only succeeded tokens; keep failed ones for next-login retry.
     removeInviteTokens(succeeded)
 
-    // Store switch hint so resolveSupabaseSession picks the invited company on page reload.
-    if (lastAcceptedCompanyId && typeof window !== 'undefined') {
-      localStorage.setItem('loftdesk-company-switch-hint', lastAcceptedCompanyId)
-    }
+    // DB is source of truth — newest membership wins via ORDER BY created_at DESC
+    // in resolveSupabaseSession. No localStorage hints required.
 
     // Final membership verification — check for the invited company specifically.
     const { companyIds } = await settingsApi.verifyMembership()

@@ -44,13 +44,14 @@ export function AcceptInvitationPage() {
         const raw = await withInviteTimeout(settingsApi.acceptInvitation(token))
         acceptedCompanyId = (typeof raw === 'string' ? raw : null)
         if (cancelled) return
-        // Store switch hint BEFORE refreshSession so resolveSupabaseSession
-        // picks the invited company instead of the ghost bootstrap company.
-        if (acceptedCompanyId && typeof window !== 'undefined') {
-          localStorage.setItem('loftdesk-company-switch-hint', acceptedCompanyId)
-        }
+        console.log('[invite] accepted company:', acceptedCompanyId)
         // refreshSession propagates new company_id into React auth context.
+        // DB is source of truth — newest membership wins via ORDER BY created_at DESC.
         await refreshSession()
+        if (cancelled) return
+        // Defensive 100ms wait before membership verification — JWT/RLS
+        // propagation race after refreshSession on some Supabase regions.
+        await new Promise((r) => setTimeout(r, 100))
         if (cancelled) return
         // Direct DB check — verify membership in the INVITED company specifically.
         const { companyIds } = await settingsApi.verifyMembership()
@@ -69,7 +70,7 @@ export function AcceptInvitationPage() {
         void settingsApi.logInviteEvent('ACCEPT_SUCCESS', tHash)
         console.log('[invite] INVITE_ACCEPT_SUCCESS', { tokenHash: tHash, userId: user.id })
         setState('success')
-        setTimeout(() => window.location.assign('/dashboard'), 800)
+        setTimeout(() => window.location.assign('/dashboard'), 100)
       } catch (err) {
         if (cancelled) return
         const reason = (err as any)?.message ?? 'unknown'

@@ -35,34 +35,13 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   const authUser = authData.user
   if (!authUser) return { user: null }
 
-  // Read + clear the company switch hint set after invitation acceptance.
-  // This ensures the session resolves to the invited company, not the ghost
-  // bootstrap company that was created on first registration.
-  const switchHint =
-    typeof window !== 'undefined'
-      ? (localStorage.getItem('loftdesk-company-switch-hint') ?? null)
-      : null
-  if (switchHint && typeof window !== 'undefined') {
-    localStorage.removeItem('loftdesk-company-switch-hint')
-  }
-
   // ── Sprawdź company_members i client_accounts RÓWNOLEGLE ─────────────────
-  // WAŻNE: operator (company_members) MA ZAWSZE PIERWSZEŃSTWO nad client_accounts.
+  // OPERATOR-ALWAYS-WINS rule: any row in company_members → role is operator.
+  // DB is the only source of truth — no localStorage hints, no client fallback.
   //
-  // CRITICAL: The company_members query does NOT join companies() here.
-  // Reason: the companies_select RLS policy is `USING (id = my_company_id())`
-  // which only covers the ghost/oldest company until migration 150+151 are applied.
-  // The PostgREST embedded join would return HTTP 403 for the invited company row,
-  // making the ENTIRE query fail → memberRows=[] → falls through to client path.
-  //
-  // To be resilient, we:
-  //   1. Fetch company_members WITHOUT the companies join (never 403s)
-  //   2. Pick the active row based on hint / newest
-  //   3. Fetch company details for ONLY that row in a second query
-  //
-  // Query returns ALL memberships (migration 149: members_select_own_rows).
-  // Newest first — so that an accepted invitation (most recent) is preferred
-  // over the ghost bootstrap company (oldest) when no hint is present.
+  // Membership query is decoupled from companies() embedded join — RLS misses
+  // on a single company would otherwise 403 the entire query (PostgREST quirk).
+  // Newest membership wins via ORDER BY created_at DESC.
   const [memberResult, clientByRpc] = await Promise.all([
     supabase
       .from('company_members')
@@ -81,13 +60,12 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
   const memberRows = memberResult.data ?? []
   const isOperator = memberRows.length > 0
 
-  // Pick the most appropriate membership row:
-  //   1. Matches switchHint (explicitly set after invitation acceptance)
-  //   2. Newest row (first after ORDER BY created_at DESC)
-  const pickedMemberBase =
-    (switchHint ? memberRows.find((r) => r.company_id === switchHint) : undefined) ??
-    memberRows[0] ??
-    null
+  // Newest membership wins. DB is source of truth — no hints, no fallbacks.
+  const pickedMemberBase = memberRows[0] ?? null
+
+  if (pickedMemberBase) {
+    console.log('[auth] active membership:', pickedMemberBase.company_id)
+  }
 
   // Fetch company details (name, plan) only for the picked company.
   // Done as a SEPARATE query so a companies RLS miss never blocks role resolution.
@@ -160,6 +138,7 @@ export async function resolveSupabaseSession(): Promise<ResolvedSession> {
           .from('company_members')
           .select('company_id, role')
           .eq('user_id', authUser.id)
+          .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle()
         if (res.data) {
