@@ -25,8 +25,9 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false)
 
   const finalizeInviteIfNeeded = async (): Promise<string> => {
-    // Process both pending and previously-failed tokens (retry-on-login).
-    const records = getInviteRecords().filter(r => r.status === 'pending' || r.status === 'failed')
+    // Only retry tokens still in 'pending'. Failed tokens stay marked and
+    // are not re-attempted on every login — avoids dead-token loop & log spam.
+    const records = getInviteRecords().filter(r => r.status === 'pending')
     if (records.length === 0) return '/dashboard'
 
     let lastAcceptedCompanyId: string | null = null

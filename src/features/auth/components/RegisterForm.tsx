@@ -40,7 +40,8 @@ export function RegisterForm() {
     setConsents((prev) => ({ ...prev, [key]: val }))
 
   const finalizeInviteIfNeeded = async (): Promise<string> => {
-    const records = getInviteRecords().filter(r => r.status === 'pending' || r.status === 'failed')
+    // Only process pending tokens. Failed tokens are not retried (no dead-token loop).
+    const records = getInviteRecords().filter(r => r.status === 'pending')
     if (records.length === 0) return '/onboarding'
 
     const succeeded = new Set<string>()
