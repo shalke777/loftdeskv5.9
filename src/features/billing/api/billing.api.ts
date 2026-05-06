@@ -89,19 +89,9 @@ export const billingApi = {
     console.log('[PROJECT COUNT]', projects ?? 0)
 
     if (scope.mode === 'multi-tenant') {
-      // Sprint B: get_session_context() is the single authority.
-      // Sprint B.1 fallback: if mig 155 not on DB, use get_my_company_billing().
-      const { data: ctxData, error: ctxErr } = await supabase.rpc('get_session_context').maybeSingle()
-      const useLegacy = ctxErr && (ctxErr.code === 'PGRST202' || ctxErr.code === '42883')
-
-      let company: Record<string, unknown> | null = null
-      if (useLegacy) {
-        console.warn('[billing] get_session_context not found — fallback to get_my_company_billing (apply mig 155)')
-        const { data: legacyRow } = await supabase.rpc('get_my_company_billing').maybeSingle()
-        company = legacyRow as Record<string, unknown> | null
-      } else {
-        company = (ctxData as Record<string, unknown> | null)?.company as Record<string, unknown> | null
-      }
+      // Sprint B/C: get_session_context() is the single authority (migration 155).
+      const { data: ctxData } = await supabase.rpc('get_session_context').maybeSingle()
+      const company = (ctxData as Record<string, unknown> | null)?.company as Record<string, unknown> | null
 
       const currentPlan = ((company?.plan as BillingPlan | null) ?? 'free')
       const planSource  = (company?.plan_source as string | null) ?? 'unknown'

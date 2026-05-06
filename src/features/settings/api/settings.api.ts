@@ -11,16 +11,8 @@ export const settingsApi = {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.companyProfile(companyId))
     const scope = await getDataScope(companyId)
     if (scope.mode === 'multi-tenant') {
-      // Sprint B: get_session_context() single authority.
-      // Sprint B.1 fallback: if mig 155 not on DB, use get_my_company_billing().
+      // Sprint B/C: get_session_context() single authority (migration 155).
       const { data, error } = await supabase.rpc('get_session_context').maybeSingle()
-      const useLegacy = error && (error.code === 'PGRST202' || error.code === '42883')
-      if (useLegacy) {
-        console.warn('[settings] get_session_context not found — fallback to get_my_company_billing (apply mig 155)')
-        const { data: legacy, error: legacyErr } = await supabase.rpc('get_my_company_billing').maybeSingle()
-        if (legacyErr) throw legacyErr
-        return legacy
-      }
       if (error) throw error
       return (data as Record<string, unknown> | null)?.company ?? null
     }
@@ -268,16 +260,8 @@ export const settingsApi = {
     if (isDemoMode || !supabase) return null
     const scope = await getDataScope(companyId)
     if (scope.mode !== 'multi-tenant') return null
-    // Sprint B: get_session_context() single authority.
-    // Sprint B.1 fallback: if mig 155 not on DB, use get_my_company_billing().
+    // Sprint B/C: get_session_context() single authority (migration 155).
     const { data, error } = await supabase.rpc('get_session_context').maybeSingle()
-    const useLegacy = error && (error.code === 'PGRST202' || error.code === '42883')
-    if (useLegacy) {
-      console.warn('[settings] get_session_context not found — fallback to get_my_company_billing (apply mig 155)')
-      const { data: legacy, error: legacyErr } = await supabase.rpc('get_my_company_billing').maybeSingle()
-      if (legacyErr) throw legacyErr
-      return ((legacy as Record<string, unknown> | null)?.doc_number_config as DocNumberConfig) ?? null
-    }
     if (error) throw error
     const company = (data as Record<string, unknown> | null)?.company as Record<string, unknown> | null
     return (company?.doc_number_config as DocNumberConfig) ?? null
