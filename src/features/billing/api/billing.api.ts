@@ -67,9 +67,16 @@ export const billingApi = {
       }
     }
 
-    const scope = await getDataScope(companyId)
+    // DB is the only source of truth: getDataScope() resolves active company
+    // from company_members ORDER BY created_at DESC. The companyId param is
+    // used only as a React Query cache key — NOT for data resolution.
+    const scope = await getDataScope()
+    const activeCompanyId = scope.companyId
+
+    console.log('[ACTIVE COMPANY]', activeCompanyId)
+
     const filterColumn = scope.mode === 'multi-tenant' ? 'company_id' : 'user_id'
-    const filterValue = scope.mode === 'multi-tenant' ? scope.companyId : scope.userId
+    const filterValue = scope.mode === 'multi-tenant' ? activeCompanyId : scope.userId
 
     const [{ count: clients }, { count: projects }, { count: estimates }, { count: invoices }, { count: contracts }] = await Promise.all([
       supabase.from('clients').select('*', { count: 'exact', head: true }).eq(filterColumn, filterValue),
@@ -79,48 +86,60 @@ export const billingApi = {
       supabase.from('contracts').select('*', { count: 'exact', head: true }).eq(filterColumn, filterValue),
     ])
 
+    console.log('[PROJECT COUNT]', projects ?? 0)
+
     if (scope.mode === 'multi-tenant') {
       // Use select('*') so the query never 400s on missing columns
       // (migrations 027/036 may not be applied yet in production).
       const { data: fullCompany } = await supabase
         .from('companies')
         .select('*')
-        .eq('id', scope.companyId)
+        .eq('id', activeCompanyId)
         .maybeSingle()
       const company = fullCompany as Record<string, unknown> | null
       const currentPlan = ((company?.plan as BillingPlan | null) ?? 'free')
+      const limits = planLimits(currentPlan)
+
+      console.log('[PLAN SOURCE]', `companies.plan for ${activeCompanyId} = ${currentPlan}`)
+      console.log('[PROJECT LIMIT]', limits.projects)
+
       return {
         companyName: (company?.name as string | undefined) ?? 'LoftDesk Workspace',
-        companyId: scope.companyId,
+        companyId: activeCompanyId,
         currentPlan,
         ksefReady: Boolean(company?.ksef_token),
         subscriptionStatus: ((company?.subscription_status as SubscriptionStatus | null) ?? 'none'),
         trialEndsAt: (company?.trial_ends_at as string | null) ?? null,
         subscriptionPeriodEnd: (company?.subscription_current_period_end as string | null) ?? null,
         usage: { clients: clients ?? 0, projects: projects ?? 0, estimates: estimates ?? 0, invoices: invoices ?? 0, contracts: contracts ?? 0 },
-        limits: planLimits(currentPlan),
+        limits,
       }
     }
 
     const { data: profile } = await supabase.from('profiles').select('company, plan').eq('id', scope.userId).maybeSingle()
     const currentPlan = ((profile?.plan as BillingPlan | null) ?? 'free')
+    const limits = planLimits(currentPlan)
+
+    console.log('[PLAN SOURCE]', `profiles.plan for user ${scope.userId} = ${currentPlan}`)
+    console.log('[PROJECT LIMIT]', limits.projects)
+
     return {
       companyName: profile?.company ?? 'LoftDesk Workspace',
-      companyId: scope.companyId,
+      companyId: activeCompanyId,
       currentPlan,
       ksefReady: false, // ksef columns only exist on companies table (multi-tenant)
       subscriptionStatus: 'none' as SubscriptionStatus,
       trialEndsAt: null,
       subscriptionPeriodEnd: null,
       usage: { clients: clients ?? 0, projects: projects ?? 0, estimates: estimates ?? 0, invoices: invoices ?? 0, contracts: contracts ?? 0 },
-      limits: planLimits(currentPlan),
+      limits,
     }
   },
 
   async changePlan(companyId: string, plan: BillingPlan) {
     if (plan === 'admin') throw new Error('Plan admin może być przypisany wyłącznie przez administratora systemu.')
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.companyPlanUpdate(companyId, plan))
-    const scope = await getDataScope(companyId)
+    const scope = await getDataScope()
     if (scope.mode === 'multi-tenant') {
       const { data, error } = await supabase.from('companies').update({ plan }).eq('id', scope.companyId).select('*').single()
       if (error) throw error
