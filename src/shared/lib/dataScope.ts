@@ -8,59 +8,43 @@ export type DataScope = {
   role?: string | null
 }
 
-let bootstrapAttempted = false
+// Sprint B: dataScope is an ADAPTER ONLY — no resolver logic, no fallbacks,
+// no secondary DB queries. All resolution is delegated to get_session_context().
+// Session invariant: this function MUST NOT contain ORDER BY, bootstrap, or
+// multi-query logic. It maps the canonical session context to the DataScope
+// interface for backward compatibility with existing API callers.
+// In Sprint C this will be removed entirely.
 
 export async function getDataScope(_legacyHint?: string): Promise<DataScope> {
-  // _legacyHint param kept for backward compatibility with existing callers
-  // (settings.api.ts and others). It is INTENTIONALLY IGNORED — DB is the
-  // only source of truth: newest company_members row wins.
   void _legacyHint
   const userId = await requireSupabaseUserId()
   if (!supabase) throw new Error('Supabase nie jest skonfigurowany')
 
-  // Query ALL memberships (migration 152: members_select_own_rows).
-  // Newest first — after an invitation acceptance the invited company is newest.
-  const memberResult = await supabase
-    .from('company_members')
-    .select('company_id, role')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
+  const { data: ctx, error } = await supabase
+    .rpc('get_session_context')
+    .maybeSingle()
 
-  const memberRows = memberResult.data ?? []
-
-  // Newest membership always wins — deterministic, no hints, no fallbacks.
-  let memberRow: { company_id: string; role: string } | null = memberRows[0] ?? null
-
-  if (!memberRow?.company_id && !bootstrapAttempted) {
-    bootstrapAttempted = true
-    try {
-      await supabase.rpc('bootstrap_my_company', { company_name: '', company_nip: '' })
-      const res = await supabase
-        .from('company_members')
-        .select('company_id, role')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      memberRow = res.data ?? null
-    } catch {
-      // bootstrap may fail — fall through to legacy
-    }
+  if (error && import.meta.env.DEV) {
+    console.warn('[dataScope] get_session_context error', error)
   }
 
-  if (memberRow?.company_id) {
-    console.log('[DATA SCOPE] resolved companyId:', memberRow.company_id, '| role:', memberRow.role)
+  const sessionCtx = ctx as {
+    company_id: string | null
+    membership_role: string | null
+  } | null
+
+  if (sessionCtx?.company_id) {
+    console.log('[DATA SCOPE] resolved companyId:', sessionCtx.company_id, '| role:', sessionCtx.membership_role)
     return {
       mode: 'multi-tenant',
       userId,
-      companyId: memberRow.company_id,
-      role: memberRow.role,
+      companyId: sessionCtx.company_id,
+      role: sessionCtx.membership_role,
     }
   }
 
-  // No membership found — legacy mode (single-tenant / demo user)
-  console.warn('[DATA SCOPE] No company_members row found — falling back to legacy mode for userId:', userId)
-
+  // No membership — legacy mode (new user pre-bootstrap, or edge case)
+  console.warn('[DATA SCOPE] No company resolved via session_context — legacy mode for userId:', userId)
   return {
     mode: 'legacy',
     userId,

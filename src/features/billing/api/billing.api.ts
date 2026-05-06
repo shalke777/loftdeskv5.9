@@ -89,13 +89,13 @@ export const billingApi = {
     console.log('[PROJECT COUNT]', projects ?? 0)
 
     if (scope.mode === 'multi-tenant') {
-      // Use SECURITY DEFINER RPC (migration 153) — bypasses RLS completely.
-      // Direct SELECT on companies returns 403 when companies_select_for_members
-      // policy is missing or hasn't been applied to the live DB yet.
-      const { data: companyRow } = await supabase
-        .rpc('get_my_company_billing')
-        .maybeSingle()
-      const company = companyRow as Record<string, unknown> | null
+      // Sprint B: getDataScope() now calls get_session_context() internally.
+      // Company data (plan, ksef_token, etc.) is in the session context snapshot
+      // which is already resolved by getDataScope(). For billing.summary we need
+      // the full company row — call get_session_context() once more to get it.
+      // This is the single authority path — no separate get_my_company_billing() call.
+      const { data: ctxData } = await supabase.rpc('get_session_context').maybeSingle()
+      const company = (ctxData as Record<string, unknown> | null)?.company as Record<string, unknown> | null
       const currentPlan = ((company?.plan as BillingPlan | null) ?? 'free')
       const planSource  = (company?.plan_source as string | null) ?? 'unknown'
       const limits = planLimits(currentPlan)

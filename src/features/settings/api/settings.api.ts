@@ -11,11 +11,11 @@ export const settingsApi = {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.companyProfile(companyId))
     const scope = await getDataScope(companyId)
     if (scope.mode === 'multi-tenant') {
-      // Use SECURITY DEFINER RPC (migration 153) — bypasses RLS on companies table.
-      // Returns FULL companies row (SETOF companies) — no field omissions.
-      const { data, error } = await supabase.rpc('get_my_company_billing').maybeSingle()
+      // Sprint B: get_session_context() returns the full company row as a nested
+      // object. This is the single authority path — no separate RPC call.
+      const { data, error } = await supabase.rpc('get_session_context').maybeSingle()
       if (error) throw error
-      return data
+      return (data as Record<string, unknown> | null)?.company ?? null
     }
     const { data, error } = await supabase.from('profiles').select('*').eq('id', scope.userId).maybeSingle()
     if (error) throw error
@@ -261,11 +261,11 @@ export const settingsApi = {
     if (isDemoMode || !supabase) return null
     const scope = await getDataScope(companyId)
     if (scope.mode !== 'multi-tenant') return null
-    // Use RPC for RLS bypass — direct SELECT on companies returns 403 when
-    // companies_select_for_members policy is missing on live DB.
-    const { data, error } = await supabase.rpc('get_my_company_billing').maybeSingle()
+    // Sprint B: use get_session_context() as single authority — no separate RPC.
+    const { data, error } = await supabase.rpc('get_session_context').maybeSingle()
     if (error) throw error
-    return ((data as Record<string, unknown> | null)?.doc_number_config as DocNumberConfig) ?? null
+    const company = (data as Record<string, unknown> | null)?.company as Record<string, unknown> | null
+    return (company?.doc_number_config as DocNumberConfig) ?? null
   },
 
   async updateDocNumberConfig(companyId: string, config: DocNumberConfig): Promise<void> {
