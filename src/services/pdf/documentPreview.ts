@@ -128,15 +128,34 @@ function pageShell(title: string, subtitle: string, content: string) {
   .checklist { display:grid; gap:10px; margin-top:18px; }
   .check { border:1px solid var(--line); border-radius:14px; padding:12px 14px; display:flex; justify-content:space-between; gap:16px; font-size: 13px; }
   .chip { display:inline-flex; padding:6px 10px; border-radius:999px; background:#e8f5ee; color:var(--accent); font-size:14px; font-weight: 500; }
-  @page { size: A4 portrait; margin: 12mm 10mm; }
+  @page { size: A4 portrait; margin: 12mm 10mm 20mm; }
   @media print {
     body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .doc { width: 100%; margin: 0; box-shadow: none; }
     .page { min-height: auto; break-after: page; }
     .topbar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .footer { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    table { page-break-inside: avoid; }
+    /* Footer fixed at bottom of each printed page */
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    /* Allow tables to flow across page breaks instead of cutting mid-row */
+    table {
+      overflow: visible !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      page-break-inside: auto;
+    }
+    /* Keep individual rows together — never split a row across pages */
+    tr { page-break-inside: avoid; break-inside: avoid; }
+    /* Repeat table header on every page */
     thead { display: table-header-group; }
+    /* td/th: remove overflow:hidden so content isn't clipped at page boundary */
+    td, th { overflow: visible; }
     .party-grid { break-inside: avoid; }
     .totals-box { break-inside: avoid; }
     .signature-grid { break-inside: avoid; }

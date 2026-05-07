@@ -39,6 +39,18 @@ export function useEstimates() {
   return useQuery({ queryKey: estimateKeys.list(companyId), queryFn: () => estimatesApi.list(companyId) })
 }
 
+/** Fetches all estimates for a project WITH their items. Used by ProjectDocuments
+ *  for approval hash and approval modal. Do NOT use for list views (use useEstimates). */
+export function useProjectEstimatesWithItems(projectId: string | undefined) {
+  const companyId = useCompanyId()
+  return useQuery({
+    queryKey: ['estimates', 'project-with-items', companyId, projectId],
+    queryFn: () => estimatesApi.listWithItemsByProject(companyId, projectId as string),
+    enabled: !!projectId && !!companyId,
+    staleTime: 60_000,
+  })
+}
+
 export function useEstimateDetail(id: string | undefined, enabled = true) {
   const companyId = useCompanyId()
   return useQuery({

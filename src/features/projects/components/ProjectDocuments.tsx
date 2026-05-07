@@ -14,7 +14,7 @@ import {
   useLinkDocument,
   useProjectExport,
 } from '@/features/projects/hooks/useProjectDocuments'
-import { useEstimates, useDeleteEstimate } from '@/features/estimates/hooks/useEstimates'
+import { useProjectEstimatesWithItems, useDeleteEstimate } from '@/features/estimates/hooks/useEstimates'
 import { useContracts, useDeleteContract } from '@/features/contracts/hooks/useContracts'
 import { useInvoices, useDeleteInvoice } from '@/features/invoices/hooks/useInvoices'
 import { useClients } from '@/features/clients/hooks/useClients'
@@ -105,7 +105,7 @@ export function ProjectDocuments({
     }
   }
 
-  const { data: estimates = [], isLoading: estLoading } = useEstimates()
+  const { data: estimates = [], isLoading: estLoading } = useProjectEstimatesWithItems(project.id)
   const { data: contracts = [], isLoading: ctLoading } = useContracts()
   const { data: invoices = [], isLoading: invLoading } = useInvoices()
   const { data: clients = [] } = useClients()

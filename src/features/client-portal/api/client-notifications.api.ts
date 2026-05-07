@@ -109,11 +109,13 @@ export async function createClientNotification(params: CreateNotificationParams)
   if (!supabase || isDemoMode) return
 
   // 1. Znajdź klientów z dostępem do projektu
+  // NOTE: project_client_access has NO company_id column — filter by project_id only.
+  // company_id isolation is enforced by RLS (pca_operator_select policy checks
+  // that project.company_id = my_company_id()).
   const { data: accessRecords, error: accessErr } = await supabase
     .from('project_client_access')
     .select('client_account_id')
     .eq('project_id', params.projectId)
-    .eq('company_id', params.companyId)
 
   if (accessErr || !accessRecords?.length) return
 
