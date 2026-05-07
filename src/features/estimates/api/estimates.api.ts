@@ -62,8 +62,24 @@ export const estimatesApi = {
     }
 
     const payload = withScope(scope, { number: estimateNumber, name: input.name, client_id: input.client_id, project_id: input.project_id ?? null, status: input.status ?? 'draft', estimate_type: input.estimate_type ?? 'preliminary', total_net: totals.net, total_gross: totals.gross, notes: input.notes ?? null, valid_until: input.valid_until ?? null, ai_source_run_id: input.ai_source_run_id ?? null })
-    const { data, error } = await supabase.from('cost_estimates').insert(payload).select('*').single()
-    if (error) throw error
+
+    // Insert with conflict-retry: if (company_id, number) collides (counter desync
+    // after manual deletion / import / fallback path), bump counter and retry.
+    let data: any = null
+    let insertError: any = null
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const res = await supabase.from('cost_estimates').insert(payload).select('*').single()
+      if (!res.error) { data = res.data; insertError = null; break }
+      insertError = res.error
+      // 23505 = unique_violation. PostgREST sometimes surfaces as code '23505' or status 409.
+      const isConflict = res.error.code === '23505' || /duplicate key|already exists/i.test(res.error.message ?? '')
+      if (!isConflict) break
+      const { data: retryNum } = await supabase.rpc('next_doc_number', { p_company_id: input.company_id, p_doc_type: 'estimate' })
+      if (!retryNum) break
+      payload.number = retryNum as string
+      console.warn('[estimates.create] number conflict, retrying with', payload.number)
+    }
+    if (insertError) throw insertError
     if (items.length > 0) {
       const itemRows = items.map((item, index) => ({
         cost_estimate_id: data.id,
