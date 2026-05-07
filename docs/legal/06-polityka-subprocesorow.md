@@ -16,13 +16,18 @@ Aktualna lista subprocesorów jest dostępna publicznie pod adresem: **[LISTA SU
 
 ## 2. AKTUALNA LISTA SUBPROCESORÓW
 
-| Numer | Podmiot | Siedziba | Kategoria usług | Lokalizacja przetwarzania | Mechanizm transferu poza EOG |
-|-------|---------|----------|-----------------|--------------------------|------------------------------|
-| 1 | **Stripe, Inc.** / **Stripe Payments Europe, Ltd.** | USA / Irlandia | Obsługa płatności, fakturowanie subskrypcji | EOG (Irlandia) + USA | SCC (standardowe klauzule umowne Komisji UE) |
-| 2 | **Supabase, Inc.** | USA | Infrastruktura bazy danych, uwierzytelnianie, przechowywanie plików | EOG lub USA (zależnie od konfiguracji regionu projektu) | SCC |
-| 3 | **Netlify, Inc.** | USA | Hosting frontendu, funkcje serwerowe (Netlify Functions) | USA / CDN — globalnie | SCC |
-| 4 | **GitHub, Inc.** (Microsoft) | USA | Repozytorium kodu źródłowego, CI/CD | USA | SCC |
-| 5 | **Google LLC** / **Google Workspace** | USA | Korespondencja e-mail (support, kontakt techniczny) | USA / EOG | SCC / Data Privacy Framework |
+| # | Podmiot | Siedziba | Kategoria usług | Lokalizacja przetwarzania | Mechanizm transferu poza EOG |
+|---|---------|----------|-----------------|--------------------------|------------------------------|
+| 1 | **Stripe, Inc.** / **Stripe Payments Europe, Ltd.** | USA / Irlandia | Obsługa płatności, fakturowanie subskrypcji | EOG (Irlandia) + USA | SCC + DPF |
+| 2 | **Supabase, Inc.** | USA | Baza danych PostgreSQL, uwierzytelnianie, Storage (eksporty, załączniki, voice notes) | EOG (region Frankfurt) | SCC |
+| 3 | **Netlify, Inc.** | USA | Hosting frontendu, Netlify Functions (edge runtime), CDN | USA / globalny CDN | SCC + DPF |
+| 4 | **Sentry (Functional Software, Inc.)** | USA | Monitoring błędów aplikacji web i mobilnej, alerty produkcyjne | USA / EU region | SCC + DPF |
+| 5 | **OpenAI, L.L.C.** | USA | Modele AI używane do analizy dokumentów (parser faktur OCR, asystent głosowy, ekstraktor danych projektowych); dane wejściowe **nie są używane do trenowania modeli** zgodnie z Enterprise Privacy Commitments OpenAI | USA | SCC |
+| 6 | **GitHub, Inc.** (Microsoft) | USA | Repozytorium kodu źródłowego, CI/CD; **nie zawiera danych produkcyjnych** | USA | SCC + DPF |
+| 7 | **Google LLC** / **Firebase Cloud Messaging (FCM)** | USA | Powiadomienia push na Android | USA | SCC + DPF |
+| 8 | **Apple Inc.** / **APNs** | USA | Powiadomienia push na iOS | USA | SCC |
+| 9 | **Google Workspace (Gmail)** | USA | Korespondencja support@/szalecki.p@gmail.com | USA / EOG | SCC + DPF |
+| 10 | **Resend** (resend.com) | USA | Transakcyjne wiadomości e-mail (potwierdzenia, eksporty, alerty) | USA | SCC |
 
 ---
 

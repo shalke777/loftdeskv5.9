@@ -48,9 +48,34 @@ E-mail: szalecki.p@gmail.com
 | Adres e-mail nadawcy | Obsługa korespondencji, wsparcie techniczne | Art. 6 ust. 1 lit. b lub f RODO | 3 lata od zamknięcia sprawy |
 | Treść zgłoszenia | Diagnoza błędu, odpowiedź na reklamację | Art. 6 ust. 1 lit. b lub f RODO | 3 lata od zamknięcia sprawy |
 
-### 3.3. Cele analityczne i bezpieczeństwo
+### 3.3. Cele analityczne, monitoring błędów i bezpieczeństwo
 
-W aktualnej wersji Aplikacja nie stosuje zewnętrznych narzędzi analitycznych ani marketingowych. W przypadku ich wprowadzenia Polityka zostanie zaktualizowana z odpowiednim wyprzedzeniem i — w zakresie wymagającym zgody — zostanie uzyskana właściwa zgoda.
+Aplikacja korzysta z następujących narzędzi monitoringu i bezpieczeństwa, w których przetwarzane mogą być dane techniczne:
+
+| Narzędzie | Cel | Przetwarzane dane | Podstawa prawna |
+|---|---|---|---|
+| **Sentry** (sentry.io) | Diagnostyka błędów aplikacji web i mobilnej, alerty produkcyjne | ID użytkownika (UUID), adres URL ścieżki (z usuniętymi parametrami wrażliwymi), stack trace, breadcrumbs zdarzeń UI — **bez** treści e-maili, NIP, PESEL, JWT, treści dokumentów (skrubowane przed wysyłką, patrz §9) | Art. 6 ust. 1 lit. f RODO (prawnie uzasadniony interes — bezpieczeństwo i niezawodność) |
+| **Netlify Functions logs** | Logi techniczne backendu (kody błędów, czas odpowiedzi) | IP, ścieżka żądania, kod statusu, identyfikatory zdarzeń | Art. 6 ust. 1 lit. f RODO |
+| **Audit log (audit_events)** | Wewnętrzny rejestr zdarzeń bezpieczeństwa (logowania, eksporty, usunięcia konta, zmiany roli) | user_id, company_id, typ zdarzenia, IP, user-agent, timestamp | Art. 6 ust. 1 lit. c i f RODO |
+
+Dane wrażliwe (treść faktur, danych kontrahentów, hasła, tokeny) **nigdy nie są wysyłane do Sentry** — backend i frontend stosują automatyczny pre-filtr (PII scrubber) usuwający e-maile, NIP, PESEL, numery telefonów, JWT i parametry zapytań przed transmisją zdarzenia.
+
+**Brak narzędzi marketingowych i reklamowych.** Aplikacja nie używa Google Analytics, Meta Pixel, ani podobnych. W przypadku ich wprowadzenia Polityka zostanie zaktualizowana, a wymagane zgody — pozyskane.
+
+### 3.4. Push notifications i tokeny urządzeń (mobile)
+
+W przypadku korzystania z aplikacji mobilnej (iOS/Android) Aplikacja przetwarza:
+
+| Dane | Cel | Podstawa prawna | Okres |
+|---|---|---|---|
+| Token push (FCM/APNs) | Wysyłka powiadomień operacyjnych (np. nowy komentarz klienta) | Art. 6 ust. 1 lit. b RODO (wykonanie umowy) lub zgoda systemowa OS | Do wycofania zgody w ustawieniach urządzenia lub usunięcia konta |
+| Identyfikator urządzenia (per-token) | Powiązanie tokena z kontem użytkownika | Art. 6 ust. 1 lit. b RODO | j.w. |
+
+Tokeny przechowywane są w tabeli `device_tokens` z RLS izolującym je per-user. Tokeny push są usuwane natychmiast w momencie usunięcia konta.
+
+### 3.5. Mobilna pamięć poświadczeń
+
+Na urządzeniach mobilnych token sesji Supabase oraz tokeny KSeF przechowywane są w **iOS Keychain** (zaszyfrowanym sprzętowo) lub **Android Keystore-backed SharedPreferences** poprzez Capacitor Preferences, **nie** w `localStorage`. Zapewnia to ochronę przed ekstrakcją danych z urządzenia po jego utracie i zgodność z wymogami sklepów aplikacji (App Store Guideline 5.1.1, Google Play Data Safety).
 
 ---
 
@@ -99,9 +124,9 @@ Osobom, których dane osobowe przetwarza Dostawca jako administrator, przysługu
 |-------|----------|-------|
 | Dostęp do danych (art. 15 RODO) | Art. 15 RODO | Dostawca udziela odpowiedzi w terminie do 30 dni |
 | Sprostowanie danych (art. 16 RODO) | Art. 16 RODO | |
-| Usunięcie danych (art. 17 RODO) | Art. 17 RODO | Z zastrzeżeniem obowiązków prawnych (np. archiwizacja podatkowa) |
+| Usunięcie danych (art. 17 RODO) | Art. 17 RODO | Self-service: Ustawienia → Strefa zagrożenia → "Usuń moje konto". Konto wchodzi w **30-dniowy okres ochronny** (możliwość anulowania), po którym dane operacyjne są usuwane, a dane podlegające archiwizacji (faktury, umowy, KSeF — art. 74 ustawy o rachunkowości) — anonimizowane i zachowane przez 5+1 lat. |
 | Ograniczenie przetwarzania (art. 18 RODO) | Art. 18 RODO | |
-| Przeniesienie danych (art. 20 RODO) | Art. 20 RODO | Tylko dane przetwarzane na podstawie zgody lub umowy |
+| Przeniesienie danych (art. 20 RODO) | Art. 20 RODO | Self-service: Ustawienia → Strefa zagrożenia → "Eksportuj moje dane". Generowany jest plik ZIP (JSON) zawierający profil, projekty, wyceny, faktury, umowy, koszty, wątki portalu klienta, audit log. Link ważny 7 dni. |
 | Sprzeciw (art. 21 RODO) | Art. 21 RODO | Wobec przetwarzania na podstawie prawnie uzasadnionego interesu |
 | Cofnięcie zgody | Art. 7 ust. 3 RODO | Bez wpływu na zgodność przetwarzania przed cofnięciem |
 

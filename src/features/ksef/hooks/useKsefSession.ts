@@ -1,5 +1,17 @@
-import { useState, useCallback } from 'react'
+// =============================================================================
+// useKsefSession — KSeF session lifecycle hook.
+// =============================================================================
+// The KSeF (Krajowy System e-Faktur) session token is the key to the Polish
+// Ministry of Finance API and is bound to a single NIP. A leak lets an
+// attacker issue invoices on our behalf, so we keep it in the platform's
+// most secure available KV store via `secureStorage`:
+//   - native: Capacitor Preferences → iOS UserDefaults / Android EncryptedSharedPreferences
+//   - web:    localStorage (no Keychain equivalent; sessions are short-lived)
+// =============================================================================
+
+import { useState, useCallback, useEffect } from 'react'
 import { ksefService, type KsefEnv } from '@/services/ksef/ksef.service'
+import { secureStorage } from '@/shared/lib/secureStorage'
 
 const SESSION_KEY = 'ksef_active_session'
 
@@ -22,18 +34,26 @@ export interface KsefSession {
   isDemo?: boolean
 }
 
-function readSession(): KsefSession | null {
+async function readSession(): Promise<KsefSession | null> {
   try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null')
+    const raw = await secureStorage.get(SESSION_KEY)
+    return raw ? (JSON.parse(raw) as KsefSession) : null
   } catch {
     return null
   }
 }
 
 export function useKsefSession() {
-  const [session, setSession] = useState<KsefSession | null>(readSession)
+  const [session, setSession] = useState<KsefSession | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Hydrate from secure storage on mount (Preferences plugin is async on native).
+  useEffect(() => {
+    let cancelled = false
+    void readSession().then((s) => { if (!cancelled) setSession(s) })
+    return () => { cancelled = true }
+  }, [])
 
   const init = useCallback(
     async (nip: string, token: string, env: KsefEnv = 'test'): Promise<KsefSession> => {
@@ -55,7 +75,7 @@ export function useKsefSession() {
           nip,
           startedAt: new Date().toISOString(),
         }
-        localStorage.setItem(SESSION_KEY, JSON.stringify(s))
+        await secureStorage.set(SESSION_KEY, JSON.stringify(s))
         setSession(s)
         return s
       } catch (e: unknown) {
@@ -79,13 +99,27 @@ export function useKsefSession() {
     } catch {
       // ignore close errors — session may have already expired
     }
-    localStorage.removeItem(SESSION_KEY)
+    await secureStorage.remove(SESSION_KEY)
     setSession(null)
     setLoading(false)
   }, [session])
 
+  /** Best-effort revoke: closes the upstream session (if any) and wipes local storage. */
+  const revoke = useCallback(async (): Promise<void> => {
+    const current = session ?? (await readSession())
+    if (current && !current.isDemo) {
+      try {
+        await ksefService.closeSession(current.sessionToken, current.referenceNumber, current.env)
+      } catch {
+        /* best-effort */
+      }
+    }
+    await secureStorage.remove(SESSION_KEY)
+    setSession(null)
+  }, [session])
+
   const initDemo = useCallback(
-    (nip: string, env: KsefEnv = 'test'): KsefSession => {
+    async (nip: string, env: KsefEnv = 'test'): Promise<KsefSession> => {
       const demoToken = `DEMO-${Date.now()}`
       const demoRef = `DEMO-SESSION-${Date.now()}`
       const s: KsefSession = {
@@ -100,12 +134,12 @@ export function useKsefSession() {
         startedAt: new Date().toISOString(),
         isDemo: true,
       }
-      localStorage.setItem(SESSION_KEY, JSON.stringify(s))
+      await secureStorage.set(SESSION_KEY, JSON.stringify(s))
       setSession(s)
       return s
     },
     [],
   )
 
-  return { session, loading, error, init, close, initDemo }
+  return { session, loading, error, init, close, initDemo, revoke }
 }

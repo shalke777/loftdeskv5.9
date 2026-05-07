@@ -41,23 +41,57 @@ Niniejsza Polityka określa zasady retencji (przechowywania) i usuwania danych p
 
 ## 4. EKSPORT DANYCH
 
-4.1. Użytkownik jest uprawniony do eksportu Danych Klientów wyłącznie **podczas obowiązywania Umowy** (w ramach planu Free lub Business z dostępem do funkcji eksportu) za pośrednictwem interfejsu Aplikacji.
+4.1. Użytkownik może w dowolnym momencie wykonać eksport swoich danych (RODO art. 20) **samodzielnie** w aplikacji: **Ustawienia → Strefa zagrożenia → "Eksportuj moje dane"**.
 
-4.2. Po zakończeniu Umowy lub usunięciu Konta eksport danych **nie jest gwarantowany**. Dostawca nie jest zobowiązany do udostępniania danych po rozwiązaniu Umowy.
+4.2. System generuje paczkę ZIP zawierającą pliki JSON:
+- `profile.json`, `company_members.json`
+- `projects.json`, `estimates.json`, `estimate_items.json`
+- `invoices.json`, `invoice_items.json`, `contracts.json`, `expenses.json`
+- `threads.json`, `messages.json`
+- `audit_events.json`, `device_tokens.json`
+- `manifest.json` (wersja schematu, data, podstawa prawna art. 20 RODO)
 
-4.3. Użytkownik jest odpowiedzialny za bieżący eksport i archiwizację danych zgodnie z własnymi wymogami prawnymi, podatkowymi i operacyjnymi.
+4.3. Generacja jest asynchroniczna (background function, budżet do 15 minut). Po zakończeniu Użytkownik otrzymuje powiadomienie i może pobrać plik ze Storage (signed URL). Plik jest dostępny przez **7 dni**, następnie usuwany przez `cron-export-cleanup`.
+
+4.4. Limit: **3 eksporty na 24 godziny** per Użytkownik (rate-limit zapobiega nadużyciom Storage).
+
+4.5. Po zakończeniu Umowy lub usunięciu Konta eksport nie jest gwarantowany — Użytkownik powinien wykonać eksport **przed** złożeniem wniosku o usunięcie konta.
 
 ---
 
 ## 5. USUWANIE KONTA
 
-5.1. Użytkownik może zażądać usunięcia Konta w dowolnym momencie, przesyłając wniosek na adres: szalecki.p@gmail.com z tytułem „USUNIĘCIE KONTA".
+5.1. Użytkownik może usunąć Konto **samodzielnie** w aplikacji: **Ustawienia → Strefa zagrożenia → "Usuń moje konto"**. Alternatywnie wniosek można przesłać na adres: szalecki.p@gmail.com z tytułem „USUNIĘCIE KONTA".
 
-5.2. Usunięcie Konta **nie następuje automatycznie** wraz z rezygnacją z płatnej subskrypcji. Rezygnacja z subskrypcji skutkuje przeniesieniem na plan Free, a nie usunięciem Konta.
+5.2. Po potwierdzeniu wniosku Konto wchodzi w **30-dniowy okres ochronny** (cooling-off). W tym okresie Użytkownik może anulować wniosek z poziomu aplikacji. Po upływie 30 dni codzienne zadanie cron (`cron-account-purge`, godz. 03:00 UTC) wykonuje fizyczne usunięcie:
+- profil użytkownika — anonimizacja (e-mail, imię, nazwisko zastąpione placeholderami; user_id zachowane jako klucz obcy);
+- powiązania z firmą (`company_members`) — soft-delete;
+- dane efemeryczne (`device_tokens`, `notes`, `drafts`, `voice_*`, `ai_analysis_runs`, `rate_limits`) — hard-delete;
+- pliki w Storage (avatary, voice notes) — usunięcie obiektów;
+- sesje uwierzytelniania — globalne unieważnienie (`auth.signOut(scope=global)`);
+- konto Supabase Auth — `auth.admin.deleteUser(soft=true)` z markerem `deleted_at`.
 
-5.3. Dostawca przystępuje do usunięcia Konta i powiązanych Danych Klientów niezwłocznie po otrzymaniu wniosku, nie później niż w ciągu 30 dni.
+5.3. **Dane podlegające archiwizacji prawnej zostają zachowane** w trybie zanonimizowanym przez okres wymagany przepisami:
+- Faktury, korekty, faktury KSeF: 5 lat od końca roku podatkowego (art. 86 § 1 Ordynacji podatkowej, art. 70 § 1 Ordynacji);
+- Umowy, kontrakty: 5+1 lat (art. 74 ustawy o rachunkowości);
+- Koszty (faktury zakupowe): 5 lat od końca roku podatkowego;
+- Logi audytowe (`audit_events`): 12 miesięcy.
 
-5.4. Usunięcie Konta jest **nieodwracalne**. Dostawca nie jest zobowiązany do przywrócenia usuniętego Konta ani danych po upływie okresu retencji backupów techniczna (do 30 dni).
+5.4. Usunięcie Konta jest **nieodwracalne** po upływie 30-dniowego okresu ochronnego. Dostawca nie odzyskuje Kont po wykonaniu cyklu purge.
+
+5.5. **Edge case: jedyny właściciel firmy z innymi członkami.** Jeżeli Użytkownik jest jedynym właścicielem (`role='owner'`) firmy, w której są inni członkowie, system zwraca błąd 409 i wymaga przekazania własności (`/settings/team`) lub usunięcia firmy w pierwszej kolejności.
+
+---
+
+## 6. CYKLE I ZADANIA AUTOMATYCZNE (CRON)
+
+| Zadanie | Harmonogram | Skutki |
+|---|---|---|
+| `cron-account-purge` | codziennie 03:00 UTC | Wykonuje purge dla wszystkich `account_deletion_requests` ze statusem `confirmed` i `scheduled_purge_at <= now()` |
+| `cron-export-cleanup` | codziennie 04:00 UTC | Usuwa pliki ZIP eksportów starsze niż 7 dni; oznacza joby `queued`/`running` starsze niż 1 godz. jako `failed` |
+| `check-overdue-invoices` | codziennie 08:30 UTC | Powiadomienia o przeterminowanych fakturach (powiązane z retencją powiadomień) |
+| Sentry retention | konfigurowane po stronie Sentry | Zdarzenia błędów: 30 dni (free tier); breadcrumbs i performance: 24h |
+| Netlify access logs | konfigurowane po stronie Netlify | Logi funkcji: 7 dni |
 
 5.5. Usunięcie Konta na wniosek Użytkownika podczas obowiązywania opłaconej subskrypcji **nie uprawnia do zwrotu** proporcjonalnej Opłaty.
 

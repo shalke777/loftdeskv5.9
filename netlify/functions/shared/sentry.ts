@@ -8,6 +8,7 @@
  */
 
 import * as Sentry from '@sentry/node'
+import { scrubObject, scrubPii, scrubUrl, isSensitiveEndpoint, truncateExtra } from './piiScrub'
 
 let initialized = false
 
@@ -19,14 +20,66 @@ function ensureInit(): boolean {
   try {
     Sentry.init({
       dsn,
-      environment: process.env.CONTEXT ?? 'unknown', // Netlify: 'production' | 'deploy-preview' | 'branch-deploy'
+      environment: process.env.CONTEXT ?? 'unknown',
       release: process.env.COMMIT_REF
         ? `loftdesk-functions@${process.env.COMMIT_REF.slice(0, 8)}`
         : undefined,
-      tracesSampleRate: 0,   // no perf tracing for serverless
+      tracesSampleRate: 0,
+      sendDefaultPii: false,
       beforeSend(event) {
         event.tags = { ...event.tags, 'loftdesk.side': 'backend' }
+        const area = (event.tags as Record<string, unknown> | undefined)?.['loftdesk.area'] as string | undefined
+        const ctx = { area }
+
+        if (event.message) event.message = scrubPii(event.message, ctx)
+        if (event.exception?.values) {
+          for (const ex of event.exception.values) {
+            if (ex.value) ex.value = scrubPii(ex.value, ctx)
+            if (ex.stacktrace?.frames) {
+              for (const f of ex.stacktrace.frames) {
+                if (f.vars) f.vars = scrubObject(f.vars, ctx) as typeof f.vars
+              }
+            }
+          }
+        }
+        if (event.request) {
+          if (event.request.url) event.request.url = scrubUrl(event.request.url)
+          if (event.request.headers) {
+            event.request.headers = scrubObject(event.request.headers, ctx)
+            for (const k of ['Cookie', 'cookie', 'Authorization', 'authorization', 'X-Auth-Token', 'x-auth-token']) {
+              if ((event.request.headers as Record<string, unknown>)[k]) {
+                ;(event.request.headers as Record<string, unknown>)[k] = '[REDACTED]'
+              }
+            }
+          }
+          if (event.request.cookies) event.request.cookies = '[REDACTED]'
+          if (event.request.data) event.request.data = scrubObject(event.request.data, ctx)
+          if (event.request.query_string) {
+            event.request.query_string = scrubUrl('/?' + String(event.request.query_string)).replace(/^\/\??/, '')
+          }
+        }
+        if (event.extra) event.extra = truncateExtra(scrubObject(event.extra, ctx))
+        if (event.contexts) event.contexts = scrubObject(event.contexts, ctx)
+        if (event.tags) event.tags = scrubObject(event.tags, ctx)
+        if (event.user) event.user = { id: event.user.id }
+        if (event.breadcrumbs) {
+          event.breadcrumbs = event.breadcrumbs.map((b) => ({
+            ...b,
+            message: b.message ? scrubPii(b.message, ctx) : b.message,
+            data: b.data ? scrubObject(b.data, ctx) : b.data,
+          }))
+        }
         return event
+      },
+      beforeBreadcrumb(breadcrumb) {
+        if (breadcrumb.category === 'fetch' || breadcrumb.category === 'xhr' || breadcrumb.category === 'http') {
+          const url = (breadcrumb.data?.url as string | undefined) ?? ''
+          if (url && isSensitiveEndpoint(url)) return null
+          if (breadcrumb.data?.url) breadcrumb.data.url = scrubUrl(String(breadcrumb.data.url))
+        }
+        if (breadcrumb.message) breadcrumb.message = scrubPii(breadcrumb.message)
+        if (breadcrumb.data) breadcrumb.data = scrubObject(breadcrumb.data)
+        return breadcrumb
       },
     })
     initialized = true

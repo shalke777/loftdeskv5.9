@@ -10,6 +10,7 @@
  */
 
 import * as Sentry from '@sentry/react'
+import { scrubObject, scrubPii, scrubUrl, isSensitiveEndpoint, truncateExtra } from './piiScrub'
 
 // ─── ENV ────────────────────────────────────────────────────────────────────
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined
@@ -96,8 +97,80 @@ export function initMonitoring() {
         const error = hint?.originalException
         const area = classifyError(error)
         event.tags = { ...event.tags, 'loftdesk.area': area }
+
+        // ─── PII scrubbing ─────────────────────────────────────────────────
+        const ctx = { area }
+
+        // Message
+        if (event.message) event.message = scrubPii(event.message, ctx)
+
+        // Exception values + stack frame variables
+        if (event.exception?.values) {
+          for (const ex of event.exception.values) {
+            if (ex.value) ex.value = scrubPii(ex.value, ctx)
+            if (ex.stacktrace?.frames) {
+              for (const f of ex.stacktrace.frames) {
+                if (f.vars) f.vars = scrubObject(f.vars, ctx) as typeof f.vars
+              }
+            }
+          }
+        }
+
+        // Request URL + headers + cookies
+        if (event.request) {
+          if (event.request.url) event.request.url = scrubUrl(event.request.url)
+          if (event.request.headers) {
+            event.request.headers = scrubObject(event.request.headers, ctx)
+            // Always nuke these regardless
+            for (const k of ['Cookie', 'cookie', 'Authorization', 'authorization']) {
+              if ((event.request.headers as Record<string, unknown>)[k]) {
+                ;(event.request.headers as Record<string, unknown>)[k] = '[REDACTED]'
+              }
+            }
+          }
+          if (event.request.cookies) event.request.cookies = { redacted: '[REDACTED]' }
+          if (event.request.data) event.request.data = scrubObject(event.request.data, ctx)
+          if (event.request.query_string) {
+            event.request.query_string = scrubUrl('/?' + String(event.request.query_string)).replace(/^\/\??/, '')
+          }
+        }
+
+        // Extras + contexts + tags
+        if (event.extra) event.extra = truncateExtra(scrubObject(event.extra, ctx))
+        if (event.contexts) event.contexts = scrubObject(event.contexts, ctx)
+        if (event.tags) event.tags = scrubObject(event.tags, ctx)
+        if (event.user) {
+          // Keep id (UUID), drop email/username/ip
+          event.user = { id: event.user.id }
+        }
+
+        // Breadcrumbs final pass (in case beforeBreadcrumb missed some)
+        if (event.breadcrumbs) {
+          event.breadcrumbs = event.breadcrumbs.map((b) => ({
+            ...b,
+            message: b.message ? scrubPii(b.message, ctx) : b.message,
+            data: b.data ? scrubObject(b.data, ctx) : b.data,
+          }))
+        }
+
         return event
       },
+
+      beforeBreadcrumb(breadcrumb) {
+        // Drop document-bearing AI fetch breadcrumbs entirely
+        if (breadcrumb.category === 'fetch' || breadcrumb.category === 'xhr') {
+          const url = (breadcrumb.data?.url as string | undefined) ?? ''
+          if (url && isSensitiveEndpoint(url)) return null
+          if (breadcrumb.data?.url) breadcrumb.data.url = scrubUrl(String(breadcrumb.data.url))
+        }
+        // Drop console breadcrumbs that look like they carry secrets
+        if (breadcrumb.message) breadcrumb.message = scrubPii(breadcrumb.message)
+        if (breadcrumb.data) breadcrumb.data = scrubObject(breadcrumb.data)
+        return breadcrumb
+      },
+
+      // Sentry built-in scrubber — belt + braces with our beforeSend
+      sendDefaultPii: false,
 
       integrations: [
         Sentry.browserTracingIntegration(),

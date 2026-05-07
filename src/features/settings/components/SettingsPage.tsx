@@ -20,6 +20,7 @@ import { LegalCenterCard } from '@/features/legal/components/LegalCenterCard'
 import { DocNumberingCard } from '@/features/settings/components/DocNumberingCard'
 import { CompanyPriceListCard } from '@/features/settings/components/CompanyPriceListCard'
 import { ThemeSwitcher } from '@/shared/ui/theme/ThemeSwitcher'
+import { AccountDangerZone } from '@/features/settings/components/AccountDangerZone'
 
 function HelperCard({ icon, title, text, href }: { icon: ReactNode; title: string; text: string; href: string }) {
   const navigate = useNavigate()
@@ -167,6 +168,8 @@ export function SettingsPage() {
           <p>Jeśli chcesz odświeżyć testowe dane firmy, możesz je zresetować jednym kliknięciem.</p>
           <div className="actions-row"><Button variant="secondary" onClick={async () => { demoDb.reset(); await refreshSession(); toast.success('Dane demo zresetowane') }}>Reset danych demo</Button></div>
         </Card>
+
+        <AccountDangerZone />
       </div>
     </div>
   )

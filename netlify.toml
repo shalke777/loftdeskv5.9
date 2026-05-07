@@ -28,6 +28,18 @@
 [functions."check-overdue-invoices"]
   schedule = "30 8 * * *"
 
+[functions."cron-account-purge"]
+  schedule = "0 3 * * *"
+
+[functions."cron-export-cleanup"]
+  schedule = "0 4 * * *"
+
+[functions."data-export-bg-background"]
+  timeout = 900
+
+[functions."account-delete"]
+  timeout = 60
+
 [functions."voice-to-expense"]
   timeout = 26
 
