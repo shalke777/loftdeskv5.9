@@ -42,7 +42,24 @@ export const nativeAuthStorage = {
       try { return window.localStorage.getItem(key) } catch { return null }
     }
     const { value } = await Preferences.get({ key })
-    return value ?? null
+    if (value !== null && value !== undefined) return value
+
+    // Migration: on first native launch after app update that switched storage from
+    // localStorage → Preferences, the existing Supabase auth token is still in
+    // localStorage. Silently migrate it so the user is not logged out.
+    // This is a one-time operation per token key.
+    try {
+      const legacy = window.localStorage.getItem(key)
+      if (legacy !== null) {
+        await Preferences.set({ key, value: legacy })
+        window.localStorage.removeItem(key)
+        console.info('[nativeAuthStorage] migrated key from localStorage to Preferences:', key)
+        return legacy
+      }
+    } catch {
+      /* migration failure is non-fatal */
+    }
+    return null
   },
 
   async setItem(key: string, value: string): Promise<void> {
@@ -51,6 +68,8 @@ export const nativeAuthStorage = {
       return
     }
     await Preferences.set({ key, value })
+    // Remove any stale localStorage copy so there is no split-brain state.
+    try { window.localStorage.removeItem(key) } catch { /* ignore */ }
   },
 
   async removeItem(key: string): Promise<void> {
@@ -59,5 +78,6 @@ export const nativeAuthStorage = {
       return
     }
     await Preferences.remove({ key })
+    try { window.localStorage.removeItem(key) } catch { /* ignore */ }
   },
 }

@@ -21,6 +21,7 @@ import { DocNumberingCard } from '@/features/settings/components/DocNumberingCar
 import { CompanyPriceListCard } from '@/features/settings/components/CompanyPriceListCard'
 import { ThemeSwitcher } from '@/shared/ui/theme/ThemeSwitcher'
 import { AccountDangerZone } from '@/features/settings/components/AccountDangerZone'
+import { SessionDebugCard } from '@/features/settings/components/SessionDebugCard'
 
 function HelperCard({ icon, title, text, href }: { icon: ReactNode; title: string; text: string; href: string }) {
   const navigate = useNavigate()
@@ -170,6 +171,7 @@ export function SettingsPage() {
         </Card>
 
         <AccountDangerZone />
+        <SessionDebugCard />
       </div>
     </div>
   )
