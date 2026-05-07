@@ -29,6 +29,18 @@
                 <data android:scheme="loftdesk" android:host="app" />
             </intent-filter>
 
+            <!-- App Links (https://loftdesk.pl/*) — verified via assetlinks.json
+                 hosted at https://loftdesk.pl/.well-known/assetlinks.json.
+                 autoVerify=true makes Android open these URLs directly in the app
+                 without a chooser dialog (requires SHA256 fingerprint match). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="loftdesk.pl" />
+                <data android:scheme="https" android:host="www.loftdesk.pl" />
+            </intent-filter>
+
             <!-- App Shortcuts reference (Android 7.1+ / API 25) -->
             <meta-data
                 android:name="android.app.shortcuts"

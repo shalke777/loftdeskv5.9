@@ -22,3 +22,10 @@ _smoke_*.js
 
 # Debug / diagnostic scripts (local-only)
 scripts/_*
+
+# Native release secrets
+android/keystore.properties
+android/app/google-services.json
+android/*.keystore
+GoogleService-Info.plist
+

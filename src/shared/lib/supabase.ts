@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { nativeAuthStorage } from '@/shared/lib/nativeAuthStorage'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -10,6 +11,9 @@ export const isDemoMode = requestedMode === 'demo' || !hasSupabaseConfig
 export const supabase = !isDemoMode && url && anonKey
   ? createClient(url, anonKey, {
       auth: {
+        // Use Preferences (Keychain/SharedPreferences) on native, localStorage on web.
+        // Prevents WKWebView storage eviction from logging users out unexpectedly.
+        storage: nativeAuthStorage,
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: true,

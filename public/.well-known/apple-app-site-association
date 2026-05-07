@@ -1,0 +1,25 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["TEAMID.pl.loftdesk.app"],
+        "components": [
+          { "/": "/auth/callback*", "comment": "Magic link / OTP return URL" },
+          { "/": "/portal/*",       "comment": "Client portal token URLs" },
+          { "/": "/join/*",         "comment": "Team invitation URLs" },
+          { "/": "/dashboard*" },
+          { "/": "/projects*" },
+          { "/": "/estimates*" },
+          { "/": "/contracts*" },
+          { "/": "/invoices*" },
+          { "/": "/clients*" },
+          { "/": "/chat*" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["TEAMID.pl.loftdesk.app"]
+  }
+}

@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import { initMonitoring, captureError } from '@/shared/lib/monitoring'
 import { initTheme } from '@/shared/ui/theme/useTheme'
+import { initNativeShell } from '@/shared/lib/nativeShell'
+import { supabase } from '@/shared/lib/supabase'
 import { App } from '@/app/App'
 import '@/shared/styles/tokens.css'
 import '@/shared/ui/theme/theme.css'
@@ -89,3 +91,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>,
 )
+
+// Native-only bootstrap: splash hide, status bar, push notifications.
+// No-op on web. Runs after React mount so token registration sees an authenticated session.
+void initNativeShell(supabase)

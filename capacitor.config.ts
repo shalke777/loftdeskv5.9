@@ -38,12 +38,32 @@ const config: CapacitorConfig = {
   plugins: {
     // Keyboard: resize mode = "body" shifts the whole WebView when the soft keyboard
     // appears, which is the correct behavior for scroll-based forms on iPhone.
-    // This prevents forms from being hidden under the keyboard.
     Keyboard: {
       resize: 'body',
       resizeOnFullScreen: true,
     },
-    // Future: SplashScreen, PushNotifications, Camera, etc.
+    SplashScreen: {
+      // We hide manually from JS after first paint (see nativeShell.ts).
+      // Disable auto-hide so we have full control and avoid flash-of-white.
+      launchShowDuration: 1500,
+      launchAutoHide: false,
+      backgroundColor: '#202125',
+      androidSplashResourceName: 'splash',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
+      splashFullScreen: true,
+      splashImmersive: true,
+    },
+    StatusBar: {
+      // Native status bar background — matches PWA theme_color.
+      backgroundColor: '#202125',
+      style: 'DARK',
+      overlaysWebView: false,
+    },
+    PushNotifications: {
+      // Default sound + badge handling. Critical alerts not requested (App Store review risk).
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
   },
 }
 

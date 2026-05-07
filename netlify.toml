@@ -50,6 +50,18 @@
     Permissions-Policy = "camera=(self), microphone=(self), geolocation=()"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://js.stripe.com https://api.stripe.com https://api.ksef.mf.gov.pl https://api-test.ksef.mf.gov.pl https://api-demo.ksef.mf.gov.pl; frame-src 'self' blob: https://js.stripe.com https://hooks.stripe.com;"
 
+[[headers]]
+  for = "/.well-known/apple-app-site-association"
+  [headers.values]
+    Content-Type = "application/json"
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/.well-known/assetlinks.json"
+  [headers.values]
+    Content-Type = "application/json"
+    Cache-Control = "public, max-age=3600"
+
 [[redirects]]
   from = "/api/portal/*"
   to = "/.netlify/functions/:splat"
