@@ -74,14 +74,13 @@ function pageShell(title: string, subtitle: string, content: string) {
   /* Body in cells */
   th, td {
     border: none;
-    padding: 7px 9px;
-    font-size: 13px;
+    padding: 6px 8px;
+    font-size: 12px;
     font-weight: 400;
     vertical-align: top;
     word-break: break-word;
     overflow-wrap: anywhere;
     white-space: normal;
-    overflow: hidden;
   }
   /* H3 in table header */
   thead th {
@@ -89,7 +88,7 @@ function pageShell(title: string, subtitle: string, content: string) {
     color: var(--ink);
     text-align: left;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 12px;
     border-top-left-radius: 14px;
     border-top-right-radius: 14px;
     letter-spacing: .01em;
@@ -100,6 +99,7 @@ function pageShell(title: string, subtitle: string, content: string) {
   tbody tr:not(:last-child) td {
     border-bottom: 1px solid #e5e7eb;
   }
+  tbody tr:nth-child(even) td { background: #f9fafb; }
   td.num, th.num { text-align: right; }
   td.center, th.center { text-align: center; }
   .totals-box { margin-left:auto; width: 340px; border: 3px solid var(--accent); border-radius: 18px; padding: 18px 20px; margin-top: 28px; }
@@ -217,6 +217,8 @@ export function buildEstimatePreview(estimate: Estimate, client?: Party, company
         <td>${escapeHtml(item.name)}${item.description ? `<div class="small">${escapeHtml(item.description)}</div>` : ''}</td>
         <td class="num">${item.quantity.toFixed(2)}</td>
         <td class="center">${escapeHtml(item.unit)}</td>
+        <td class="num">${formatCurrency(item.unit_price)}</td>
+        <td class="center">${item.vat_rate}%</td>
         <td class="num">${formatCurrency(net)}</td>
         <td class="num">${formatCurrency(gross)}</td>
       </tr>`
@@ -234,7 +236,24 @@ export function buildEstimatePreview(estimate: Estimate, client?: Party, company
         ${partyBox('Nabywca', client, client?.name)}
       </div>
       <table>
-        <thead><tr><th>Pozycja</th><th class="num">Ilość</th><th class="center">J.m.</th><th class="num">Netto</th><th class="num">Brutto</th></tr></thead>
+        <colgroup>
+          <col style="width:38%"/>
+          <col style="width:8%"/>
+          <col style="width:8%"/>
+          <col style="width:12%"/>
+          <col style="width:7%"/>
+          <col style="width:13%"/>
+          <col style="width:14%"/>
+        </colgroup>
+        <thead><tr>
+          <th>Pozycja / Opis</th>
+          <th class="num">Ilość</th>
+          <th class="center">J.m.</th>
+          <th class="num">Cena jedn.</th>
+          <th class="center">VAT</th>
+          <th class="num">Netto</th>
+          <th class="num">Brutto</th>
+        </tr></thead>
         <tbody>${rows}</tbody>
       </table>
       <div class="totals-box">
