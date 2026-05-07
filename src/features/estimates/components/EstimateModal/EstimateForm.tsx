@@ -68,6 +68,14 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
     prevClientCount.current = clients.length
   }, [clients.length, newClientOpen])
   const projectOptions = useMemo(() => projects.map((p) => ({ value: p.id, label: `${p.number} · ${p.name}` })), [projects])
+
+  // Clear stale project_id from draft (e.g. from ghost-company mobile session).
+  // Runs once after projects list loads; no-op when projectId is empty or valid.
+  useEffect(() => {
+    if (projects.length > 0 && projectId && !projects.some(p => p.id === projectId)) {
+      setProjectId('')
+    }
+  }, [projects]) // intentionally omits projectId — we only want this to fire when projects load
   const totals = useMemo(() => calcTotals(items), [items])
 
   const vatBreakdown = useMemo(() => {
@@ -138,10 +146,14 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
       toast.error('Wymagane pole', 'Nazwa wyceny jest wymagana.')
       return
     }
+    // Guard: if stored projectId doesn't exist in the current company's project list
+    // (e.g. stale draft from ghost-company mobile session), silently clear it
+    // instead of sending a foreign-key-violating UUID to Supabase (23503).
+    const safeProjectId = projectId && projects.some(p => p.id === projectId) ? projectId : null
     isSubmittingRef.current = true
     setSubmitting(true)
     try {
-      await onSubmit({ name, notes, client_id: clientId || null, project_id: projectId || null, company_id: companyId, status, estimate_type: estimateType, valid_until: validUntil || null, items })
+      await onSubmit({ name, notes, client_id: clientId || null, project_id: safeProjectId, company_id: companyId, status, estimate_type: estimateType, valid_until: validUntil || null, items })
       clearDraft()
     } catch {
       // Error toast is shown by mutation onError — do NOT clear draft so user can retry
