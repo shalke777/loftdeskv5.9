@@ -94,7 +94,10 @@ export const estimatesApi = {
       }))
       const { error: itemsError } = await supabase.from('cost_estimate_items').insert(itemRows)
       if (itemsError) {
-        console.error('[estimates.create] items insert failed:', itemsError)
+        // P1-1: compensating delete — prevents an orphaned estimate (no items) row
+        // that would appear as a duplicate entry after the user retries.
+        console.error('[estimates.create] items insert failed — rolling back main estimate:', itemsError)
+        await supabase.from('cost_estimates').delete().eq('id', data.id)
         throw itemsError
       }
     }
@@ -129,7 +132,7 @@ export const estimatesApi = {
         throw deleteError
       }
       if (items.length > 0) {
-        const itemRows = items.map((item, index) => ({ cost_estimate_id: id, name: item.name ?? item.description ?? '', description: item.description ?? item.name ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 23, sort_order: item.sort_order ?? index, catalog_item_id: item.catalog_item_id ?? null }))
+        const itemRows = items.map((item, index) => ({ cost_estimate_id: id, name: item.name ?? item.description ?? '', description: item.description ?? item.name ?? '', unit: item.unit ?? 'szt', quantity: item.quantity, unit_price: item.unit_price, vat_rate: item.vat_rate ?? 8, sort_order: item.sort_order ?? index, catalog_item_id: item.catalog_item_id ?? null }))
         const { error: itemsError } = await supabase.from('cost_estimate_items').insert(itemRows)
         if (itemsError) throw itemsError
       }

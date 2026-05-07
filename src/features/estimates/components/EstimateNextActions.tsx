@@ -22,6 +22,7 @@ import { useCompanyMeta } from '@/features/settings/hooks/useCompanyMeta'
 import { buildEstimatePreview } from '@/services/pdf/documentPreview'
 import { getAppOrigin } from '@/shared/lib/native'
 import { SendToClientModal } from '@/shared/ui/SendToClientModal/SendToClientModal'
+import { useEstimateDetail } from '@/features/estimates/hooks/useEstimates'
 
 // ─── Sub-komponenty ───────────────────────────────────────────────────────
 
@@ -52,6 +53,9 @@ function NoProjectNotice() {
 // ─── Główny komponent ─────────────────────────────────────────────────────────
 
 export function EstimateNextActions({ estimate }: { estimate: Estimate }) {
+  // P0-4 fix: list-row always has items:[]. Fetch detail so PDF has full items.
+  const { data: detail } = useEstimateDetail(estimate.id, !!estimate.id)
+  const fullEstimate = detail ?? estimate
   const { user } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
@@ -60,7 +64,7 @@ export function EstimateNextActions({ estimate }: { estimate: Estimate }) {
   const client = clients.find((c) => c.id === estimate.client_id)
 
   const pdfHtml = useMemo(() => buildEstimatePreview(
-    estimate,
+    fullEstimate,
     client ? {
       name: client.name, address: client.address,
       postalCity: `${client.postal_code || ''} ${client.city || ''}`.trim(),
@@ -76,7 +80,7 @@ export function EstimateNextActions({ estimate }: { estimate: Estimate }) {
       bankAccount: companyMeta.bankAccount,
       logoUrl: companyMeta.logoUrl,
     },
-  ), [client, companyMeta, estimate, user?.companyName, user?.email])
+  ), [client, companyMeta, fullEstimate, user?.companyName, user?.email])
 
   const portalUrl = estimate.project_id
     ? `${getAppOrigin()}/client/project/${estimate.project_id}`

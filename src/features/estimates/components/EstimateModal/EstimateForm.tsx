@@ -40,6 +40,7 @@ interface Props {
 export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProjectId, initialClientId }: Props) {
   const isNew = !initialEstimate
   const saveGuard = useRef(false)
+  const isSubmittingRef = useRef(false)
 
   const [name, setName] = useState('')
   const [notes, setNotes] = useState('')
@@ -130,10 +131,14 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
   const toast = useToast()
 
   async function handleSubmit() {
+    // P1-2: ref-based guard prevents double-submit in the React 18 batching gap
+    // between first click and button re-rendering as disabled/loading.
+    if (isSubmittingRef.current) return
     if (!name.trim()) {
       toast.error('Wymagane pole', 'Nazwa wyceny jest wymagana.')
       return
     }
+    isSubmittingRef.current = true
     setSubmitting(true)
     try {
       await onSubmit({ name, notes, client_id: clientId || null, project_id: projectId || null, company_id: companyId, status, estimate_type: estimateType, valid_until: validUntil || null, items })
@@ -142,6 +147,7 @@ export function EstimateForm({ onSubmit, companyId, initialEstimate, initialProj
       // Error toast is shown by mutation onError — do NOT clear draft so user can retry
     } finally {
       setSubmitting(false)
+      isSubmittingRef.current = false
     }
   }
 

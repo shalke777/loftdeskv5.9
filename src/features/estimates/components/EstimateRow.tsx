@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, ClipboardCheck, Edit2, FileText, Mail, Trash2 } from 'lucide-react'
 import type { Estimate } from '@/entities/estimate/model'
 import { Button } from '@/shared/ui/Button/Button'
@@ -50,9 +50,20 @@ export function EstimateRowImpl({ estimate, clientName, projectName, onEdit, onD
 
   // Lazy detail fetch: items are NOT in the LIST payload anymore.
   // Fetch full estimate (with items) only when user actually needs them.
-  const needsDetail = expanded || previewOpen || sendOpen || approvalOpen
-  const { data: detail } = useEstimateDetail(estimate.id, needsDetail)
+  const [editTriggered, setEditTriggered] = useState(false)
+  const needsDetail = expanded || previewOpen || sendOpen || approvalOpen || editTriggered
+  const { data: detail, isSuccess: detailLoaded } = useEstimateDetail(estimate.id, needsDetail)
   const fullEstimate = detail ?? estimate
+
+  // P0-3 fix: fire onEdit only after detail (with items) has loaded.
+  // Prevents edit form from opening with items:[] from the list-row payload,
+  // which would cause "Zapisz zmiany" to wipe all items.
+  useEffect(() => {
+    if (editTriggered && detailLoaded && detail) {
+      onEdit(detail)
+      setEditTriggered(false)
+    }
+  }, [editTriggered, detailLoaded, detail, onEdit])
 
   const client = clients.find(c => c.id === estimate.client_id)
 
@@ -135,7 +146,12 @@ export function EstimateRowImpl({ estimate, clientName, projectName, onEdit, onD
             <button
               className="proj-action-btn"
               title="Edytuj"
-              onClick={e => { e.stopPropagation(); onEdit(estimate) }}
+              onClick={e => {
+                e.stopPropagation()
+                // P0-3 fix: if detail already cached (staleTime 30s) open immediately.
+                // Otherwise trigger fetch first; useEffect fires onEdit when detail loads.
+                if (detail) { onEdit(detail) } else { setEditTriggered(true) }
+              }}
             >
               <Edit2 size={14} />
             </button>

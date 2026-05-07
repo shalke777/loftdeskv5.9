@@ -77,11 +77,18 @@ export function useCreateEstimate() {
     },
     onSuccess(data, _vars, context) {
       const key = estimateKeys.list(companyId)
+      // P0-1 fix: replace optimistic placeholder with real server data using data.id
+      // (not context.tempId). Using tempId was causing stale-ID bugs: edit/delete
+      // would target tempId which doesn't exist in DB → 404.
       queryClient.setQueryData<Estimate[]>(key, (old = []) =>
         old.map(e => e.id === context?.tempId
-          ? { ...e, ...data, id: context.tempId, serverId: data.id, _optimistic: false }
+          ? { ...data, _optimistic: false }
           : e)
       )
+      // P0-2 fix: invalidate estimates list so the real number replaces '…' placeholder
+      // and server state is canonical. Without this the stale optimistic row persists
+      // until next navigation/window-focus refetch.
+      void queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: ['onboarding-progress', companyId] })
       toast.success('Kosztorys utworzony')
       autoLinkService.link({
