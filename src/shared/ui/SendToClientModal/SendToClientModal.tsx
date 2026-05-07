@@ -31,11 +31,17 @@ function buildDefaultMessage(companyName: string) {
   const name = companyName.trim() || 'LoftDesk'
   return `Dzień dobry,
 
-Serdecznie witamy i dziękujemy za zaufanie.
+Dzień dobry,
 
-W załączeniu przesyłamy przygotowany dokument do wglądu. Prosimy o zapoznanie się z jego treścią. W razie jakichkolwiek pytań lub potrzeby wyjaśnień pozostajemy do pełnej dyspozycji.
+Serdecznie witamy i dziękujemy za okazane zaufanie.
 
-Cieszymy się na możliwość współpracy i jesteśmy do Państwa dyspozycji na każdym etapie realizacji.
+W załączeniu przesyłamy przygotowany dokument do wglądu. Uprzejmie prosimy o zapoznanie się z jego treścią. W przypadku jakichkolwiek pytań lub potrzeby dodatkowych wyjaśnień pozostajemy do Państwa pełnej dyspozycji.
+
+Jednocześnie informujemy, że obecnie testujemy nową aplikację mającą na celu usprawnienie komunikacji oraz obiegu dokumentów z naszymi klientami. Dokładamy wszelkich starań, aby cały proces przebiegał sprawnie, jednak prosimy o wyrozumiałość w przypadku ewentualnych drobnych niedogodności technicznych.
+
+Dla wygody oraz bezpieczeństwa komunikacji dodatkowo załączamy dokument również w formacie PDF.
+
+Cieszymy się na możliwość współpracy i pozostajemy do dyspozycji na każdym etapie realizacji.
 
 Z wyrazami szacunku,
 Zespół ${name}`
