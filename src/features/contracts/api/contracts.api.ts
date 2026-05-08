@@ -88,7 +88,7 @@ export const contractsApi = {
   },
   async update(id: string, input: Partial<Contract>, companyId?: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.contracts.update(id, input))
-    if (!id) throw new Error('[contracts.update] Missing contract id')
+    if (!id) throw new Error('Brak identyfikatora umowy.')
     const scope = await getDataScope(companyId)
     const resolvedCompanyId = companyId || scope.companyId
     const authUserId = (await supabase.auth.getUser().catch(() => ({ data: { user: null } }))).data.user?.id ?? null
