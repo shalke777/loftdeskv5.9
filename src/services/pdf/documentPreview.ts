@@ -107,12 +107,13 @@ function pageShell(title: string, subtitle: string, content: string) {
   /* BRUTTO — H1 equivalent */
   .totals-line strong { color: var(--accent); font-size: 26px; font-weight: 700; }
   .notice { margin-top: 30px; padding: 16px 20px; border: 1px solid #fde68a; background: #fffbeb; border-radius: 14px; color: #92400e; text-align:center; font-size: 13px; }
-  .section { margin-top: 24px; }
-  /* H2 for section headings */
-  .section h2 { margin: 0 0 10px; font-size: 18px; font-weight: 600; text-transform: uppercase; text-align:center; }
-  /* Body for paragraphs */
-  .section p, .section li { color: var(--ink); line-height: 1.6; font-size: 13px; font-weight: 400; }
-  .section ol { padding-left: 22px; margin: 0; }
+  .section { margin-top: 28px; }
+  /* H2 for section headings — professional legal doc style */
+  .section h2 { margin: 0 0 10px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; text-align: left; padding-bottom: 6px; border-bottom: 1.5px solid var(--accent); color: var(--ink); }
+  /* Body for paragraphs — justified for professional legal appearance */
+  .section p, .section li { color: var(--ink); line-height: 1.7; font-size: 13px; font-weight: 400; text-align: justify; hyphens: auto; }
+  .section ol { padding-left: 24px; margin: 6px 0; }
+  .section ol li { margin-bottom: 5px; }
   /* Meta */
   .small { color: var(--muted); font-size: 11px; font-weight: 400; }
   .signature-grid { display:grid; grid-template-columns:1fr 1fr; gap: 36px; margin-top: 80px; }
