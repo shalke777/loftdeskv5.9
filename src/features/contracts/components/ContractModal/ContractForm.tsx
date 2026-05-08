@@ -72,10 +72,22 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
   const selectedClient = clients.find((c) => c.id === selectedEstimate?.client_id) ?? null
 
   // Auto-derive (estimate brutto = wartość umowy, no double VAT)
-  const vatRate = selectedEstimate?.items[0]?.vat_rate ?? initialContract?.vat_rate ?? 23
+  // vatRate: derive from gross/net when items[] is empty (list-perf rule returns items:[]).
+  // Formula: round((gross/net - 1) * 100). Fallback to initialContract or 0 (unknown).
   const totalGross = selectedEstimate?.total_gross ?? initialContract?.value ?? 0
   const totalNet = selectedEstimate?.total_net ?? initialContract?.value_net ?? 0
   const vatAmount = totalGross - totalNet
+  const vatRate: number = (() => {
+    if (selectedEstimate) {
+      // Try items first (only available in detail fetch, not list)
+      const fromItems = selectedEstimate.items[0]?.vat_rate
+      if (fromItems != null) return fromItems
+      // Derive from gross/net stored on the estimate row (always available)
+      if (selectedEstimate.total_net > 0 && selectedEstimate.total_gross > selectedEstimate.total_net)
+        return Math.round((selectedEstimate.total_gross / selectedEstimate.total_net - 1) * 100)
+    }
+    return initialContract?.vat_rate ?? 0
+  })()
 
   // Tranche sum validation
   const tranchesSum = tranches.reduce((sum, t) => sum + (Number(t.amount) || 0), 0)

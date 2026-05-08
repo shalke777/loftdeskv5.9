@@ -159,6 +159,12 @@ function pageShell(title: string, subtitle: string, content: string) {
     .party-grid { break-inside: avoid; }
     .totals-box { break-inside: avoid; }
     .signature-grid { break-inside: avoid; }
+    /* Keep section heading attached to its first paragraph — never orphan an h2 at page bottom */
+    .section h2 { break-after: avoid; page-break-after: avoid; }
+    /* Keep small sections (≤ ~3 lines) together entirely */
+    .section { break-inside: auto; }
+    /* Tranche table rows — avoid splitting a payment row */
+    .section table tr { page-break-inside: avoid; break-inside: avoid; }
   }
 </style>
 </head>
@@ -675,7 +681,11 @@ function buildFullContractHtml(
 ): string {
   const net = contract.value_net ?? contract.value
   const gross = contract.value
-  const vatRate = contract.vat_rate ?? 23
+  // Derive vatRate from actual gross/net when not stored — avoids hardcoded 23% fallback.
+  // Formula: rate = round((gross/net - 1) * 100). Falls back to 23 only when data is missing.
+  const vatRate = contract.vat_rate != null
+    ? contract.vat_rate
+    : (net > 0 && gross > net ? Math.round((gross / net - 1) * 100) : 23)
   const vatAmt = gross - net
   const customParas = (contract.custom_paragraphs ?? [])
   const nCustom = customParas.length
