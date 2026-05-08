@@ -109,9 +109,9 @@ export const contractsApi = {
     if (error) throw error
     if (rowsAffected < 1) {
       if ((beforeRows?.length ?? 0) < 1) {
-        throw new Error('[contracts.update] No matching contract row visible before update (check contractId or SELECT RLS scope).')
+        throw new Error('Nie znaleziono umowy do aktualizacji lub brak dostępu do jej odczytu.')
       }
-      throw new Error('[contracts.update] Contract row is visible but update affected 0 rows (check UPDATE/ WITH CHECK RLS).')
+      throw new Error('Nie udało się zapisać zmian umowy (brak uprawnień do aktualizacji).')
     }
     return data[0]
   },
