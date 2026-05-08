@@ -7,6 +7,7 @@ import { generateId } from '@/shared/lib/generateId'
 import type { Contract, ContractTranche, CreateContractInput, CustomParagraph } from '@/entities/contract/model'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useEstimates } from '@/features/estimates/hooks/useEstimates'
+import { useEstimateDetail } from '@/features/estimates/hooks/useEstimates'
 import { useProjects } from '@/features/projects/hooks/useProjects'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { createTimelineEvent } from '@/features/projects/lib/timeline'
@@ -42,6 +43,17 @@ function buildDefaultTranches(count: number, totalGross: number): ContractTranch
   return result
 }
 
+function deriveContractVatRate(totalNet: number, totalGross: number, itemVatRates: number[], fallback?: number): number {
+  const normalized = itemVatRates.filter((rate) => Number.isFinite(rate))
+  const unique = Array.from(new Set(normalized.map((rate) => Math.round(rate * 100) / 100)))
+  if (unique.length === 1) return unique[0]
+  if (totalNet > 0) {
+    const derived = ((totalGross - totalNet) / totalNet) * 100
+    if (Number.isFinite(derived)) return Math.max(0, Math.min(100, Math.round(derived)))
+  }
+  return fallback ?? 23
+}
+
 export function ContractForm({ companyId, onSubmit, initialContract, initialProjectId, initialEstimateId }: {
   companyId: string
   onSubmit: (input: CreateContractInput) => Promise<void>
@@ -64,17 +76,19 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
   const [diffAccepted, setDiffAccepted] = useState(false)
 
   const { data: estimates = [] } = useEstimates()
+  const { data: selectedEstimateDetail } = useEstimateDetail(estimateId || undefined, Boolean(estimateId))
   const { data: clients = [] } = useClients()
   const { data: projects = [] } = useProjects()
   const projectOptions = projects.map((p) => ({ value: p.id, label: `${p.number} · ${p.name}` }))
 
-  const selectedEstimate = estimates.find((e) => e.id === estimateId) ?? null
+  const selectedEstimate = selectedEstimateDetail ?? estimates.find((e) => e.id === estimateId) ?? null
   const selectedClient = clients.find((c) => c.id === selectedEstimate?.client_id) ?? null
 
   // Auto-derive (estimate brutto = wartość umowy, no double VAT)
-  const vatRate = selectedEstimate?.items[0]?.vat_rate ?? initialContract?.vat_rate ?? 23
   const totalGross = selectedEstimate?.total_gross ?? initialContract?.value ?? 0
   const totalNet = selectedEstimate?.total_net ?? initialContract?.value_net ?? 0
+  const itemVatRates = (selectedEstimate?.items ?? []).map((item) => Number(item.vat_rate))
+  const vatRate = deriveContractVatRate(totalNet, totalGross, itemVatRates, initialContract?.vat_rate)
   const vatAmount = totalGross - totalNet
 
   // Tranche sum validation
@@ -406,5 +420,4 @@ function parseTranches(value: string): ContractTranche[] {
       }
     })
 }
-
 

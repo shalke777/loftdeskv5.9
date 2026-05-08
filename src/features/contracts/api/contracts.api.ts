@@ -4,6 +4,27 @@ import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { applyScope, getDataScope, withScope } from '@/shared/lib/dataScope'
 import { projectDocumentsApi } from '@/features/projects/api/projectDocuments.api'
 
+function deriveEstimateVatRate(estimate: any): number | undefined {
+  const itemRates = (estimate?.items ?? [])
+    .map((item: any) => Number(item?.vat_rate))
+    .filter((rate: number) => Number.isFinite(rate))
+  const uniqueRates = Array.from(new Set<number>(itemRates))
+  if (uniqueRates.length === 1) return uniqueRates[0]
+
+  const net = Number(estimate?.total_net ?? 0)
+  const gross = Number(estimate?.total_gross ?? 0)
+  if (net > 0) {
+    const derived = ((gross - net) / net) * 100
+    if (Number.isFinite(derived)) return Math.max(0, Math.min(100, Math.round(derived)))
+  }
+
+  if (estimate?.vat_rate != null) {
+    const fallback = Number(estimate.vat_rate)
+    if (Number.isFinite(fallback)) return fallback
+  }
+  return undefined
+}
+
 export const contractsApi = {
   async list(companyId: string): Promise<Contract[]> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.contracts.list(companyId))
@@ -51,8 +72,13 @@ export const contractsApi = {
   },
   async createFromEstimate(companyId: string, estimateId: string): Promise<Contract> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.contracts.createFromEstimate(companyId, estimateId))
-    const { data: estimate, error: estErr } = await supabase.from('cost_estimates').select('*').eq('id', estimateId).single()
+    const { data: estimate, error: estErr } = await supabase
+      .from('cost_estimates')
+      .select('*, items:cost_estimate_items(vat_rate)')
+      .eq('id', estimateId)
+      .single()
     if (estErr || !estimate) throw estErr ?? new Error('Nie znaleziono kosztorysu')
+    const vatRate = deriveEstimateVatRate(estimate)
     return contractsApi.create({
       company_id: companyId,
       client_id: estimate.client_id,
@@ -62,7 +88,7 @@ export const contractsApi = {
       sign_date: null,
       value: Number(estimate.total_gross ?? 0),
       value_net: estimate.total_net != null ? Number(estimate.total_net) : undefined,
-      vat_rate: estimate.vat_rate != null ? Number(estimate.vat_rate) : undefined,
+      vat_rate: vatRate,
       notes: `Wygenerowano z kosztorysu ${estimate.number ?? estimateId}`,
       template_name: `Umowa · ${estimate.number ?? ''}`,
       template_content: '',
