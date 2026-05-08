@@ -104,10 +104,55 @@ function extractCompanyName(root: HTMLElement): string {
   const partyBoxes = root.querySelectorAll('.party-box strong')
   if (partyBoxes.length >= 2) {
     const name = (partyBoxes[partyBoxes.length - 1] as HTMLElement).textContent?.trim()
-    if (name) return name
+    if (name) return latinizeForPdf(name)
   }
   const topbar = root.querySelector('.topbar__title') as HTMLElement | null
-  return topbar?.textContent?.trim() || 'LoftDesk'
+  return latinizeForPdf(topbar?.textContent?.trim() || 'LoftDesk')
+}
+
+/**
+ * jsPDF built-in fonts (Helvetica/Times/Courier) use Latin-1 encoding.
+ * Polish diacritics (Ł Ą Ę Ó Ś Ź Ż Ć Ń and lowercase) are outside that range
+ * and get silently dropped. Transliterate them to nearest ASCII equivalents.
+ */
+function latinizeForPdf(str: string): string {
+  const MAP: Record<string, string> = {
+    'Ą':'A','ą':'a','Ć':'C','ć':'c','Ę':'E','ę':'e',
+    'Ł':'L','ł':'l','Ń':'N','ń':'n','Ó':'O','ó':'o',
+    'Ś':'S','ś':'s','Ź':'Z','ź':'z','Ż':'Z','ż':'z',
+  }
+  return str.replace(/[ĄąĆćĘęŁłŃńÓóŚśŹźŻż]/g, c => MAP[c] ?? c)
+}
+
+/**
+ * Preprocess <ol> lists before html2canvas rendering.
+ *
+ * html2canvas renders the CSS `::marker` counter for <ol> items WITHOUT
+ * the decimal period (renders "2" instead of "2.") and sometimes without
+ * the space gap, merging the number with the text.
+ *
+ * Fix: remove the default list-style, inject an explicit <span>N.&nbsp;</span>
+ * at the start of each <li>. Real DOM text nodes → 100% reliable rendering.
+ */
+function preprocessListNumbers(root: HTMLElement): void {
+  for (const ol of Array.from(root.querySelectorAll('ol'))) {
+    const olEl = ol as HTMLElement
+    const startAttr = olEl.getAttribute('start')
+    let n = startAttr ? parseInt(startAttr, 10) : 1
+    olEl.style.listStyle = 'none'
+    olEl.style.paddingLeft = '0'
+    for (const li of Array.from(ol.querySelectorAll(':scope > li'))) {
+      const liEl = li as HTMLElement
+      liEl.style.paddingLeft = '28px'
+      liEl.style.position = 'relative'
+      const numSpan = document.createElement('span')
+      numSpan.textContent = `${n}.\u00a0`
+      numSpan.style.cssText =
+        'position:absolute;left:0;width:24px;font-weight:600;color:#0F172A;'
+      liEl.prepend(numSpan)
+      n++
+    }
+  }
 }
 
 export async function generatePdfBlob(html: string): Promise<Blob> {
@@ -143,6 +188,12 @@ export async function generatePdfBlob(html: string): Promise<Blob> {
     await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
 
     const target = (wrapper.querySelector('.doc') as HTMLElement | null) ?? wrapper
+
+    // Fix: inject explicit list number spans (html2canvas renders ::marker without period/space)
+    preprocessListNumbers(target)
+
+    // Extra frame for browser to re-layout after DOM mutation
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
     const totalHPx = target.offsetHeight
 
     // Measure avoid-break blocks using offsetTop (layout-based, viewport-independent)
