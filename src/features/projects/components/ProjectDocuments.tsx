@@ -344,7 +344,7 @@ export function ProjectDocuments({
                       onClick={() => setSendDoc({
                         type: doc.doc_type as 'estimate' | 'contract' | 'invoice',
                         name: docName,
-                        defaultEmail: resolveClientEmail(doc.doc_type, doc.doc_id),
+                        defaultEmail: resolveClientEmail(doc.doc_type, doc.doc_id) ?? projectClientEmail ?? portalClientEmail,
                       })}
                     >
                       <Send size={15} />
