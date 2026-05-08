@@ -154,7 +154,7 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
 
   async function handleSubmit() {
     if (tranchesError && !diffAccepted) return
-    await onSubmit({
+    const payload = {
       company_id: companyId,
       estimate_id: estimateId || null,
       client_id: selectedEstimate?.client_id || initialContract?.client_id || null,
@@ -174,7 +174,17 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
       custom_paragraphs: customParagraphs,
       penalty_per_day_pct: Number(penaltyPerDay) || 0.1,
       max_penalty_pct: Number(maxPenalty) || 10,
-    })
+    }
+    if (import.meta.env.DEV) {
+      console.info('[contracts.form] tranche debug', {
+        contractId: initialContract?.id ?? null,
+        valuesTranches: null, // no react-hook-form state in this form
+        localTranchesState: tranches,
+        payloadTranches: payload.tranches,
+        payload,
+      })
+    }
+    await onSubmit(payload)
     // Log amendment to timeline if operator accepted a tranche difference
     if (tranchesError && diffAccepted && (projectId || initialContract?.project_id)) {
       const diff = tranchesSum - totalGross

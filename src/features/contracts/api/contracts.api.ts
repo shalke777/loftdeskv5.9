@@ -11,6 +11,19 @@ type EstimateVatSource = {
   items?: Array<{ vat_rate?: number | null }>
 }
 
+function normalizeTranchesForCompare(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return value.map((item: any) => ({
+    id: item?.id ?? '',
+    label: item?.label ?? '',
+    amount: Number(item?.amount ?? 0),
+    percent: item?.percent != null ? Number(item.percent) : null,
+    due_date: item?.due_date ?? null,
+    status: item?.status ?? 'planned',
+    condition: item?.condition ?? '',
+  }))
+}
+
 function deriveEstimateVatRate(estimate: EstimateVatSource): number | undefined {
   const itemRates = (estimate?.items ?? [])
     .map((item) => Number(item?.vat_rate))
@@ -36,11 +49,11 @@ export const contractsApi = {
   async list(companyId: string): Promise<Contract[]> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.contracts.list(companyId))
     const scope = await getDataScope(companyId)
-    const cols = 'id, company_id, client_id, project_id, estimate_id, number, status, sign_date, start_date, end_date, location, value, value_net, vat_rate, notes, template_name, penalty_per_day_pct, max_penalty_pct, created_at'
+    const cols = 'id, company_id, client_id, project_id, estimate_id, number, status, sign_date, start_date, end_date, location, value, value_net, vat_rate, notes, template_name, template_content, custom_paragraphs, tranches, penalty_per_day_pct, max_penalty_pct, created_at'
     const query = applyScope(supabase.from('contracts').select(cols).order('created_at', { ascending: false }).limit(50), scope)
     const { data, error } = await query
     if (error) throw error
-    return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, project_id: row.project_id, estimate_id: row.estimate_id ?? null, number: row.number, status: row.status, sign_date: row.sign_date, start_date: row.start_date ?? null, end_date: row.end_date ?? null, location: row.location ?? '', value: Number(row.value ?? 0), value_net: row.value_net != null ? Number(row.value_net) : undefined, vat_rate: row.vat_rate != null ? Number(row.vat_rate) : undefined, notes: row.notes ?? '', template_name: row.template_name ?? '', template_content: '', custom_paragraphs: [], tranches: [], penalty_per_day_pct: row.penalty_per_day_pct != null ? Number(row.penalty_per_day_pct) : undefined, max_penalty_pct: row.max_penalty_pct != null ? Number(row.max_penalty_pct) : undefined, created_at: row.created_at }))
+    return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, project_id: row.project_id, estimate_id: row.estimate_id ?? null, number: row.number, status: row.status, sign_date: row.sign_date, start_date: row.start_date ?? null, end_date: row.end_date ?? null, location: row.location ?? '', value: Number(row.value ?? 0), value_net: row.value_net != null ? Number(row.value_net) : undefined, vat_rate: row.vat_rate != null ? Number(row.vat_rate) : undefined, notes: row.notes ?? '', template_name: row.template_name ?? '', template_content: row.template_content ?? '', custom_paragraphs: row.custom_paragraphs ?? [], tranches: row.tranches ?? [], penalty_per_day_pct: row.penalty_per_day_pct != null ? Number(row.penalty_per_day_pct) : undefined, max_penalty_pct: row.max_penalty_pct != null ? Number(row.max_penalty_pct) : undefined, created_at: row.created_at }))
   },
   async create(input: CreateContractInput): Promise<Contract> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.contracts.create(input as Contract))
@@ -102,6 +115,10 @@ export const contractsApi = {
         resolvedCompanyId: resolvedCompanyId ?? null,
         rowsVisibleBeforeUpdate: beforeRows?.length ?? 0,
         rowsAffected,
+        patchKeys: Object.keys(patch),
+        patchTranches: 'tranches' in patch ? patch.tranches : undefined,
+        inputTranches: 'tranches' in input ? (input as any).tranches : undefined,
+        responseTranches: data?.[0]?.tranches,
         beforeError: beforeError ? { code: beforeError.code, message: beforeError.message, details: beforeError.details } : null,
         responseError: error ? { code: error.code, message: error.message, details: error.details } : null,
       })
@@ -112,6 +129,13 @@ export const contractsApi = {
         throw new Error('Nie znaleziono umowy do aktualizacji lub brak dostępu do jej odczytu.')
       }
       throw new Error('Nie udało się zapisać zmian umowy (brak uprawnień do aktualizacji).')
+    }
+    if ('tranches' in patch) {
+      const expected = normalizeTranchesForCompare(patch.tranches)
+      const persisted = normalizeTranchesForCompare(data?.[0]?.tranches)
+      if (JSON.stringify(expected) !== JSON.stringify(persisted)) {
+        throw new Error('Zapis zmian transz nie został potwierdzony w bazie danych.')
+      }
     }
     return data[0]
   },

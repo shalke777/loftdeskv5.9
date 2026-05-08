@@ -43,4 +43,32 @@ test.describe('Contracts page', () => {
       await expect(badge).toBeVisible()
     }
   })
+
+  test('edited tranche count persists after save and reopen', async ({ page }) => {
+    const editBtn = page.getByRole('button', { name: /edytuj/i }).first()
+    const canEdit = await editBtn.isVisible().catch(() => false)
+    if (!canEdit) test.skip(true, 'Brak umowy do edycji w danych demo')
+
+    await editBtn.click()
+    await expect(page.getByRole('button', { name: /zapisz zmiany/i })).toBeVisible()
+
+    const dueDateInputs = page.locator('label:has-text("Termin płatności") input')
+    const currentCount = await dueDateInputs.count()
+    const targetCount = currentCount === 3 ? 4 : 3
+
+    await page
+      .locator('label:has-text("Podziel wynagrodzenie na") select')
+      .selectOption(String(targetCount))
+
+    const acceptDiff = page.locator('label:has-text("Akceptuję różnicę kwot") input[type="checkbox"]')
+    if (await acceptDiff.isVisible().catch(() => false)) {
+      await acceptDiff.check()
+    }
+
+    await page.getByRole('button', { name: /zapisz zmiany/i }).click()
+    await expect(page.getByRole('button', { name: /zapisz zmiany/i })).toHaveCount(0)
+
+    await editBtn.click()
+    await expect(page.locator('label:has-text("Termin płatności") input')).toHaveCount(targetCount)
+  })
 })
