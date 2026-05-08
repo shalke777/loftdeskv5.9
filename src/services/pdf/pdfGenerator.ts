@@ -12,9 +12,10 @@ const A4_W_MM = 210
 const A4_H_MM = 297
 const RENDER_WIDTH_PX = 900
 const FOOTER_H_MM = 10
+const PAGE_TOP_MARGIN_MM = 8   // breathing room at the top of pages 2+
 const FOOTER_RGB = { r: 22, g: 163, b: 74 }
-/** Usable content height per page (A4 minus footer minus 2mm gap) */
-const USABLE_H_MM = A4_H_MM - FOOTER_H_MM - 2
+/** Usable content height per page (A4 minus footer minus top margin minus 2mm gap) */
+const USABLE_H_MM = A4_H_MM - FOOTER_H_MM - PAGE_TOP_MARGIN_MM - 2
 
 /**
  * Get an element's top offset relative to a given ancestor,
@@ -231,15 +232,24 @@ export async function generatePdfBlob(html: string): Promise<Blob> {
       const startMm = pageStartsPx[page] * pxToMm
       const endMm   = page + 1 < totalPages ? pageStartsPx[page + 1] * pxToMm : imgH
 
-      // Shift the full-document image so [startMm .. endMm] is visible at top of page
-      pdf.addImage(dataUrl, 'JPEG', 0, -startMm, imgW, imgH)
+      // Pages 2+ get a top margin so headings don't start at the very edge
+      const topMarginMm = page > 0 ? PAGE_TOP_MARGIN_MM : 0
+
+      // Shift the full-document image so [startMm .. endMm] is visible below the top margin
+      pdf.addImage(dataUrl, 'JPEG', 0, topMarginMm - startMm, imgW, imgH)
+
+      // White mask over the top margin area (clean separation from previous page)
+      if (topMarginMm > 0) {
+        pdf.setFillColor(255, 255, 255)
+        pdf.rect(0, 0, imgW, topMarginMm, 'F')
+      }
 
       // White mask: cover the gap between content end and footer bar
-      const contentHOnPage = endMm - startMm
-      const gapMm = A4_H_MM - FOOTER_H_MM - contentHOnPage
+      const contentBottom = topMarginMm + (endMm - startMm)
+      const gapMm = A4_H_MM - FOOTER_H_MM - contentBottom
       if (gapMm > 0.5) {
         pdf.setFillColor(255, 255, 255)
-        pdf.rect(0, contentHOnPage, imgW, gapMm + 0.5, 'F')
+        pdf.rect(0, contentBottom, imgW, gapMm + 0.5, 'F')
       }
 
       // Green footer bar
