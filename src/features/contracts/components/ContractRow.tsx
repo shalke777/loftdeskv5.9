@@ -266,6 +266,8 @@ export function ContractRowImpl({
         onClose={() => setSendOpen(false)}
         documentType="contract"
         documentName={contract.number}
+        defaultEmail={client?.email ?? undefined}
+        pdfHtml={tabs[0]?.content}
         portalUrl={contract.project_id ? `${getAppOrigin()}/client/project/${contract.project_id}` : undefined}
       />
 
