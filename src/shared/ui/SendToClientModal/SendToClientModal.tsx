@@ -31,8 +31,6 @@ function buildDefaultMessage(companyName: string) {
   const name = companyName.trim() || 'LoftDesk'
   return `Dzień dobry,
 
-Dzień dobry,
-
 Serdecznie witamy i dziękujemy za okazane zaufanie.
 
 W załączeniu przesyłamy przygotowany dokument do wglądu. Uprzejmie prosimy o zapoznanie się z jego treścią. W przypadku jakichkolwiek pytań lub potrzeby dodatkowych wyjaśnień pozostajemy do Państwa pełnej dyspozycji.
