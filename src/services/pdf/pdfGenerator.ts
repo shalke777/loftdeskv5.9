@@ -1,30 +1,95 @@
 /**
- * Client-side PDF generator.
- * Converts a full HTML document string (as produced by documentPreview.ts builders)
- * into a real binary PDF Blob (MIME: application/pdf) via html2canvas + jsPDF.
+ * Client-side PDF generator — section-aware, footer on every page.
  *
- * Flow:
- *   HTML string → extract <style> + <body> → mount off-screen div in main DOM
- *   → hide fixed-position CSS footer (conflicts with off-screen layout)
- *   → html2canvas renders the .doc element to one tall canvas
- *   → DOM section boundaries collected for smart page breaking
- *   → jsPDF slices canvas at section boundaries (never mid-section)
- *   → per-page footer bar drawn by jsPDF (company name + page number)
- *   → returns Blob({ type: 'application/pdf' })
- *
- * This function never calls window.print() and never opens a new tab.
+ * Architecture:
+ *   HTML → off-screen DOM render → measure section positions via offsetTop
+ *   (viewport-independent) → html2canvas → jsPDF with smart page cuts
+ *   that never split a section, table, or party-grid mid-content.
+ *   Footer bar (company name + page X/Y) drawn by jsPDF on every page.
  */
 
 const A4_W_MM = 210
 const A4_H_MM = 297
-/** Width in px used for the off-screen render container — matches the .doc fixed width */
 const RENDER_WIDTH_PX = 900
-/** Footer bar height in mm — drawn by jsPDF, not CSS */
-const FOOTER_H_MM = 9
-/** Green accent colour matching CSS --accent: #16A34A */
+const FOOTER_H_MM = 10
 const FOOTER_RGB = { r: 22, g: 163, b: 74 }
-/** Effective content height per page — leaves room for footer + small bottom gap */
-const PAGE_CONTENT_H_MM = A4_H_MM - FOOTER_H_MM - 3
+/** Usable content height per page (A4 minus footer minus 2mm gap) */
+const USABLE_H_MM = A4_H_MM - FOOTER_H_MM - 2
+
+/**
+ * Get an element's top offset relative to a given ancestor,
+ * using offsetTop/offsetParent traversal (works off-screen, viewport-independent).
+ */
+function absoluteOffsetTopPx(el: HTMLElement): number {
+  let top = 0
+  let cur: HTMLElement | null = el
+  while (cur && cur.tagName !== 'BODY') {
+    top += cur.offsetTop
+    cur = cur.offsetParent as HTMLElement | null
+  }
+  return top
+}
+
+interface Block { topPx: number; bottomPx: number }
+
+const AVOID_BREAK_SELECTORS =
+  '.section, .party-grid, .totals-box, .signature-grid, table, .checklist, .check'
+
+/**
+ * Collect "avoid-break" blocks as {topPx, bottomPx} relative to target element.
+ * Uses offsetTop traversal — reliable for elements far off-screen.
+ */
+function collectBlocks(target: HTMLElement): Block[] {
+  const targetTopAbs = absoluteOffsetTopPx(target)
+  const blocks: Block[] = []
+  for (const el of Array.from(target.querySelectorAll(AVOID_BREAK_SELECTORS)) as HTMLElement[]) {
+    const topPx = absoluteOffsetTopPx(el) - targetTopAbs
+    const bottomPx = topPx + el.offsetHeight
+    if (bottomPx > 0 && topPx < target.offsetHeight) {
+      blocks.push({ topPx, bottomPx })
+    }
+  }
+  return blocks
+}
+
+/**
+ * Build page start positions in CSS px that avoid splitting any block.
+ *
+ * Algorithm per page:
+ *   1. Compute ideal cut = curY + pxPerPage
+ *   2. Find blocks straddling that cut (topPx < idealCut < bottomPx)
+ *   3a. If none straddle → cut at idealCut
+ *   3b. If some straddle → cut just before the earliest straddling block's top
+ *       (pushes the whole block to the next page)
+ *   3c. If the earliest straddling block starts right at curY (block too tall) →
+ *       cut after the block's bottom (accept the oversized page)
+ */
+function buildPageStartsPx(totalHPx: number, blocks: Block[], pxPerPage: number): number[] {
+  const starts = [0]
+  let curY = 0
+  while (curY < totalHPx) {
+    const idealCut = curY + pxPerPage
+    if (idealCut >= totalHPx) break
+
+    const straddling = blocks.filter(b => b.topPx < idealCut && b.bottomPx > idealCut)
+    let next: number
+    if (straddling.length === 0) {
+      next = idealCut
+    } else {
+      const earliestTop = Math.min(...straddling.map(b => b.topPx))
+      // Guard: ensure at least 40px of progress to avoid infinite loop
+      if (earliestTop > curY + 40) {
+        next = earliestTop
+      } else {
+        // Block starts too close to page start (or is taller than a page) — cut after it
+        next = Math.max(...straddling.map(b => b.bottomPx))
+      }
+    }
+    starts.push(next)
+    curY = next
+  }
+  return starts
+}
 
 function extractStylesAndBody(html: string): { styles: string; body: string } {
   const styles: string[] = []
@@ -32,13 +97,9 @@ function extractStylesAndBody(html: string): { styles: string; body: string } {
     styles.push(m[1])
   }
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
-  return {
-    styles: styles.join('\n'),
-    body: bodyMatch?.[1] ?? html,
-  }
+  return { styles: styles.join('\n'), body: bodyMatch?.[1] ?? html }
 }
 
-/** Extract company name from rendered DOM for footer label. */
 function extractCompanyName(root: HTMLElement): string {
   const partyBoxes = root.querySelectorAll('.party-box strong')
   if (partyBoxes.length >= 2) {
@@ -49,27 +110,7 @@ function extractCompanyName(root: HTMLElement): string {
   return topbar?.textContent?.trim() || 'LoftDesk'
 }
 
-/**
- * Build page start offsets (in mm into the full document image) snapped to section
- * boundaries so no section is split mid-content across pages.
- */
-function buildPageOffsets(totalHeightMm: number, sectionBoundariesMm: number[]): number[] {
-  const offsets: number[] = [0]
-  let curY = 0
-  while (curY < totalHeightMm) {
-    const idealEnd = curY + PAGE_CONTENT_H_MM
-    if (idealEnd >= totalHeightMm) break
-    // Snap to the last section boundary that fits within this page
-    const fits = sectionBoundariesMm.filter(b => b > curY && b <= idealEnd)
-    const nextStart = fits.length > 0 ? fits[fits.length - 1] : idealEnd
-    offsets.push(nextStart)
-    curY = nextStart
-  }
-  return offsets
-}
-
 export async function generatePdfBlob(html: string): Promise<Blob> {
-  // Lazy-load heavy deps so they don't bloat the initial bundle
   const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
     import('jspdf'),
     import('html2canvas'),
@@ -77,13 +118,13 @@ export async function generatePdfBlob(html: string): Promise<Blob> {
 
   const { styles, body } = extractStylesAndBody(html)
 
-  // Inject document styles + suppress the CSS .footer (we draw it via jsPDF instead)
+  // Inject document styles + hide CSS footer (we draw it per-page via jsPDF)
   const styleEl = document.createElement('style')
   styleEl.setAttribute('data-loftdesk-pdf-tmp', '1')
   styleEl.textContent = styles + '\n[data-loftdesk-pdf-tmp] .footer { display: none !important; }'
   document.head.appendChild(styleEl)
 
-  // Mount off-screen container. Must be attached to the real DOM for html2canvas.
+  // Off-screen container — must be in real DOM for html2canvas to render
   const wrapper = document.createElement('div')
   wrapper.setAttribute('data-loftdesk-pdf-tmp', '1')
   wrapper.style.cssText = [
@@ -98,23 +139,21 @@ export async function generatePdfBlob(html: string): Promise<Blob> {
   document.body.appendChild(wrapper)
 
   try {
-    // Wait two animation frames so the browser fully lays out the injected content
-    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    // Wait two frames so browser fully lays out the injected content
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
 
     const target = (wrapper.querySelector('.doc') as HTMLElement | null) ?? wrapper
+    const totalHPx = target.offsetHeight
 
-    // Collect section boundary positions (normalised 0..1) BEFORE rendering
-    const BREAK_SELECTORS = '.section, .party-grid, .totals-box, .signature-grid, .checklist'
-    const targetBCR = target.getBoundingClientRect()
-    const targetH = target.offsetHeight
-    const relBoundaries: number[] = []
-    for (const el of Array.from(target.querySelectorAll(BREAK_SELECTORS)) as HTMLElement[]) {
-      const frac = (el.getBoundingClientRect().bottom - targetBCR.top) / targetH
-      if (frac > 0.01 && frac < 0.999) relBoundaries.push(frac)
-    }
-    relBoundaries.sort((a, b) => a - b)
-
+    // Measure avoid-break blocks using offsetTop (layout-based, viewport-independent)
+    const blocks = collectBlocks(target)
     const companyName = extractCompanyName(target)
+
+    // 1 px = A4_W_MM / RENDER_WIDTH_PX mm (rendering at exactly RENDER_WIDTH_PX wide)
+    const PX_PER_MM = RENDER_WIDTH_PX / A4_W_MM   // ≈ 4.286 px/mm
+    const pxPerPage = Math.round(USABLE_H_MM * PX_PER_MM)
+
+    const pageStartsPx = buildPageStartsPx(totalHPx, blocks, pxPerPage)
 
     const canvas = await html2canvas(target, {
       scale: 2,
@@ -124,46 +163,46 @@ export async function generatePdfBlob(html: string): Promise<Blob> {
       backgroundColor: '#ffffff',
     })
 
+    // Document total height in mm (A4 width = 210mm, scaled by aspect ratio)
     const imgW = A4_W_MM
     const imgH = (canvas.height / canvas.width) * imgW
 
-    // Convert relative boundaries to mm
-    const sectionBoundariesMm = relBoundaries.map(f => f * imgH)
-    const pageOffsets = buildPageOffsets(imgH, sectionBoundariesMm)
-    const totalPages = pageOffsets.length
+    // Conversion: CSS px → mm for the rendered image
+    const pxToMm = imgH / totalHPx
 
+    const totalPages = pageStartsPx.length
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
 
     for (let page = 0; page < totalPages; page++) {
       if (page > 0) pdf.addPage()
-      const yStartMm = pageOffsets[page]
 
-      // Draw the full image shifted so the correct slice appears on this page
-      pdf.addImage(dataUrl, 'JPEG', 0, -yStartMm, imgW, imgH)
+      const startMm = pageStartsPx[page] * pxToMm
+      const endMm   = page + 1 < totalPages ? pageStartsPx[page + 1] * pxToMm : imgH
 
-      // White mask: covers overflow below this page's section boundary
-      if (page + 1 < totalPages) {
-        const contentEndOnPage = pageOffsets[page + 1] - yStartMm
-        const maskH = A4_H_MM - FOOTER_H_MM - contentEndOnPage
-        if (maskH > 0) {
-          pdf.setFillColor(255, 255, 255)
-          pdf.rect(0, contentEndOnPage, A4_W_MM, maskH, 'F')
-        }
+      // Shift the full-document image so [startMm .. endMm] is visible at top of page
+      pdf.addImage(dataUrl, 'JPEG', 0, -startMm, imgW, imgH)
+
+      // White mask: cover the gap between content end and footer bar
+      const contentHOnPage = endMm - startMm
+      const gapMm = A4_H_MM - FOOTER_H_MM - contentHOnPage
+      if (gapMm > 0.5) {
+        pdf.setFillColor(255, 255, 255)
+        pdf.rect(0, contentHOnPage, imgW, gapMm + 0.5, 'F')
       }
 
-      // Footer bar
+      // Green footer bar
       const footerY = A4_H_MM - FOOTER_H_MM
       pdf.setFillColor(FOOTER_RGB.r, FOOTER_RGB.g, FOOTER_RGB.b)
-      pdf.rect(0, footerY, A4_W_MM, FOOTER_H_MM, 'F')
+      pdf.rect(0, footerY, imgW, FOOTER_H_MM, 'F')
 
-      // Footer text
+      // Footer text: company name centred + page number right
       const textY = footerY + FOOTER_H_MM / 2 + 1.5
       pdf.setTextColor(255, 255, 255)
       pdf.setFontSize(8)
       pdf.setFont('helvetica', 'normal')
-      pdf.text(companyName, A4_W_MM / 2, textY, { align: 'center' })
-      pdf.text(`${page + 1} / ${totalPages}`, A4_W_MM - 8, textY, { align: 'right' })
+      pdf.text(companyName, imgW / 2, textY, { align: 'center' })
+      pdf.text(`${page + 1} / ${totalPages}`, imgW - 8, textY, { align: 'right' })
     }
 
     return pdf.output('blob')
