@@ -87,7 +87,7 @@ export function ContractForm({ companyId, onSubmit, initialContract, initialProj
   // Auto-derive (estimate brutto = wartość umowy, no double VAT)
   const totalGross = selectedEstimate?.total_gross ?? initialContract?.value ?? 0
   const totalNet = selectedEstimate?.total_net ?? initialContract?.value_net ?? 0
-  const itemVatRates = (selectedEstimate?.items ?? []).map((item) => Number(item.vat_rate))
+  const itemVatRates = (selectedEstimate?.items ?? []).flatMap((item) => item.vat_rate != null ? [Number(item.vat_rate)] : [])
   const vatRate = deriveContractVatRate(totalNet, totalGross, itemVatRates, initialContract?.vat_rate)
   const vatAmount = totalGross - totalNet
 
@@ -420,4 +420,3 @@ function parseTranches(value: string): ContractTranche[] {
       }
     })
 }
-

@@ -4,9 +4,16 @@ import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { applyScope, getDataScope, withScope } from '@/shared/lib/dataScope'
 import { projectDocumentsApi } from '@/features/projects/api/projectDocuments.api'
 
-function deriveEstimateVatRate(estimate: any): number | undefined {
+type EstimateVatSource = {
+  total_net?: number | null
+  total_gross?: number | null
+  vat_rate?: number | null
+  items?: Array<{ vat_rate?: number | null }>
+}
+
+function deriveEstimateVatRate(estimate: EstimateVatSource): number | undefined {
   const itemRates = (estimate?.items ?? [])
-    .map((item: any) => Number(item?.vat_rate))
+    .map((item) => Number(item?.vat_rate))
     .filter((rate: number) => Number.isFinite(rate))
   const uniqueRates = Array.from(new Set<number>(itemRates))
   if (uniqueRates.length === 1) return uniqueRates[0]
@@ -78,7 +85,7 @@ export const contractsApi = {
       .eq('id', estimateId)
       .single()
     if (estErr || !estimate) throw estErr ?? new Error('Nie znaleziono kosztorysu')
-    const vatRate = deriveEstimateVatRate(estimate)
+    const vatRate = deriveEstimateVatRate(estimate as EstimateVatSource)
     return contractsApi.create({
       company_id: companyId,
       client_id: estimate.client_id,
