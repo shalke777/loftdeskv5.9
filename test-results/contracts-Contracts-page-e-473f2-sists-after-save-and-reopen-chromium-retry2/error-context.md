@@ -1,0 +1,42 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: LD
+        - strong [ref=e7]: LoftDesk
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - generic [ref=e11]:
+            - heading "Wejdź do LoftDesk" [level=1] [ref=e12]
+            - paragraph [ref=e13]: Zaloguj się do swojego konta firmowego.
+          - generic [ref=e14]:
+            - generic [ref=e15]:
+              - generic [ref=e16]: E-mail
+              - textbox "E-mail" [ref=e17]:
+                - /placeholder: twoj@email.pl
+                - text: adam@budowlanka.pl
+            - generic [ref=e18]:
+              - generic [ref=e19]: Hasło
+              - textbox "Hasło" [ref=e20]:
+                - /placeholder: ••••••••
+                - text: password123
+          - button "Zaloguj" [ref=e22] [cursor=pointer]:
+            - generic [ref=e23]: Zaloguj
+        - generic [ref=e24]:
+          - button "Nie pamiętam hasła" [ref=e25] [cursor=pointer]
+          - generic [ref=e26]: ·
+          - button "Nowa firma" [ref=e27] [cursor=pointer]
+          - generic [ref=e28]: ·
+          - button "Portal klienta" [ref=e29] [cursor=pointer]
+  - complementary "Informacja o plikach cookie" [ref=e30]:
+    - generic [ref=e31]:
+      - text: Ta aplikacja używa wyłącznie niezbędnych technicznych plików cookies do działania sesji i autoryzacji. Nie korzystamy z cookies śledzących.
+      - link "Polityka cookies" [ref=e32] [cursor=pointer]:
+        - /url: /legal/polityka-cookies
+    - button "Zamknij" [ref=e33] [cursor=pointer]:
+      - img [ref=e34]
+      - generic [ref=e37]: Rozumiem
+```
