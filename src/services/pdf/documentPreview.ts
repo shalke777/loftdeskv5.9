@@ -681,11 +681,12 @@ function buildFullContractHtml(
 ): string {
   const net = contract.value_net ?? contract.value
   const gross = contract.value
-  // Derive vatRate from actual gross/net when not stored — avoids hardcoded 23% fallback.
-  // Formula: rate = round((gross/net - 1) * 100). Falls back to 23 only when data is missing.
-  const vatRate = contract.vat_rate != null
-    ? contract.vat_rate
-    : (net > 0 && gross > net ? Math.round((gross / net - 1) * 100) : 23)
+  // Always derive VAT rate from gross/net ratio — stored vat_rate may have been
+  // saved incorrectly (e.g. defaulted to 23 before the derivation fix).
+  // Formula: round((gross/net - 1) * 100). Only fall back to 0 when data is insufficient.
+  const vatRate: number = (net > 0 && gross > net)
+    ? Math.round((gross / net - 1) * 100)
+    : (contract.vat_rate ?? 0)
   const vatAmt = gross - net
   const customParas = (contract.custom_paragraphs ?? [])
   const nCustom = customParas.length
