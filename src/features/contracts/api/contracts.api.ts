@@ -1,3 +1,4 @@
+import isEqual from 'lodash.isequal'
 import type { Contract, CreateContractInput } from '@/entities/contract/model'
 import { demoDb } from '@/shared/lib/demoDb'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
@@ -11,6 +12,11 @@ type EstimateVatSource = {
   items?: Array<{ vat_rate?: number | null }>
 }
 
+/**
+ * Normalize a tranches array into a stable shape suitable for deep-equality
+ * comparison after a Supabase round-trip. JSONB columns may reorder keys and
+ * coerce nulls/undefined inconsistently, so we strip those differences here.
+ */
 function normalizeTranchesForCompare(value: unknown) {
   if (!Array.isArray(value)) return []
   return value.map((item: any) => ({
@@ -74,25 +80,39 @@ export const contractsApi = {
     }
 
     const payload = withScope(scope, { number: contractNumber, client_id: input.client_id, project_id: input.project_id ?? null, estimate_id: input.estimate_id ?? null, status: input.status, sign_date: input.sign_date, start_date: input.start_date ?? null, end_date: input.end_date ?? null, location: input.location ?? null, value: input.value, value_net: input.value_net ?? null, vat_rate: input.vat_rate ?? null, notes: input.notes ?? null, template_name: input.template_name ?? null, template_content: input.template_content ?? null, custom_paragraphs: input.custom_paragraphs ?? [], tranches: input.tranches ?? [], penalty_per_day_pct: input.penalty_per_day_pct ?? null, max_penalty_pct: input.max_penalty_pct ?? null })
-    const { data, error } = await supabase.from('contracts').insert(payload).select('*').single(); if (error) throw error
+    const { data, error } = await supabase.from('contracts').insert(payload).select('*').maybeSingle()
+    if (error) throw error
+    if (!data) throw new Error('Nie udało się utworzyć umowy (brak zwróconego rekordu).')
     if (input.project_id) { try { await projectDocumentsApi.link(input.company_id, input.project_id, 'contract', data.id, { manual: true }) } catch (err) { console.warn('[contracts] project document link failed:', err) } }
     return { id: data.id, company_id: data.company_id ?? input.company_id, client_id: data.client_id, project_id: data.project_id, estimate_id: data.estimate_id ?? null, number: data.number, status: data.status, sign_date: data.sign_date, start_date: data.start_date ?? null, end_date: data.end_date ?? null, location: data.location ?? '', value: Number(data.value ?? 0), value_net: data.value_net != null ? Number(data.value_net) : undefined, vat_rate: data.vat_rate != null ? Number(data.vat_rate) : undefined, notes: data.notes ?? '', template_name: data.template_name ?? '', template_content: data.template_content ?? '', custom_paragraphs: data.custom_paragraphs ?? [], tranches: data.tranches ?? [], penalty_per_day_pct: data.penalty_per_day_pct != null ? Number(data.penalty_per_day_pct) : undefined, max_penalty_pct: data.max_penalty_pct != null ? Number(data.max_penalty_pct) : undefined, created_at: data.created_at }
   },
   async update(id: string, input: Partial<Contract>, companyId?: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.contracts.update(id, input))
+    if (!id) throw new Error('[contracts.update] Missing contract id')
     const scope = await getDataScope(companyId)
     const resolvedCompanyId = companyId || scope.companyId
-    if (!id) throw new Error('[contracts.update] Missing contract id')
     const authUserId = (await supabase.auth.getUser().catch(() => ({ data: { user: null } }))).data.user?.id ?? null
-    // Explicit whitelist — prevents unknown columns from crashing the update
+
+    // Explicit whitelist — prevents unknown columns from crashing the update.
+    // We rebuild `patch` from `input` so the UPDATE is always issued whenever
+    // a whitelisted field is present (caller is responsible for only sending
+    // fields they intend to change).
     const patch: Record<string, unknown> = {}
     const allowed = ['client_id','project_id','estimate_id','status','sign_date','start_date','end_date','location','value','value_net','vat_rate','notes','template_name','template_content','custom_paragraphs','tranches','penalty_per_day_pct','max_penalty_pct'] as const
     for (const key of allowed) { if (key in input) patch[key] = (input as any)[key] }
+
+    if (Object.keys(patch).length === 0) {
+      throw new Error('Nie wykryto zmian do zapisania w umowie.')
+    }
+
     if (scope.mode === 'legacy' && resolvedCompanyId && import.meta.env.DEV) {
       console.warn('[contracts.update] forcing company filter in legacy scope mode', { scopeCompanyId: scope.companyId, passedCompanyId: companyId, authUserId })
     }
 
-    let scopedSelect = supabase.from('contracts').select('id, company_id, user_id').eq('id', id)
+    // Pre-flight: confirm the row is visible under current RLS scope. This
+    // lets us distinguish "row does not exist / no read access" from
+    // "UPDATE rejected by RLS WITH CHECK / 0 rows affected".
+    let scopedSelect = supabase.from('contracts').select('id, company_id, user_id, tranches').eq('id', id)
     let scopedUpdate = supabase.from('contracts').update(patch).eq('id', id).select('*')
     if (resolvedCompanyId) {
       scopedSelect = scopedSelect.eq('company_id', resolvedCompanyId)
@@ -103,8 +123,19 @@ export const contractsApi = {
     }
 
     const { data: beforeRows, error: beforeError } = await scopedSelect.limit(1)
-    const { data, error } = await scopedUpdate
-    const rowsAffected = data?.length ?? 0
+    const { data: afterRows, error: updateError } = await scopedUpdate
+    const rowsAffected = afterRows?.length ?? 0
+    const updated = afterRows?.[0]
+
+    // Compute changed-field diff for diagnostics (before vs patch).
+    const beforeRow = beforeRows?.[0] as any
+    const changedFields: string[] = []
+    if (beforeRow) {
+      for (const key of Object.keys(patch)) {
+        if (!isEqual(beforeRow[key], (patch as any)[key])) changedFields.push(key)
+      }
+    }
+
     if (import.meta.env.DEV) {
       console.info('[contracts.update] debug', {
         contractId: id,
@@ -116,28 +147,52 @@ export const contractsApi = {
         rowsVisibleBeforeUpdate: beforeRows?.length ?? 0,
         rowsAffected,
         patchKeys: Object.keys(patch),
-        patchTranches: 'tranches' in patch ? patch.tranches : undefined,
-        inputTranches: 'tranches' in input ? (input as any).tranches : undefined,
-        responseTranches: data?.[0]?.tranches,
+        changedFields,
+        payload: patch,
+        beforeTranches: beforeRow?.tranches,
+        responseTranches: updated?.tranches,
         beforeError: beforeError ? { code: beforeError.code, message: beforeError.message, details: beforeError.details } : null,
-        responseError: error ? { code: error.code, message: error.message, details: error.details } : null,
+        updateError: updateError ? { code: updateError.code, message: updateError.message, details: updateError.details } : null,
+        rawResponse: afterRows,
       })
     }
-    if (error) throw error
+
+    // 1) Hard Postgres error (e.g. RLS WITH CHECK rejection, schema mismatch)
+    if (updateError) {
+      const code = (updateError as any).code
+      if (code === '42501') {
+        throw new Error('Brak uprawnień do aktualizacji umowy (RLS).')
+      }
+      throw updateError
+    }
+
+    // 2) UPDATE returned 0 rows — disambiguate based on pre-flight visibility
     if (rowsAffected < 1) {
       if ((beforeRows?.length ?? 0) < 1) {
         throw new Error('Nie znaleziono umowy do aktualizacji lub brak dostępu do jej odczytu.')
       }
       throw new Error('Nie udało się zapisać zmian umowy (brak uprawnień do aktualizacji).')
     }
+
+    if (!updated) {
+      throw new Error('Aktualizacja umowy nie zwróciła rekordu z bazy danych.')
+    }
+
+    // 3) Tranche persistence verification: use lodash.isEqual for robust
+    //    deep-equality (JSON.stringify is fragile because JSONB does not
+    //    preserve key order and may coerce numeric types).
     if ('tranches' in patch) {
       const expected = normalizeTranchesForCompare(patch.tranches)
-      const persisted = normalizeTranchesForCompare(data?.[0]?.tranches)
-      if (JSON.stringify(expected) !== JSON.stringify(persisted)) {
+      const persisted = normalizeTranchesForCompare(updated.tranches)
+      if (!isEqual(expected, persisted)) {
+        if (import.meta.env.DEV) {
+          console.error('[contracts.update] tranche persistence mismatch', { expected, persisted })
+        }
         throw new Error('Zapis zmian transz nie został potwierdzony w bazie danych.')
       }
     }
-    return data[0]
+
+    return updated
   },
   async createFromEstimate(companyId: string, estimateId: string): Promise<Contract> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.contracts.createFromEstimate(companyId, estimateId))
@@ -145,8 +200,9 @@ export const contractsApi = {
       .from('cost_estimates')
       .select('*, items:cost_estimate_items(vat_rate)')
       .eq('id', estimateId)
-      .single()
-    if (estErr || !estimate) throw estErr ?? new Error('Nie znaleziono kosztorysu')
+      .maybeSingle()
+    if (estErr) throw estErr
+    if (!estimate) throw new Error('Nie znaleziono kosztorysu')
     const vatRate = deriveEstimateVatRate(estimate as EstimateVatSource)
     return contractsApi.create({
       company_id: companyId,
