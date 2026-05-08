@@ -143,7 +143,7 @@ function titleize(value: string) { return value.split('-').filter(Boolean).map((
 function calcEstimate(items: EstimateItem[]) { return calcTotals(items) }
 function normalizeEstimateItems(items: any[] = []) { return items.map((item, index) => ({ id: item.id || generateId(), name: item.name || item.description || 'Pozycja', description: item.description || '', unit: item.unit || 'kpl', quantity: Number(item.quantity || 1), unit_price: Number(item.unit_price || 0), vat_rate: Number(item.vat_rate ?? 23), sort_order: Number(item.sort_order ?? index + 1) })) }
 function normalizeInvoiceItems(items: any[] = []) { return items.map((item, index) => ({ id: item.id || generateId(), description: item.description || item.name || 'Pozycja', unit: item.unit || 'kpl', quantity: Number(item.quantity || 1), unit_price: Number(item.unit_price || 0), vat_rate: Number(item.vat_rate ?? 23), sort_order: Number(item.sort_order ?? index + 1), tranche_label: item.tranche_label || '' })) }
-function normalizeTranches(items: any[] = []) { return items.map((item, index) => ({ id: item.id || generateId(), label: item.label || `Transza ${index + 1}`, amount: Number(item.amount || 0), due_date: item.due_date || null, status: item.status || 'planned' })) }
+function normalizeTranches(items: any[] = []) { return items.map((item, index) => ({ id: item.id || generateId(), label: item.label || `Transza ${index + 1}`, amount: Number(item.amount || 0), ...(item.percent != null ? { percent: Number(item.percent) } : {}), due_date: item.due_date || null, status: item.status || 'planned', ...(item.condition != null ? { condition: item.condition } : {}) })) }
 function normalizeState(state: DemoState): DemoState {
   return {
     ...state,

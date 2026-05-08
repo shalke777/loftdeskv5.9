@@ -78,8 +78,16 @@ export function useUpdateContract() {
       }
       return contractsApi.update(id, input, companyId)
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: contractKeys.list(companyId) })
+    onSuccess: (data) => {
+      const key = contractKeys.list(companyId)
+      // Immediately update the cached contract so re-opening the edit modal
+      // shows the persisted tranches even before the background refetch completes.
+      if (data?.id) {
+        qc.setQueryData<Contract[]>(key, (old = []) =>
+          old.map(c => c.id === data.id ? { ...c, ...data } : c)
+        )
+      }
+      qc.invalidateQueries({ queryKey: key })
       toast.success('Umowa zaktualizowana')
     },
     onError: (error: any) => toast.error('Nie udało się zaktualizować umowy', error?.message ?? 'Spróbuj ponownie.'),
