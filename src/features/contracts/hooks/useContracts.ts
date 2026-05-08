@@ -41,9 +41,10 @@ export function useCreateContract() {
       const key = contractKeys.list(companyId)
       qc.setQueryData<Contract[]>(key, (old = []) =>
         old.map(c => c.id === context?.tempId
-          ? { ...c, ...data, id: context.tempId, serverId: data.id, _optimistic: false }
+          ? { ...c, ...data, id: data.id, serverId: undefined, _optimistic: false }
           : c)
       )
+      qc.invalidateQueries({ queryKey: key })
       qc.invalidateQueries({ queryKey: ['dashboard', companyId] })
       if (data.project_id) qc.invalidateQueries({ queryKey: ['project_documents', data.project_id] })
       toast.success('Umowa utworzona')
@@ -65,6 +66,6 @@ export function useCreateContract() {
     },
   })
 }
-export function useUpdateContract() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: ({ id, input }: { id: string; input: Partial<Contract> }) => contractsApi.update(id, input, companyId), onSuccess: () => { qc.invalidateQueries({ queryKey: contractKeys.list(companyId) }); toast.success('Umowa zaktualizowana') }, onError: (error: any) => toast.error('Nie udało się zaktualizować umowy', error?.message ?? 'Spróbuj ponownie.') }) }
+export function useUpdateContract() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: ({ id, input }: { id: string; input: Partial<Contract> }) => { if (import.meta.env.DEV) console.info('[contracts.update] mutation input', { contractId: id, companyId, keys: Object.keys(input ?? {}) }); return contractsApi.update(id, input, companyId) }, onSuccess: () => { qc.invalidateQueries({ queryKey: contractKeys.list(companyId) }); toast.success('Umowa zaktualizowana') }, onError: (error: any) => toast.error('Nie udało się zaktualizować umowy', error?.message ?? 'Spróbuj ponownie.') }) }
 export function useSignContract() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: (id: string) => contractsApi.sign(id, companyId), onSuccess: () => { qc.invalidateQueries({ queryKey: contractKeys.list(companyId) }); toast.success('Umowa oznaczona jako podpisana') }, onError: (error: any) => toast.error('Nie udało się oznaczyć umowy jako podpisanej', error?.message ?? 'Spróbuj ponownie.') }) }
 export function useDeleteContract() { const companyId = useCompanyId(); const qc = useQueryClient(); const toast = useToast(); return useMutation({ mutationFn: (id: string) => contractsApi.delete(id, companyId), onMutate: (id) => { qc.setQueryData<Contract[]>(contractKeys.list(companyId), (old = []) => old.filter(c => c.id !== id)); return { id } }, onSuccess: () => { qc.invalidateQueries({ queryKey: ['project_documents'] }); qc.invalidateQueries({ queryKey: ['dashboard', companyId] }); toast.info('Umowa usunięta') }, onError: (_error, _id, context) => { if (context?.id) qc.invalidateQueries({ queryKey: contractKeys.list(companyId) }); toast.error('Nie udało się usunąć umowy') } }) }

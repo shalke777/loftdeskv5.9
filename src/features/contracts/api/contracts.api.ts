@@ -68,14 +68,52 @@ export const contractsApi = {
   async update(id: string, input: Partial<Contract>, companyId?: string) {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.contracts.update(id, input))
     const scope = await getDataScope(companyId)
+    const resolvedCompanyId = companyId || scope.companyId
+    if (!id) throw new Error('[contracts.update] Missing contract id')
+    const authUserId = (await supabase.auth.getUser().catch(() => ({ data: { user: null } }))).data.user?.id ?? null
     // Explicit whitelist — prevents unknown columns from crashing the update
     const patch: Record<string, unknown> = {}
     const allowed = ['client_id','project_id','estimate_id','status','sign_date','start_date','end_date','location','value','value_net','vat_rate','notes','template_name','template_content','custom_paragraphs','tranches','penalty_per_day_pct','max_penalty_pct'] as const
     for (const key of allowed) { if (key in input) patch[key] = (input as any)[key] }
-    const query = applyScope(supabase.from('contracts').update(patch).eq('id', id).select('*').single(), scope)
-    const { data, error } = await query
+    if (scope.mode === 'legacy' && resolvedCompanyId && import.meta.env.DEV) {
+      console.warn('[contracts.update] forcing company filter in legacy scope mode', { scopeCompanyId: scope.companyId, passedCompanyId: companyId, authUserId })
+    }
+
+    let scopedSelect = supabase.from('contracts').select('id, company_id, user_id').eq('id', id)
+    let scopedUpdate = supabase.from('contracts').update(patch).eq('id', id).select('*')
+    if (resolvedCompanyId) {
+      scopedSelect = scopedSelect.eq('company_id', resolvedCompanyId)
+      scopedUpdate = scopedUpdate.eq('company_id', resolvedCompanyId)
+    } else {
+      scopedSelect = applyScope(scopedSelect, scope)
+      scopedUpdate = applyScope(scopedUpdate, scope)
+    }
+
+    const { data: beforeRows, error: beforeError } = await scopedSelect.limit(1)
+    const { data, error } = await scopedUpdate
+    const rowsAffected = data?.length ?? 0
+    if (import.meta.env.DEV) {
+      console.info('[contracts.update] debug', {
+        contractId: id,
+        authUserId,
+        scopeMode: scope.mode,
+        scopeCompanyId: scope.companyId,
+        passedCompanyId: companyId ?? null,
+        resolvedCompanyId: resolvedCompanyId ?? null,
+        rowsVisibleBeforeUpdate: beforeRows?.length ?? 0,
+        rowsAffected,
+        beforeError: beforeError ? { code: beforeError.code, message: beforeError.message, details: beforeError.details } : null,
+        responseError: error ? { code: error.code, message: error.message, details: error.details } : null,
+      })
+    }
     if (error) throw error
-    return data
+    if (rowsAffected < 1) {
+      if ((beforeRows?.length ?? 0) < 1) {
+        throw new Error('[contracts.update] No matching contract row visible before update (check contractId or SELECT RLS scope).')
+      }
+      throw new Error('[contracts.update] Contract row is visible but update affected 0 rows (check UPDATE/ WITH CHECK RLS).')
+    }
+    return data[0]
   },
   async createFromEstimate(companyId: string, estimateId: string): Promise<Contract> {
     if (isDemoMode || !supabase) return Promise.resolve(demoDb.contracts.createFromEstimate(companyId, estimateId))
