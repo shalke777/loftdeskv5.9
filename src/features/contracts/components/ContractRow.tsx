@@ -67,6 +67,7 @@ export function ContractRowImpl({
         name: companyMeta.name || user?.companyName, nip: companyMeta.nip,
         address: companyMeta.address, postalCity: companyMeta.postalCity,
         email: companyMeta.email || user?.email, phone: companyMeta.phone,
+        bankAccount: companyMeta.bankAccount,
         logoUrl: companyMeta.logoUrl,
       },
       undefined,
