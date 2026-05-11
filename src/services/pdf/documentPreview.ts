@@ -28,7 +28,56 @@ function escapeHtml(value: string) {
   return replaceEvery(replaceEvery(replaceEvery(replaceEvery(replaceEvery(value, '&', '&amp;'), '<', '&lt;'), '>', '&gt;'), '"', '&quot;'), "'", '&#39;')
 }
 
-function pageShell(title: string, subtitle: string, content: string) {
+/**
+ * Escape a string for safe inclusion as a CSS string literal — used
+ * inside `@page { @bottom-center { content: "..." } }` margin boxes.
+ */
+function cssString(value: string): string {
+  return '"' + value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n]+/g, ' ')
+    + '"'
+}
+
+function pageShell(title: string, subtitle: string, content: string, company?: CompanyMeta) {
+  // -------------------------------------------------------------------------
+  // Print footer architecture (CSS Paged Media — W3C standard, no hacks):
+  //
+  //   The bottom margin of @page is treated by browsers as a non-content
+  //   zone — text CANNOT flow into it. `@bottom-center` is a margin-box
+  //   placed inside that zone. We bake the company contact line into the
+  //   CSS as a string literal at HTML build time.
+  //
+  //   Result: every printed page (Chrome print preview, Save as PDF) gets
+  //   the same green strip at the bottom, content sits above it, the
+  //   browser handles pagination natively, and there is no overlap
+  //   possible by spec.
+  //
+  //   The on-screen `.footer` element is hidden in @media print — the
+  //   margin-box takes over.
+  // -------------------------------------------------------------------------
+  const phone = company?.phone?.trim() || ''
+  const email = company?.email?.trim() || ''
+  const footerLine = [phone, email].filter(Boolean).join('   |   ')
+  const hasFooter = footerLine.length > 0
+  // 18mm reserves enough vertical space for a comfortable strip + breathing room
+  const pageMarginBottom = hasFooter ? '20mm' : '12mm'
+  const printFooterMarginBox = hasFooter ? `
+    @bottom-center {
+      content: ${cssString(footerLine)};
+      background: #16A34A;
+      color: #ffffff;
+      font-family: 'Inter', Arial, sans-serif;
+      font-size: 9pt;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      vertical-align: middle;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      margin: 0;
+      padding: 0;
+    }` : ''
   return `<!doctype html>
 <html lang="pl">
 <head>
@@ -130,53 +179,46 @@ function pageShell(title: string, subtitle: string, content: string) {
   .check { border:1px solid var(--line); border-radius:14px; padding:12px 14px; display:flex; justify-content:space-between; gap:16px; font-size: 13px; }
   .chip { display:inline-flex; padding:6px 10px; border-radius:999px; background:#e8f5ee; color:var(--accent); font-size:14px; font-weight: 500; }
   /*
-   * @page margin-bottom: 14mm reserves a 14mm strip at the bottom of EVERY
-   * physical page where normal content cannot flow. The fixed footer (11mm tall)
-   * sits inside that strip, so text never overlaps it.
+   * PRINT LAYOUT — CSS Paged Media standard, zero overlay hacks.
+   *
+   * @page bottom margin reserves a non-content strip on EVERY physical
+   * page. Footer content (company phone/email) lives inside that strip
+   * via @bottom-center — the browser guarantees by spec that body text
+   * cannot enter the @page margin area.
+   *
+   * The on-screen .footer element is shown only in screen view; in
+   * print it is hidden because the @page margin-box renders the strip.
    */
-  @page { size: A4 portrait; margin: 12mm 10mm 14mm; }
+  @page {
+    size: A4 portrait;
+    margin: 14mm 12mm ${pageMarginBottom} 12mm;
+    ${printFooterMarginBox}
+  }
   @media print {
     body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .doc { width: 100%; margin: 0; box-shadow: none; }
     .topbar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .page { min-height: auto; break-after: page; padding-bottom: 0 !important; }
+    .page { min-height: auto; padding: 0 !important; display: block; }
     .content { padding-bottom: 0 !important; }
-    /* Footer: pinned to the bottom of every physical page */
-    .footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 11mm;
-      padding: 0 42px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    /* Allow tables to flow across page breaks instead of cutting mid-row */
+    /* On-screen footer is replaced by @page @bottom-center margin-box in print */
+    .footer { display: none !important; }
+    /* Tables flow across page breaks; rows never split */
     table {
       overflow: visible !important;
       border-radius: 0 !important;
       box-shadow: none !important;
       page-break-inside: auto;
     }
-    /* Keep individual rows together — never split a row across pages */
     tr { page-break-inside: avoid; break-inside: avoid; }
-    /* Repeat table header on every page */
     thead { display: table-header-group; }
-    /* td/th: remove overflow:hidden so content isn't clipped at page boundary */
     td, th { overflow: visible; }
     .party-grid { break-inside: avoid; }
     .totals-box { break-inside: avoid; }
     .signature-grid { break-inside: avoid; }
-    /* Keep section heading attached to its first paragraph — never orphan an h2 at page bottom */
     .section h2 { break-after: avoid; page-break-after: avoid; }
-    /* Keep small sections (≤ ~3 lines) together entirely */
     .section { break-inside: auto; }
-    /* Tranche table rows — avoid splitting a payment row */
-    .section table tr { page-break-inside: avoid; break-inside: avoid; }
+    /* Widow/orphan control — never leave a single line stranded */
+    p, li { orphans: 3; widows: 3; }
   }
 </style>
 </head>
@@ -283,7 +325,7 @@ export function buildEstimatePreview(estimate: Estimate, client?: Party, company
     </div>
     ${footer(company)}
   </section>`
-  return pageShell(estimate.number, estimate.name, page)
+  return pageShell(estimate.number, estimate.name, page, company)
 }
 
 type InvoiceContractMeta = { contractNumber?: string; contractLocation?: string }
@@ -591,7 +633,7 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
     </div>
     ${footer(company)}
   </section>`
-  return pageShell(invoice.number ?? 'Szkic', invoiceTitle, page)
+  return pageShell(invoice.number ?? 'Szkic', invoiceTitle, page, company)
 }
 
 export function buildInvoiceXml(invoice: Invoice) {
@@ -956,7 +998,7 @@ export function buildContractPreview(contract: import('@/entities/contract/model
     </div>
     ${footer(company)}
   </section>`
-  return pageShell(contract.number, 'Umowa', page)
+  return pageShell(contract.number, 'Umowa', page, company)
 }
 
 export function buildProtocolPreview(protocol: HandoverProtocol, clientName?: string, projectName?: string, companyInput?: CompanyMeta) {
@@ -981,7 +1023,7 @@ export function buildProtocolPreview(protocol: HandoverProtocol, clientName?: st
     </div>
     ${footer(company)}
   </section>`
-  return pageShell(protocol.title, 'Protokół odbioru', page)
+  return pageShell(protocol.title, 'Protokół odbioru', page, company)
 }
 
 // ─── Budget Report ────────────────────────────────────────────────────────────
@@ -1142,7 +1184,7 @@ export function buildBudgetReportPreview(data: BudgetReportData, companyInput?: 
     ${footer(company)}
   </section>`
 
-  return pageShell(`Raport budżetowy — ${data.projectNumber}`, data.projectName, page)
+  return pageShell(`Raport budżetowy — ${data.projectNumber}`, data.projectName, page, company)
 }
 
 // ─── PROJECT REPORT (zbiorczy) ────────────────────────────────────────────────
@@ -1263,7 +1305,7 @@ export function buildProjectReportPreview(data: ProjectReportData, company?: Com
     ${footer(company)}
   </section>`
 
-  return pageShell(`Raport projektu — ${project.number ?? project.id}`, project.name, page)
+  return pageShell(`Raport projektu — ${project.number ?? project.id}`, project.name, page, company)
 }
 
 function escapeXml(value: string) {
