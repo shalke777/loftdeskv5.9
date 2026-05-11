@@ -34,8 +34,16 @@ export function EstimatesPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Estimate | null>(null)
-  // Guard: auto-open from ?create=1 must fire only once per mount, never
-  // while the user is already editing an existing estimate.
+
+  // editingRef always mirrors editing state — used in effects/callbacks to
+  // read the LATEST editing value without capturing stale closures.
+  const editingRef = useRef<Estimate | null>(null)
+  editingRef.current = editing
+
+  // Guard: auto-open from ?create=1 must fire only once per mount, and
+  // must never fire while the user is already editing an existing estimate
+  // (e.g. billing loads slowly and canCreate flips true after the user
+  //  already clicked Edit on an existing row).
   const autoOpenFiredRef = useRef(false)
 
   const { create: autoCreate } = useSearch({ strict: false }) as { create?: boolean }
@@ -53,13 +61,16 @@ export function EstimatesPage() {
   const canConvert = useCan('estimates.convert')
 
   // Auto-open create modal when navigated with ?create=1.
-  // Fires only once (ref guard) so that a billing/permissions re-render
-  // does NOT reset editing → null while the user edits an existing estimate.
+  // Uses editingRef (not editing in deps) so the effect doesn't re-run on
+  // every edit-open/close cycle. The ref guard ensures it fires at most once.
+  // We do NOT call setEditing(null) — if the user already opened an edit,
+  // we mark the flag and skip the auto-open entirely.
   useEffect(() => {
     if (autoCreate && canCreate && !autoOpenFiredRef.current) {
       autoOpenFiredRef.current = true
-      setEditing(null)
-      setOpen(true)
+      if (!editingRef.current) {
+        setOpen(true)
+      }
     }
   }, [autoCreate, canCreate])
 
@@ -90,7 +101,8 @@ export function EstimatesPage() {
   )
 
   async function submit(input: any) {
-    if (editing) await updateEstimate.mutateAsync({ id: editing.id, input })
+    const editingNow = editingRef.current
+    if (editingNow) await updateEstimate.mutateAsync({ id: editingNow.id, input })
     else await createEstimate.mutateAsync(input)
     setEditing(null); setOpen(false)
   }
