@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { Plus } from 'lucide-react'
 import { StatusFilter } from '@/shared/ui/StatusFilter/StatusFilter'
 import { useSearch } from '@tanstack/react-router'
@@ -34,6 +34,9 @@ export function EstimatesPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Estimate | null>(null)
+  // Guard: auto-open from ?create=1 must fire only once per mount, never
+  // while the user is already editing an existing estimate.
+  const autoOpenFiredRef = useRef(false)
 
   const { create: autoCreate } = useSearch({ strict: false }) as { create?: boolean }
 
@@ -49,9 +52,12 @@ export function EstimatesPage() {
   const canDelete = useCan('estimates.delete')
   const canConvert = useCan('estimates.convert')
 
-  // Auto-open create modal when navigated with ?create=1
+  // Auto-open create modal when navigated with ?create=1.
+  // Fires only once (ref guard) so that a billing/permissions re-render
+  // does NOT reset editing → null while the user edits an existing estimate.
   useEffect(() => {
-    if (autoCreate && canCreate) {
+    if (autoCreate && canCreate && !autoOpenFiredRef.current) {
+      autoOpenFiredRef.current = true
       setEditing(null)
       setOpen(true)
     }
@@ -141,7 +147,8 @@ export function EstimatesPage() {
         />
       )}
 
-      {canCreate && (
+      {/* Edit modal always available; create modal requires canCreate permission */}
+      {(canCreate || editing) && (
         <Modal open={open} onClose={() => { if (!editing) clearEstimateDraft(); setOpen(false) }} title={editing ? 'Edytuj wycenę' : 'Nowa wycena'}>
           <EstimateForm companyId={companyId} initialEstimate={editing} onSubmit={submit} />
         </Modal>
