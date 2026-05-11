@@ -129,19 +129,19 @@ function pageShell(title: string, subtitle: string, content: string) {
   .checklist { display:grid; gap:10px; margin-top:18px; }
   .check { border:1px solid var(--line); border-radius:14px; padding:12px 14px; display:flex; justify-content:space-between; gap:16px; font-size: 13px; }
   .chip { display:inline-flex; padding:6px 10px; border-radius:999px; background:#e8f5ee; color:var(--accent); font-size:14px; font-weight: 500; }
-  @page { size: A4 portrait; margin: 12mm 10mm 15mm; }
+  @page { size: A4 portrait; margin: 12mm 10mm 0; }
   @media print {
     body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .doc { width: 100%; margin: 0; box-shadow: none; }
-    .page { min-height: auto; break-after: page; }
     .topbar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     /*
-     * padding-bottom on .content is the ONLY reliable way to prevent text
-     * from flowing under a position:fixed footer in all browsers.
-     * @page margin-bottom 15mm = footer bar height.
-     * padding-bottom 25mm = forced clear zone above the footer on every page.
+     * Each .page has break-after:page — padding-bottom pushes content UP
+     * before the page break fires, leaving room for the fixed footer.
+     * This works on every page (not just the last).
      */
-    .content { padding-bottom: 25mm !important; }
+    .page { min-height: auto; break-after: page; padding-bottom: 28mm !important; }
+    .content { padding-bottom: 0 !important; }
+    /* Footer: fixed at absolute bottom of physical page */
     .footer {
       position: fixed;
       bottom: 0;
