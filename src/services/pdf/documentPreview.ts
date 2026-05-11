@@ -129,19 +129,19 @@ function pageShell(title: string, subtitle: string, content: string) {
   .checklist { display:grid; gap:10px; margin-top:18px; }
   .check { border:1px solid var(--line); border-radius:14px; padding:12px 14px; display:flex; justify-content:space-between; gap:16px; font-size: 13px; }
   .chip { display:inline-flex; padding:6px 10px; border-radius:999px; background:#e8f5ee; color:var(--accent); font-size:14px; font-weight: 500; }
-  @page { size: A4 portrait; margin: 12mm 10mm 0; }
+  /*
+   * @page margin-bottom: 14mm reserves a 14mm strip at the bottom of EVERY
+   * physical page where normal content cannot flow. The fixed footer (11mm tall)
+   * sits inside that strip, so text never overlaps it.
+   */
+  @page { size: A4 portrait; margin: 12mm 10mm 14mm; }
   @media print {
     body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .doc { width: 100%; margin: 0; box-shadow: none; }
     .topbar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    /*
-     * Each .page has break-after:page — padding-bottom pushes content UP
-     * before the page break fires, leaving room for the fixed footer.
-     * This works on every page (not just the last).
-     */
-    .page { min-height: auto; break-after: page; padding-bottom: 28mm !important; }
+    .page { min-height: auto; break-after: page; padding-bottom: 0 !important; }
     .content { padding-bottom: 0 !important; }
-    /* Footer: fixed at absolute bottom of physical page */
+    /* Footer: pinned to the bottom of every physical page */
     .footer {
       position: fixed;
       bottom: 0;
@@ -783,7 +783,9 @@ function buildFullContractHtml(
         </li>
         <li>Wpłaty dokonywane przez Inwestora mają charakter zaliczek na poczet realizacji umowy.</li>
         <li>Każda transza płatna jest z góry.</li>
-        <li>Wynagrodzenie płatne jest przelewem na rachunek bankowy Wykonawcy:${company.bankAccount ? ` <strong style="font-family:monospace;">${escapeHtml(company.bankAccount)}</strong>` : ' <em style="color:var(--muted);">numer konta – uzupełnij w ustawieniach firmy</em>'}.</li>
+        <li>Wynagrodzenie płatne jest przelewem na rachunek bankowy Wykonawcy:
+          <div style="text-align:center;margin:10px 0 4px;font-size:19px;font-weight:700;letter-spacing:.06em;font-family:monospace;">${company.bankAccount ? escapeHtml(company.bankAccount) : '<em style="font-size:13px;font-weight:400;font-family:sans-serif;color:var(--muted);">numer konta – uzupełnij w ustawieniach firmy</em>'}</div>
+        </li>
         <li>Po otrzymaniu płatności Wykonawca wystawi fakturę VAT zgodnie z obowiązującymi przepisami prawa podatkowego.</li>
         <li>Brak płatności przekraczający 3 dni robocze od ustalonego terminu uprawnia Wykonawcę do:
           <ul>
