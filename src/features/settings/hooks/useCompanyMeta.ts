@@ -23,6 +23,23 @@ export function useCompanyMeta(): CompanyMetaForDocs {
 
   const postalCity = [p?.postal_code, p?.city].filter(Boolean).join(' ').trim()
 
+  // Defensive: try every plausible column name. The DB might use `iban`,
+  // `bank_account`, or `account_number` depending on which migration shipped.
+  const bankAccount =
+    p?.iban ||
+    p?.bank_account ||
+    p?.bankAccount ||
+    p?.account_number ||
+    p?.accountNumber ||
+    ''
+
+  if (import.meta.env.DEV && profile && !bankAccount) {
+    // One-time diagnostic so the user can see WHY the contract shows the
+    // "uzupełnij w ustawieniach" placeholder. Lists every field on profile so
+    // we can identify the actual column name in their schema.
+    console.warn('[useCompanyMeta] bankAccount EMPTY — profile keys =', Object.keys(p || {}), 'profile =', p)
+  }
+
   return {
     name: p?.company_name || p?.name || p?.company || user?.companyName || '',
     nip: p?.nip || p?.ksef_nip || '',
@@ -30,7 +47,7 @@ export function useCompanyMeta(): CompanyMetaForDocs {
     postalCity: postalCity || '',
     email: p?.email || user?.email || '',
     phone: p?.phone || '',
-    bankAccount: p?.iban || '',
+    bankAccount,
     logoUrl: p?.logo_url || '',
   }
 }
