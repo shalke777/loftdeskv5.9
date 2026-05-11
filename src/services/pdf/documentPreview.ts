@@ -129,17 +129,19 @@ function pageShell(title: string, subtitle: string, content: string) {
   .checklist { display:grid; gap:10px; margin-top:18px; }
   .check { border:1px solid var(--line); border-radius:14px; padding:12px 14px; display:flex; justify-content:space-between; gap:16px; font-size: 13px; }
   .chip { display:inline-flex; padding:6px 10px; border-radius:999px; background:#e8f5ee; color:var(--accent); font-size:14px; font-weight: 500; }
-  @page { size: A4 portrait; margin: 12mm 10mm 23mm; }
+  @page { size: A4 portrait; margin: 12mm 10mm 15mm; }
   @media print {
     body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .doc { width: 100%; margin: 0; box-shadow: none; }
     .page { min-height: auto; break-after: page; }
     .topbar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     /*
-     * @page margin-bottom: 23mm = 11mm footer height + 12mm gap above footer.
-     * Content area ends at 297-23=274mm. Footer sits at 297-11=286mm.
-     * → 12mm white gap between last text line and green footer bar.
+     * padding-bottom on .content is the ONLY reliable way to prevent text
+     * from flowing under a position:fixed footer in all browsers.
+     * @page margin-bottom 15mm = footer bar height.
+     * padding-bottom 25mm = forced clear zone above the footer on every page.
      */
+    .content { padding-bottom: 25mm !important; }
     .footer {
       position: fixed;
       bottom: 0;
