@@ -783,7 +783,8 @@ function buildFullContractHtml(
         </li>
         <li>Wpłaty dokonywane przez Inwestora mają charakter zaliczek na poczet realizacji umowy.</li>
         <li>Każda transza płatna jest z góry.</li>
-        <li>Po otrzymaniu płatności na rachunek bankowy Wykonawcy, Wykonawca wystawi fakturę VAT zgodnie z obowiązującymi przepisami prawa podatkowego.</li>
+        <li>Wynagrodzenie płatne jest przelewem na rachunek bankowy Wykonawcy:${company.bankAccount ? ` <strong style="font-family:monospace;">${escapeHtml(company.bankAccount)}</strong>` : ' <em style="color:var(--muted);">numer konta – uzupełnij w ustawieniach firmy</em>'}.</li>
+        <li>Po otrzymaniu płatności Wykonawca wystawi fakturę VAT zgodnie z obowiązującymi przepisami prawa podatkowego.</li>
         <li>Brak płatności przekraczający 3 dni robocze od ustalonego terminu uprawnia Wykonawcę do:
           <ul>
             <li>wstrzymania robót,</li>
