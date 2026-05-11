@@ -13,7 +13,7 @@ const A4_H_MM = 297
 const RENDER_WIDTH_PX = 900
 const FOOTER_H_MM = 10
 const PAGE_TOP_MARGIN_MM = 8   // breathing room at the top of pages 2+
-const FOOTER_MARGIN_MM = 8     // white gap between last content line and footer bar
+const FOOTER_MARGIN_MM = 12    // white gap between last content line and footer bar
 const FOOTER_RGB = { r: 22, g: 163, b: 74 }
 /** Usable content height per page (A4 minus footer bar minus top margin minus footer gap) */
 const USABLE_H_MM = A4_H_MM - FOOTER_H_MM - PAGE_TOP_MARGIN_MM - FOOTER_MARGIN_MM

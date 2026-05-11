@@ -129,18 +129,19 @@ function pageShell(title: string, subtitle: string, content: string) {
   .checklist { display:grid; gap:10px; margin-top:18px; }
   .check { border:1px solid var(--line); border-radius:14px; padding:12px 14px; display:flex; justify-content:space-between; gap:16px; font-size: 13px; }
   .chip { display:inline-flex; padding:6px 10px; border-radius:999px; background:#e8f5ee; color:var(--accent); font-size:14px; font-weight: 500; }
-  @page { size: A4 portrait; margin: 12mm 10mm 20mm; }
+  @page { size: A4 portrait; margin: 12mm 10mm 10mm; }
   @media print {
     body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .doc { width: 100%; margin: 0; box-shadow: none; }
+    .doc { width: 100%; margin: 0; box-shadow: none; padding-bottom: 22mm; }
     .page { min-height: auto; break-after: page; }
     .topbar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    /* Footer fixed at bottom of each printed page */
+    /* Footer fixed at very bottom of each printed page, separated from content */
     .footer {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
+      padding-top: 8mm;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
