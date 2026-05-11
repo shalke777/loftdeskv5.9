@@ -13,7 +13,7 @@ const A4_H_MM = 297
 const RENDER_WIDTH_PX = 900
 const FOOTER_H_MM = 10
 const PAGE_TOP_MARGIN_MM = 8   // breathing room at the top of pages 2+
-const FOOTER_MARGIN_MM = 12    // white gap between last content line and footer bar
+const FOOTER_MARGIN_MM = 6     // white gap between last content line and footer bar
 const FOOTER_RGB = { r: 22, g: 163, b: 74 }
 /** Usable content height per page (A4 minus footer bar minus top margin minus footer gap) */
 const USABLE_H_MM = A4_H_MM - FOOTER_H_MM - PAGE_TOP_MARGIN_MM - FOOTER_MARGIN_MM
@@ -35,7 +35,13 @@ function absoluteOffsetTopPx(el: HTMLElement): number {
 interface Block { topPx: number; bottomPx: number }
 
 const AVOID_BREAK_SELECTORS =
-  '.section, .party-grid, .totals-box, .signature-grid, table, .checklist, .check'
+  // .section is intentionally NOT here — sections (§1, §2 …) can be very tall
+  // and keeping them atomic caused entire sections to jump to the next page,
+  // leaving large white gaps. Instead we protect individual items:
+  //   • li  — a single bullet point stays whole (no mid-bullet cut)
+  //   • p   — a single paragraph stays whole (no mid-sentence cut)
+  // The algorithm will break BETWEEN paragraphs/bullets, never inside them.
+  '.party-grid, .totals-box, .signature-grid, table, .checklist, .check, li, p'
 
 /**
  * Collect "avoid-break" blocks as {topPx, bottomPx} relative to target element.
