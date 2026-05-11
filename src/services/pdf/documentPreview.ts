@@ -45,7 +45,7 @@ function pageShell(title: string, subtitle: string, content: string) {
   .topbar { height: 74px; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:space-between; padding: 0 42px; }
   .topbar__title { font-size: 18px; font-weight: 600; letter-spacing: .01em; }
   .content { padding: 44px 54px 36px; flex:1; }
-  .footer { margin-top:auto; background:var(--accent); color:#fff; padding: 16px 42px; font-size:11px; display:flex; justify-content:center; gap: 18px; }
+  .footer { margin-top:auto; background:var(--accent); color:#fff; padding: 10px 42px; font-size:11px; display:flex; justify-content:center; gap: 18px; }
   /* H1 — 26pt SemiBold */
   .doc-title { text-align:center; color:var(--accent); font-size: 26px; font-weight: 700; margin: 8px 0 18px; }
   /* H2 — 18pt SemiBold */
@@ -129,27 +129,27 @@ function pageShell(title: string, subtitle: string, content: string) {
   .checklist { display:grid; gap:10px; margin-top:18px; }
   .check { border:1px solid var(--line); border-radius:14px; padding:12px 14px; display:flex; justify-content:space-between; gap:16px; font-size: 13px; }
   .chip { display:inline-flex; padding:6px 10px; border-radius:999px; background:#e8f5ee; color:var(--accent); font-size:14px; font-weight: 500; }
-  @page { size: A4 portrait; margin: 12mm 10mm 28mm; }
+  @page { size: A4 portrait; margin: 12mm 10mm 23mm; }
   @media print {
     body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .doc { width: 100%; margin: 0; box-shadow: none; }
     .page { min-height: auto; break-after: page; }
     .topbar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     /*
-     * Footer: fixed at bottom of every printed page.
-     * @page margin-bottom: 28mm reserves the space — content never flows under it.
-     * height: 22mm matches footer bar height so it sits flush in the margin area.
+     * @page margin-bottom: 23mm = 11mm footer height + 12mm gap above footer.
+     * Content area ends at 297-23=274mm. Footer sits at 297-11=286mm.
+     * → 12mm white gap between last text line and green footer bar.
      */
     .footer {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      height: 22mm;
+      height: 11mm;
+      padding: 0 42px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0 42px;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
