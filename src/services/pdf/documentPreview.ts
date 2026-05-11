@@ -129,19 +129,27 @@ function pageShell(title: string, subtitle: string, content: string) {
   .checklist { display:grid; gap:10px; margin-top:18px; }
   .check { border:1px solid var(--line); border-radius:14px; padding:12px 14px; display:flex; justify-content:space-between; gap:16px; font-size: 13px; }
   .chip { display:inline-flex; padding:6px 10px; border-radius:999px; background:#e8f5ee; color:var(--accent); font-size:14px; font-weight: 500; }
-  @page { size: A4 portrait; margin: 12mm 10mm 10mm; }
+  @page { size: A4 portrait; margin: 12mm 10mm 28mm; }
   @media print {
     body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .doc { width: 100%; margin: 0; box-shadow: none; padding-bottom: 22mm; }
+    .doc { width: 100%; margin: 0; box-shadow: none; }
     .page { min-height: auto; break-after: page; }
     .topbar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    /* Footer fixed at very bottom of each printed page, separated from content */
+    /*
+     * Footer: fixed at bottom of every printed page.
+     * @page margin-bottom: 28mm reserves the space — content never flows under it.
+     * height: 22mm matches footer bar height so it sits flush in the margin area.
+     */
     .footer {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      padding-top: 8mm;
+      height: 22mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 42px;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
