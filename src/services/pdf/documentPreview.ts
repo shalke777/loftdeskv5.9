@@ -191,15 +191,34 @@ function pageShell(title: string, subtitle: string, content: string, company?: C
    */
   @page {
     size: A4 portrait;
-    margin: 14mm 12mm ${pageMarginBottom} 12mm;
+    margin: 14mm 15mm ${pageMarginBottom} 15mm;
     ${printFooterMarginBox}
   }
   @media print {
-    body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 12px; }
     .doc { width: 100%; margin: 0; box-shadow: none; }
-    .topbar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .topbar { -webkit-print-color-adjust: exact; print-color-adjust: exact; height: 52px; padding: 0 20px; }
+    .topbar__title { font-size: 14px; }
     .page { min-height: auto; padding: 0 !important; display: block; }
-    .content { padding-bottom: 0 !important; }
+    /* Remove horizontal padding — @page margins already provide side gutters.
+       Keeping only a small top gap after the topbar. */
+    .content { padding: 10px 0 0 0 !important; }
+    /* Compact section spacing so content fits A4 without large gaps */
+    .section { margin-top: 14px; }
+    .section h2 { font-size: 11px; margin-bottom: 6px; padding-bottom: 4px; }
+    .section p, .section li { font-size: 11.5px; line-height: 1.55; margin-bottom: 3px; }
+    .section ol { padding-left: 18px; margin: 4px 0; }
+    .section ol li { margin-bottom: 3px; }
+    .party-grid { gap: 10px; margin: 12px 0 16px; }
+    .party-box { border-radius: 6px; padding: 10px 12px; }
+    .party-box strong { font-size: 13px; margin-bottom: 4px; }
+    .party-box p { font-size: 11.5px; margin: 2px 0; }
+    .totals-box { padding: 12px 14px; margin-top: 16px; border-radius: 8px; }
+    .totals-line { padding: 5px 0; font-size: 12px; }
+    .totals-line strong { font-size: 20px; }
+    /* Signatures: tighter gap so they fit naturally without pushing to page 3 */
+    .signature-grid { margin-top: 36px; gap: 24px; }
+    .meta { margin-bottom: 10px; }
     /* On-screen footer is replaced by @page @bottom-center margin-box in print */
     .footer { display: none !important; }
     /* Tables flow across page breaks; rows never split */
@@ -208,17 +227,20 @@ function pageShell(title: string, subtitle: string, content: string, company?: C
       border-radius: 0 !important;
       box-shadow: none !important;
       page-break-inside: auto;
+      margin-top: 10px;
     }
     tr { page-break-inside: avoid; break-inside: avoid; }
     thead { display: table-header-group; }
-    td, th { overflow: visible; }
-    .party-grid { break-inside: avoid; }
+    td, th { overflow: visible; font-size: 11px; padding: 4px 6px; }
+    /* party-grid: allow split if too tall (was causing entire grid to jump page) */
+    .party-grid { break-inside: auto; }
     .totals-box { break-inside: avoid; }
     .signature-grid { break-inside: avoid; }
+    /* Heading stays with first line of section — but section itself can split */
     .section h2 { break-after: avoid; page-break-after: avoid; }
     .section { break-inside: auto; }
-    /* Widow/orphan control — never leave a single line stranded */
-    p, li { orphans: 3; widows: 3; }
+    /* Widow/orphan: 2 lines — was 3, causing entire paragraphs to jump to next page */
+    p, li { orphans: 2; widows: 2; }
   }
 </style>
 </head>
