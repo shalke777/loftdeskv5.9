@@ -684,58 +684,82 @@ function buildFullContractHtml(
   const gross = contract.value
   // Always derive VAT rate from gross/net ratio — stored vat_rate may have been
   // saved incorrectly (e.g. defaulted to 23 before the derivation fix).
-  // Formula: round((gross/net - 1) * 100). Only fall back to 0 when data is insufficient.
   const vatRate: number = (net > 0 && gross > net)
     ? Math.round((gross / net - 1) * 100)
     : (contract.vat_rate ?? 0)
   const vatAmt = gross - net
   const customParas = (contract.custom_paragraphs ?? [])
   const nCustom = customParas.length
-  const zmOffset = 6 + nCustom
 
   const penaltyPerDay = contract.penalty_per_day_pct ?? 0.1
-  const maxPenalty    = contract.max_penalty_pct ?? 10
+  const maxPenalty    = contract.max_penalty_pct ?? 5
 
+  // Custom paragraphs inserted between §9 and §10 (Gwarancja)
   const customParaSections = customParas.map((p, i) => `
     <div class="section">
-      <h2>§${6 + i} ${escapeHtml(p.title || 'Postanowienie dodatkowe')}</h2>
+      <h2>§${10 + i} ${escapeHtml(p.title || 'Postanowienie dodatkowe')}</h2>
       <ol>${p.content.split('\n').filter(Boolean).map((line) => `<li>${escapeHtml(line)}</li>`).join('') || `<li>${escapeHtml(p.content)}</li>`}</ol>
     </div>`).join('')
+
+  // Fixed-section numbers shift when custom paragraphs are present
+  const s10 = 10 + nCustom  // Gwarancja i rękojmia
+  const s11 = 11 + nCustom  // Siła wyższa
+  const s12 = 12 + nCustom  // Zmiany umowy
+  const s13 = 13 + nCustom  // Załączniki
+  const s14 = 14 + nCustom  // Postanowienia końcowe
 
   const estimateRef = estimateNumber
     ? `Kosztorysie nr <strong>${escapeHtml(estimateNumber)}</strong>, stanowiącym Załącznik nr 1 do niniejszej umowy`
     : `kosztorysie stanowiącym Załącznik nr 1 do niniejszej umowy`
 
   return `
-    ${contractPartiesHtml(clientMeta, company)}
+    <div class="section">
+      <h2>§1 Strony umowy</h2>
+      ${contractPartiesHtml(clientMeta, company)}
+    </div>
 
     <div class="section">
-      <h2>§1 Przedmiot umowy</h2>
+      <h2>§2 Przedmiot umowy</h2>
       <ol>
-        <li>Wykonawca zobowiązuje się do wykonania na rzecz Inwestora robót budowlanych / wykończeniowych / remontowych zgodnie z zakresem usług określonym w ${estimateRef}.</li>
-        <li>Prace będą wykonane w obiekcie zlokalizowanym pod adresem: <strong>${escapeHtml(contract.location || 'do uzupełnienia')}</strong>.</li>
-        <li>Szczegółowy zakres robót, materiały i sposób rozliczenia określa kosztorys stanowiący integralną część niniejszej umowy.</li>
-        <li>Wykonawca oświadcza, że posiada niezbędne kwalifikacje i uprawnienia do wykonania przedmiotu umowy.</li>
+        <li>Wykonawca zobowiązuje się do wykonania na rzecz Inwestora robót budowlanych, remontowych oraz wykończeniowych zgodnie z zakresem określonym w ${estimateRef}.</li>
+        <li>Roboty realizowane będą w lokalu / obiekcie położonym pod adresem: <strong>${escapeHtml(contract.location || '…………………………………………………')}</strong>.</li>
+        <li>Szczegółowy zakres prac, standard wykonania, materiały oraz sposób rozliczenia określa kosztorys stanowiący integralną część niniejszej umowy.</li>
+        <li>Wszelkie prace niewskazane wyraźnie w kosztorysie lub dokumentacji stanowią prace dodatkowe.</li>
+        <li>Wykonawca oświadcza, że posiada kwalifikacje, doświadczenie oraz zaplecze techniczne niezbędne do prawidłowej realizacji przedmiotu umowy zgodnie z zasadami sztuki budowlanej.</li>
       </ol>
     </div>
 
     <div class="section">
-      <h2>§2 Termin realizacji</h2>
+      <h2>§3 Termin realizacji</h2>
       <ol>
-        <li>Strony uzgadniają następujące terminy realizacji umowy:<br/>
-          a) termin przekazania terenu / obiektu i rozpoczęcia robót: <strong>${escapeHtml(contract.start_date || 'do ustalenia')}</strong>,<br/>
-          b) termin zakończenia robót i przekazania do odbioru końcowego: <strong>${escapeHtml(contract.end_date || 'do ustalenia')}</strong>.
+        <li>Strony ustalają następujące terminy realizacji:<br/>
+          a) rozpoczęcie robót: <strong>${escapeHtml(contract.start_date || '………………………………')}</strong><br/>
+          b) zakończenie robót i zgłoszenie gotowości do odbioru końcowego: <strong>${escapeHtml(contract.end_date || '………………………………')}</strong>
         </li>
-        <li>W przypadku przekroczenia ustalonego terminu realizacji robót, termin ten może ulec wydłużeniu wyłącznie w wyjątkowych, nieprzewidzianych przez Wykonawcę okolicznościach, o maksymalnie 30 dni kalendarzowych.</li>
-        <li>Wszelkie zmiany zakresu robót, decyzje, opóźnienia lub działania leżące po stronie Inwestora skutkują automatycznym i bezwarunkowym wydłużeniem terminu realizacji o czas niezbędny do ich wykonania lub usunięcia ich skutków.</li>
-        <li>Dopiero po upływie wydłużonego terminu, o którym mowa powyżej, w przypadku dalszego opóźnienia z winy Wykonawcy, Inwestor ma prawo naliczyć karę umowną w wysokości <strong>${penaltyPerDay}%</strong> wynagrodzenia brutto za każdy dzień zwłoki, jednak nie więcej niż <strong>${maxPenalty}%</strong> wynagrodzenia brutto.</li>
+        <li>Termin realizacji ulega odpowiedniemu wydłużeniu o czas wynikający z:
+          <ul>
+            <li>zmian zakresu robót,</li>
+            <li>prac dodatkowych,</li>
+            <li>opóźnień lub działań Inwestora,</li>
+            <li>braku decyzji materiałowych lub projektowych,</li>
+            <li>opóźnień dostaw materiałów,</li>
+            <li>niedostępności frontu robót,</li>
+            <li>prac wykonywanych przez osoby trzecie,</li>
+            <li>koniecznych przerw technologicznych,</li>
+            <li>działania siły wyższej,</li>
+            <li>innych okoliczności niezależnych od Wykonawcy.</li>
+          </ul>
+        </li>
+        <li>Wykonawca poinformuje Inwestora o wpływie powyższych okoliczności na termin realizacji.</li>
+        <li>W przypadku opóźnienia realizacji robót wyłącznie z winy Wykonawcy, Inwestor może naliczyć karę umowną w wysokości <strong>${penaltyPerDay}%</strong> wynagrodzenia brutto za każdy dzień zwłoki, nie więcej jednak niż <strong>${maxPenalty}%</strong> całkowitego wynagrodzenia brutto.</li>
+        <li>Zapłata kar umownych wyczerpuje wszelkie roszczenia Inwestora związane z opóźnieniem realizacji robót.</li>
       </ol>
     </div>
 
     <div class="section">
-      <h2>§3 Wynagrodzenie</h2>
+      <h2>§4 Wynagrodzenie i płatności</h2>
       <ol>
-        <li>Za wykonanie przedmiotu umowy Strony ustalają wynagrodzenie ryczałtowe w następującej wysokości:</li>
+        <li>Strony ustalają wynagrodzenie ryczałtowe za wykonanie przedmiotu umowy w wysokości:</li>
       </ol>
       <div class="totals-box" style="margin-top:14px;margin-bottom:14px;">
         <div class="totals-line"><span>Wartość netto:</span><span>${formatCurrency(net)}</span></div>
@@ -743,23 +767,25 @@ function buildFullContractHtml(
         <div class="totals-line"><strong>RAZEM BRUTTO:</strong><strong>${formatCurrency(gross)}</strong></div>
       </div>
       <ol start="2">
-        <li>Wynagrodzenie płatne jest w transzach, zgodnie z poniższym harmonogramem płatności:
+        <li>Wynagrodzenie płatne będzie w następujących transzach:
           ${contractTranchesTable(contract.tranches ?? [], gross)}
         </li>
-        <li>Każda transza wynagrodzenia płatna jest przez Inwestora z góry, w terminach określonych w harmonogramie płatności wskazanym w umowie. Po zaksięgowaniu wpłaty na rachunku Wykonawcy, Wykonawca wystawi i doręczy Inwestorowi odpowiednią fakturę VAT lub rachunek dokumentujący otrzymaną płatność.</li>
-        <li>W przypadku nieterminowej zapłaty Wykonawca uprawniony jest do naliczania odsetek ustawowych za każdy dzień zwłoki.</li>
-        <li>Materiały i ich transport niezbędne do realizacji robót nie są wliczone w wynagrodzenie, chyba że Strony w odrębnym aneksie postanowią inaczej.</li>
-        <li>Wykonawca zastrzega sobie prawo do zwrócenia się do Inwestora o bezzwłoczne uregulowanie płatności za materiał dostarczony przez Wykonawcę w trakcie realizacji robót.</li>
-      </ol>
-    </div>
-
-    <div class="section">
-      <h2>§4 Gwarancja i rękojmia</h2>
-      <ol>
-        <li>Na wykonane roboty Wykonawca udziela gwarancji na okres <strong>24 (dwudziestu czterech) miesięcy</strong>, liczonych od daty bezusterkowego odbioru końcowego potwierdzonego protokołem.</li>
-        <li>W ramach rękojmi Wykonawca odpowiada za wady fizyczne wykonanych robót przez okres 2 lat od daty odbioru końcowego, na zasadach Kodeksu cywilnego.</li>
-        <li>Ujawnione usterki lub wady Wykonawca usunie w terminie uzgodnionym z Inwestorem, nie dłuższym niż 14 dni roboczych od daty zgłoszenia. W przypadkach wymagających dłuższego czasu z uwagi na specyfikę lub skalę usterki, strony ustalą termin pisemnie.</li>
-        <li>Gwarancja nie obejmuje uszkodzeń powstałych wskutek nieprawidłowej eksploatacji, działania osób trzecich, wandalizmu lub zdarzeń losowych niezależnych od Wykonawcy.</li>
+        <li>Wpłaty dokonywane przez Inwestora mają charakter zaliczek na poczet realizacji umowy.</li>
+        <li>Każda transza płatna jest z góry.</li>
+        <li>Po otrzymaniu płatności na rachunek bankowy Wykonawcy, Wykonawca wystawi fakturę VAT zgodnie z obowiązującymi przepisami prawa podatkowego.</li>
+        <li>Brak płatności przekraczający 3 dni robocze od ustalonego terminu uprawnia Wykonawcę do:
+          <ul>
+            <li>wstrzymania robót,</li>
+            <li>odpowiedniego wydłużenia terminu realizacji,</li>
+            <li>odmowy dalszego wykonywania prac do czasu uregulowania zaległości.</li>
+          </ul>
+        </li>
+        <li>W okresie wstrzymania robót Wykonawca nie pozostaje w zwłoce.</li>
+        <li>W przypadku opóźnienia płatności Wykonawca ma prawo naliczać odsetki ustawowe za opóźnienie.</li>
+        <li>Drobne usterki lub wady nieistotne nie stanowią podstawy do odmowy zapłaty wynagrodzenia.</li>
+        <li>Wykonawca może uzależnić podpisanie protokołu odbioru końcowego oraz wydanie frontu robót od uprzedniego uregulowania całości wynagrodzenia.</li>
+        <li>Materiały, transport, wniesienie, logistyka oraz koszty dostaw nie są wliczone w wynagrodzenie, chyba że Strony postanowią inaczej w formie pisemnej.</li>
+        <li>W przypadku wzrostu cen materiałów, energii, paliw lub kosztów realizacji przekraczających 10% względem dnia zawarcia umowy, Strony dopuszczają odpowiednią waloryzację wynagrodzenia.</li>
       </ol>
     </div>
 
@@ -767,56 +793,142 @@ function buildFullContractHtml(
       <h2>§5 Obowiązki Inwestora</h2>
       <ol>
         <li>Inwestor zobowiązuje się do:
-          <ol type="a">
-            <li>udostępnienia Wykonawcy obiektu / terenu robót najpóźniej w dniu wskazanym jako termin rozpoczęcia prac,</li>
-            <li>zapewnienia dostępu do energii elektrycznej i wody na czas trwania robót (koszty mediów ponosi Inwestor),</li>
-            <li>terminowego dokonywania płatności zgodnie z harmonogramem transz określonym w §3,</li>
-            <li>pisemnego informowania Wykonawcy o wszelkich okolicznościach mogących mieć wpływ na realizację prac,</li>
-            <li>podejmowania bieżących decyzji dotyczących zakresu i materiałów niezwłocznie po ich zgłoszeniu przez Wykonawcę.</li>
-          </ol>
+          <ul>
+            <li>terminowego przekazania frontu robót,</li>
+            <li>zapewnienia dostępu do energii elektrycznej i wody,</li>
+            <li>terminowego dokonywania płatności,</li>
+            <li>podejmowania bieżących decyzji materiałowych i projektowych,</li>
+            <li>współpracy niezbędnej do prawidłowej realizacji robót.</li>
+          </ul>
         </li>
-        <li>W trakcie realizacji robót Inwestor nie będzie ingerował w sposób wykonywania prac przez Wykonawcę i jego podwykonawców.</li>
-        <li>Wykonawca zastrzega sobie prawo do korzystania z lokalu na wyłączność przez okres trwania prac.</li>
-        <li>Inwestor wskaże Wykonawcy miejsce składowania odpadów budowlanych przy inwestycji. Koszt utylizacji odpadów budowlanych ponosi Inwestor.</li>
-        <li>Odbiór robót nastąpi na podstawie protokołu odbioru podpisanego przez obie Strony. Inwestor zobowiązuje się do uczestnictwa w odbiorze w terminie uzgodnionym przez Strony.</li>
+        <li>Inwestor zobowiązuje się nie utrudniać realizacji prac poprzez równoległe prowadzenie robót przez osoby trzecie bez uzgodnienia z Wykonawcą.</li>
+        <li>Koszty mediów oraz utylizacji odpadów budowlanych ponosi Inwestor.</li>
+        <li>Inwestor odpowiada za zabezpieczenie rzeczy ruchomych pozostawionych w lokalu.</li>
+        <li>Wykonawca ma prawo wykonywać dokumentację fotograficzną realizacji robót do celów dowodowych, reklamacyjnych oraz prezentacji portfolio, z wyłączeniem danych osobowych oraz elementów naruszających prywatność Inwestora.</li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <h2>§6 Prace dodatkowe</h2>
+      <ol>
+        <li>Wszelkie prace wykraczające poza zakres określony w kosztorysie stanowią prace dodatkowe.</li>
+        <li>Prace dodatkowe wymagają akceptacji Inwestora co do zakresu oraz wyceny.</li>
+        <li>Dopuszcza się akceptację prac dodatkowych również w formie dokumentowej, w szczególności poprzez:
+          <ul>
+            <li>wiadomość e-mail,</li>
+            <li>wiadomość SMS,</li>
+            <li>komunikator internetowy,</li>
+            <li>akceptację elektroniczną.</li>
+          </ul>
+        </li>
+        <li>Prace dodatkowe mogą wpływać na termin realizacji oraz wysokość wynagrodzenia.</li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <h2>§7 Odbiór robót</h2>
+      <ol>
+        <li>Wykonawca zgłasza gotowość do odbioru robót po zakończeniu danego etapu lub całości prac.</li>
+        <li>Inwestor zobowiązuje się przystąpić do odbioru w terminie 3 dni roboczych od zgłoszenia gotowości odbioru.</li>
+        <li>Odmowa odbioru wymaga pisemnego wskazania istotnych wad uniemożliwiających prawidłowe użytkowanie przedmiotu umowy.</li>
+        <li>Nie stanowią podstawy odmowy odbioru drobne usterki lub niedoskonałości nie wpływające na funkcjonalność oraz możliwość użytkowania.</li>
+        <li>Brak przystąpienia do odbioru lub brak podpisania protokołu mimo możliwości użytkowania robót uznaje się za dokonanie odbioru.</li>
+        <li>Zakrycie wykonanych robót przez kolejne etapy prac uniemożliwiające ich dalszą weryfikację uznaje się za odbiór częściowy danego zakresu, z wyjątkiem wad ukrytych.</li>
+        <li>Brak zgłoszenia zastrzeżeń do danego etapu robót przed rozpoczęciem kolejnego etapu oznacza akceptację wykonanych prac w zakresie umożliwiającym kontynuację realizacji.</li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <h2>§8 Odbiór prac glazurniczych</h2>
+      <ol>
+        <li>Odbiór prac glazurniczych następuje zgodnie z zasadami sztuki budowlanej, aktualnymi normami branżowymi oraz wytycznymi producentów materiałów.</li>
+        <li>Ocena jakości wykonania odbywa się w warunkach normalnego użytkowania pomieszczenia, przy standardowym oświetleniu oraz z typowej odległości eksploatacyjnej, bez stosowania światła bocznego, reflektorów technicznych, laserów lub narzędzi pomiarowych niewykorzystywanych w codziennym użytkowaniu.</li>
+        <li>Nie stanowią wad wykonawczych zjawiska niewidoczne w warunkach normalnego użytkowania.</li>
+        <li>W przypadku zastosowania systemów odsprzęgających dopuszcza się miejscowe różnice akustyczne charakterystyczne dla tego typu technologii, o ile nie występuje odspojenie lub utrata funkcjonalności okładziny.</li>
+        <li>Dopuszcza się tolerancje wykonawcze wynikające z technologii materiałów oraz obowiązujących norm budowlanych.</li>
+        <li>Wykonawca nie odpowiada za wady wynikające z istniejących wad podłoża, odchyleń konstrukcyjnych lub błędów wykonanych przez osoby trzecie, o ile zostały zgłoszone Inwestorowi.</li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <h2>§9 Odbiór prac malarskich</h2>
+      <ol>
+        <li>Odbiór robót malarskich wykonywanych metodą natryskową następuje zgodnie z zasadami sztuki budowlanej, normami branżowymi oraz wytycznymi producentów.</li>
+        <li>Ocena jakości wykonania odbywa się przy standardowym oświetleniu użytkowym, bez stosowania światła bocznego, reflektorów technicznych lub narzędzi inspekcyjnych.</li>
+        <li>Dopuszcza się naturalne różnice w strukturze oraz mikrostrukturze powłoki wynikające z technologii natrysku i właściwości podłoża.</li>
+        <li>Nie stanowią wad wykonawczych zjawiska niewidoczne podczas normalnego użytkowania pomieszczeń.</li>
+        <li>Zakrycie powierzchni zabudowami, wyposażeniem lub kolejnymi warstwami wykończeniowymi stanowi odbiór częściowy robót.</li>
       </ol>
     </div>
 
     ${customParaSections}
 
     <div class="section">
-      <h2>§${zmOffset} Zmiany umowy</h2>
+      <h2>§${s10} Gwarancja i rękojmia</h2>
       <ol>
-        <li>Wszelkie zmiany i uzupełnienia niniejszej umowy wymagają formy pisemnej pod rygorem nieważności.</li>
-        <li>Prace dodatkowe, wykraczające poza zakres opisany w §1, realizowane będą wyłącznie na podstawie odrębnego pisemnego zlecenia zaakceptowanego przez obie Strony, zawierającego zakres i wycenę prac dodatkowych.</li>
-      </ol>
-    </div>
-
-    <div class="section">
-      <h2>§${zmOffset + 1} Załączniki</h2>
-      <ol>
-        <li>Integralnymi częściami niniejszej umowy są następujące załączniki:
-          <ol type="a">
-            <li>Załącznik nr 1 – Kosztorys / wycena ofertowa${contract.template_name ? ` (${escapeHtml(contract.template_name)})` : ''},</li>
-            <li>Załącznik nr 2 – Harmonogram transz płatności.</li>
-          </ol>
+        <li>Wykonawca udziela gwarancji jakości na okres <strong>24 miesięcy</strong> od dnia odbioru końcowego.</li>
+        <li>Rękojmia za wady wykonywana jest zgodnie z przepisami Kodeksu cywilnego.</li>
+        <li>Usterki zgłaszane będą w formie dokumentowej.</li>
+        <li>Wykonawca usunie zasadne usterki w terminie uzgodnionym z Inwestorem, uwzględniającym charakter oraz technologię napraw.</li>
+        <li>Gwarancja nie obejmuje:
+          <ul>
+            <li>uszkodzeń mechanicznych,</li>
+            <li>niewłaściwego użytkowania,</li>
+            <li>działania osób trzecich,</li>
+            <li>naturalnego zużycia,</li>
+            <li>zdarzeń losowych,</li>
+            <li>ingerencji innych wykonawców.</li>
+          </ul>
         </li>
       </ol>
     </div>
 
     <div class="section">
-      <h2>§${zmOffset + 2} Egzemplarze</h2>
+      <h2>§${s11} Siła wyższa</h2>
       <ol>
-        <li>Niniejszą umowę sporządzono w dwóch jednobrzmiących egzemplarzach – po jednym dla każdej ze Stron.</li>
+        <li>Przez siłę wyższą rozumie się zdarzenia niezależne od Stron, niemożliwe do przewidzenia lub zapobieżenia, w szczególności:
+          <ul>
+            <li>klęski żywiołowe,</li>
+            <li>pożary,</li>
+            <li>awarie sieci,</li>
+            <li>wojny,</li>
+            <li>epidemie,</li>
+            <li>ograniczenia administracyjne,</li>
+            <li>przerwy dostaw materiałów,</li>
+            <li>długotrwałe warunki atmosferyczne uniemożliwiające prowadzenie prac.</li>
+          </ul>
+        </li>
+        <li>Wystąpienie siły wyższej powoduje odpowiednie wydłużenie terminu realizacji.</li>
       </ol>
     </div>
 
     <div class="section">
-      <h2>§${zmOffset + 3} Postanowienia końcowe</h2>
+      <h2>§${s12} Zmiany umowy</h2>
       <ol>
-        <li>W sprawach nieuregulowanych niniejszą umową zastosowanie mają przepisy Kodeksu cywilnego Rzeczypospolitej Polskiej, w szczególności przepisy dotyczące umowy o dzieło oraz umowy o roboty budowlane.</li>
-        <li>Wszelkie spory wynikłe na tle wykonania niniejszej umowy Strony zobowiązują się rozstrzygać w pierwszej kolejności na drodze polubownej. W razie braku porozumienia spory będą kierowane do sądu powszechnego właściwego miejscowo dla siedziby Wykonawcy.</li>
-        <li>Umowa wchodzi w życie z dniem jej podpisania przez obie Strony.</li>
+        <li>Wszelkie zmiany niniejszej umowy wymagają formy pisemnej lub dokumentowej pod rygorem nieważności.</li>
+        <li>Za formę dokumentową Strony uznają również wiadomości e-mail oraz komunikację elektroniczną umożliwiającą identyfikację nadawcy.</li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <h2>§${s13} Załączniki</h2>
+      <ol>
+        <li>Integralną część umowy stanowią:
+          <ul>
+            <li>Załącznik nr 1 – kosztorys / wycena${contract.template_name ? ` (${escapeHtml(contract.template_name)})` : ''},</li>
+            <li>Załącznik nr 2 – dokumentacja projektowa (jeżeli występuje).</li>
+          </ul>
+        </li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <h2>§${s14} Postanowienia końcowe</h2>
+      <ol>
+        <li>W sprawach nieuregulowanych niniejszą umową zastosowanie mają przepisy prawa polskiego, w szczególności przepisy Kodeksu cywilnego.</li>
+        <li>Strony zobowiązują się dążyć do polubownego rozwiązania sporów.</li>
+        <li>Umowę sporządzono w dwóch jednobrzmiących egzemplarzach, po jednym dla każdej ze Stron.</li>
+        <li>Umowa wchodzi w życie z dniem podpisania.</li>
       </ol>
     </div>
 
