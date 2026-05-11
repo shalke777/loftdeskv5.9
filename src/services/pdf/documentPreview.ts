@@ -694,19 +694,19 @@ function buildFullContractHtml(
   const penaltyPerDay = contract.penalty_per_day_pct ?? 0.1
   const maxPenalty    = contract.max_penalty_pct ?? 5
 
-  // Custom paragraphs inserted between §9 and §10 (Gwarancja)
+  // Custom paragraphs inserted between §7 and §8 (Gwarancja)
   const customParaSections = customParas.map((p, i) => `
     <div class="section">
-      <h2>§${10 + i} ${escapeHtml(p.title || 'Postanowienie dodatkowe')}</h2>
+      <h2>§${8 + i} ${escapeHtml(p.title || 'Postanowienie dodatkowe')}</h2>
       <ol>${p.content.split('\n').filter(Boolean).map((line) => `<li>${escapeHtml(line)}</li>`).join('') || `<li>${escapeHtml(p.content)}</li>`}</ol>
     </div>`).join('')
 
   // Fixed-section numbers shift when custom paragraphs are present
-  const s10 = 10 + nCustom  // Gwarancja i rękojmia
-  const s11 = 11 + nCustom  // Siła wyższa
-  const s12 = 12 + nCustom  // Zmiany umowy
-  const s13 = 13 + nCustom  // Załączniki
-  const s14 = 14 + nCustom  // Postanowienia końcowe
+  const s8  = 8  + nCustom  // Gwarancja i rękojmia
+  const s9  = 9  + nCustom  // Siła wyższa
+  const s10 = 10 + nCustom  // Zmiany umowy
+  const s11 = 11 + nCustom  // Załączniki
+  const s12 = 12 + nCustom  // Postanowienia końcowe
 
   const estimateRef = estimateNumber
     ? `Kosztorysie nr <strong>${escapeHtml(estimateNumber)}</strong>, stanowiącym Załącznik nr 1 do niniejszej umowy`
@@ -838,33 +838,10 @@ function buildFullContractHtml(
       </ol>
     </div>
 
-    <div class="section">
-      <h2>§8 Odbiór prac glazurniczych</h2>
-      <ol>
-        <li>Odbiór prac glazurniczych następuje zgodnie z zasadami sztuki budowlanej, aktualnymi normami branżowymi oraz wytycznymi producentów materiałów.</li>
-        <li>Ocena jakości wykonania odbywa się w warunkach normalnego użytkowania pomieszczenia, przy standardowym oświetleniu oraz z typowej odległości eksploatacyjnej, bez stosowania światła bocznego, reflektorów technicznych, laserów lub narzędzi pomiarowych niewykorzystywanych w codziennym użytkowaniu.</li>
-        <li>Nie stanowią wad wykonawczych zjawiska niewidoczne w warunkach normalnego użytkowania.</li>
-        <li>W przypadku zastosowania systemów odsprzęgających dopuszcza się miejscowe różnice akustyczne charakterystyczne dla tego typu technologii, o ile nie występuje odspojenie lub utrata funkcjonalności okładziny.</li>
-        <li>Dopuszcza się tolerancje wykonawcze wynikające z technologii materiałów oraz obowiązujących norm budowlanych.</li>
-        <li>Wykonawca nie odpowiada za wady wynikające z istniejących wad podłoża, odchyleń konstrukcyjnych lub błędów wykonanych przez osoby trzecie, o ile zostały zgłoszone Inwestorowi.</li>
-      </ol>
-    </div>
-
-    <div class="section">
-      <h2>§9 Odbiór prac malarskich</h2>
-      <ol>
-        <li>Odbiór robót malarskich wykonywanych metodą natryskową następuje zgodnie z zasadami sztuki budowlanej, normami branżowymi oraz wytycznymi producentów.</li>
-        <li>Ocena jakości wykonania odbywa się przy standardowym oświetleniu użytkowym, bez stosowania światła bocznego, reflektorów technicznych lub narzędzi inspekcyjnych.</li>
-        <li>Dopuszcza się naturalne różnice w strukturze oraz mikrostrukturze powłoki wynikające z technologii natrysku i właściwości podłoża.</li>
-        <li>Nie stanowią wad wykonawczych zjawiska niewidoczne podczas normalnego użytkowania pomieszczeń.</li>
-        <li>Zakrycie powierzchni zabudowami, wyposażeniem lub kolejnymi warstwami wykończeniowymi stanowi odbiór częściowy robót.</li>
-      </ol>
-    </div>
-
     ${customParaSections}
 
     <div class="section">
-      <h2>§${s10} Gwarancja i rękojmia</h2>
+      <h2>§${s8} Gwarancja i rękojmia</h2>
       <ol>
         <li>Wykonawca udziela gwarancji jakości na okres <strong>24 miesięcy</strong> od dnia odbioru końcowego.</li>
         <li>Rękojmia za wady wykonywana jest zgodnie z przepisami Kodeksu cywilnego.</li>
@@ -884,7 +861,7 @@ function buildFullContractHtml(
     </div>
 
     <div class="section">
-      <h2>§${s11} Siła wyższa</h2>
+      <h2>§${s9} Siła wyższa</h2>
       <ol>
         <li>Przez siłę wyższą rozumie się zdarzenia niezależne od Stron, niemożliwe do przewidzenia lub zapobieżenia, w szczególności:
           <ul>
@@ -903,7 +880,7 @@ function buildFullContractHtml(
     </div>
 
     <div class="section">
-      <h2>§${s12} Zmiany umowy</h2>
+      <h2>§${s10} Zmiany umowy</h2>
       <ol>
         <li>Wszelkie zmiany niniejszej umowy wymagają formy pisemnej lub dokumentowej pod rygorem nieważności.</li>
         <li>Za formę dokumentową Strony uznają również wiadomości e-mail oraz komunikację elektroniczną umożliwiającą identyfikację nadawcy.</li>
@@ -911,7 +888,7 @@ function buildFullContractHtml(
     </div>
 
     <div class="section">
-      <h2>§${s13} Załączniki</h2>
+      <h2>§${s11} Załączniki</h2>
       <ol>
         <li>Integralną część umowy stanowią:
           <ul>
@@ -923,7 +900,7 @@ function buildFullContractHtml(
     </div>
 
     <div class="section">
-      <h2>§${s14} Postanowienia końcowe</h2>
+      <h2>§${s12} Postanowienia końcowe</h2>
       <ol>
         <li>W sprawach nieuregulowanych niniejszą umową zastosowanie mają przepisy prawa polskiego, w szczególności przepisy Kodeksu cywilnego.</li>
         <li>Strony zobowiązują się dążyć do polubownego rozwiązania sporów.</li>
