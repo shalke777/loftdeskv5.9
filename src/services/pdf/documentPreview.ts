@@ -239,8 +239,15 @@ function pageShell(title: string, subtitle: string, content: string, company?: C
     /* Heading stays with first line of section — but section itself can split */
     .section h2 { break-after: avoid; page-break-after: avoid; }
     .section { break-inside: auto; }
-    /* Widow/orphan: 2 lines — was 3, causing entire paragraphs to jump to next page */
-    p, li { orphans: 2; widows: 2; }
+    /* PAGE-BREAK LOGIC:
+       - ol/ul can split between items (auto)
+       - each <li> stays whole — no cut mid-bullet (avoid)
+       - each <p> stays whole — no cut mid-sentence (avoid)
+       - browser will break BETWEEN paragraphs/bullets, never inside them
+       orphans/widows not needed because break-inside:avoid already prevents splits */
+    ol, ul { break-inside: auto; }
+    li { break-inside: avoid; page-break-inside: avoid; }
+    p { break-inside: avoid; page-break-inside: avoid; }
   }
 </style>
 </head>
