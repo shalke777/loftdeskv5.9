@@ -47,6 +47,9 @@ jobs:
       - name: Private automation and PostgreSQL integration tests
         run: npm run test:private
 
+      - name: ChatGPT MCP protocol and OAuth verification tests
+        run: npm run test:mcp
+
       - name: Setup Python for official FA(3) schema validation
         uses: actions/setup-python@v5
         with:

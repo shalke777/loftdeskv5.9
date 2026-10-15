@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 const {PGlite}=await import(process.env.PGLITE_MODULE||'@electric-sql/pglite')
 const db=new PGlite()
 await db.exec(`
- CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+ CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role; CREATE ROLE supabase_auth_admin;
  CREATE SCHEMA auth; CREATE TABLE auth.users(id UUID PRIMARY KEY);
  CREATE FUNCTION auth.uid() RETURNS UUID LANGUAGE SQL AS $$ SELECT NULLIF(current_setting('test.uid',true),'')::UUID $$;
  CREATE TABLE companies(id UUID PRIMARY KEY);
@@ -27,7 +27,7 @@ await db.exec(`
  INSERT INTO companies VALUES('00000000-0000-0000-0000-000000000002');
  INSERT INTO clients VALUES('00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000002','Client');
 `)
-for(const file of ['170_private_app_access.sql','171_private_automation.sql','172_automation_notifications.sql','173_private_ksef_worker.sql'])await db.exec(readFileSync(new URL(`../../supabase/migrations/${file}`,import.meta.url),'utf8'))
+for(const file of ['170_private_app_access.sql','171_private_automation.sql','172_automation_notifications.sql','173_private_ksef_worker.sql','174_private_mcp_oauth.sql'])await db.exec(readFileSync(new URL(`../../supabase/migrations/${file}`,import.meta.url),'utf8'))
 const company='00000000-0000-0000-0000-000000000002'
 const enqueue=async(kind,key,payload)=>(await db.query('SELECT private_enqueue_job($1,$2,$3,$4) AS job',[company,kind,key,payload])).rows[0].job
 const payload={name:'Offer',items:[{name:'Stage 1',quantity:1,unit_price:0.03,vat_rate:23},{name:'Stage 2',quantity:1,unit_price:0.03,vat_rate:23}]}
@@ -58,6 +58,23 @@ await db.exec("SET ROLE authenticated;SET test.uid='00000000-0000-0000-0000-0000
 assert.equal((await db.query('SELECT * FROM clients')).rows.length,1)
 await db.exec("SET test.uid='00000000-0000-0000-0000-000000000004'")
 assert.equal((await db.query('SELECT * FROM clients')).rows.length,0)
+await db.exec('RESET ROLE')
+await db.query("INSERT INTO private_mcp_clients(client_id,resource_url,redirect_uris,enabled,allow_write) VALUES('chatgpt-client','https://loftdesk.pl/api/assistant/mcp',ARRAY['https://chatgpt.com/connector_platform_oauth_redirect'],true,true)")
+const regular={claims:{sub:'00000000-0000-0000-0000-000000000001',aud:'authenticated',role:'authenticated',exp:Math.floor(Date.now()/1000)+3600}}
+assert.deepEqual((await db.query('SELECT private_mcp_access_token_hook($1) AS result',[regular])).rows[0].result,regular)
+const oauth={...regular,client_id:'chatgpt-client'}
+const claims=(await db.query('SELECT private_mcp_access_token_hook($1) AS result',[oauth])).rows[0].result.claims
+assert.equal(claims.aud,'https://loftdesk.pl/api/assistant/mcp')
+assert.equal(claims.role,'loftdesk_mcp_only')
+assert.equal(claims.loftdesk_mcp_write,true)
+assert.equal(claims.loftdesk_company_id,company)
+assert.ok(claims.exp<=Math.floor(Date.now()/1000)+901)
+await assert.rejects(db.query('SELECT private_mcp_access_token_hook($1)',[{...oauth,client_id:'unregistered'}]))
+await assert.rejects(db.query('SELECT private_mcp_access_token_hook($1)',[{...oauth,claims:{...regular.claims,sub:'00000000-0000-0000-0000-000000000004'}}]))
+await db.exec("UPDATE private_mcp_clients SET enabled=false,token_version=token_version+1")
+await assert.rejects(db.query('SELECT private_mcp_access_token_hook($1)',[oauth]))
+await db.exec('SET ROLE authenticated')
+await assert.rejects(db.query('SELECT * FROM private_mcp_clients'))
 await db.exec('RESET ROLE')
 await db.exec(readFileSync(new URL('../../scripts/private-access-audit.sql',import.meta.url),'utf8'))
 await db.close()

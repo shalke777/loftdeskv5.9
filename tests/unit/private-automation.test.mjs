@@ -38,7 +38,7 @@ function mcp(){
  const calls=[]
  const handler=load('netlify/functions/assistant-mcp.js',{
   './shared/private-runtime.cjs':{privateContext:async()=>({companyId:'company',sb:{rpc:(name,args)=>{calls.push({name,args});return{data:{id:'job',status:'queued'}}}}}),checked:async p=>(await p).data,json:(statusCode,body)=>({statusCode,body:JSON.stringify(body)})},
-  './shared/private-owner.cjs':{secretMatches:(a,b)=>a===b&&!!b},
+  './shared/mcp-auth.cjs':{authenticate:async event=>{if(event.headers?.authorization!=='Bearer private-key')throw new Error('Unauthorized');return{companyId:'company',canWrite:true,sb:{rpc:(name,args)=>{calls.push({name,args});return{data:{id:'job',status:'queued'}}}}}},challenge:()=> 'Bearer resource_metadata="https://loftdesk.pl/.well-known/oauth-protected-resource"'},
  },{process:{env:{LOFTDESK_ASSISTANT_TOKEN:'private-key'}}}).handler
  return{handler,calls}
 }
@@ -65,7 +65,7 @@ test('MCP queues a draft with the same caller idempotency key',async()=>{
 test('MCP validates money values before enqueuing a write',async()=>{
  const {handler,calls}=mcp()
  const response=JSON.parse((await handler(event('tools/call',{name:'prepare_estimate',arguments:{idempotency_key:'stable-key-123',name:'Offer',items:[{name:'Invalid',quantity:1,unit_price:'NaN',vat_rate:8}]}}))).body)
- assert.equal(response.result.isError,true);assert.equal(calls.length,0)
+ assert.equal(response.error.code,-32602);assert.equal(calls.length,0)
 })
 test('KSeF status reads do not exhaust the ten-write submission budget',async()=>{
  const sb={auth:{getUser:async()=>({data:{user:{id:'owner'}}})}}
