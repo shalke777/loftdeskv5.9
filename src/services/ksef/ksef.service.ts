@@ -1,3 +1,4 @@
+import { calcInvoiceLine, calcInvoiceTotals, calcInvoiceVatGroups } from '@/features/invoices/lib/invoice.calculations'
 import type { Invoice } from '@/entities/invoice/model'
 import { supabase } from '@/shared/lib/supabase'
 import { netlifyFn } from '@/shared/lib/functions'
@@ -85,16 +86,7 @@ export function validateNip(nip: string): boolean {
   return sum % 11 === digits[9]
 }
 
-/**
- * Build official FA_VAT(2) XML per Ministry of Finance KSeF v2 schema
- * xmlns: http://crd.gov.pl/wzor/2023/06/29/12648/  (FA(2) — 2023 schema)
- *
- * NOTE: function name `buildFA2Xml` is correct — produces FA(2). Earlier the
- * header declared `FA (3)` / WariantFormularza=3 which mismatched the FA(2)
- * namespace and caused MF to silently reject the document at schema validation
- * (HTTP 202 returned for the session, but invoice never appeared in the KSeF
- * Aplikacja Podatnika). FA(3) migration is tracked as a separate epic.
- */
+/** Build FA(3) XML. The historical exported name is retained for existing callers. */
 export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuyer = {}): string {
   const now = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
   const issueDate = invoice.issue_date || new Date().toISOString().slice(0, 10)
@@ -103,14 +95,14 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
   const rodzaj =
     invoice.invoice_type === 'advance' ? 'ZAL' : invoice.invoice_type === 'final' ? 'ROZ' : 'VAT'
 
-  // VAT grouping by rate
-  const vatMap = new Map<number, { net: number; vat: number }>()
-  for (const item of invoice.items) {
-    const net = Math.round(item.quantity * item.unit_price * 100) / 100
-    const vat = Math.round(net * (item.vat_rate / 100) * 100) / 100
-    const g = vatMap.get(item.vat_rate) ?? { net: 0, vat: 0 }
-    vatMap.set(item.vat_rate, { net: g.net + net, vat: g.vat + vat })
+  const totals = calcInvoiceTotals(invoice.items)
+  if (!invoice.items.length || ![totals.totalNet, totals.totalGross, invoice.total_net, invoice.total_gross].every(Number.isFinite)) {
+    throw new Error('Faktura musi zawierać pozycje oraz prawidłowe kwoty przed wysyłką do KSeF.')
   }
+  if (Math.abs(totals.totalNet - invoice.total_net) > 0.001 || Math.abs(totals.totalGross - invoice.total_gross) > 0.001) {
+    throw new Error('Kwoty zapisanej faktury nie zgadzają się z jej pozycjami. Sprawdź dokument przed wysyłką do KSeF.')
+  }
+  const vatMap = calcInvoiceVatGroups(invoice.items)
 
   const fmt = (n: number) => n.toFixed(2)
 
@@ -126,7 +118,7 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
   // Schema 13775: FaWiersz is INSIDE <Fa> (confirmed in XSD at offset ~133000)
   const lines = invoice.items
     .map((item, idx) => {
-      const net = Math.round(item.quantity * item.unit_price * 100) / 100
+      const { net } = calcInvoiceLine(item)
       return `  <fa:FaWiersz>
     <fa:NrWierszaFa>${idx + 1}</fa:NrWierszaFa>
     <fa:P_7>${escXml(item.description)}</fa:P_7>

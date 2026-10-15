@@ -6,8 +6,8 @@ import ts from 'typescript'
 
 function load(path, dependencies, globals = {}) {
   const source = readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')
-  const code = path.endsWith('.ts')
-    ? ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
+  const code = /\.tsx?$/.test(path)
+    ? ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText
     : source
   const exports = {}
   vm.runInNewContext(code, {
@@ -211,4 +211,135 @@ test('demo sessions do not query production invoices for reconciliation', () => 
   })
   useKsefReconciliation({ env: 'prod', isDemo: true }, false)
   assert.equal(queried, false)
+})
+
+const invoiceMath = load('src/features/invoices/lib/invoice.calculations.ts', {})
+
+test('invoice total equals the sum of rounded lines and VAT groups', () => {
+  const rows = [
+    { quantity: 1, unit_price: 0.03, vat_rate: 23 },
+    { quantity: 1, unit_price: 0.03, vat_rate: 23 },
+    { quantity: 3, unit_price: 17.345, vat_rate: 8 },
+  ]
+  const totals = invoiceMath.calcInvoiceTotals(rows)
+  assert.equal(totals.totalNet, 52.1)
+  assert.equal(totals.totalVat, 4.18)
+  assert.equal(totals.totalGross, 56.28)
+  const groups = Array.from(invoiceMath.calcInvoiceVatGroups(rows).values())
+  assert.equal(Math.round(groups.reduce((s, g) => s + g.gross, 0) * 100), 5628)
+})
+
+test('rounding is symmetric for credit values', () => {
+  const positive = invoiceMath.calcInvoiceLine({ quantity: 1, unit_price: 1.005, vat_rate: 23 })
+  const negative = invoiceMath.calcInvoiceLine({ quantity: 1, unit_price: -1.005, vat_rate: 23 })
+  assert.equal(positive.net, 1.01)
+  assert.equal(invoiceMath.calcInvoiceLine({ quantity: 1, unit_price: 10.075, vat_rate: 0 }).net, 10.08)
+  assert.equal(negative.net, -positive.net)
+  assert.equal(negative.vat, -positive.vat)
+  assert.equal(negative.gross, -positive.gross)
+})
+
+for (const rate of [8, 23]) {
+  test(`contract gross is not taxed a second time at ${rate}%`, () => {
+    const net = invoiceMath.contractNetValue({ value: 10000 * (1 + rate / 100), vat_rate: rate })
+    assert.equal(net, 10000)
+    assert.equal(invoiceMath.calcInvoiceTotals([{ quantity: 1, unit_price: net, vat_rate: rate }]).totalGross, rate === 8 ? 10800 : 12300)
+    assert.equal(invoiceMath.contractNetValue({ value: 10800, value_net: 10000, vat_rate: 8 }), 10000)
+  })
+}
+
+test('partial invoice XML uses the same rounded totals as the stored invoice', () => {
+  const { buildFA2Xml } = load('src/services/ksef/ksef.service.ts', {
+    '@/features/invoices/lib/invoice.calculations': invoiceMath,
+    '@/shared/lib/supabase': { supabase: null }, '@/shared/lib/functions': {},
+  })
+  const rows = [{ description: 'Etap 1', quantity: 1, unit_price: 0.03, vat_rate: 23 }, { description: 'Etap 2', quantity: 1, unit_price: 0.03, vat_rate: 23 }]
+  const xml = buildFA2Xml({ ...invoice, invoice_type: 'partial', total_net: 0.06, total_gross: 0.08, items: rows }, { nip: '5260250274', name: 'Firma', address: 'Adres' }, { name: 'Klient' })
+  assert.match(xml, /<fa:P_13_1>0.06<\/fa:P_13_1>/)
+  assert.match(xml, /<fa:P_14_1>0.02<\/fa:P_14_1>/)
+  assert.match(xml, /<fa:P_15>0.08<\/fa:P_15>/)
+  assert.match(xml, /<fa:RodzajFaktury>VAT<\/fa:RodzajFaktury>/)
+  assert.throws(() => buildFA2Xml({ ...invoice, items: rows, total_net: 0.06, total_gross: 0.07 }, {}), /nie zgadzają/)
+})
+
+test('editing an invoice preserves its tranche, changing contract clears it', () => {
+  const values = []
+  let cursor = 0
+  let effects = []
+  const empty = () => null
+  const jsx = (type, props) => ({ type, props })
+  const contracts = [{ id: 'contract-1', number: 'UM/1', value: 10800, tranches: [{ id: 'tranche-1', label: 'Etap 1', amount: 5400 }] }]
+  const { InvoiceForm } = load('src/features/invoices/components/InvoiceModal/InvoiceForm.tsx', {
+    react: { Fragment: 'fragment', useState: initial => {
+      const i = cursor++
+      if (!(i in values)) values[i] = typeof initial === 'function' ? initial() : initial
+      return [values[i], next => { values[i] = typeof next === 'function' ? next(values[i]) : next }]
+    }, useEffect: fn => effects.push(fn), useMemo: fn => fn(), useRef: () => ({ current: false }) },
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    '@/shared/ui/Input/Input': { Input: empty }, '@/shared/ui/Button/Button': { Button: empty },
+    '@/shared/ui/Select/Select': { Select: empty }, '@/shared/hooks/useToast': { useToast: () => ({}) },
+    '@/shared/lib/generateId': { generateId: () => 'item-1' },
+    '@/features/clients/hooks/useClients': { useClients: () => ({ data: [] }) },
+    '@/features/contracts/hooks/useContracts': { useContracts: () => ({ data: contracts }) },
+    '@/features/projects/hooks/useProjects': { useProjects: () => ({ data: [] }) },
+    '@/features/invoices/lib/invoice.calculations': invoiceMath,
+    '@/shared/lib/formatters': { formatCurrency: n => String(n) },
+    '@/features/settings/hooks/useSettings': { useSettings: () => ({ profile: {} }) },
+    '@/features/clients/components/ClientModal': { ClientModal: empty },
+  }, { sessionStorage: { getItem: () => null, setItem() {} }, clearTimeout() {} })
+  const props = { companyId: 'company-1', initialInvoice: { ...invoice, contract_id: 'contract-1', tranche_id: 'tranche-1' }, onSubmit: async () => {} }
+  function render() { cursor = 0; effects = []; return InvoiceForm(props) }
+  function find(node, label) {
+    if (!node || typeof node !== 'object') return null
+    if (node.props?.label === label) return node
+    const children = node.props?.children
+    for (const child of Array.isArray(children) ? children.flat() : [children]) {
+      const found = find(child, label)
+      if (found) return found
+    }
+    return null
+  }
+  render()
+  for (const effect of effects) effect()
+  let tree = render()
+  assert.equal(find(tree, 'Transza / płatność z umowy').props.value, 'tranche-1')
+  find(tree, 'Umowa').props.onChange({ target: { value: 'contract-2' } })
+  assert.equal(values[12], '')
+})
+
+test('issuing a draft updates the associated contract tranche', async () => {
+  const writes = []
+  const current = { ...invoice, status: 'draft', number: null, contract_id: 'contract-1', tranche_id: 'tranche-1' }
+  const query = table => ({
+    select() { return this }, eq() { return this },
+    maybeSingle: async () => ({ data: current, error: null }),
+    single: async () => ({ data: { tranches: [{ id: 'tranche-1', status: 'planned' }, { id: 'tranche-2', status: 'paid' }] }, error: null }),
+    update(data) { writes.push({ table, data }); return this },
+    then(resolve) { resolve({ error: null }) },
+  })
+  const { invoicesApi } = load('src/features/invoices/api/invoices.api.ts', {
+    '@/shared/lib/demoDb': {}, '@/features/invoices/lib/invoice.calculations': invoiceMath,
+    '@/shared/lib/supabase': { isDemoMode: false, supabase: { from: query, rpc: async () => ({ data: 'FV/2026/10/1', error: null }) } },
+    '@/shared/lib/legacySupabase': {},
+    '@/shared/lib/dataScope': { applyScope: q => q, getDataScope: async () => ({ companyId: 'company-1' }), withScope() {} },
+    '@/features/projects/api/projectDocuments.api': {},
+  })
+  assert.equal(await invoicesApi.finalize('invoice-1', 'company-1'), 'FV/2026/10/1')
+  const tranches = writes.find(w => w.table === 'contracts').data.tranches
+  assert.equal(tranches[0].status, 'invoiced')
+  assert.equal(tranches[1].status, 'paid')
+})
+
+test('contract-to-invoice path converts the gross contract amount to net', async () => {
+  const contract = { id: 'contract-1', number: 'UM/1', value: 10800, vat_rate: 8 }
+  const { invoicesApi } = load('src/features/invoices/api/invoices.api.ts', {
+    '@/shared/lib/demoDb': {}, '@/features/invoices/lib/invoice.calculations': invoiceMath,
+    '@/shared/lib/supabase': { isDemoMode: false, supabase: { from: () => ({ select() { return this }, eq() { return this }, single: async () => ({ data: contract, error: null }) }) } },
+    '@/shared/lib/legacySupabase': {}, '@/shared/lib/dataScope': {},
+    '@/features/projects/api/projectDocuments.api': {},
+  }, { crypto: { randomUUID: () => 'item-1' } })
+  invoicesApi.create = async data => data
+  const input = await invoicesApi.createFromContract('company-1', 'contract-1')
+  assert.equal(input.items[0].unit_price, 10000)
+  assert.equal(invoiceMath.calcInvoiceTotals(input.items).totalGross, 10800)
 })
