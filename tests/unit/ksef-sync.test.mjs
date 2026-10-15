@@ -343,3 +343,22 @@ test('contract-to-invoice path converts the gross contract amount to net', async
   assert.equal(input.items[0].unit_price, 10000)
   assert.equal(invoiceMath.calcInvoiceTotals(input.items).totalGross, 10800)
 })
+
+for (const patch of [
+  { invoice_type: 'advance' },
+  { invoice_type: 'final' },
+  { invoice_type: 'correction' },
+  { invoice_type: 'standard', corrected_invoice_id: 'source-1' },
+  { invoice_type: 'partial', advance_total: 108 },
+]) {
+  test(`unsupported settlement cannot reach KSeF dispatch: ${JSON.stringify(patch)}`, async () => {
+    let requested = false
+    const { ksefService } = load('src/services/ksef/ksef.service.ts', {
+      '@/features/invoices/lib/invoice.calculations': invoiceMath,
+      '@/shared/lib/supabase': { supabase: null },
+      '@/shared/lib/functions': { netlifyFn: () => '/ksef-send' },
+    }, { fetch: async () => { requested = true; throw new Error('Unexpected dispatch') } })
+    await assert.rejects(ksefService.sendInvoice({ ...invoice, ...patch }, {}, {}, {}), /nie został wysłany/)
+    assert.equal(requested, false)
+  })
+}

@@ -58,5 +58,7 @@ await db.exec("SET ROLE authenticated;SET test.uid='00000000-0000-0000-0000-0000
 assert.equal((await db.query('SELECT * FROM clients')).rows.length,1)
 await db.exec("SET test.uid='00000000-0000-0000-0000-000000000004'")
 assert.equal((await db.query('SELECT * FROM clients')).rows.length,0)
+await db.exec('RESET ROLE')
+await db.exec(readFileSync(new URL('../../scripts/private-access-audit.sql',import.meta.url),'utf8'))
 await db.close()
 console.log('PASS: migrations, idempotency, atomic draft creation, rollback, ambiguous-write recovery, signup gate and owner RLS')

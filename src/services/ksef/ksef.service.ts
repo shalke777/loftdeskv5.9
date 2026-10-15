@@ -88,12 +88,20 @@ export function validateNip(nip: string): boolean {
 
 /** Build FA(3) XML. The historical exported name is retained for existing callers. */
 export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuyer = {}): string {
+  // These types need source-document links and dedicated settlement/correction
+  // fields which the current invoice model cannot represent. Never silently
+  // serialize a correction as VAT or an incomplete ZAL/ROZ document.
+  if (invoice.invoice_type && !['standard', 'partial'].includes(invoice.invoice_type)) {
+    throw new Error('Wysyłka zaliczek, faktur końcowych i korekt do KSeF wymaga uzupełnienia obsługi dokumentów źródłowych i rozliczeń. Ten dokument nie został wysłany.')
+  }
+  if (invoice.corrected_invoice_id || Number(invoice.advance_total ?? 0) !== 0) {
+    throw new Error('Dokument zawiera korektę lub rozliczenie zaliczek, których obecny eksport KSeF nie obsługuje. Ten dokument nie został wysłany.')
+  }
   const now = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
   const issueDate = invoice.issue_date || new Date().toISOString().slice(0, 10)
   const saleDate = invoice.sale_date || issueDate
   const payCode = invoice.payment_method === 'cash' ? '1' : invoice.payment_method === 'card' ? '2' : '6'
-  const rodzaj =
-    invoice.invoice_type === 'advance' ? 'ZAL' : invoice.invoice_type === 'final' ? 'ROZ' : 'VAT'
+  const rodzaj = 'VAT'
 
   const totals = calcInvoiceTotals(invoice.items)
   if (!invoice.items.length || ![totals.totalNet, totals.totalGross, invoice.total_net, invoice.total_gross].every(Number.isFinite)) {

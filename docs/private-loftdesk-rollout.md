@@ -45,7 +45,7 @@ Build scope:
 
 ## Deployment sequence
 
-1. Connect Supabase and inspect actual owner/company IDs, all SECURITY DEFINER RPC grants, existing portal tokens and storage buckets. Audit is required: restrictive table RLS alone does not constrain pre-existing SECURITY DEFINER functions or public storage URLs.
+1. Use an existing administrator session (Supabase SQL editor or a direct PostgreSQL connection); no ChatGPT Supabase plugin is required. Run `scripts/private-access-audit.sql` for a read-only inventory, then inspect actual owner/company IDs, all SECURITY DEFINER RPC grants, existing portal tokens and storage buckets. The inventory does not prove those RPCs are safe; review their implementations and grants. Audit is required: restrictive table RLS alone does not constrain pre-existing SECURITY DEFINER functions or public storage URLs.
 2. On an isolated staging database, apply 169, 170, 171, 172 and 173 in order. Back up production before any production migration.
 3. Verify the owner is a member/owner of the configured company. Set the one settings row with verified UUIDs:
 
@@ -66,7 +66,7 @@ WHERE singleton = TRUE;
 
 ## Still outstanding — not represented as complete
 
-- Proper source references and VAT deductions for advance/final settlement, persisted settlement links and correct correction XML; legacy invoice reconciliation. The current aggregate `advance_total` is insufficient.
+- Proper source references and VAT deductions for advance/final settlement, persisted settlement links and correct correction XML; legacy invoice reconciliation. The current aggregate `advance_total` is insufficient. Until implemented, the exporter explicitly blocks advance/final/correction documents and any invoice carrying correction/advance-settlement data before network dispatch, instead of producing an incomplete or misclassified XML.
 - Durable server-owned invoice dispatch/outbox for ambiguous submissions and duplicate-safe retries. Current dispatch is still client initiated.
 - Atomic contract-tranche reconciliation for multiple invoices, corrections, reassignment and payment reversal.
 - Actual production RPC/storage privacy audit and migration of existing public asset URLs.
@@ -79,6 +79,7 @@ WHERE singleton = TRUE;
 - `npm run test:documents`: document/KSeF regression tests with mocked external services.
 - `npm run test:private`: backend/auth/credential/queue tests plus real PostgreSQL behavior through PGlite on a minimal schema fixture. This is not a migration test against the production schema.
 - `npm run typecheck` and `npm run build`.
+- GitHub Quality gate now includes document regressions, private PostgreSQL integration and official XSD fixture validation. A local pass does not substitute for a successful hosted CI run.
 - Bundle Netlify handlers/Edge function separately with esbuild to catch imports/runtime-target build errors.
 - `node tests/ksef/render-fixtures.mjs /tmp/loftdesk-fa3-fixtures` then `python tests/ksef/validate-xsd.py /tmp/loftdesk-fa3-fixtures` (requires lxml). Fixtures validate standard/partial/domestic-zero XML against the official FA(3) XSD only; they do not certify tax semantics or ZAL/ROZ/correction handling.
 
