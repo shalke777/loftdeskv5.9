@@ -273,7 +273,7 @@ export function buildUpoHtml(upo: UpoData): string {
   const invoiceNo = upo.invoiceReferenceNumber || '—'
   const ts = upo.acquisitionTimestamp
     ? new Date(upo.acquisitionTimestamp).toLocaleString('pl-PL')
-    : new Date().toLocaleString('pl-PL')
+    : '—'
   const hash = upo.hashSHA || '—'
   const demoNote = upo.isDemo
     ? `<div style="margin-bottom:18px;padding:10px 16px;background:var(--color-warning-soft);border-radius:8px;font-size:13px;border:1px solid var(--color-accent);">
@@ -298,8 +298,8 @@ h1 { font-size:22px; font-weight:700; color:var(--color-text-primary); margin:0 
 ${demoNote}
 <div class="header">
   <div class="seal"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
-  <h1>Urzędowe Poświadczenie Odbioru</h1>
-  <p class="subtitle">Krajowy System e-Faktur &middot; Ministerstwo Finansów</p>
+  <h1>Status przyjęcia faktury</h1>
+  <p class="subtitle">Podsumowanie LoftDesk na podstawie odpowiedzi KSeF. Nie zastępuje urzędowego UPO w formacie XML.</p>
 </div>
 <div style="text-align:center;margin-bottom:24px;"><span class="badge-ok">✓ Faktura przyjęta przez KSeF</span></div>
 <div class="field"><label>Nr ref. KSeF</label><value><strong>${escXml(ref)}</strong></value></div>

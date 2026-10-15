@@ -94,9 +94,9 @@ exports.handler = async (event) => {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        ksefReferenceNumber: invoice.ksefNumber || ksefRef,
+        ksefReferenceNumber: invoice.ksefNumber || null,
         invoiceReferenceNumber: invoice.invoiceNumber || ksefRef,
-        acquisitionTimestamp: invoice.acquisitionDate || invoice.invoicingDate || null,
+        acquisitionTimestamp: invoice.acquisitionDate || null,
         hashSHA: invoice.invoiceHash || null,
         upoDownloadUrl: invoice.upoDownloadUrl || null,
         statusCode,

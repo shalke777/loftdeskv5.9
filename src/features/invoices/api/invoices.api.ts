@@ -44,11 +44,11 @@ export const invoicesApi = {
     const scope = await getDataScope(companyId)
     // LIST endpoint: NO nested items (perf RULE: payload < 20KB, no nested *).
     // Items are loaded lazily on-demand via invoicesApi.get(id) when row is expanded.
-    const cols = 'id, company_id, client_id, project_id, contract_id, number, invoice_type, status, issue_date, sale_date, issue_place, due_date, payment_method, bank_account, tranche_id, advance_total, corrected_invoice_id, correction_reason, total_net, total_gross, ksef_status, ksef_ref, ksef_last_error, notes, created_at'
+    const cols = 'id, company_id, client_id, project_id, contract_id, number, invoice_type, status, issue_date, sale_date, issue_place, due_date, payment_method, bank_account, tranche_id, advance_total, corrected_invoice_id, correction_reason, total_net, total_gross, ksef_status, ksef_ref, ksef_number, ksef_last_error, notes, created_at'
     const query = applyScope(supabase.from('invoices').select(cols).order('created_at', { ascending: false }).limit(50), scope)
     const { data, error } = await query
     if (error) throw error
-    return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, project_id: row.project_id, contract_id: row.contract_id ?? null, number: row.number, invoice_type: row.invoice_type ?? 'standard', status: row.status, issue_date: row.issue_date, sale_date: row.sale_date ?? null, issue_place: row.issue_place ?? null, due_date: row.due_date, payment_method: row.payment_method ?? 'transfer', bank_account: row.bank_account ?? null, tranche_id: row.tranche_id ?? null, advance_total: row.advance_total ?? null, corrected_invoice_id: row.corrected_invoice_id ?? null, correction_reason: row.correction_reason ?? null, original_items: null, original_data: null, total_net: Number(row.total_net ?? 0), total_gross: Number(row.total_gross ?? 0), ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, notes: row.notes ?? '', created_at: row.created_at, items: [] }))
+    return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, project_id: row.project_id, contract_id: row.contract_id ?? null, number: row.number, invoice_type: row.invoice_type ?? 'standard', status: row.status, issue_date: row.issue_date, sale_date: row.sale_date ?? null, issue_place: row.issue_place ?? null, due_date: row.due_date, payment_method: row.payment_method ?? 'transfer', bank_account: row.bank_account ?? null, tranche_id: row.tranche_id ?? null, advance_total: row.advance_total ?? null, corrected_invoice_id: row.corrected_invoice_id ?? null, correction_reason: row.correction_reason ?? null, original_items: null, original_data: null, total_net: Number(row.total_net ?? 0), total_gross: Number(row.total_gross ?? 0), ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, ksef_number: row.ksef_number ?? null, ksef_last_error: row.ksef_last_error ?? null, notes: row.notes ?? '', created_at: row.created_at, items: [] }))
   },
   async get(id: string, companyId: string): Promise<Invoice | null> {
     if (isDemoMode || !supabase) {
@@ -89,7 +89,7 @@ export const invoicesApi = {
       corrected_invoice_id: row.corrected_invoice_id ?? null, correction_reason: row.correction_reason ?? null,
       original_items: originalItems, original_data: originalData,
       total_net: totals.totalNet, total_gross: totals.totalGross,
-      ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, notes: row.notes ?? '',
+      ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, ksef_number: row.ksef_number ?? null, ksef_last_error: row.ksef_last_error ?? null, notes: row.notes ?? '',
       created_at: row.created_at, items,
     }
   },

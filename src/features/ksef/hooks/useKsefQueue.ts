@@ -280,7 +280,7 @@ export function useKsefQueue() {
                   }
                 }
                 void logKsefEvent({ companyId, invoiceId: item.invoice.id, action: 'validation_ok', env, ksefRef: item.ksefRef, message: 'MF validated', meta: { ksefNumber } })
-              } else if (statusCode != null && statusCode !== 200) {
+              } else if (statusCode != null && statusCode >= 400) {
                 // MF rejected this invoice at validation. Flip status back so the
                 // operator sees it red and knows to fix + resend.
                 const reason = `KSeF odrzucił fakturę przy walidacji schematu (status ${statusCode}). ${statusDesc ?? ''}`.trim()
@@ -300,7 +300,8 @@ export function useKsefQueue() {
                 result.sent = Math.max(0, result.sent - 1)
                 result.errors += 1
               }
-              // statusCode == null → MF still processing; UI keeps "sent" (yellow)
+              // Null and informational statuses (100/150) are not rejections.
+              // Preserve the submission reference until a terminal response is available.
             } catch (verifyErr: unknown) {
               const msg = verifyErr instanceof Error ? verifyErr.message : String(verifyErr)
               console.warn('[useKsefQueue] post-close verify failed for', item.invoice.id, msg)

@@ -33,13 +33,15 @@ export function useKsefUpo() {
         } else {
           if (!referenceNumber) throw new Error(`Brak numeru referencyjnego sesji (referenceNumber) — nie można pobrać UPO.`)
           const raw = await ksefService.fetchUpo(ksefRef, accessToken, env, referenceNumber)
+          if (raw.statusCode !== 200 || !raw.ksefReferenceNumber) {
+            throw new Error(raw.statusDescription as string || 'Brak potwierdzenia przyjęcia faktury przez KSeF. Sprawdź jej status ponownie później.')
+          }
           upoData = {
-            ksefReferenceNumber:
-              (raw.ksefReferenceNumber as string) || ksefRef,
+            ksefReferenceNumber: raw.ksefReferenceNumber as string,
             invoiceReferenceNumber:
               (raw.invoiceReferenceNumber as string) || invoiceNumber,
             acquisitionTimestamp:
-              (raw.acquisitionTimestamp as string) || new Date().toISOString(),
+              (raw.acquisitionTimestamp as string) || undefined,
             hashSHA:
               (raw.hashSHA as string) || '—',
           }
