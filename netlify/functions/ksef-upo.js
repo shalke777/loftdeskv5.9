@@ -2,7 +2,7 @@
  * Netlify function: ksef-upo
  * KSeF MF API v2 — fetch invoice status and UPO data from a session.
  *
- * Endpoint: GET /sessions/{referenceNumber}/invoices (list with UPO URLs)
+ * Endpoint: GET /sessions/{referenceNumber}/invoices/{invoiceReferenceNumber}
  * Auth: Bearer JWT token
  *
  * Input:  { ksefRef, sessionToken (JWT), referenceNumber (session ref), env }
@@ -49,9 +49,9 @@ exports.handler = async (event) => {
   const base = BASE[env] || BASE.test
 
   try {
-    // Get session invoices list to find UPO info for the specific invoice
+    // Query the specific submission; avoid list pagination and the lower list rate limit.
     const res = await ksefFetch(
-      `${base}/sessions/${encodeURIComponent(referenceNumber)}/invoices?pageSize=1000`,
+      `${base}/sessions/${encodeURIComponent(referenceNumber)}/invoices/${encodeURIComponent(ksefRef)}`,
       {
         method: 'GET',
         headers: { Authorization: `Bearer ${token}` },
@@ -69,19 +69,7 @@ exports.handler = async (event) => {
       }
     }
 
-    // Find the specific invoice by ksefNumber or invoice referenceNumber
-    const invoices = data.invoices || []
-    const invoice = invoices.find(
-      (inv) => inv.ksefNumber === ksefRef || inv.referenceNumber === ksefRef,
-    )
-
-    if (!invoice) {
-      return {
-        statusCode: 404,
-        headers,
-        body: JSON.stringify({ error: `Nie znaleziono faktury ${ksefRef} w sesji ${referenceNumber}.` }),
-      }
-    }
+    const invoice = data
 
     const statusCode = invoice.status?.code ?? null
     const statusDescription = invoice.status?.description || null

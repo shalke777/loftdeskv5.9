@@ -44,11 +44,31 @@ export const invoicesApi = {
     const scope = await getDataScope(companyId)
     // LIST endpoint: NO nested items (perf RULE: payload < 20KB, no nested *).
     // Items are loaded lazily on-demand via invoicesApi.get(id) when row is expanded.
-    const cols = 'id, company_id, client_id, project_id, contract_id, number, invoice_type, status, issue_date, sale_date, issue_place, due_date, payment_method, bank_account, tranche_id, advance_total, corrected_invoice_id, correction_reason, total_net, total_gross, ksef_status, ksef_ref, ksef_number, ksef_last_error, notes, created_at'
+    const cols = 'id, company_id, client_id, project_id, contract_id, number, invoice_type, status, issue_date, sale_date, issue_place, due_date, payment_method, bank_account, tranche_id, advance_total, corrected_invoice_id, correction_reason, total_net, total_gross, ksef_status, ksef_ref, ksef_number, ksef_last_error, ksef_session_ref, ksef_env, ksef_status_code, ksef_checked_at, notes, created_at'
     const query = applyScope(supabase.from('invoices').select(cols).order('created_at', { ascending: false }).limit(50), scope)
     const { data, error } = await query
     if (error) throw error
-    return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, project_id: row.project_id, contract_id: row.contract_id ?? null, number: row.number, invoice_type: row.invoice_type ?? 'standard', status: row.status, issue_date: row.issue_date, sale_date: row.sale_date ?? null, issue_place: row.issue_place ?? null, due_date: row.due_date, payment_method: row.payment_method ?? 'transfer', bank_account: row.bank_account ?? null, tranche_id: row.tranche_id ?? null, advance_total: row.advance_total ?? null, corrected_invoice_id: row.corrected_invoice_id ?? null, correction_reason: row.correction_reason ?? null, original_items: null, original_data: null, total_net: Number(row.total_net ?? 0), total_gross: Number(row.total_gross ?? 0), ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, ksef_number: row.ksef_number ?? null, ksef_last_error: row.ksef_last_error ?? null, notes: row.notes ?? '', created_at: row.created_at, items: [] }))
+    return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, project_id: row.project_id, contract_id: row.contract_id ?? null, number: row.number, invoice_type: row.invoice_type ?? 'standard', status: row.status, issue_date: row.issue_date, sale_date: row.sale_date ?? null, issue_place: row.issue_place ?? null, due_date: row.due_date, payment_method: row.payment_method ?? 'transfer', bank_account: row.bank_account ?? null, tranche_id: row.tranche_id ?? null, advance_total: row.advance_total ?? null, corrected_invoice_id: row.corrected_invoice_id ?? null, correction_reason: row.correction_reason ?? null, original_items: null, original_data: null, total_net: Number(row.total_net ?? 0), total_gross: Number(row.total_gross ?? 0), ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, ksef_number: row.ksef_number ?? null, ksef_last_error: row.ksef_last_error ?? null, ksef_session_ref: row.ksef_session_ref ?? null, ksef_env: row.ksef_env ?? null, ksef_status_code: row.ksef_status_code ?? null, ksef_checked_at: row.ksef_checked_at ?? null, notes: row.notes ?? '', created_at: row.created_at, items: [] }))
+  },
+  async findKsefSubmission(ksefRef: string, companyId: string) {
+    if (isDemoMode || !supabase) return null
+    const scope = await getDataScope(companyId)
+    const { data, error } = await applyScope(supabase.from('invoices')
+      .select('ksef_session_ref, ksef_env').eq('ksef_ref', ksefRef), scope).maybeSingle()
+    if (error) throw error
+    return data
+  },
+  async listKsefUnverified(companyId: string, env: 'demo' | 'test' | 'prod'): Promise<Invoice[]> {
+    if (isDemoMode || !supabase) return []
+    const scope = await getDataScope(companyId)
+    const query = applyScope(supabase.from('invoices').select('*')
+      .not('ksef_ref', 'is', null).not('ksef_session_ref', 'is', null)
+      .is('ksef_number', null).eq('ksef_env', env)
+      .in('ksef_status', ['ksef_pending', 'ksef_sent'])
+      .order('ksef_checked_at', { ascending: true, nullsFirst: true }).limit(10), scope)
+    const { data, error } = await query
+    if (error) throw error
+    return (data ?? []).map((row: any) => ({ ...row, items: [] }))
   },
   async get(id: string, companyId: string): Promise<Invoice | null> {
     if (isDemoMode || !supabase) {
@@ -89,7 +109,7 @@ export const invoicesApi = {
       corrected_invoice_id: row.corrected_invoice_id ?? null, correction_reason: row.correction_reason ?? null,
       original_items: originalItems, original_data: originalData,
       total_net: totals.totalNet, total_gross: totals.totalGross,
-      ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, ksef_number: row.ksef_number ?? null, ksef_last_error: row.ksef_last_error ?? null, notes: row.notes ?? '',
+      ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, ksef_number: row.ksef_number ?? null, ksef_last_error: row.ksef_last_error ?? null, ksef_session_ref: row.ksef_session_ref ?? null, ksef_env: row.ksef_env ?? null, ksef_status_code: row.ksef_status_code ?? null, ksef_checked_at: row.ksef_checked_at ?? null, notes: row.notes ?? '',
       created_at: row.created_at, items,
     }
   },
@@ -176,7 +196,7 @@ export const invoicesApi = {
     }
 
     console.info('[invoicesApi.update] UPDATE payload', { id, status: payload.status, invoice_type: payload.invoice_type, number: payload.number, payloadKeys: Object.keys(payload) })
-    const { data, error } = await supabase.from('invoices').update(payload).eq('id', id).select('*').single()
+    const { data, error } = await applyScope(supabase.from('invoices').update(payload).eq('id', id).select('*'), scope).single()
     if (error) {
       console.error('[invoicesApi.update] UPDATE failed', { code: (error as any).code, message: error.message, details: (error as any).details, hint: (error as any).hint, payloadKeys: Object.keys(payload) })
       throw error
@@ -219,7 +239,23 @@ export const invoicesApi = {
       }
     } catch { /* non-fatal */ }
   },
-  async sendToKsef(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.invoices.sendToKsef(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('invoices').update({ ksef_status: 'ksef_pending', ksef_ref: null }).eq('id', id), scope); const { error } = await query; if (error) throw error },
+  async sendToKsef(id: string, companyId?: string) {
+    if (isDemoMode || !supabase) { demoDb.invoices.sendToKsef(id); return }
+    const scope = await getDataScope(companyId)
+    const { data: current, error: readError } = await applyScope(
+      supabase.from('invoices').select('ksef_ref, ksef_number').eq('id', id), scope,
+    ).single()
+    if (readError) throw readError
+    if (current.ksef_ref || current.ksef_number) {
+      throw new Error('Faktura ma już referencję KSeF. Sprawdź wynik poprzedniej wysyłki przed ponownym wysłaniem.')
+    }
+    const query = applyScope(supabase.from('invoices')
+      .update({ ksef_status: 'ksef_pending', ksef_last_error: null })
+      .eq('id', id).is('ksef_ref', null).is('ksef_number', null).select('id'), scope)
+    const { data, error } = await query.single()
+    if (error) throw error
+    if (!data) throw new Error('Stan faktury zmienił się. Odśwież dane przed wysyłką.')
+  },
   async finalize(id: string, companyId: string): Promise<string> {
     // Assigns a sequential FV number to a draft invoice and transitions it to 'unpaid'.
     // Safe to call only once per invoice — if number is already set, throws.
