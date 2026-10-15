@@ -194,13 +194,11 @@ exports.handler = async (event) => {
 
       // ── Diagnostic: token & NIP check ──────────────────────────
       const tokenLen = token ? token.length : 0
-      const tokenHead = token ? token.slice(0, 4) : '??'
-      const tokenTail = token ? token.slice(-4) : '??'
       console.log(`[ksef-session] INIT diagnostic:`)
       console.log(`  env       = ${env}`)
       console.log(`  base      = ${base}`)
       console.log(`  nip       = ${nip}`)
-      console.log(`  token     = exists:${!!token} len:${tokenLen} head:${tokenHead} tail:${tokenTail}`)
+      console.log(`  token     = exists:${!!token} len:${tokenLen} `)
       console.log(`  typeof    = nip:${typeof nip} token:${typeof token}`)
 
       // 2. Get authorisation challenge (v2: contextIdentifier required)
@@ -308,9 +306,25 @@ exports.handler = async (event) => {
         throw new Error(`KSeF token/redeem zwrócił nieprawidłowy accessToken (${debugInfo}). Sprawdź format odpowiedzi.`)
       }
 
-      console.log(`[ksef-session] Step 6: accessToken exists len=${accessToken.length} head=${accessToken.slice(0,4)} tail=${accessToken.slice(-4)}`)
+      console.log(`[ksef-session] Step 6: accessToken exists len=${accessToken.length} `)
       console.log(`[ksef-session] Step 6: refreshToken exists=${!!refreshToken} len=${refreshToken.length}`)
       logJwtClaims('Step 6 accessToken', accessToken, nip)
+
+      if (process.env.KSEF_SYNC_ENABLED === 'true') {
+        const { privateContext, checked } = require('./shared/private-runtime.cjs')
+        const { encrypt } = require('./shared/gmail.cjs')
+        const ctx = await privateContext()
+        if (!process.env.KSEF_NIP || String(nip).replace(/[^0-9]/g, '') !== process.env.KSEF_NIP.replace(/[^0-9]/g, '') || env !== process.env.KSEF_ENV) {
+          throw new Error('NIP lub środowisko KSeF nie odpowiada konfiguracji prywatnej firmy.')
+        }
+        if (!refreshToken) throw new Error('Brak tokenu odświeżającego wymaganego do synchronizacji w tle.')
+        await checked(ctx.sb.from('private_ksef_credentials').upsert({
+          company_id: ctx.companyId, env, nip: String(nip),
+          encrypted_access_token: encrypt(accessToken), encrypted_refresh_token: encrypt(refreshToken),
+          access_expires_at: rawAccess?.validUntil || null, refresh_expires_at: rawRefresh?.validUntil || null,
+          last_error: null, updated_at: new Date().toISOString(),
+        }, { onConflict: 'company_id,env' }))
+      }
 
       // 7. Generate AES-256 key + IV for invoice encryption
       const aesKey = crypto.randomBytes(32)
@@ -376,11 +390,8 @@ exports.handler = async (event) => {
           headers: { Authorization: `Bearer ${sessionToken}` },
         })
       }
-      // Invalidate the auth session
-      await ksefFetch(`${base}/auth/sessions/current`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      })
+      // Closing an invoice session must retain authentication for asynchronous
+      // status verification and UPO retrieval. Explicit revocation is separate.
       return { statusCode: 200, headers, body: JSON.stringify({ closed: true }) }
     }
 

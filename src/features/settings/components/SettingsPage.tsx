@@ -1,3 +1,5 @@
+import { isPrivateApp } from '@/shared/lib/privateMode'
+import { PrivateIntegrationsCard } from './PrivateIntegrationsCard'
 import type { ReactNode } from 'react'
 import { useRef } from 'react'
 import { Camera, ChartColumn, CreditCard, Users } from 'lucide-react'
@@ -62,8 +64,9 @@ export function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Ustawienia" subtitle="Dane firmy, KSeF, zespół, plan i narzędzia dodatkowe." />
+      <PageHeader title="Ustawienia" subtitle={isPrivateApp ? "Dane firmy, dokumenty i prywatne integracje." : "Dane firmy, KSeF, zespół, plan i narzędzia dodatkowe."} />
       <div className="settings-grid grid-2">
+        {isPrivateApp && <PrivateIntegrationsCard />}
         <Card>
           <h3>Konto i firma</h3>
           <div style={{ display: 'grid', gap: 6, fontSize: 14, marginBottom: 12 }}>
@@ -125,7 +128,7 @@ export function SettingsPage() {
             <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--color-text-muted)', minWidth: 120 }}>NIP do KSeF</span><span>{(profile as any)?.ksef_nip ?? 'brak — ustaw w danych wykonawcy'}</span></div>
             <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--color-text-muted)', minWidth: 120 }}>Token</span><span>{(profile as any)?.ksef_token ? '✅ ustawiony' : '❌ brak — ustaw poniżej'}</span></div>
           </div>
-          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>{canUseKsef ? 'Integracja z KSeF aktywna w Twoim planie.' : 'Integracja z KSeF dostępna od planu Business. Przejdź na wyższy plan, aby wysyłać faktury elektronicznie.'}</p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>{canUseKsef ? (isPrivateApp ? 'Integracja z KSeF.' : 'Integracja z KSeF aktywna w Twoim planie.') : 'Integracja z KSeF dostępna od planu Business. Przejdź na wyższy plan, aby wysyłać faktury elektronicznie.'}</p>
           <div className="actions-row">
             {canUseKsef
               ? <Button variant="secondary" onClick={() => navigate({ to: '/ksef' })}>Przejdź do KSeF</Button>
@@ -137,10 +140,10 @@ export function SettingsPage() {
         <CompanyProfileCard />
 
         <WorkspaceReadinessCard />
-        <WorkspaceLimitsCard />
+        {!isPrivateApp && <WorkspaceLimitsCard />}
         <DocNumberingCard />
         <CompanyPriceListCard />
-        <TeamMembersCard />
+        {!isPrivateApp && <TeamMembersCard />}
 
         <LegalCenterCard />
 
@@ -157,8 +160,8 @@ export function SettingsPage() {
           <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
             <HelperCard icon={<ChartColumn size={18} />} title="Raporty" text="Marża, przychód, koszty projektów i podsumowania firmy." href="/reports" />
             <HelperCard icon={<Camera size={18} />} title="Dokumentacja i odbiory" text="Zdjęcia, decyzje klienta, protokoły odbioru i standardy techniczne." href="/documentation" />
-            <HelperCard icon={<CreditCard size={18} />} title="Plan i płatności" text="Plan, dostępne limity i rozliczenia produktu." href="/billing" />
-            <HelperCard icon={<Users size={18} />} title="Zespół" text="Zaproszenia, role i administracja członkami firmy." href="/team" />
+            {!isPrivateApp && <HelperCard icon={<CreditCard size={18} />} title="Plan i płatności" text="Plan, dostępne limity i rozliczenia produktu." href="/billing" />}
+            {!isPrivateApp && <HelperCard icon={<Users size={18} />} title="Zespół" text="Zaproszenia, role i administracja członkami firmy." href="/team" />}
 
 
           </div>

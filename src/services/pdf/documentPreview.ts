@@ -428,7 +428,7 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
     : ''
 
   const ksefInfo = invoice.ksef_status === 'ksef_sent'
-    ? `Faktura wyeksportowana do KSeF \u00b7 Ref: ${escapeHtml(invoice.ksef_ref || '\u2014')}`
+    ? `Faktura wyeksportowana do KSeF \u00b7 Ref: ${escapeHtml(invoice.ksef_number || invoice.ksef_ref || '\u2014')}`
     : 'Faktura oczekuje na wysy\u0142k\u0119 do KSeF'
 
   // ── Correction: header data comparison table ─────────────────────────────────

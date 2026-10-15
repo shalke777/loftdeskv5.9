@@ -20,6 +20,7 @@
 // the check is skipped with a warning so that development is not hard-blocked.
 // =============================================================================
 
+const { privateOwnerAllowed, isPrivateMode } = require('./shared/private-owner.cjs')
 const { createClient } = require('@supabase/supabase-js')
 
 const PRO_PLANS = new Set(['pro', 'business', 'admin'])
@@ -29,15 +30,18 @@ const rateLimitMap = new Map()
 const RATE_MAX       = 10
 const RATE_WINDOW_MS = 5 * 60 * 1000
 
-function isRateLimited(userId) {
+function isRateLimited(userId, readOnly = false) {
+  const limit = readOnly ? 60 : RATE_MAX
+  const windowMs = readOnly ? 60 * 1000 : RATE_WINDOW_MS
+  userId = `${userId}:${readOnly ? "read" : "write"}`
   const now = Date.now()
   const entry = rateLimitMap.get(userId)
   if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_WINDOW_MS })
+    rateLimitMap.set(userId, { count: 1, resetAt: now + windowMs })
     return false
   }
   entry.count++
-  return entry.count > RATE_MAX
+  return entry.count > limit
 }
 
 function sbAdmin() {
@@ -55,13 +59,12 @@ function sbAdmin() {
  *   { error: null }                         — access granted
  *   { error: string, status: number, code? } — access denied, return this to caller
  */
-async function requireKsefAccess(event) {
+async function requireKsefAccess(event, { readOnly = false } = {}) {
   const sb = sbAdmin()
 
   // If Supabase is not configured (local netlify dev without env), skip and warn
   if (!sb) {
-    console.warn('[ksef-auth] Supabase not configured — skipping plan check (dev only)')
-    return { error: null }
+    return { error: 'Brak konfiguracji uwierzytelnienia serwera.', status: 503, code: 'auth_not_configured' }
   }
 
   // 1. Require Bearer token
@@ -87,10 +90,13 @@ async function requireKsefAccess(event) {
     return { error: 'Nieautoryzowane żądanie.', status: 401, code: 'unauthorized' }
   }
 
+  if (!privateOwnerAllowed(userId)) return { error: 'Dostęp tylko dla właściciela.', status: 403, code: 'private_app' }
   // 3. Rate limit per user (abuse protection)
-  if (isRateLimited(userId)) {
+  if (isRateLimited(userId, readOnly)) {
     return { error: 'Za dużo żądań. Spróbuj za chwilę.', status: 429, code: 'too_many_requests' }
   }
+
+  if (isPrivateMode()) return { error: null }
 
   // 4. Check that at least one of the user's companies has plan >= pro
   try {

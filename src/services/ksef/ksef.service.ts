@@ -91,7 +91,7 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
   const now = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
   const issueDate = invoice.issue_date || new Date().toISOString().slice(0, 10)
   const saleDate = invoice.sale_date || issueDate
-  const payCode = invoice.payment_method === 'cash' ? '1' : invoice.payment_method === 'card' ? '7' : '6'
+  const payCode = invoice.payment_method === 'cash' ? '1' : invoice.payment_method === 'card' ? '2' : '6'
   const rodzaj =
     invoice.invoice_type === 'advance' ? 'ZAL' : invoice.invoice_type === 'final' ? 'ROZ' : 'VAT'
 
@@ -106,9 +106,12 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
 
   const fmt = (n: number) => n.toFixed(2)
 
+  if (invoice.items.some(item => ![0, 5, 8, 23].includes(item.vat_rate))) throw new Error('Nieobsługiwana stawka VAT dla krajowej faktury FA(3).')
+
   // Schema 13775: P_13_x / P_14_x go DIRECTLY inside <Fa> — no <Rozliczenie>/<Stawki> wrapper
-  const stawkiDirect = Array.from(vatMap.entries())
+  const stawkiDirect = Array.from(vatMap.entries()).sort(([a], [b]) => b - a)
     .map(([rate, { net, vat }]) => {
+      if (rate === 0) return `    <fa:P_13_6_1>${fmt(net)}</fa:P_13_6_1>`
       const s = vatSuffix(rate)
       return `    <fa:P_13${s}>${fmt(net)}</fa:P_13${s}>
     <fa:P_14${s}>${fmt(vat)}</fa:P_14${s}>`
@@ -124,9 +127,9 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
     <fa:P_7>${escXml(item.description)}</fa:P_7>
     <fa:P_8A>${escXml(item.unit || 'kpl')}</fa:P_8A>
     <fa:P_8B>${item.quantity}</fa:P_8B>
-    <fa:P_9A>${fmt(item.unit_price)}</fa:P_9A>
+    <fa:P_9A>${item.unit_price.toFixed(8).replace(/0+$/, '').replace(/\.$/, '')}</fa:P_9A>
     <fa:P_11>${fmt(net)}</fa:P_11>
-    <fa:P_12>${item.vat_rate}</fa:P_12>
+    <fa:P_12>${item.vat_rate === 0 ? '0 KR' : item.vat_rate}</fa:P_12>
   </fa:FaWiersz>`
     })
     .join('\n')
@@ -161,14 +164,14 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
   </fa:Naglowek>
   <fa:Podmiot1>
     <fa:DaneIdentyfikacyjne>
-      <fa:NIP>${escXml(seller.nip)}</fa:NIP>
+      <fa:NIP>${escXml(seller.nip?.replace(/[-\s]/g, ''))}</fa:NIP>
       <fa:Nazwa>${escXml(seller.name)}</fa:Nazwa>
     </fa:DaneIdentyfikacyjne>
     <fa:Adres><fa:KodKraju>PL</fa:KodKraju><fa:AdresL1>${escXml(seller.address)}</fa:AdresL1></fa:Adres>
   </fa:Podmiot1>
   <fa:Podmiot2>
     <fa:DaneIdentyfikacyjne>
-      ${buyer.nip ? `<fa:NIP>${escXml(buyer.nip)}</fa:NIP>` : '<fa:BrakID>1</fa:BrakID>'}
+      ${buyer.nip ? `<fa:NIP>${escXml(buyer.nip?.replace(/[-\s]/g, ''))}</fa:NIP>` : '<fa:BrakID>1</fa:BrakID>'}
       <fa:Nazwa>${escXml(buyer.name)}</fa:Nazwa>
     </fa:DaneIdentyfikacyjne>
     ${buyer.address ? `<fa:Adres><fa:KodKraju>PL</fa:KodKraju><fa:AdresL1>${escXml(buyer.address)}</fa:AdresL1></fa:Adres>` : ''}

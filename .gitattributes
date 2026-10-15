@@ -1,0 +1,3 @@
+
+# Preserve official government XSD fixtures verbatim.
+tests/fixtures/ksef/fa3/*.xsd -whitespace

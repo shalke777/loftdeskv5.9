@@ -1,4 +1,5 @@
-﻿import {
+import { isPrivateApp } from '@/shared/lib/privateMode'
+import {
   Bell,
   ChevronDown,
   ChevronUp,
@@ -203,9 +204,9 @@ export function AuthLayout() {
         <header className="shell-topbar">
           <GlobalSearch />
           <div className="shell-topbar__right">
-            <Link to="/billing" className={user.plan === 'free' ? 'shell-pill shell-pill--upgrade' : 'shell-pill'} style={{ textDecoration: 'none', cursor: 'pointer' }}>
+            {!isPrivateApp && <Link to="/billing" className={user.plan === 'free' ? 'shell-pill shell-pill--upgrade' : 'shell-pill'} style={{ textDecoration: 'none', cursor: 'pointer' }}>
               {user.plan === 'free' ? '⭐ Przejdź na Business' : `Plan: ${user.plan}`}
-            </Link>
+            </Link>}
             <div ref={notifRef} style={{ position: 'relative', display: 'inline-flex' }}>
               <Button variant="ghost" size="sm" onClick={() => {
                 const opening = !showNotifications
@@ -267,7 +268,8 @@ export function AuthLayout() {
                       <div key={n.id} style={{ position: 'relative', borderBottom: '1px solid var(--color-border)' }}>
                         <button onClick={() => {
                           setShowNotifications(false)
-                          if (n.project_id) {
+                          if (n.type === 'automation') { navigate({ to: '/settings' }) }
+                          else if (n.project_id) {
                             navigate({ to: `/projects/${n.project_id}` as any })
                           }
                           // if no project_id — just close, don't navigate to 404
@@ -279,7 +281,7 @@ export function AuthLayout() {
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontWeight: 600, fontSize: 12, color: n.type === 'client_approval_response' ? 'var(--color-success)' : n.type === 'missing_costs' ? 'var(--color-warning)' : 'var(--color-brand)' }}>
-                              {n.type === 'client_approval_response' ? '✅ Odpowiedź klienta' : n.type === 'missing_costs' ? '⚠ Brakujące koszty' : '💬 Wiadomość od klienta'}
+                              {n.type === 'automation' ? '⚙ Asystent' : n.type === 'payment_reminder' ? 'Płatności' : n.type === 'client_approval_response' ? '✅ Odpowiedź klienta' : n.type === 'missing_costs' ? '⚠ Brakujące koszty' : '💬 Wiadomość od klienta'}
                             </span>
                             <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
                               {new Date(n.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}

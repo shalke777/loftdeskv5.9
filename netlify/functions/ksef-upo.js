@@ -28,7 +28,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' }
 
   // Plan gate: requires Pro+ plan and valid Supabase JWT
-  const authResult = await requireKsefAccess(event)
+  const authResult = await requireKsefAccess(event, { readOnly: true })
   if (authResult.error) {
     return { statusCode: authResult.status, headers, body: JSON.stringify({ error: authResult.error, code: authResult.code, requiredPlan: authResult.requiredPlan }) }
   }

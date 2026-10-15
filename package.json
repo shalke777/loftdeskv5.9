@@ -31,7 +31,9 @@
     "cap:ios": "npx cap open ios",
     "mobile:build": "npm run build && npx cap sync",
     "mobile:android": "npm run mobile:build && npx cap open android",
-    "mobile:ios": "npm run mobile:build && npx cap open ios"
+    "mobile:ios": "npm run mobile:build && npx cap open ios",
+    "test:documents": "node --test tests/unit/ksef-sync.test.mjs",
+    "test:private": "node --test tests/unit/private-automation.test.mjs && node tests/unit/private-db.integration.mjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.0.1",
@@ -74,6 +76,7 @@
     "@capacitor/android": "^8.2.0",
     "@capacitor/cli": "^8.2.0",
     "@capacitor/ios": "^8.2.0",
+    "@electric-sql/pglite": "^0.5.10",
     "@netlify/functions": "^2.8.2",
     "@playwright/test": "^1.58.2",
     "@sentry/vite-plugin": "^5.1.1",

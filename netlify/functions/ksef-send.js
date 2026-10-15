@@ -54,8 +54,6 @@ exports.handler = async (event) => {
   const base = BASE[env] || BASE.test
 
   console.log(`[ksef-send] START: env=${env} invoice=${invoiceNumber} ref=${referenceNumber?.slice(0,20)} token_len=${sessionToken?.length} xml_len=${xmlPayload?.length}`)
-  // Log full XML so we can verify FA(3) structure in Netlify logs
-  console.log(`[ksef-send] XML full: ${String(xmlPayload || '')}`)
 
   try {
     const xmlBuf = Buffer.from(xmlPayload, 'utf8')
