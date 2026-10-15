@@ -8,6 +8,7 @@ await db.exec(`
  CREATE SCHEMA auth; CREATE TABLE auth.users(id UUID PRIMARY KEY);
  CREATE FUNCTION auth.uid() RETURNS UUID LANGUAGE SQL AS $$ SELECT NULLIF(current_setting('test.uid',true),'')::UUID $$;
  CREATE TABLE companies(id UUID PRIMARY KEY);
+ CREATE TABLE company_members(user_id UUID,company_id UUID,role TEXT);
  CREATE TABLE clients(id UUID PRIMARY KEY,company_id UUID,name TEXT);
  ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
  CREATE POLICY base ON clients FOR SELECT TO authenticated USING(TRUE);
@@ -77,5 +78,15 @@ await db.exec('SET ROLE authenticated')
 await assert.rejects(db.query('SELECT * FROM private_mcp_clients'))
 await db.exec('RESET ROLE')
 await db.exec(readFileSync(new URL('../../scripts/private-access-audit.sql',import.meta.url),'utf8'))
+// Preflight must work both with pending migrations and with the MCP schema present.
+const preflight=readFileSync(new URL('../../scripts/mcp-database-preflight.sql',import.meta.url),'utf8')
+let inventory=await db.exec(preflight)
+let report=JSON.parse(inventory.find(result=>result.fields?.some(field=>field.name==='mcp_preflight')).rows[0].mcp_preflight)
+assert.equal(report.mcp_database_role_must_be_absent,true)
+assert.ok(report.missing_columns.some(column=>column.table_name==='clients' && column.column_name==='email'))
+await db.exec('DROP TABLE private_mcp_clients CASCADE')
+inventory=await db.exec(preflight)
+report=JSON.parse(inventory.find(result=>result.fields?.some(field=>field.name==='mcp_preflight')).rows[0].mcp_preflight)
+assert.ok(report.missing_columns.some(column=>column.table_name==='private_mcp_clients'))
 await db.close()
 console.log('PASS: migrations, idempotency, atomic draft creation, rollback, ambiguous-write recovery, signup gate and owner RLS')

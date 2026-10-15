@@ -53,6 +53,18 @@ hook; revocation is checked on every MCP call, not just expiry.
 
 ## Activation sequence
 
+Before activation, run `scripts/mcp-database-preflight.sql` in an administrator
+SQL session. It only reads catalogs and bucket flags, reports absent objects
+even before the new migrations exist, and returns no credentials or document
+contents. Resolve its missing columns/functions against the actual schema;
+do not use a local fixture pass as proof of production compatibility.
+
+Production project verified in Netlify on 2026-10-16 (Europe/Warsaw): both
+`SUPABASE_URL` and `VITE_SUPABASE_URL` point to project `ymozrnytqvvncwseppfa`
+(`loftdeskv3`). The project's OAuth Server was disabled. No production migration,
+OAuth grant or hook activation has been performed. Owner/company selection
+remains unverified; the two owner account candidates must not be guessed.
+
 1. Finish private-owner provisioning from `private-loftdesk-rollout.md`, and apply
    migration 174 after 170–173. Use staging first. Do not run every historical
    migration against production blindly.
