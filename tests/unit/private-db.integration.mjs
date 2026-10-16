@@ -17,6 +17,7 @@ await db.exec(`
  CREATE TABLE cost_estimates(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),company_id UUID,user_id UUID NOT NULL REFERENCES auth.users(id),client_id UUID,project_id UUID,number TEXT,name TEXT,status TEXT,total_net NUMERIC,total_gross NUMERIC,notes TEXT);
  CREATE TABLE cost_estimate_items(id UUID DEFAULT gen_random_uuid(),cost_estimate_id UUID NOT NULL REFERENCES cost_estimates(id),description TEXT NOT NULL,name TEXT,unit TEXT,quantity NUMERIC,unit_price NUMERIC,vat_rate NUMERIC,sort_order INT);
  CREATE TABLE operator_notifications(id UUID DEFAULT gen_random_uuid(),company_id UUID,type TEXT,title TEXT,body TEXT,reference_id UUID);
+ ALTER TABLE operator_notifications ADD CONSTRAINT operator_notifications_type_check CHECK(type IN ('client_message','client_approval_response','missing_costs','payment_reminder'));
  CREATE TABLE invoices(id UUID PRIMARY KEY,company_id UUID);
  CREATE SCHEMA storage; CREATE TABLE storage.buckets(id TEXT PRIMARY KEY,name TEXT,public BOOLEAN,file_size_limit BIGINT);
  CREATE TABLE storage.objects(bucket_id TEXT,name TEXT);ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
@@ -29,6 +30,13 @@ await db.exec(`
  INSERT INTO clients VALUES('00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000002','Client');
 `)
 for(const file of ['170_private_app_access.sql','171_private_automation.sql','172_automation_notifications.sql','173_private_ksef_worker.sql','174_private_mcp_oauth.sql'])await db.exec(readFileSync(new URL(`../../supabase/migrations/${file}`,import.meta.url),'utf8'))
+const revert=readFileSync(new URL('../../scripts/mcp-foundation-revert.sql',import.meta.url),'utf8')
+await db.exec(revert)
+assert.equal((await db.query("SELECT count(*)::int AS n FROM pg_policies WHERE policyname='private_owner_gate'")).rows[0].n,0)
+assert.equal((await db.query("SELECT count(*)::int AS n FROM pg_trigger WHERE tgname IN ('reject_private_app_signup','notify_private_automation')")).rows[0].n,0)
+assert.equal((await db.query("SELECT count(*)::int AS n FROM private_mcp_clients")).rows[0].n,0)
+// Restore exactly the legacy-access pieces removed by the pre-activation revert.
+for(const file of ['170_private_app_access.sql','172_automation_notifications.sql'])await db.exec(readFileSync(new URL(`../../supabase/migrations/${file}`,import.meta.url),'utf8'))
 const company='00000000-0000-0000-0000-000000000002'
 await db.query('UPDATE private_app_settings SET enabled=true,owner_user_id=$1,company_id=$2',['00000000-0000-0000-0000-000000000001',company])
 const enqueue=async(kind,key,payload)=>(await db.query('SELECT private_enqueue_job($1,$2,$3,$4) AS job',[company,kind,key,payload])).rows[0].job
@@ -49,6 +57,8 @@ const lines=(await db.query('SELECT * FROM cost_estimate_items')).rows
 assert.equal(lines.length,2)
 assert.equal(lines[0].cost_estimate_id,docs[0].id)
 assert.equal(lines[0].description,'Stage 1')
+await assert.rejects(db.exec(revert),/Foundation was activated or used/)
+await db.exec('ROLLBACK')
 // A service worker must not create documents for another queued company.
 const otherCompany='00000000-0000-0000-0000-000000000005'
 await db.query('INSERT INTO companies VALUES($1)',[otherCompany])
