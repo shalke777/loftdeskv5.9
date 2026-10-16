@@ -30,7 +30,7 @@ await db.exec(`
  INSERT INTO companies VALUES('00000000-0000-0000-0000-000000000002');
  INSERT INTO clients VALUES('00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000002','Client');
 `)
-for(const file of ['170_private_app_access.sql','171_private_automation.sql','172_automation_notifications.sql','174_private_mcp_oauth.sql','20261016001247_private_mcp_function_grants.sql'])await db.exec(readFileSync(new URL(`../../supabase/migrations/${file}`,import.meta.url),'utf8'))
+for(const file of ['170_private_app_access.sql','171_private_automation.sql','172_automation_notifications.sql','174_private_mcp_oauth.sql','20261016001247_private_mcp_function_grants.sql','20261016061043_private_mcp_independent_activation.sql'])await db.exec(readFileSync(new URL(`../../supabase/migrations/${file}`,import.meta.url),'utf8'))
 const revert=readFileSync(new URL('../../scripts/mcp-foundation-revert.sql',import.meta.url),'utf8')
 await db.exec(revert)
 assert.equal((await db.query("SELECT count(*)::int AS n FROM pg_policies WHERE policyname='private_owner_gate'")).rows[0].n,0)
@@ -42,7 +42,7 @@ const company='00000000-0000-0000-0000-000000000002'
 for(const signature of ['private_enqueue_job(uuid,text,text,jsonb)','private_claim_job(uuid)','private_execute_db_job(uuid,uuid)','notify_private_automation()','reject_private_app_signup()']){
  for(const role of ['anon','authenticated'])assert.equal((await db.query('SELECT has_function_privilege($1,$2,$3) AS allowed',[role,signature,'EXECUTE'])).rows[0].allowed,false,`${role} must not execute ${signature}`)
 }
-await db.query('UPDATE private_app_settings SET enabled=true,owner_user_id=$1,company_id=$2',['00000000-0000-0000-0000-000000000001',company])
+await db.query('UPDATE private_app_settings SET enabled=false,mcp_enabled=true,owner_user_id=$1,company_id=$2',['00000000-0000-0000-0000-000000000001',company])
 const enqueue=async(kind,key,payload)=>(await db.query('SELECT private_enqueue_job($1,$2,$3,$4) AS job',[company,kind,key,payload])).rows[0].job
 const payload={name:'Offer',items:[{name:'Stage 1',quantity:1,unit_price:0.03,vat_rate:23},{name:'Stage 2',quantity:1,unit_price:0.03,vat_rate:23}]}
 const first=await enqueue('estimate.draft','estimate/test/1',payload)
@@ -91,7 +91,12 @@ await db.query("INSERT INTO private_mcp_clients(client_id,resource_url,redirect_
 const regular={claims:{sub:'00000000-0000-0000-0000-000000000001',aud:'authenticated',role:'authenticated',exp:Math.floor(Date.now()/1000)+3600}}
 assert.deepEqual((await db.query('SELECT private_mcp_access_token_hook($1) AS result',[regular])).rows[0].result,regular)
 const oauth={...regular,client_id:'chatgpt-client'}
+await db.exec('UPDATE private_app_settings SET enabled=false,mcp_enabled=true')
+assert.equal((await db.query("SELECT private_app_access_allowed() AS allowed")).rows[0].allowed,true)
 const claims=(await db.query('SELECT private_mcp_access_token_hook($1) AS result',[oauth])).rows[0].result.claims
+await db.exec('UPDATE private_app_settings SET mcp_enabled=false')
+await assert.rejects(db.query('SELECT private_mcp_access_token_hook($1)',[oauth]))
+await db.exec('UPDATE private_app_settings SET mcp_enabled=true')
 assert.equal(claims.aud,'https://loftdesk.pl/api/assistant/mcp')
 assert.equal(claims.role,'loftdesk_mcp_only')
 assert.equal(claims.loftdesk_mcp_write,true)

@@ -1,4 +1,4 @@
-const {ownerContext,checked,json}=require('./shared/private-runtime.cjs')
+const {mcpOwnerContext,checked,json}=require('./shared/private-runtime.cjs')
 const {config}=require('./shared/mcp-auth.cjs')
 function allowedCallback(url,uris){
   try{
@@ -15,7 +15,7 @@ exports.handler=async event=>{
   try{
     const c=config(),origin=event.headers?.origin||event.headers?.Origin
     if(origin&&origin!==new URL(c.resource).origin)return json(403,{error:'Origin not allowed'})
-    const ctx=await ownerContext(event)
+    const ctx=await mcpOwnerContext(event)
     const input=JSON.parse(event.body||'{}')
     if(input.action==='list')return json(200,{resource:c.resource,clients:await checked(ctx.sb.from('private_mcp_clients').select('client_id,display_name,enabled,allow_write').order('created_at'))})
     if(input.action==='revoke'){

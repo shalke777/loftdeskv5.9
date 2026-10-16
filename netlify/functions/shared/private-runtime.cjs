@@ -20,6 +20,21 @@ async function ownerContext(event) {
   if (error || !data.user || !privateOwnerAllowed(data.user.id)) throw new Error('Owner authentication required')
   return ctx
 }
+async function mcpContext() {
+  if (process.env.LOFTDESK_MCP_ENABLED !== 'true') return privateContext()
+  if (!process.env.LOFTDESK_OWNER_USER_ID || !process.env.LOFTDESK_COMPANY_ID) throw new Error('MCP owner is not configured')
+  const sb = admin()
+  const { data, error } = await sb.from('private_app_settings').select('mcp_enabled,owner_user_id,company_id').eq('singleton', true).single()
+  if (error || !data?.mcp_enabled || data.owner_user_id !== process.env.LOFTDESK_OWNER_USER_ID || data.company_id !== process.env.LOFTDESK_COMPANY_ID) throw new Error('MCP application settings mismatch')
+  return { sb, companyId: data.company_id, ownerId: data.owner_user_id }
+}
+async function mcpOwnerContext(event) {
+  const ctx = await mcpContext()
+  const auth = event.headers?.authorization || event.headers?.Authorization || ''
+  const { data, error } = await ctx.sb.auth.getUser(auth.startsWith('Bearer ') ? auth.slice(7) : '')
+  if (error || !data.user || data.user.id !== ctx.ownerId) throw new Error('Owner authentication required')
+  return ctx
+}
 async function checked(promise) { const { data, error } = await promise; if (error) throw error; return data }
 function json(statusCode, body) { return { statusCode, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, MCP-Protocol-Version, MCP-Session-Id', 'Access-Control-Expose-Headers': 'WWW-Authenticate, MCP-Protocol-Version', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' }, body: JSON.stringify(body) } }
-module.exports = { privateContext, ownerContext, checked, json }
+module.exports = { privateContext, ownerContext, mcpContext, mcpOwnerContext, checked, json }

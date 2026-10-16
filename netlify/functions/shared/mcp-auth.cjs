@@ -1,5 +1,5 @@
 const { createRemoteJWKSet, jwtVerify } = require('jose')
-const { privateContext, checked } = require('./private-runtime.cjs')
+const { privateContext, mcpContext, checked } = require('./private-runtime.cjs')
 const { secretMatches } = require('./private-owner.cjs')
 let keySet
 let keySetUrl
@@ -34,7 +34,7 @@ async function authenticate(event) {
   }
   const {payload} = await jwtVerify(token,keySet,{issuer:c.issuer,audience:c.resource,algorithms:['ES256','RS256'],requiredClaims:['exp','iat','sub','client_id'],clockTolerance:5})
   if (payload.loftdesk_mcp !== true || payload.role !== 'loftdesk_mcp_only' || typeof payload.client_id !== 'string' || !payload.scope?.split?.(' ').includes('email')) throw new Error('Wrong MCP token')
-  const ctx = await privateContext()
+  const ctx = await mcpContext()
   if (payload.sub !== ctx.ownerId || payload.loftdesk_company_id !== ctx.companyId) throw new Error('Owner access required')
   const client = await checked(ctx.sb.from('private_mcp_clients').select('enabled,allow_write,resource_url,token_version').eq('client_id',payload.client_id).maybeSingle())
   if (!client?.enabled || client.resource_url !== c.resource || client.token_version !== payload.loftdesk_mcp_version) throw new Error('MCP grant revoked')

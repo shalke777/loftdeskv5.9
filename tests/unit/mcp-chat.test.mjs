@@ -36,7 +36,7 @@ function fixture(){
     },
     rpc:async(name,args)=>{assert.equal(name,'private_enqueue_job');assert.equal(args.p_company_id,company);if(!jobs.has(jobId))jobs.set(jobId,{id:jobId,status:'queued',kind:args.p_kind});return{data:jobs.get(jobId)}}
   }}
-  const runtime={privateContext:async()=>ctx,checked:async p=>{const r=await p;if(r.error)throw r.error;return r.data},json:(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(body)})}
+  const runtime={privateContext:async()=>ctx,mcpContext:async()=>ctx,checked:async p=>{const r=await p;if(r.error)throw r.error;return r.data},json:(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(body)})}
   const auth=load('netlify/functions/shared/mcp-auth.cjs',{'jose':{...jose,createRemoteJWKSet:()=>publicKey},'./private-runtime.cjs':runtime,'./private-owner.cjs':{secretMatches:()=>false}})
   const {handler}=load('netlify/functions/assistant-mcp.js',{'./shared/private-runtime.cjs':runtime,'./shared/mcp-auth.cjs':auth})
   return{auth,handler,jobs,queries,revoke:()=>{grant={...grant,enabled:false,token_version:2}},readOnly:()=>{grant={...grant,allow_write:false}}}
@@ -120,7 +120,7 @@ test('consent callback requires an exact registered HTTPS destination',()=>{
 test('consent verifies owner, approved client and callback before forwarding approval',async()=>{
   const calls=[],row={client_id:'chatgpt-client',display_name:'Private ChatGPT',resource_url:resource,redirect_uris:['https://chatgpt.com/connector_platform_oauth_redirect'],allow_write:true}
   let details={client:{id:'chatgpt-client'},user:{id:owner},scope:'email',redirect_uri:row.redirect_uris[0]}
-  const runtime={ownerContext:async()=>({ownerId:owner,sb:{from:()=>{const q={select:()=>q,eq:()=>q,then:resolve=>resolve({data:[row]})};return q}}}),checked:async p=>(await p).data,json:(statusCode,body)=>({statusCode,body:JSON.stringify(body)})}
+  const runtime={mcpOwnerContext:async()=>({ownerId:owner,sb:{from:()=>{const q={select:()=>q,eq:()=>q,then:resolve=>resolve({data:[row]})};return q}}}),checked:async p=>(await p).data,json:(statusCode,body)=>({statusCode,body:JSON.stringify(body)})}
   const {handler}=load('netlify/functions/mcp-consent.js',{'./shared/private-runtime.cjs':runtime,'./shared/mcp-auth.cjs':{config:()=>({resource,issuer})}},
     {process:{env:{...env,SUPABASE_ANON_KEY:'public-key'}},fetch:async(url,options)=>{calls.push({url,options});return{ok:true,json:async()=>options.method==='POST'?{redirect_url:`${row.redirect_uris[0]}?code=one&state=two`}:details}}})
   const request={httpMethod:'POST',headers:{authorization:'Bearer owner-session',origin:'https://loftdesk.pl'},body:JSON.stringify({action:'approve',authorization_id:jobId})}
@@ -135,6 +135,22 @@ test('consent verifies owner, approved client and callback before forwarding app
   calls.length=0
   assert.equal((await handler({...request,headers:{...request.headers,origin:'https://evil.example'}})).statusCode,403)
   assert.equal(calls.length,0)
+})
+
+test('MCP activation keeps legacy private mode off and still requires the exact owner',async()=>{
+  let settings={mcp_enabled:true,owner_user_id:owner,company_id:company},userId=owner
+  const sb={from:()=>({select:()=>({eq:()=>({single:async()=>({data:settings})})})}),auth:{getUser:async()=>({data:{user:{id:userId}}})}}
+  const runtime=load('netlify/functions/shared/private-runtime.cjs',{'@supabase/supabase-js':{createClient:()=>sb},'./private-owner.cjs':{privateOwnerAllowed:()=>true}},
+    {process:{env:{...env,SUPABASE_SERVICE_ROLE_KEY:'fixture',LOFTDESK_MCP_ENABLED:'true',LOFTDESK_OWNER_USER_ID:owner,LOFTDESK_COMPANY_ID:company}}})
+  assert.equal((await runtime.mcpContext()).ownerId,owner)
+  await assert.rejects(runtime.privateContext())
+  assert.equal((await runtime.mcpOwnerContext(event('owner-session'))).ownerId,owner)
+  userId=jobId
+  await assert.rejects(runtime.mcpOwnerContext(event('other-session')),/Owner authentication required/)
+  settings={...settings,mcp_enabled:false}
+  await assert.rejects(runtime.mcpContext())
+  settings={...settings,mcp_enabled:true,company_id:jobId}
+  await assert.rejects(runtime.mcpContext())
 })
 
 test('static token authentication is disabled unless explicitly enabled',async()=>{

@@ -3,8 +3,11 @@
 Status as of 2026-10-16: the production database foundation was installed after
 explicit user approval and an isolated PostgreSQL rehearsal using metadata from
 63 production tables. Owner/company are provisioned, but enabled remains false;
-there are no registered OAuth clients or persistent test jobs. Production app
-deployment, Auth provider setup and actual ChatGPT connection remain outstanding.
+there are no registered OAuth clients or persistent test jobs. The MCP release is published on loftdesk.pl (main 00fc2c0); native OAuth,
+loftdesk.pl Site URL and the access-token hook are configured. The registered
+ChatGPT client has an exact callback allowlist. Actual ChatGPT consent/token
+issuance remains outstanding. GitHub Actions cannot start due to account billing;
+the owner authorized production deployment using local validation and Netlify builds.
 
 The first production attempt was rejected. A retry was approved after user
 confirmation and the rehearsal. A schema-only snapshot was retained; this was
@@ -76,3 +79,16 @@ node scripts/test-mcp-schema-snapshot.mjs tests/fixtures/mcp-production-schema.j
 The fixture is catalog metadata only and contains no user records or credentials.
 Before any later broad private cutover, establish a full restorable backup and
 test the complete production schema and real provider behavior on staging.
+
+## Independent MCP activation
+
+Migration 20261016061043 adds mcp_enabled=false independently of enabled.
+Set LOFTDESK_MCP_ENABLED=true and mcp_enabled=true to activate the scoped MCP
+resource and owner consent without enabling the legacy app-wide RLS/signup
+cutover. Both DB and environment owner/company values must match; consent
+compares the actual session user to that owner even while private mode is off.
+The token hook and DB draft worker accept either reviewed activation mode.
+LOFTDESK_AUTOMATION_ENABLED=true starts queued draft/note processing.
+Gmail remains separately disabled until its connection is configured.
+Disable mcp_enabled or the client row to stop OAuth token issuance/access.
+This does not complete the separate public-file/RPC privacy audit.
