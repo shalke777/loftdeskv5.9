@@ -1,3 +1,4 @@
+import { DocumentPackages } from './DocumentPackages'
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -200,6 +201,8 @@ export function ProjectDocuments({
           </button>
         </div>
       </div>
+
+      <DocumentPackages projectId={project.id} />
 
       {/* Link picker inline panel */}
       {linkPickerOpen && (

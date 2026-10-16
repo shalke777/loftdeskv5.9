@@ -135,3 +135,14 @@
 
 [functions."private-automation-worker"]
   schedule = "* * * * *"
+
+# PDF rendering uses packaged Chromium; no external browser session is needed.
+[functions."document-packages"]
+  timeout = 60
+  external_node_modules = ["@sparticuz/chromium", "puppeteer-core"]
+  included_files = ["netlify/functions/node_modules/@sparticuz/chromium/bin/**"]
+
+[functions."assistant-mcp"]
+  timeout = 60
+  external_node_modules = ["@sparticuz/chromium", "puppeteer-core"]
+  included_files = ["netlify/functions/node_modules/@sparticuz/chromium/bin/**"]

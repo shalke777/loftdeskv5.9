@@ -2,9 +2,11 @@
   "name": "loftdesk-functions",
   "version": "1.0.0",
   "dependencies": {
+    "@sparticuz/chromium": "138.0.2",
     "@supabase/supabase-js": "^2.39.0",
     "jose": "^5.10.0",
     "jszip": "^3.10.1",
+    "puppeteer-core": "24.15.0",
     "stripe": "^20.4.1",
     "tesseract.js": "^5.0.0"
   }

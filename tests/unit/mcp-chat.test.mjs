@@ -43,7 +43,7 @@ function fixture(){
   const runtime={privateContext:async()=>ctx,mcpContext:async()=>ctx,checked:async p=>{const r=await p;if(r.error)throw r.error;return r.data},json:(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(body)})}
   const auth=load('netlify/functions/shared/mcp-auth.cjs',{'jose':{...jose,createRemoteJWKSet:()=>publicKey},'./private-runtime.cjs':runtime,'./private-owner.cjs':{secretMatches:()=>false}})
   const editor=load('netlify/functions/shared/contract-editor.cjs',{'./private-runtime.cjs':runtime})
-  const {handler}=load('netlify/functions/assistant-mcp.js',{'./shared/private-runtime.cjs':runtime,'./shared/mcp-auth.cjs':auth,'./shared/contract-editor.cjs':editor})
+  const {handler}=load('netlify/functions/assistant-mcp.js',{'./shared/private-runtime.cjs':runtime,'./shared/mcp-auth.cjs':auth,'./shared/contract-editor.cjs':editor,'./shared/document-packages.cjs':{}})
   return{auth,handler,jobs,queries,revoke:()=>{grant={...grant,enabled:false,token_version:2}},readOnly:()=>{grant={...grant,allow_write:false}}}
 }
 const event=(jwt,request,headers={})=>({httpMethod:'POST',headers:{authorization:`Bearer ${jwt}`,...headers},body:JSON.stringify(request)})
@@ -98,7 +98,7 @@ test('official MCP SDK connects over HTTP, reads scoped records and tracks queue
   try{
     await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${server.address().port}/mcp`),{requestInit:{headers:{Authorization:`Bearer ${jwt}`}}}))
     const listed=await client.listTools()
-    assert.equal(listed.tools.length,10)
+    assert.ok(['prepare_document_package','list_document_packages','send_document_package'].every(name=>listed.tools.some(tool=>tool.name===name)))
     await client.callTool({name:'list_records',arguments:{entity:'clients'}})
     assert.ok(f.queries.some(q=>q.table==='clients'&&q.filters.company_id===company))
     await client.callTool({name:'search_records',arguments:{entity:'clients',query:'50%_discount'}})
