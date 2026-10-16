@@ -44,7 +44,7 @@ async function call(ctx, name, args) {
     if (!['estimates','invoices'].includes(args.entity) || !/^[a-f\d-]{36}$/i.test(args.id || '')) throw new Error('Invalid document')
     const [table,columns]=entities[args.entity]
     const document=await checked(ctx.sb.from(table).select(columns).eq('company_id',ctx.companyId).eq('id',args.id).single())
-    const items=await checked(ctx.sb.from(args.entity==='estimates'?'cost_estimate_items':'invoice_items').select('*').eq(args.entity==='estimates'?'estimate_id':'invoice_id',args.id).order('sort_order'))
+    const items=await checked(ctx.sb.from(args.entity==='estimates'?'cost_estimate_items':'invoice_items').select('*').eq(args.entity==='estimates'?'cost_estimate_id':'invoice_id',args.id).order('sort_order'))
     return {document,items}
   }
   const kinds={prepare_estimate:'estimate.draft',add_note:'note.add',sync_gmail:'gmail.sync',prepare_email:'gmail.draft'}

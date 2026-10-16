@@ -66,11 +66,14 @@ END $$;
 
 CREATE OR REPLACE FUNCTION public.private_execute_db_job(p_id UUID,p_lease UUID) RETURNS JSONB
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
-DECLARE job public.automation_jobs; doc_id UUID; doc_number TEXT; item JSONB; net NUMERIC:=0; vat NUMERIC:=0; line_net NUMERIC; line_vat NUMERIC; sort_no INTEGER:=0; client UUID; project UUID;
+DECLARE job public.automation_jobs; doc_id UUID; doc_number TEXT; item JSONB; net NUMERIC:=0; vat NUMERIC:=0; line_net NUMERIC; line_vat NUMERIC; sort_no INTEGER:=0; client UUID; project UUID; owner_id UUID;
 BEGIN
  SELECT * INTO job FROM public.automation_jobs WHERE id=p_id FOR UPDATE;
  IF job.status='done' THEN RETURN job.result; END IF;
  IF job.status<>'running' OR job.lease_id IS DISTINCT FROM p_lease THEN RAISE EXCEPTION 'Invalid job lease'; END IF;
+ SELECT owner_user_id INTO owner_id FROM public.private_app_settings
+ WHERE singleton AND enabled AND company_id=job.company_id;
+ IF owner_id IS NULL THEN RAISE EXCEPTION 'Private owner/company is not configured'; END IF;
  client:=NULLIF(job.payload->>'client_id','')::UUID; project:=NULLIF(job.payload->>'project_id','')::UUID;
  IF client IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.clients WHERE id=client AND company_id=job.company_id) THEN RAISE EXCEPTION 'Invalid client scope'; END IF;
  IF project IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.projects WHERE id=project AND company_id=job.company_id) THEN RAISE EXCEPTION 'Invalid project scope'; END IF;
@@ -85,11 +88,11 @@ BEGIN
    line_vat:=round(line_net*(item->>'vat_rate')::NUMERIC/100,2); net:=net+line_net;vat:=vat+line_vat;
   END LOOP;
   doc_number:=public.next_doc_number(job.company_id,'estimate',CURRENT_DATE);
-  INSERT INTO public.cost_estimates(company_id,client_id,project_id,number,name,status,total_net,total_gross,notes)
-   VALUES(job.company_id,client,project,doc_number,job.payload->>'name','draft',net,net+vat,job.payload->>'notes') RETURNING id INTO doc_id;
+  INSERT INTO public.cost_estimates(company_id,user_id,client_id,project_id,number,name,status,total_net,total_gross,notes)
+   VALUES(job.company_id,owner_id,client,project,doc_number,job.payload->>'name','draft',net,net+vat,job.payload->>'notes') RETURNING id INTO doc_id;
   FOR item IN SELECT * FROM jsonb_array_elements(job.payload->'items') LOOP
-   INSERT INTO public.cost_estimate_items(estimate_id,name,unit,quantity,unit_price,vat_rate,sort_order)
-   VALUES(doc_id,item->>'name',COALESCE(item->>'unit','kpl'),(item->>'quantity')::NUMERIC,(item->>'unit_price')::NUMERIC,(item->>'vat_rate')::NUMERIC,sort_no);
+   INSERT INTO public.cost_estimate_items(cost_estimate_id,name,description,unit,quantity,unit_price,vat_rate,sort_order)
+   VALUES(doc_id,item->>'name',item->>'name',COALESCE(item->>'unit','kpl'),(item->>'quantity')::NUMERIC,(item->>'unit_price')::NUMERIC,(item->>'vat_rate')::NUMERIC,sort_no);
    sort_no:=sort_no+1;
   END LOOP;
  ELSE RAISE EXCEPTION 'Not a database job'; END IF;

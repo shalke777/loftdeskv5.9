@@ -14,8 +14,8 @@ await db.exec(`
  CREATE POLICY base ON clients FOR SELECT TO authenticated USING(TRUE);
  GRANT SELECT ON clients TO authenticated;
  CREATE TABLE projects(id UUID PRIMARY KEY,company_id UUID);
- CREATE TABLE cost_estimates(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),company_id UUID,client_id UUID,project_id UUID,number TEXT,name TEXT,status TEXT,total_net NUMERIC,total_gross NUMERIC,notes TEXT);
- CREATE TABLE cost_estimate_items(id UUID DEFAULT gen_random_uuid(),estimate_id UUID,name TEXT,unit TEXT,quantity NUMERIC,unit_price NUMERIC,vat_rate NUMERIC,sort_order INT);
+ CREATE TABLE cost_estimates(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),company_id UUID,user_id UUID NOT NULL REFERENCES auth.users(id),client_id UUID,project_id UUID,number TEXT,name TEXT,status TEXT,total_net NUMERIC,total_gross NUMERIC,notes TEXT);
+ CREATE TABLE cost_estimate_items(id UUID DEFAULT gen_random_uuid(),cost_estimate_id UUID NOT NULL REFERENCES cost_estimates(id),description TEXT NOT NULL,name TEXT,unit TEXT,quantity NUMERIC,unit_price NUMERIC,vat_rate NUMERIC,sort_order INT);
  CREATE TABLE operator_notifications(id UUID DEFAULT gen_random_uuid(),company_id UUID,type TEXT,title TEXT,body TEXT,reference_id UUID);
  CREATE TABLE invoices(id UUID PRIMARY KEY,company_id UUID);
  CREATE SCHEMA storage; CREATE TABLE storage.buckets(id TEXT PRIMARY KEY,name TEXT,public BOOLEAN,file_size_limit BIGINT);
@@ -30,6 +30,7 @@ await db.exec(`
 `)
 for(const file of ['170_private_app_access.sql','171_private_automation.sql','172_automation_notifications.sql','173_private_ksef_worker.sql','174_private_mcp_oauth.sql'])await db.exec(readFileSync(new URL(`../../supabase/migrations/${file}`,import.meta.url),'utf8'))
 const company='00000000-0000-0000-0000-000000000002'
+await db.query('UPDATE private_app_settings SET enabled=true,owner_user_id=$1,company_id=$2',['00000000-0000-0000-0000-000000000001',company])
 const enqueue=async(kind,key,payload)=>(await db.query('SELECT private_enqueue_job($1,$2,$3,$4) AS job',[company,kind,key,payload])).rows[0].job
 const payload={name:'Offer',items:[{name:'Stage 1',quantity:1,unit_price:0.03,vat_rate:23},{name:'Stage 2',quantity:1,unit_price:0.03,vat_rate:23}]}
 const first=await enqueue('estimate.draft','estimate/test/1',payload)
@@ -43,6 +44,18 @@ assert.equal(docs.length,1)
 assert.equal((await db.query("SELECT * FROM operator_notifications WHERE type='automation'")).rows.length,1)
 assert.equal(Number(docs[0].total_net),0.06)
 assert.equal(Number(docs[0].total_gross),0.08)
+assert.equal(docs[0].user_id,'00000000-0000-0000-0000-000000000001')
+const lines=(await db.query('SELECT * FROM cost_estimate_items')).rows
+assert.equal(lines.length,2)
+assert.equal(lines[0].cost_estimate_id,docs[0].id)
+assert.equal(lines[0].description,'Stage 1')
+// A service worker must not create documents for another queued company.
+const otherCompany='00000000-0000-0000-0000-000000000005'
+await db.query('INSERT INTO companies VALUES($1)',[otherCompany])
+const foreignJob=(await db.query('SELECT private_enqueue_job($1,$2,$3,$4) AS job',[otherCompany,'estimate.draft','estimate/foreign/1',payload])).rows[0].job
+const foreignLease=(await db.query('SELECT * FROM private_claim_job($1)',[otherCompany])).rows[0]
+await assert.rejects(db.query('SELECT private_execute_db_job($1,$2)',[foreignJob.id,foreignLease.lease_id]),/Private owner\/company is not configured/)
+assert.equal((await db.query('SELECT * FROM cost_estimates')).rows.length,1)
 await enqueue('estimate.draft','estimate/bad/1',{name:'Missing rows'})
 job=(await db.query('SELECT * FROM private_claim_job($1)',[company])).rows[0]
 await assert.rejects(db.query('SELECT private_execute_db_job($1,$2)',[job.id,job.lease_id]))

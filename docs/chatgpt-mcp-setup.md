@@ -62,8 +62,22 @@ do not use a local fixture pass as proof of production compatibility.
 Production project verified in Netlify on 2026-10-16 (Europe/Warsaw): both
 `SUPABASE_URL` and `VITE_SUPABASE_URL` point to project `ymozrnytqvvncwseppfa`
 (`loftdeskv3`). The project's OAuth Server was disabled. No production migration,
-OAuth grant or hook activation has been performed. Owner/company selection
-remains unverified; the two owner account candidates must not be guessed.
+OAuth grant or hook activation has been performed.
+
+Direct Supabase plugin access subsequently verified the owner membership in
+`LOFTBAU - PAWEŁ SZALECKI` (9 invoices and 9 estimates at audit time). The other
+account candidate had no company membership. Actual schema inspection found
+three draft-creation incompatibilities that are now fixed: the estimate needs
+`user_id`, its item foreign key is `cost_estimate_id`, and item `description`
+is mandatory. The PostgreSQL fixture enforces these production constraints.
+No production tables or documents were modified by the audit.
+
+Private tables/functions are still absent in production. The audit also found
+public `company-files` (206 objects) and `company-logos` buckets, and the
+security advisor flags a SECURITY DEFINER view `ghost_companies_candidates`.
+Do not make the file bucket private without migrating existing public file
+URLs to authenticated signed downloads. Audit each exposed SECURITY DEFINER
+RPC before private cutover; a linter warning alone does not prove exploitation.
 
 1. Finish private-owner provisioning from `private-loftdesk-rollout.md`, and apply
    migration 174 after 170–173. Use staging first. Do not run every historical
