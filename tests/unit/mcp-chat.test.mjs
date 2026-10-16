@@ -123,9 +123,16 @@ test('consent verifies owner, approved client and callback before forwarding app
   const runtime={mcpOwnerContext:async()=>({ownerId:owner,sb:{from:()=>{const q={select:()=>q,eq:()=>q,then:resolve=>resolve({data:[row]})};return q}}}),checked:async p=>(await p).data,json:(statusCode,body)=>({statusCode,body:JSON.stringify(body)})}
   const {handler}=load('netlify/functions/mcp-consent.js',{'./shared/private-runtime.cjs':runtime,'./shared/mcp-auth.cjs':{config:()=>({resource,issuer})}},
     {process:{env:{...env,SUPABASE_ANON_KEY:'public-key'}},fetch:async(url,options)=>{calls.push({url,options});return{ok:true,json:async()=>options.method==='POST'?{redirect_url:`${row.redirect_uris[0]}?code=one&state=two`}:details}}})
-  const request={httpMethod:'POST',headers:{authorization:'Bearer owner-session',origin:'https://loftdesk.pl'},body:JSON.stringify({action:'approve',authorization_id:jobId})}
+  const authorizationId='abcdefghijklmnopqrstuv0123456789'
+  const request={httpMethod:'POST',headers:{authorization:'Bearer owner-session',origin:'https://loftdesk.pl'},body:JSON.stringify({action:'approve',authorization_id:authorizationId})}
   assert.equal((await handler(request)).statusCode,200)
   assert.equal(calls.filter(c=>c.options.method==='POST').length,1)
+  assert.equal(calls[0].url,`${issuer}/oauth/authorizations/${authorizationId}`)
+  for(const invalidId of ['short','../'.repeat(8),'a'.repeat(257),'https://evil.example/consent','abc?next=123456789']){
+    calls.length=0
+    assert.equal((await handler({...request,body:JSON.stringify({action:'approve',authorization_id:invalidId})})).statusCode,400)
+    assert.equal(calls.length,0)
+  }
   for(const patch of [{client:{id:'other'}},{user:{id:jobId}},{scope:'email phone'},{redirect_uri:'https://other.example/callback'}]){
     calls.length=0;const before=details;details={...details,...patch}
     assert.equal((await handler(request)).statusCode,400)

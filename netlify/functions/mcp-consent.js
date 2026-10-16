@@ -24,11 +24,12 @@ exports.handler=async event=>{
       await checked(ctx.sb.from('private_mcp_clients').update({enabled:false,token_version:row.token_version+1}).eq('client_id',input.client_id))
       return json(200,{revoked:true})
     }
-    if(!['details','approve','deny'].includes(input.action)||typeof input.authorization_id!=='string'||!/^[a-f\d-]{36}$/i.test(input.authorization_id))return json(400,{error:'Invalid authorization request'})
+    // Supabase authorization IDs are opaque URL-safe strings, not UUIDs.
+    if(!['details','approve','deny'].includes(input.action)||typeof input.authorization_id!=='string'||!/^[A-Za-z0-9_-]{16,256}$/.test(input.authorization_id))return json(400,{error:'Invalid authorization request'})
     const auth=event.headers?.authorization||event.headers?.Authorization
     const key=process.env.SUPABASE_ANON_KEY||process.env.VITE_SUPABASE_ANON_KEY
     if(!key)throw new Error('OAuth public API key missing')
-    const endpoint=`${c.issuer}/oauth/authorizations/${input.authorization_id}`
+    const endpoint=`${c.issuer}/oauth/authorizations/${encodeURIComponent(input.authorization_id)}`
     const request=async(url,body)=>{
       const response=await fetch(url,{method:body?'POST':'GET',headers:{apikey:key,Authorization:auth,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(8000),redirect:'error'})
       if(!response.ok)throw new Error('Żądanie zgody wygasło lub OAuth nie jest skonfigurowany. Rozpocznij połączenie ponownie w ChatGPT.')
