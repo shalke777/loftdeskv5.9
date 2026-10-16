@@ -39,6 +39,9 @@ jobs:
       - name: ChatGPT MCP protocol and signed OAuth tests
         run: npm run test:mcp
 
+      - name: Client and project queue integration
+        run: npm run test:mcp:crm
+
       - name: Private queue, schema and grant integration
         run: npm run test:private
 
