@@ -8,6 +8,7 @@ import { AuthScreen } from '@/features/auth/components/AuthScreen'
 const rootRoute = createRootRoute({ component: RootDocument, errorComponent: RootErrorFallback })
 
 const loginRoute = createRoute({ getParentRoute: () => rootRoute, path: 'login', component: AuthScreen })
+const mcpConsentRoute = createRoute({ getParentRoute: () => rootRoute, path: 'oauth/consent', component: lazyRouteComponent(() => import('@/features/settings/components/McpConsentPage'), 'McpConsentPage') })
 const authLayoutRoute = createRoute({ getParentRoute: () => rootRoute, id: '_auth', component: AuthLayout })
 const publicLayoutRoute = createRoute({ getParentRoute: () => rootRoute, id: '_public', component: PublicLayout })
 
@@ -83,6 +84,7 @@ const clientProfileRoute   = createRoute({ getParentRoute: () => authLayoutRoute
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
+  mcpConsentRoute,
   publicLayoutRoute.addChildren([landingRoute, portalRoute, joinRoute, colorDemoRoute, authCallbackRoute, legalIndexRoute, legalDocRoute]),
   authLayoutRoute.addChildren([
     dashboardRoute,

@@ -7,6 +7,7 @@ import type { Handler } from '@netlify/functions'
 import { adminClient, audit, jsonResponse } from './shared/auth'
 
 export const handler: Handler = async () => {
+  if (process.env.LOFTDESK_PRIVATE_MODE === 'true') return { statusCode: 200, body: 'Legacy multi-company automation disabled in private mode' }
   const sb = adminClient()
   if (!sb) return jsonResponse(500, { error: 'no db' })
 

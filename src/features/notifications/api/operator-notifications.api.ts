@@ -14,6 +14,8 @@ export type OperatorNotificationType =
   | 'client_message'
   | 'client_approval_response'
   | 'missing_costs'
+  | 'payment_reminder'
+  | 'automation'
 
 export interface OperatorNotification {
   id: string

@@ -36,6 +36,17 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
 
+      - name: ChatGPT MCP protocol and signed OAuth tests
+        run: npm run test:mcp
+
+      - name: Private queue, schema and grant integration
+        run: npm run test:private
+
+      - name: Rehearse MCP migration against production schema metadata
+        run: |
+          node scripts/prepare-mcp-rollout.mjs /tmp/loftdesk-mcp-foundation.sql
+          node scripts/test-mcp-schema-snapshot.mjs tests/fixtures/mcp-production-schema.json /tmp/loftdesk-mcp-foundation.sql
+
       - name: Build
         run: npm run build
 
