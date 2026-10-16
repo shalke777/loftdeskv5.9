@@ -1,3 +1,4 @@
+import { calcInvoiceLine, calcInvoiceTotals, calcInvoiceVatGroups } from '@/features/invoices/lib/invoice.calculations'
 import type { Invoice } from '@/entities/invoice/model'
 import { supabase } from '@/shared/lib/supabase'
 import { netlifyFn } from '@/shared/lib/functions'
@@ -85,38 +86,40 @@ export function validateNip(nip: string): boolean {
   return sum % 11 === digits[9]
 }
 
-/**
- * Build official FA_VAT(2) XML per Ministry of Finance KSeF v2 schema
- * xmlns: http://crd.gov.pl/wzor/2023/06/29/12648/  (FA(2) — 2023 schema)
- *
- * NOTE: function name `buildFA2Xml` is correct — produces FA(2). Earlier the
- * header declared `FA (3)` / WariantFormularza=3 which mismatched the FA(2)
- * namespace and caused MF to silently reject the document at schema validation
- * (HTTP 202 returned for the session, but invoice never appeared in the KSeF
- * Aplikacja Podatnika). FA(3) migration is tracked as a separate epic.
- */
+/** Build FA(3) XML. The historical exported name is retained for existing callers. */
 export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuyer = {}): string {
+  // These types need source-document links and dedicated settlement/correction
+  // fields which the current invoice model cannot represent. Never silently
+  // serialize a correction as VAT or an incomplete ZAL/ROZ document.
+  if (invoice.invoice_type && !['standard', 'partial'].includes(invoice.invoice_type)) {
+    throw new Error('Wysyłka zaliczek, faktur końcowych i korekt do KSeF wymaga uzupełnienia obsługi dokumentów źródłowych i rozliczeń. Ten dokument nie został wysłany.')
+  }
+  if (invoice.corrected_invoice_id || Number(invoice.advance_total ?? 0) !== 0) {
+    throw new Error('Dokument zawiera korektę lub rozliczenie zaliczek, których obecny eksport KSeF nie obsługuje. Ten dokument nie został wysłany.')
+  }
   const now = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
   const issueDate = invoice.issue_date || new Date().toISOString().slice(0, 10)
   const saleDate = invoice.sale_date || issueDate
-  const payCode = invoice.payment_method === 'cash' ? '1' : invoice.payment_method === 'card' ? '7' : '6'
-  const rodzaj =
-    invoice.invoice_type === 'advance' ? 'ZAL' : invoice.invoice_type === 'final' ? 'ROZ' : 'VAT'
+  const payCode = invoice.payment_method === 'cash' ? '1' : invoice.payment_method === 'card' ? '2' : '6'
+  const rodzaj = 'VAT'
 
-  // VAT grouping by rate
-  const vatMap = new Map<number, { net: number; vat: number }>()
-  for (const item of invoice.items) {
-    const net = Math.round(item.quantity * item.unit_price * 100) / 100
-    const vat = Math.round(net * (item.vat_rate / 100) * 100) / 100
-    const g = vatMap.get(item.vat_rate) ?? { net: 0, vat: 0 }
-    vatMap.set(item.vat_rate, { net: g.net + net, vat: g.vat + vat })
+  const totals = calcInvoiceTotals(invoice.items)
+  if (!invoice.items.length || ![totals.totalNet, totals.totalGross, invoice.total_net, invoice.total_gross].every(Number.isFinite)) {
+    throw new Error('Faktura musi zawierać pozycje oraz prawidłowe kwoty przed wysyłką do KSeF.')
   }
+  if (Math.abs(totals.totalNet - invoice.total_net) > 0.001 || Math.abs(totals.totalGross - invoice.total_gross) > 0.001) {
+    throw new Error('Kwoty zapisanej faktury nie zgadzają się z jej pozycjami. Sprawdź dokument przed wysyłką do KSeF.')
+  }
+  const vatMap = calcInvoiceVatGroups(invoice.items)
 
   const fmt = (n: number) => n.toFixed(2)
 
+  if (invoice.items.some(item => ![0, 5, 8, 23].includes(item.vat_rate))) throw new Error('Nieobsługiwana stawka VAT dla krajowej faktury FA(3).')
+
   // Schema 13775: P_13_x / P_14_x go DIRECTLY inside <Fa> — no <Rozliczenie>/<Stawki> wrapper
-  const stawkiDirect = Array.from(vatMap.entries())
+  const stawkiDirect = Array.from(vatMap.entries()).sort(([a], [b]) => b - a)
     .map(([rate, { net, vat }]) => {
+      if (rate === 0) return `    <fa:P_13_6_1>${fmt(net)}</fa:P_13_6_1>`
       const s = vatSuffix(rate)
       return `    <fa:P_13${s}>${fmt(net)}</fa:P_13${s}>
     <fa:P_14${s}>${fmt(vat)}</fa:P_14${s}>`
@@ -126,15 +129,15 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
   // Schema 13775: FaWiersz is INSIDE <Fa> (confirmed in XSD at offset ~133000)
   const lines = invoice.items
     .map((item, idx) => {
-      const net = Math.round(item.quantity * item.unit_price * 100) / 100
+      const { net } = calcInvoiceLine(item)
       return `  <fa:FaWiersz>
     <fa:NrWierszaFa>${idx + 1}</fa:NrWierszaFa>
     <fa:P_7>${escXml(item.description)}</fa:P_7>
     <fa:P_8A>${escXml(item.unit || 'kpl')}</fa:P_8A>
     <fa:P_8B>${item.quantity}</fa:P_8B>
-    <fa:P_9A>${fmt(item.unit_price)}</fa:P_9A>
+    <fa:P_9A>${item.unit_price.toFixed(8).replace(/0+$/, '').replace(/\.$/, '')}</fa:P_9A>
     <fa:P_11>${fmt(net)}</fa:P_11>
-    <fa:P_12>${item.vat_rate}</fa:P_12>
+    <fa:P_12>${item.vat_rate === 0 ? '0 KR' : item.vat_rate}</fa:P_12>
   </fa:FaWiersz>`
     })
     .join('\n')
@@ -169,14 +172,14 @@ export function buildFA2Xml(invoice: Invoice, seller: KsefSeller, buyer: KsefBuy
   </fa:Naglowek>
   <fa:Podmiot1>
     <fa:DaneIdentyfikacyjne>
-      <fa:NIP>${escXml(seller.nip)}</fa:NIP>
+      <fa:NIP>${escXml(seller.nip?.replace(/[-\s]/g, ''))}</fa:NIP>
       <fa:Nazwa>${escXml(seller.name)}</fa:Nazwa>
     </fa:DaneIdentyfikacyjne>
     <fa:Adres><fa:KodKraju>PL</fa:KodKraju><fa:AdresL1>${escXml(seller.address)}</fa:AdresL1></fa:Adres>
   </fa:Podmiot1>
   <fa:Podmiot2>
     <fa:DaneIdentyfikacyjne>
-      ${buyer.nip ? `<fa:NIP>${escXml(buyer.nip)}</fa:NIP>` : '<fa:BrakID>1</fa:BrakID>'}
+      ${buyer.nip ? `<fa:NIP>${escXml(buyer.nip?.replace(/[-\s]/g, ''))}</fa:NIP>` : '<fa:BrakID>1</fa:BrakID>'}
       <fa:Nazwa>${escXml(buyer.name)}</fa:Nazwa>
     </fa:DaneIdentyfikacyjne>
     ${buyer.address ? `<fa:Adres><fa:KodKraju>PL</fa:KodKraju><fa:AdresL1>${escXml(buyer.address)}</fa:AdresL1></fa:Adres>` : ''}
@@ -273,7 +276,7 @@ export function buildUpoHtml(upo: UpoData): string {
   const invoiceNo = upo.invoiceReferenceNumber || '—'
   const ts = upo.acquisitionTimestamp
     ? new Date(upo.acquisitionTimestamp).toLocaleString('pl-PL')
-    : new Date().toLocaleString('pl-PL')
+    : '—'
   const hash = upo.hashSHA || '—'
   const demoNote = upo.isDemo
     ? `<div style="margin-bottom:18px;padding:10px 16px;background:var(--color-warning-soft);border-radius:8px;font-size:13px;border:1px solid var(--color-accent);">
@@ -298,8 +301,8 @@ h1 { font-size:22px; font-weight:700; color:var(--color-text-primary); margin:0 
 ${demoNote}
 <div class="header">
   <div class="seal"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
-  <h1>Urzędowe Poświadczenie Odbioru</h1>
-  <p class="subtitle">Krajowy System e-Faktur &middot; Ministerstwo Finansów</p>
+  <h1>Status przyjęcia faktury</h1>
+  <p class="subtitle">Podsumowanie LoftDesk na podstawie odpowiedzi KSeF. Nie zastępuje urzędowego UPO w formacie XML.</p>
 </div>
 <div style="text-align:center;margin-bottom:24px;"><span class="badge-ok">✓ Faktura przyjęta przez KSeF</span></div>
 <div class="field"><label>Nr ref. KSeF</label><value><strong>${escXml(ref)}</strong></value></div>

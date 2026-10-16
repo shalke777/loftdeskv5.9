@@ -6,13 +6,14 @@ import { useAuth, useCompanyId } from '@/features/auth/hooks/useAuth'
 import { useSettings } from '@/features/settings/hooks/useSettings'
 import { invoicesApi } from '@/features/invoices/api/invoices.api'
 import { ksefService, validateNip } from '@/services/ksef/ksef.service'
+import { reconcileInvoice } from '../lib/reconcileInvoice'
 import { logKsefEvent } from '@/features/ksef/lib/ksefEvents'
 import type { KsefSession } from './useKsefSession'
 import type { Invoice } from '@/entities/invoice/model'
 
 export interface QueueItemResult {
   invoice: Invoice
-  status: 'sent' | 'error' | 'skipped'
+  status: 'sent' | 'pending' | 'error' | 'skipped'
   ksefRef?: string
   error?: string
   /** Set when KSeF accepted the invoice but persisting ksef_status to DB failed.
@@ -41,7 +42,7 @@ export function useKsefQueue() {
   const [lastResult, setLastResult] = useState<ProcessResult | null>(null)
 
   const pending = invoices.filter(
-    (i) => i.ksef_status === 'ksef_pending' || i.ksef_status === 'ksef_error',
+    (i) => !i.ksef_ref && !i.ksef_number && (i.ksef_status === 'ksef_pending' || i.ksef_status === 'ksef_error'),
   )
 
   const processQueue = useCallback(
@@ -63,14 +64,6 @@ export function useKsefQueue() {
           if (invoice.ksef_ref) {
             console.info('[useKsefQueue] Skipping send, already has ksef_ref:', { invoiceId: invoice.id, ksefRef: invoice.ksef_ref })
             void logKsefEvent({ companyId, invoiceId: invoice.id, action: 'skip_idempotent', ksefRef: invoice.ksef_ref, env: session.env as 'demo' | 'test' | 'prod', message: 'Invoice already has ksef_ref — skipped' })
-            // Self-heal: if ksef_status drifted out of ksef_sent despite having a ref
-            if (invoice.ksef_status !== 'ksef_sent') {
-              try {
-                await invoicesApi.update(invoice.id, { ksef_status: 'ksef_sent', ksef_last_error: null } as Partial<Invoice>, companyId)
-              } catch (e) {
-                console.warn('[useKsefQueue] self-heal status failed:', e)
-              }
-            }
             result.skipped++
             result.items.push({ invoice, status: 'skipped', ksefRef: invoice.ksef_ref })
             continue
@@ -153,10 +146,13 @@ export function useKsefQueue() {
             if (fetched && fetched.items.length > 0) {
               fullInvoice = fetched
             } else {
-              console.warn('[useKsefQueue] get() returned no items for invoice', invoice.id, '— falling back to list data')
+              throw new Error('Brak pozycji faktury — wysyłka wstrzymana.')
             }
           } catch (fetchErr) {
-            console.warn('[useKsefQueue] get() failed, using list invoice (items may be empty):', fetchErr)
+            const error = fetchErr instanceof Error ? fetchErr.message : String(fetchErr)
+            result.errors++
+            result.items.push({ invoice, status: 'error', error })
+            continue
           }
 
           let sent = false
@@ -178,10 +174,12 @@ export function useKsefQueue() {
               try {
                 await invoicesApi.update(
                   invoice.id,
-                  { ksef_status: 'ksef_sent', ksef_ref: ksefRef, ksef_last_error: null } as Partial<Invoice>,
+                  { ksef_status: 'ksef_pending', ksef_ref: ksefRef, ksef_last_error: null,
+                    ksef_session_ref: session.referenceNumber, ksef_env: session.env,
+                    ksef_status_code: null, ksef_checked_at: null } as Partial<Invoice>,
                   companyId,
                 )
-                console.info('[useKsefQueue] DB updated: ksef_sent', { invoiceId: invoice.id, ksefRef })
+                console.info('[useKsefQueue] DB updated: submission pending verification', { invoiceId: invoice.id, ksefRef })
               } catch (dbErr: unknown) {
                 const msg = dbErr instanceof Error ? dbErr.message : String(dbErr)
                 console.error('[useKsefQueue] CRITICAL: invoice sent to KSeF but DB update failed.', {
@@ -203,7 +201,7 @@ export function useKsefQueue() {
                 error: dbError ? `DB update failed (invoice IS sent to KSeF): ${dbError}` : null,
               })
               result.sent++
-              result.items.push({ invoice, status: 'sent', ksefRef, dbError })
+              result.items.push({ invoice: { ...invoice, ksef_ref: ksefRef, ksef_session_ref: session.referenceNumber, ksef_env: session.env }, status: 'pending', ksefRef, dbError })
               sent = true
             } catch (e: unknown) {
               lastError = e instanceof Error ? e.message : String(e)
@@ -257,50 +255,20 @@ export function useKsefQueue() {
           await new Promise<void>((r) => setTimeout(r, 3000))
 
           for (const item of result.items) {
-            if (item.status !== 'sent' || !item.ksefRef) continue
+            if (item.status !== 'pending' || !item.ksefRef) continue
             try {
-              const upo = await ksefService.fetchUpo(
-                item.ksefRef,
-                session.sessionToken,
-                env,
-                session.referenceNumber,
-              )
-              const statusCode = upo.statusCode as number | null | undefined
-              const statusDesc = (upo.statusDescription as string | null | undefined) ?? null
-              const ksefNumber = (upo.ksefReferenceNumber as string | null | undefined) ?? null
-
-              void logKsefEvent({ companyId, invoiceId: item.invoice.id, action: 'session_close_check', env, ksefRef: item.ksefRef, message: `status=${statusCode ?? 'null'} ${statusDesc ?? ''}`, meta: { statusCode, statusDescription: statusDesc, ksefNumber } })
-
-              if (statusCode === 200) {
-                if (ksefNumber && ksefNumber !== item.ksefRef) {
-                  try {
-                    await invoicesApi.update(item.invoice.id, { ksef_number: ksefNumber } as Partial<Invoice>, companyId)
-                  } catch (e) {
-                    console.warn('[useKsefQueue] persist ksef_number failed:', e)
-                  }
-                }
-                void logKsefEvent({ companyId, invoiceId: item.invoice.id, action: 'validation_ok', env, ksefRef: item.ksefRef, message: 'MF validated', meta: { ksefNumber } })
-              } else if (statusCode != null && statusCode !== 200) {
-                // MF rejected this invoice at validation. Flip status back so the
-                // operator sees it red and knows to fix + resend.
-                const reason = `KSeF odrzucił fakturę przy walidacji schematu (status ${statusCode}). ${statusDesc ?? ''}`.trim()
-                try {
-                  await invoicesApi.update(
-                    item.invoice.id,
-                    { ksef_status: 'ksef_error', ksef_last_error: reason, ksef_ref: null } as Partial<Invoice>,
-                    companyId,
-                  )
-                } catch (e) {
-                  console.error('[useKsefQueue] mark validation_error in DB failed:', e)
-                }
-                void logKsefEvent({ companyId, invoiceId: item.invoice.id, action: 'validation_error', env, ksefRef: item.ksefRef, message: reason, meta: { statusCode, statusDescription: statusDesc } })
-                // Reflect in the in-memory result so the UI summary is honest.
-                item.status = 'error'
-                item.error = reason
+              const checked = await reconcileInvoice(item.invoice, session, companyId)
+              item.status = checked.status
+              item.dbError = undefined // A successful metadata write repairs the initial save failure.
+              if (checked.status === 'error') {
+                item.error = checked.reason ?? undefined
                 result.sent = Math.max(0, result.sent - 1)
                 result.errors += 1
               }
-              // statusCode == null → MF still processing; UI keeps "sent" (yellow)
+              void logKsefEvent({ companyId, invoiceId: item.invoice.id,
+                action: checked.status === 'sent' ? 'validation_ok' : checked.status === 'error' ? 'validation_error' : 'session_close_check',
+                env, ksefRef: item.ksefRef, message: checked.reason ?? `status=${checked.code ?? 'pending'}`,
+                meta: { statusCode: checked.code, ksefNumber: checked.number } })
             } catch (verifyErr: unknown) {
               const msg = verifyErr instanceof Error ? verifyErr.message : String(verifyErr)
               console.warn('[useKsefQueue] post-close verify failed for', item.invoice.id, msg)

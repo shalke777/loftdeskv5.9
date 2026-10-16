@@ -1,6 +1,6 @@
 import type { CreateInvoiceInput, Invoice, InvoiceItem } from '@/entities/invoice/model'
 import { demoDb } from '@/shared/lib/demoDb'
-import { calcInvoiceTotals } from '@/features/invoices/lib/invoice.calculations'
+import { calcInvoiceTotals, contractNetValue } from '@/features/invoices/lib/invoice.calculations'
 import { isDemoMode, supabase } from '@/shared/lib/supabase'
 import { sumInvoiceItems } from '@/shared/lib/legacySupabase'
 import { applyScope, getDataScope, withScope } from '@/shared/lib/dataScope'
@@ -13,15 +13,18 @@ async function syncTrancheStatus(
   contractId: string,
   trancheId: string,
   newStatus: 'invoiced' | 'paid',
+  companyId?: string,
 ): Promise<void> {
   if (!supabase || !contractId || !trancheId) return
   try {
     // Fetch current tranches
-    const { data: contract } = await supabase
+    const scope = await getDataScope(companyId)
+    const { data: contract, error: readError } = await applyScope(supabase
       .from('contracts')
       .select('tranches')
-      .eq('id', contractId)
+      .eq('id', contractId), scope)
       .single()
+    if (readError) throw readError
     if (!contract?.tranches) return
     const tranches = contract.tranches as Array<Record<string, unknown>>
     const updated = tranches.map(t => {
@@ -32,7 +35,8 @@ async function syncTrancheStatus(
       if (newStatus === 'invoiced' && current === 'planned') return { ...t, status: 'invoiced' }
       return t
     })
-    await supabase.from('contracts').update({ tranches: updated }).eq('id', contractId)
+    const { error } = await applyScope(supabase.from('contracts').update({ tranches: updated }).eq('id', contractId), scope)
+    if (error) throw error
   } catch (e) {
     console.warn('[invoicesApi] syncTrancheStatus failed (non-fatal):', e)
   }
@@ -44,11 +48,31 @@ export const invoicesApi = {
     const scope = await getDataScope(companyId)
     // LIST endpoint: NO nested items (perf RULE: payload < 20KB, no nested *).
     // Items are loaded lazily on-demand via invoicesApi.get(id) when row is expanded.
-    const cols = 'id, company_id, client_id, project_id, contract_id, number, invoice_type, status, issue_date, sale_date, issue_place, due_date, payment_method, bank_account, tranche_id, advance_total, corrected_invoice_id, correction_reason, total_net, total_gross, ksef_status, ksef_ref, ksef_last_error, notes, created_at'
+    const cols = 'id, company_id, client_id, project_id, contract_id, number, invoice_type, status, issue_date, sale_date, issue_place, due_date, payment_method, bank_account, tranche_id, advance_total, corrected_invoice_id, correction_reason, total_net, total_gross, ksef_status, ksef_ref, ksef_number, ksef_last_error, ksef_session_ref, ksef_env, ksef_status_code, ksef_checked_at, notes, created_at'
     const query = applyScope(supabase.from('invoices').select(cols).order('created_at', { ascending: false }).limit(50), scope)
     const { data, error } = await query
     if (error) throw error
-    return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, project_id: row.project_id, contract_id: row.contract_id ?? null, number: row.number, invoice_type: row.invoice_type ?? 'standard', status: row.status, issue_date: row.issue_date, sale_date: row.sale_date ?? null, issue_place: row.issue_place ?? null, due_date: row.due_date, payment_method: row.payment_method ?? 'transfer', bank_account: row.bank_account ?? null, tranche_id: row.tranche_id ?? null, advance_total: row.advance_total ?? null, corrected_invoice_id: row.corrected_invoice_id ?? null, correction_reason: row.correction_reason ?? null, original_items: null, original_data: null, total_net: Number(row.total_net ?? 0), total_gross: Number(row.total_gross ?? 0), ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, notes: row.notes ?? '', created_at: row.created_at, items: [] }))
+    return (data ?? []).map((row: any) => ({ id: row.id, company_id: row.company_id ?? companyId, client_id: row.client_id, project_id: row.project_id, contract_id: row.contract_id ?? null, number: row.number, invoice_type: row.invoice_type ?? 'standard', status: row.status, issue_date: row.issue_date, sale_date: row.sale_date ?? null, issue_place: row.issue_place ?? null, due_date: row.due_date, payment_method: row.payment_method ?? 'transfer', bank_account: row.bank_account ?? null, tranche_id: row.tranche_id ?? null, advance_total: row.advance_total ?? null, corrected_invoice_id: row.corrected_invoice_id ?? null, correction_reason: row.correction_reason ?? null, original_items: null, original_data: null, total_net: Number(row.total_net ?? 0), total_gross: Number(row.total_gross ?? 0), ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, ksef_number: row.ksef_number ?? null, ksef_last_error: row.ksef_last_error ?? null, ksef_session_ref: row.ksef_session_ref ?? null, ksef_env: row.ksef_env ?? null, ksef_status_code: row.ksef_status_code ?? null, ksef_checked_at: row.ksef_checked_at ?? null, notes: row.notes ?? '', created_at: row.created_at, items: [] }))
+  },
+  async findKsefSubmission(ksefRef: string, companyId: string) {
+    if (isDemoMode || !supabase) return null
+    const scope = await getDataScope(companyId)
+    const { data, error } = await applyScope(supabase.from('invoices')
+      .select('ksef_session_ref, ksef_env').eq('ksef_ref', ksefRef), scope).maybeSingle()
+    if (error) throw error
+    return data
+  },
+  async listKsefUnverified(companyId: string, env: 'demo' | 'test' | 'prod'): Promise<Invoice[]> {
+    if (isDemoMode || !supabase) return []
+    const scope = await getDataScope(companyId)
+    const query = applyScope(supabase.from('invoices').select('*')
+      .not('ksef_ref', 'is', null).not('ksef_session_ref', 'is', null)
+      .is('ksef_number', null).eq('ksef_env', env)
+      .in('ksef_status', ['ksef_pending', 'ksef_sent'])
+      .order('ksef_checked_at', { ascending: true, nullsFirst: true }).limit(10), scope)
+    const { data, error } = await query
+    if (error) throw error
+    return (data ?? []).map((row: any) => ({ ...row, items: [] }))
   },
   async get(id: string, companyId: string): Promise<Invoice | null> {
     if (isDemoMode || !supabase) {
@@ -88,8 +112,8 @@ export const invoicesApi = {
       tranche_id: row.tranche_id ?? null, advance_total: row.advance_total ?? null,
       corrected_invoice_id: row.corrected_invoice_id ?? null, correction_reason: row.correction_reason ?? null,
       original_items: originalItems, original_data: originalData,
-      total_net: totals.totalNet, total_gross: totals.totalGross,
-      ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, notes: row.notes ?? '',
+      total_net: Number(row.total_net ?? totals.totalNet), total_gross: Number(row.total_gross ?? totals.totalGross),
+      ksef_status: row.ksef_status, ksef_ref: row.ksef_ref, ksef_number: row.ksef_number ?? null, ksef_last_error: row.ksef_last_error ?? null, ksef_session_ref: row.ksef_session_ref ?? null, ksef_env: row.ksef_env ?? null, ksef_status_code: row.ksef_status_code ?? null, ksef_checked_at: row.ksef_checked_at ?? null, notes: row.notes ?? '',
       created_at: row.created_at, items,
     }
   },
@@ -139,7 +163,7 @@ export const invoicesApi = {
     if (input.project_id) { try { await projectDocumentsApi.link(input.company_id, input.project_id, 'invoice', invoice.id, { manual: true }) } catch (err) { console.warn('[invoices] project document link failed:', err) } }
     // C2: if invoice is linked to a contract tranche, mark it as 'invoiced'
     if (!isDraft && invoice.contract_id && invoice.tranche_id) {
-      void syncTrancheStatus(invoice.contract_id, invoice.tranche_id, 'invoiced')
+      await syncTrancheStatus(invoice.contract_id, invoice.tranche_id, invoice.status === 'paid' ? 'paid' : 'invoiced', input.company_id)
     }
     return { id: invoice.id, company_id: invoice.company_id ?? input.company_id, client_id: invoice.client_id, project_id: invoice.project_id, contract_id: invoice.contract_id ?? null, number: invoice.number, invoice_type: invoice.invoice_type ?? 'standard', status: invoice.status, issue_date: invoice.issue_date, sale_date: invoice.sale_date ?? null, issue_place: invoice.issue_place ?? null, due_date: invoice.due_date, payment_method: invoice.payment_method ?? 'transfer', bank_account: invoice.bank_account ?? null, tranche_id: invoice.tranche_id ?? null, advance_total: invoice.advance_total ?? null, corrected_invoice_id: invoice.corrected_invoice_id ?? null, correction_reason: invoice.correction_reason ?? null, original_items: input.original_items ?? null, original_data: input.original_data ?? null, total_net: totals.totalNet, total_gross: totals.totalGross, ksef_status: invoice.ksef_status, ksef_ref: invoice.ksef_ref, notes: input.notes ?? '', created_at: invoice.created_at, items }
   },
@@ -176,7 +200,7 @@ export const invoicesApi = {
     }
 
     console.info('[invoicesApi.update] UPDATE payload', { id, status: payload.status, invoice_type: payload.invoice_type, number: payload.number, payloadKeys: Object.keys(payload) })
-    const { data, error } = await supabase.from('invoices').update(payload).eq('id', id).select('*').single()
+    const { data, error } = await applyScope(supabase.from('invoices').update(payload).eq('id', id).select('*'), scope).single()
     if (error) {
       console.error('[invoicesApi.update] UPDATE failed', { code: (error as any).code, message: error.message, details: (error as any).details, hint: (error as any).hint, payloadKeys: Object.keys(payload) })
       throw error
@@ -188,6 +212,10 @@ export const invoicesApi = {
         const { error: itemsError } = await supabase.from('invoice_items').insert(itemRows)
         if (itemsError) throw itemsError
       }
+    }
+    if ((input.status !== undefined || input.contract_id !== undefined || input.tranche_id !== undefined || items !== undefined)
+      && data.status !== 'draft' && data.invoice_type !== 'correction' && data.contract_id && data.tranche_id) {
+      await syncTrancheStatus(data.contract_id, data.tranche_id, data.status === 'paid' ? 'paid' : 'invoiced', effectiveCompanyId)
     }
     return data
   },
@@ -215,11 +243,27 @@ export const invoicesApi = {
     try {
       const { data: inv } = await supabase.from('invoices').select('contract_id, tranche_id').eq('id', id).single()
       if (inv?.contract_id && inv?.tranche_id) {
-        void syncTrancheStatus(inv.contract_id, inv.tranche_id, 'paid')
+        await syncTrancheStatus(inv.contract_id, inv.tranche_id, 'paid', companyId)
       }
     } catch { /* non-fatal */ }
   },
-  async sendToKsef(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.invoices.sendToKsef(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('invoices').update({ ksef_status: 'ksef_pending', ksef_ref: null }).eq('id', id), scope); const { error } = await query; if (error) throw error },
+  async sendToKsef(id: string, companyId?: string) {
+    if (isDemoMode || !supabase) { demoDb.invoices.sendToKsef(id); return }
+    const scope = await getDataScope(companyId)
+    const { data: current, error: readError } = await applyScope(
+      supabase.from('invoices').select('ksef_ref, ksef_number').eq('id', id), scope,
+    ).single()
+    if (readError) throw readError
+    if (current.ksef_ref || current.ksef_number) {
+      throw new Error('Faktura ma już referencję KSeF. Sprawdź wynik poprzedniej wysyłki przed ponownym wysłaniem.')
+    }
+    const query = applyScope(supabase.from('invoices')
+      .update({ ksef_status: 'ksef_pending', ksef_last_error: null })
+      .eq('id', id).is('ksef_ref', null).is('ksef_number', null).select('id'), scope)
+    const { data, error } = await query.single()
+    if (error) throw error
+    if (!data) throw new Error('Stan faktury zmienił się. Odśwież dane przed wysyłką.')
+  },
   async finalize(id: string, companyId: string): Promise<string> {
     // Assigns a sequential FV number to a draft invoice and transitions it to 'unpaid'.
     // Safe to call only once per invoice — if number is already set, throws.
@@ -232,7 +276,7 @@ export const invoicesApi = {
     }
     const scope = await getDataScope(companyId)
     // Verify invoice is still a draft before consuming a number
-    const { data: current, error: fetchErr } = await supabase.from('invoices').select('id, status, number, issue_date, invoice_type').eq('id', id).maybeSingle()
+    const { data: current, error: fetchErr } = await supabase.from('invoices').select('id, status, number, issue_date, invoice_type, contract_id, tranche_id').eq('id', id).maybeSingle()
     if (fetchErr) throw fetchErr
     if (!current) throw new Error('Nie znaleziono faktury')
     if (current.status !== 'draft') throw new Error('Faktura nie jest szkicem — nie można ponownie wystawić.')
@@ -245,6 +289,9 @@ export const invoicesApi = {
     const invoiceNumber = numData as string
     const { error: updateErr } = await supabase.from('invoices').update({ number: invoiceNumber, status: 'unpaid', ksef_status: 'ksef_pending' }).eq('id', id)
     if (updateErr) throw updateErr
+    if (current.invoice_type !== 'correction' && current.contract_id && current.tranche_id) {
+      await syncTrancheStatus(current.contract_id, current.tranche_id, 'invoiced', companyId)
+    }
     return invoiceNumber
   },
   async createFromEstimate(companyId: string, estimateId: string) {
@@ -258,7 +305,7 @@ export const invoicesApi = {
     if (isDemoMode || !supabase) {
       const contract = demoDb.contracts.list(companyId).find(c => c.id === contractId)
       if (!contract) throw new Error('Nie znaleziono umowy')
-      return invoicesApi.create({ company_id: companyId, client_id: contract.client_id, project_id: contract.project_id ?? null, contract_id: contractId, status: 'unpaid', notes: `Wygenerowano z umowy ${contract.number}`, issue_date: new Date().toISOString().slice(0, 10), due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10), items: [{ id: crypto.randomUUID(), description: `Realizacja umowy ${contract.number}`, unit: 'usł', quantity: 1, unit_price: contract.value, vat_rate: contract.vat_rate ?? 23, sort_order: 0, tranche_label: '' }] })
+      return invoicesApi.create({ company_id: companyId, client_id: contract.client_id, project_id: contract.project_id ?? null, contract_id: contractId, status: 'unpaid', notes: `Wygenerowano z umowy ${contract.number}`, issue_date: new Date().toISOString().slice(0, 10), due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10), items: [{ id: crypto.randomUUID(), description: `Realizacja umowy ${contract.number}`, unit: 'usł', quantity: 1, unit_price: contractNetValue(contract), vat_rate: contract.vat_rate ?? 23, sort_order: 0, tranche_label: '' }] })
     }
     const { data: contract, error: cErr } = await supabase.from('contracts').select('*').eq('id', contractId).single()
     if (cErr || !contract) throw cErr ?? new Error('Nie znaleziono umowy')
@@ -268,10 +315,10 @@ export const invoicesApi = {
       if (est?.items?.length) {
         items = (est.items as any[]).map((item: any, i: number) => ({ id: crypto.randomUUID(), description: item.name || item.description || '', unit: item.unit || 'szt', quantity: Number(item.quantity), unit_price: Number(item.unit_price), vat_rate: Number(item.vat_rate ?? 23), sort_order: i, tranche_label: '' }))
       } else {
-        items = [{ id: crypto.randomUUID(), description: `Realizacja umowy ${contract.number}`, unit: 'usł', quantity: 1, unit_price: Number(contract.value ?? 0), vat_rate: Number(contract.vat_rate ?? 23), sort_order: 0, tranche_label: '' }]
+        items = [{ id: crypto.randomUUID(), description: `Realizacja umowy ${contract.number}`, unit: 'usł', quantity: 1, unit_price: contractNetValue(contract), vat_rate: Number(contract.vat_rate ?? 23), sort_order: 0, tranche_label: '' }]
       }
     } else {
-      items = [{ id: crypto.randomUUID(), description: `Realizacja umowy ${contract.number}`, unit: 'usł', quantity: 1, unit_price: Number(contract.value ?? 0), vat_rate: Number(contract.vat_rate ?? 23), sort_order: 0, tranche_label: '' }]
+      items = [{ id: crypto.randomUUID(), description: `Realizacja umowy ${contract.number}`, unit: 'usł', quantity: 1, unit_price: contractNetValue(contract), vat_rate: Number(contract.vat_rate ?? 23), sort_order: 0, tranche_label: '' }]
     }
     return invoicesApi.create({ company_id: companyId, client_id: contract.client_id, project_id: contract.project_id ?? null, contract_id: contractId, status: 'unpaid', notes: `Wygenerowano z umowy ${contract.number}`, issue_date: new Date().toISOString().slice(0, 10), due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10), items })
   },

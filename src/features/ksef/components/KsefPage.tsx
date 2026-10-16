@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Inbox } from 'lucide-react'
 import { useToast } from '@/shared/hooks/useToast'
 import { Card } from '@/shared/ui/Card/Card'
@@ -19,18 +19,21 @@ import { useKsefSession } from '@/features/ksef/hooks/useKsefSession'
 import { useKsefQueue, type QueueItemResult } from '@/features/ksef/hooks/useKsefQueue'
 import { useKsefReceive } from '@/features/ksef/hooks/useKsefReceive'
 import { useKsefHistory } from '@/features/ksef/hooks/useKsefHistory'
+import { useKsefReconciliation } from '@/features/ksef/hooks/useKsefReconciliation'
 import { useKsefUpo } from '@/features/ksef/hooks/useKsefUpo'
 import { type KsefEnv } from '@/services/ksef/ksef.service'
 
 // ── Status Badge Component ─────────────────────────────────
-function KsefStatusBadge({ status, isMock }: { status: string | null; isMock?: boolean }) {
+function KsefStatusBadge({ status, isMock, submitted }: { status: string | null; isMock?: boolean; submitted?: boolean }) {
   const configs: Record<string, { variant: 'success' | 'danger' | 'warning' | 'default'; label: string; icon: string; tooltip: string }> = {
-    ksef_sent:    { variant: 'success', label: 'Wysłano',   icon: '✅', tooltip: 'Faktura została poprawnie wysłana i zarejestrowana w KSeF' },
+    ksef_sent:    { variant: 'success', label: 'Przyjęta',   icon: '✅', tooltip: 'Faktura została poprawnie wysłana i zarejestrowana w KSeF' },
     ksef_pending: { variant: 'warning', label: 'Oczekuje',  icon: '⏳', tooltip: 'Faktura czeka na wysłanie — kliknij „Wyślij do KSeF"' },
     ksef_error:   { variant: 'danger',  label: 'Błąd',      icon: '❌', tooltip: 'Wysyłka nie powiodła się — sprawdź szczegóły i spróbuj ponownie' },
     ksef_queued:  { variant: 'default', label: 'W kolejce',  icon: '📋', tooltip: 'Faktura dodana do kolejki wysyłki — zostanie wysłana automatycznie' },
   }
-  const cfg = configs[status ?? ''] ?? configs.ksef_pending
+  const cfg = status === 'ksef_pending' && submitted
+    ? { variant: 'warning' as const, label: 'Weryfikacja', icon: '⏳', tooltip: 'Wysłana do przetwarzania. Oczekuje na końcowy wynik KSeF.' }
+    : configs[status ?? ''] ?? configs.ksef_pending
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={cfg.tooltip}>
       <Badge variant={cfg.variant}>{`${cfg.icon} ${cfg.label}`}</Badge>
@@ -127,15 +130,15 @@ function KsefSendModal({ open, onClose, pendingCount, isDemo, processing, onSend
             </p>
           </div>
 
-          {result.items.filter((i) => i.status === 'sent' && i.ksefRef).length > 0 && (
+          {result.items.filter((i) => (i.status === 'sent' || i.status === 'pending') && i.ksefRef).length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <h4 style={{ fontSize: 13, marginBottom: 8 }}>Wysłane faktury:</h4>
-              {result.items.filter((i) => i.status === 'sent').map((i) => (
+              {result.items.filter((i) => i.status === 'sent' || i.status === 'pending').map((i) => (
                 <div key={i.invoice.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, padding: '8px 12px', background: 'var(--color-success-soft)', borderRadius: 8 }}>
-                  <KsefStatusBadge status="ksef_sent" isMock={i.ksefRef?.startsWith('MOCK-') || i.ksefRef?.startsWith('DEMO-')} />
+                  <KsefStatusBadge status={i.status === 'pending' ? 'ksef_pending' : 'ksef_sent'} submitted isMock={i.ksefRef?.startsWith('MOCK-') || i.ksefRef?.startsWith('DEMO-')} />
                   <span style={{ flex: 1, fontSize: 13 }}>{i.invoice.number}</span>
                   <code style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{i.ksefRef?.slice(0, 22)}…</code>
-                  {i.ksefRef && (
+                  {i.status === 'sent' && i.ksefRef && (
                     <Button variant="ghost" onClick={() => onShowUpo(i.ksefRef!, i.invoice.number ?? '')}>UPO</Button>
                   )}
                 </div>
@@ -196,6 +199,7 @@ export function KsefPage() {
   const { docs, loading: receiving, error: receiveError, newCount, receive } = useKsefReceive()
   const { history, refresh: refreshHistory, clear: clearHistory } = useKsefHistory()
   const upo = useKsefUpo()
+  const { error: reconciliationError } = useKsefReconciliation(enabled ? session : null, processing)
 
   const [nipInput, setNipInput] = useState<string>('')
   const [tokenInput, setTokenInput] = useState<string>('')
@@ -373,6 +377,12 @@ export function KsefPage() {
         </Card>
       </div>
 
+      {reconciliationError && <p role="alert" style={{ color: 'var(--color-error)' }}>
+        Nie udało się sprawdzić statusów KSeF: {reconciliationError}
+      </p>}
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+        Statusy wysłanych faktur są sprawdzane co 15 sekund przy otwartej stronie KSeF i aktywnej sesji.
+      </p>
       {/* ── TABS: Queue / Received / History ──────────────── */}
       <div style={{ marginTop: 24 }}>
         <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: 0 }}>
@@ -436,12 +446,12 @@ export function KsefPage() {
               {lastResult && !sendModalOpen && (
                 <div style={{ marginTop: 16, padding: '12px 16px', background: lastResult.errors > 0 ? 'rgba(239,68,68,0.12)' : 'rgba(26,92,50,0.12)', borderRadius: 8, fontSize: 13, border: `1px solid ${lastResult.errors > 0 ? 'rgba(239,68,68,0.30)' : 'rgba(26,92,50,0.30)'}` }}>
                   <strong>Ostatni wynik:</strong> {lastResult.sent} wysłanych, {lastResult.errors} błędów z {lastResult.total}
-                  {lastResult.items.filter((i) => i.status === 'sent' && i.ksefRef).map((i) => (
+                  {lastResult.items.filter((i) => (i.status === 'sent' || i.status === 'pending') && i.ksefRef).map((i) => (
                     <div key={i.invoice.id} style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <KsefStatusBadge status="ksef_sent" isMock={i.ksefRef?.startsWith('MOCK-') || i.ksefRef?.startsWith('DEMO-')} />
+                      <KsefStatusBadge status={i.status === 'pending' ? 'ksef_pending' : 'ksef_sent'} submitted isMock={i.ksefRef?.startsWith('MOCK-') || i.ksefRef?.startsWith('DEMO-')} />
                       <span style={{ flex: 1, fontSize: 12 }}>{i.invoice.number}</span>
                       <code style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{i.ksefRef?.slice(0, 22)}…</code>
-                      <Button variant="ghost" onClick={() => handleShowUpo(i.ksefRef!, i.invoice.number ?? '')} loading={upo.loading}>UPO</Button>
+                      {i.status === 'sent' && <Button variant="ghost" onClick={() => handleShowUpo(i.ksefRef!, i.invoice.number ?? '')} loading={upo.loading}>UPO</Button>}
                     </div>
                   ))}
                   {lastResult.items.filter((i) => i.status === 'error').map((i) => (

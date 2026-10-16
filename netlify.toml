@@ -85,6 +85,24 @@
   status = 200
 
 [[redirects]]
+  from = "/api/assistant/mcp"
+  to = "/.netlify/functions/assistant-mcp"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.well-known/oauth-protected-resource"
+  to = "/.netlify/functions/mcp-metadata"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.well-known/oauth-protected-resource/api/assistant/mcp"
+  to = "/.netlify/functions/mcp-metadata"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
@@ -106,3 +124,17 @@
 
 [functions."notify-approval-response"]
   timeout = 10
+
+[[edge_functions]]
+  function = "private-api"
+  path = "/.netlify/functions/*"
+
+[[edge_functions]]
+  function = "private-api"
+  path = "/api/*"
+
+[functions."private-automation-worker"]
+  schedule = "* * * * *"
+
+[functions."private-ksef-worker"]
+  schedule = "* * * * *"

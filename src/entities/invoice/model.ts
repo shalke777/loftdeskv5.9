@@ -48,6 +48,10 @@ export const InvoiceSchema = z.object({
   ksef_status: z.enum(['ksef_sent', 'ksef_pending', 'ksef_error']).nullable(),
   ksef_ref: z.string().nullable(),
   ksef_last_error: z.string().nullable().optional(),
+  ksef_session_ref: z.string().nullable().optional(),
+  ksef_env: z.enum(['demo', 'test', 'prod']).nullable().optional(),
+  ksef_status_code: z.number().nullable().optional(),
+  ksef_checked_at: z.string().nullable().optional(),
   /** Final KSeF invoice number assigned by MF after session-close + schema validation.
    *  Distinct from ksef_ref (session-element ref). NULL until validation passes. */
   ksef_number: z.string().nullable().optional(),

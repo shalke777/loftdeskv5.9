@@ -31,7 +31,10 @@
     "cap:ios": "npx cap open ios",
     "mobile:build": "npm run build && npx cap sync",
     "mobile:android": "npm run mobile:build && npx cap open android",
-    "mobile:ios": "npm run mobile:build && npx cap open ios"
+    "mobile:ios": "npm run mobile:build && npx cap open ios",
+    "test:documents": "node --test tests/unit/ksef-sync.test.mjs",
+    "test:private": "node --test tests/unit/private-automation.test.mjs && node tests/unit/private-db.integration.mjs",
+    "test:mcp": "node --test tests/unit/mcp-chat.test.mjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.0.1",
@@ -74,6 +77,8 @@
     "@capacitor/android": "^8.2.0",
     "@capacitor/cli": "^8.2.0",
     "@capacitor/ios": "^8.2.0",
+    "@electric-sql/pglite": "^0.5.10",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@netlify/functions": "^2.8.2",
     "@playwright/test": "^1.58.2",
     "@sentry/vite-plugin": "^5.1.1",
@@ -85,6 +90,7 @@
     "eslint": "^9.13.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.14",
+    "jose": "^5.10.0",
     "knip": "^6.11.0",
     "madge": "^8.0.0",
     "ts-prune": "^0.10.3",

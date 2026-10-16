@@ -1,3 +1,4 @@
+import { isPrivateApp } from '@/shared/lib/privateMode'
 import { useState } from 'react'
 import { Button } from '@/shared/ui/Button/Button'
 import { Input } from '@/shared/ui/Input/Input'
@@ -189,7 +190,7 @@ function ClientMagicLinkForm({ onBack }: { onBack: () => void }) {
 
 export function AuthScreen() {
   const [tab, setTab] = useState<AuthTab>(() => {
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'client') {
+    if (!isPrivateApp && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'client') {
       return 'client'
     }
     return 'login'
@@ -211,14 +212,14 @@ export function AuthScreen() {
               <LoginForm />
               <div className="auth-screen__alt-links">
                 <button className="auth-screen__text-btn" onClick={() => setTab('forgot')}>Nie pamiętam hasła</button>
-                <span className="auth-screen__divider">·</span>
+                {!isPrivateApp && <><span className="auth-screen__divider">·</span>
                 <button className="auth-screen__text-btn" onClick={() => setTab('register')}>Nowa firma</button>
                 <span className="auth-screen__divider">·</span>
-                <button className="auth-screen__text-btn" onClick={() => setTab('client')}>Portal klienta</button>
+                <button className="auth-screen__text-btn" onClick={() => setTab('client')}>Portal klienta</button></>}
               </div>
             </>
           )}
-          {tab === 'register' && (
+          {!isPrivateApp && tab === 'register' && (
             <>
               <RegisterForm />
               <div className="auth-screen__alt-links">
@@ -234,7 +235,7 @@ export function AuthScreen() {
               </div>
             </>
           )}
-          {tab === 'client' && (
+          {!isPrivateApp && tab === 'client' && (
             <ClientMagicLinkForm onBack={() => setTab('login')} />
           )}
         </div>

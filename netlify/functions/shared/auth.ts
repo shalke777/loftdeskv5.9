@@ -3,6 +3,7 @@
 // Reusable JWT verification + audit helpers.
 // =============================================================================
 
+import { privateOwnerAllowed } from './private-owner.cjs'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 export const CORS_HEADERS = {
@@ -36,7 +37,7 @@ export async function authenticateUser(
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
   if (!token) return null
   const { data, error } = await sb.auth.getUser(token)
-  if (error || !data.user) return null
+  if (error || !data.user || !privateOwnerAllowed(data.user.id)) return null
   return { id: data.user.id, email: data.user.email ?? null }
 }
 

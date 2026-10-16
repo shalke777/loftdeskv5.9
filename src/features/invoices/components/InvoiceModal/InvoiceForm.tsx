@@ -8,7 +8,7 @@ import { generateId } from '@/shared/lib/generateId'
 import { useClients } from '@/features/clients/hooks/useClients'
 import { useContracts } from '@/features/contracts/hooks/useContracts'
 import { useProjects } from '@/features/projects/hooks/useProjects'
-import { calcInvoiceTotals } from '@/features/invoices/lib/invoice.calculations'
+import { calcInvoiceTotals, calcInvoiceLine } from '@/features/invoices/lib/invoice.calculations'
 import { formatCurrency } from '@/shared/lib/formatters'
 import { useSettings } from '@/features/settings/hooks/useSettings'
 import { ClientModal } from '@/features/clients/components/ClientModal'
@@ -113,7 +113,7 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
       setBankAccount(initialInvoice.bank_account || '')
       setClientId(initialInvoice.client_id || '')
       setContractId(initialInvoice.contract_id || '')
-      setSelectedTrancheId('')
+      setSelectedTrancheId(initialInvoice.tranche_id || '')
       setAdvanceTotal(String(initialInvoice.advance_total ?? 0))
       setItems(initialInvoice.items?.length ? initialInvoice.items : [{ id: generateId(), description: 'Usługa', unit: 'kpl', quantity: 1, unit_price: 0, vat_rate: 23, sort_order: 1, tranche_label: '' }])
       setProjectId(initialInvoice.project_id || '')
@@ -132,7 +132,7 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
         setBankAccount((draft.bankAccount as string) ?? '')
         setClientId((draft.clientId as string) ?? '')
         setContractId((draft.contractId as string) ?? '')
-        setSelectedTrancheId('')
+        setSelectedTrancheId((draft.selectedTrancheId as string) ?? '')
         setAdvanceTotal((draft.advanceTotal as string) ?? '0')
         setItems((draft.items as InvoiceItem[]) ?? [{ id: generateId(), description: 'Usługa', unit: 'kpl', quantity: 1, unit_price: 0, vat_rate: 23, sort_order: 1, tranche_label: '' }])
         setProjectId((draft.projectId as string) ?? '')
@@ -174,8 +174,8 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
   // ── Persist draft on every change (new form only) ──────────────────────────
   useEffect(() => {
     if (!isNew || !saveGuard.current) return
-    saveDraft({ invoiceType, issueDate, saleDate, dueDays, dueDate, issuePlace, paymentMethod, bankAccount, clientId, contractId, advanceTotal, items, projectId, notes })
-  }, [invoiceType, issueDate, saleDate, dueDays, dueDate, issuePlace, paymentMethod, bankAccount, clientId, contractId, advanceTotal, items, projectId, notes, isNew])
+    saveDraft({ invoiceType, issueDate, saleDate, dueDays, dueDate, issuePlace, paymentMethod, bankAccount, clientId, contractId, selectedTrancheId, advanceTotal, items, projectId, notes })
+  }, [invoiceType, issueDate, saleDate, dueDays, dueDate, issuePlace, paymentMethod, bankAccount, clientId, contractId, selectedTrancheId, advanceTotal, items, projectId, notes, isNew])
 
   function applyTranche(trancheId: string) {
     setSelectedTrancheId(trancheId)
@@ -348,7 +348,7 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
       {/* ── Sekcja nagłówkowa ── */}
       <div className="form-grid">
         <Select label="Rodzaj faktury" value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)} options={INVOICE_TYPE_OPTIONS} disabled={isCorrection} />
-        <Select label="Umowa" value={contractId} onChange={(e) => setContractId(e.target.value)} options={contractOptions} placeholder="Bez umowy" />
+        <Select label="Umowa" value={contractId} onChange={(e) => { setContractId(e.target.value); setSelectedTrancheId('') }} options={contractOptions} placeholder="Bez umowy" />
         {selectedContract?.tranches?.length ? (
           <Select label="Transza / płatność z umowy" value={selectedTrancheId} onChange={(e) => applyTranche(e.target.value)} options={trancheOptions} placeholder="Wybierz transzę" />
         ) : null}
@@ -472,7 +472,7 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
                     <button type="button" onClick={() => removeItem(item.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textAlign: 'right', paddingBottom: 4, borderBottom: idx < items.length - 1 ? '1px solid var(--color-border)' : 'none', marginBottom: idx < items.length - 1 ? 4 : 0 }}>
-                    Netto: {formatCurrency(item.unit_price * item.quantity)} · Brutto: {formatCurrency(item.unit_price * item.quantity * (1 + item.vat_rate / 100))}
+                    Netto: {formatCurrency(calcInvoiceLine(item).net)} · Brutto: {formatCurrency(calcInvoiceLine(item).gross)}
                   </div>
                 </Fragment>
               ))}
@@ -561,7 +561,7 @@ export function InvoiceForm({ companyId, onSubmit, onSaveDraft, initialInvoice, 
                   >×</button>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textAlign: 'right', paddingBottom: 4, borderBottom: idx < items.length - 1 ? '1px solid var(--color-border)' : 'none', marginBottom: idx < items.length - 1 ? 4 : 0 }}>
-                  Netto: {formatCurrency(item.unit_price * item.quantity)} · Brutto: {formatCurrency(item.unit_price * item.quantity * (1 + item.vat_rate / 100))}
+                  Netto: {formatCurrency(calcInvoiceLine(item).net)} · Brutto: {formatCurrency(calcInvoiceLine(item).gross)}
                 </div>
               </Fragment>
             ))}

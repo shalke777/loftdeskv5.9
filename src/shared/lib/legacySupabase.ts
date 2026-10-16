@@ -1,3 +1,4 @@
+import { calcInvoiceTotals } from '@/features/invoices/lib/invoice.calculations'
 import { supabase } from '@/shared/lib/supabase'
 
 export async function requireSupabaseUserId() {
@@ -9,7 +10,6 @@ export async function requireSupabaseUserId() {
 }
 
 export function sumInvoiceItems(items: Array<{ quantity: number; unit_price: number; vat_rate?: number }>) {
-  const totalNet = items.reduce((sum, item) => sum + Number(item.quantity) * Number(item.unit_price), 0)
-  const totalGross = items.reduce((sum, item) => sum + Number(item.quantity) * Number(item.unit_price) * (1 + Number(item.vat_rate ?? 23) / 100), 0)
-  return { totalNet: Math.round(totalNet * 100) / 100, totalGross: Math.round(totalGross * 100) / 100 }
+  const { totalNet, totalGross } = calcInvoiceTotals(items)
+  return { totalNet, totalGross }
 }

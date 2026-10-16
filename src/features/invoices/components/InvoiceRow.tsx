@@ -165,15 +165,16 @@ export function InvoiceRowImpl({
           </span>
           {invoice.ksef_status && (
             <span
-              className={`${KSEF_CLASS[invoice.ksef_status]} invoice-row__ksef`}
+              className={`${KSEF_CLASS[invoice.ksef_ref && !invoice.ksef_number && invoice.ksef_status === 'ksef_sent' && !invoice.ksef_ref.startsWith('DEMO-') ? 'ksef_pending' : invoice.ksef_status]} invoice-row__ksef`}
               style={{ fontSize: 11 }}
               title={
                 invoice.ksef_status === 'ksef_error' && invoice.ksef_last_error
                   ? `Błąd KSeF: ${invoice.ksef_last_error}`
-                  : KSEF_LABEL[invoice.ksef_status]
+                  : invoice.ksef_ref && !invoice.ksef_number ? 'Oczekuje na potwierdzenie przyjęcia przez KSeF' : KSEF_LABEL[invoice.ksef_status]
               }
             >
-              {KSEF_LABEL[invoice.ksef_status]}
+              {invoice.ksef_ref && !invoice.ksef_number && invoice.ksef_status !== 'ksef_error' && !invoice.ksef_ref.startsWith('DEMO-')
+                ? 'KSeF: weryfikacja' : KSEF_LABEL[invoice.ksef_status]}
             </span>
           )}
           {isCorrection && (
@@ -322,7 +323,7 @@ export function InvoiceRowImpl({
                 <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Status KSeF</span>
                 <br />
                 {invoice.ksef_status}
-                {invoice.ksef_ref && <span style={{ color: 'var(--color-text-muted)' }}> · {invoice.ksef_ref}</span>}
+                {(invoice.ksef_number || invoice.ksef_ref) && <span style={{ color: 'var(--color-text-muted)' }}> · {invoice.ksef_number || invoice.ksef_ref}</span>}
                 {invoice.ksef_status === 'ksef_error' && invoice.ksef_last_error && (
                   <div style={{ color: 'var(--color-error, #A83228)', fontSize: 12, marginTop: 4, fontWeight: 500 }}>
                     {invoice.ksef_last_error}

@@ -1,3 +1,4 @@
+import { calcInvoiceLine, calcInvoiceVatGroups } from '@/features/invoices/lib/invoice.calculations'
 import type { Estimate } from '@/entities/estimate/model'
 import type { Invoice } from '@/entities/invoice/model'
 import type { Contract } from '@/entities/contract/model'
@@ -382,9 +383,7 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
 
   // 9-column items table
   const itemRows = invoice.items.map((item, idx) => {
-    const net = item.quantity * item.unit_price
-    const vatAmt = net * item.vat_rate / 100
-    const gross = net + vatAmt
+    const { net, vat: vatAmt, gross } = calcInvoiceLine(item)
     return `<tr>
       <td class="center">${idx + 1}</td>
       <td>${escapeHtml(item.description)}${item.tranche_label ? `<br/><span class="small">${escapeHtml(item.tranche_label)}</span>` : ''}</td>
@@ -392,25 +391,16 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
       <td class="num">${item.quantity % 1 === 0 ? item.quantity : item.quantity.toFixed(3)}</td>
       <td class="num">${formatCurrency(item.unit_price)}</td>
       <td class="num">${formatCurrency(net)}</td>
-      <td class="center">${item.vat_rate === 0 ? 'ZW' : item.vat_rate + '%'}</td>
+      <td class="center">${item.vat_rate + '%'}</td>
       <td class="num">${formatCurrency(vatAmt)}</td>
       <td class="num">${formatCurrency(gross)}</td>
     </tr>`
   }).join('')
 
-  // VAT breakdown grouped by rate
-  const vatMap: Record<string, { net: number; vatAmt: number; gross: number }> = {}
-  for (const item of invoice.items) {
-    const k = String(item.vat_rate)
-    const net = item.quantity * item.unit_price
-    const vatAmt = net * item.vat_rate / 100
-    if (!vatMap[k]) vatMap[k] = { net: 0, vatAmt: 0, gross: 0 }
-    vatMap[k].net += net; vatMap[k].vatAmt += vatAmt; vatMap[k].gross += net + vatAmt
-  }
-  const vatRows = Object.entries(vatMap).map(([rate, g]) => `<tr>
-    <td class="center">${Number(rate) === 0 ? 'ZW' : rate + '%'}</td>
+  const vatRows = Array.from(calcInvoiceVatGroups(invoice.items).entries()).map(([rate, g]) => `<tr>
+    <td class="center">${rate + '%'}</td>
     <td class="num">${formatCurrency(g.net)}</td>
-    <td class="num">${formatCurrency(g.vatAmt)}</td>
+    <td class="num">${formatCurrency(g.vat)}</td>
     <td class="num">${formatCurrency(g.gross)}</td>
   </tr>`).join('')
 
@@ -438,7 +428,7 @@ export function buildInvoicePreview(invoice: Invoice, client?: Party, contractMe
     : ''
 
   const ksefInfo = invoice.ksef_status === 'ksef_sent'
-    ? `Faktura wyeksportowana do KSeF \u00b7 Ref: ${escapeHtml(invoice.ksef_ref || '\u2014')}`
+    ? `Faktura wyeksportowana do KSeF \u00b7 Ref: ${escapeHtml(invoice.ksef_number || invoice.ksef_ref || '\u2014')}`
     : 'Faktura oczekuje na wysy\u0142k\u0119 do KSeF'
 
   // ── Correction: header data comparison table ─────────────────────────────────

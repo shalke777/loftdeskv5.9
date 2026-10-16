@@ -1,3 +1,4 @@
+import { isPrivateApp } from '@/shared/lib/privateMode'
 import { supabase } from '@/shared/lib/supabase'
 import { demoDb } from '@/shared/lib/demoDb'
 import { getAppOrigin } from '@/shared/lib/native'
@@ -15,6 +16,7 @@ export const authApi = {
     return data
   },
   async register(input: { email: string; password: string; companyName: string; fullName: string; nip?: string }) {
+    if (isPrivateApp) throw new Error('Rejestracja jest wyłączona. To prywatna aplikacja.')
     if (!supabase) {
       const user = demoDb.users.createCompanyOwner({
         email: input.email,
