@@ -13,11 +13,13 @@ exports.handler=async()=>{
  const job=jobs?.[0];if(!job)return{statusCode:200,body:'idle'}
  try{
   if(['estimate.draft','note.add'].includes(job.kind))await checked(ctx.sb.rpc('private_execute_db_job',{p_id:job.id,p_lease:job.lease_id}))
-  else{
+  else if(['client.create','project.create','estimate.assign'].includes(job.kind))await checked(ctx.sb.rpc('private_execute_crm_job',{p_id:job.id,p_lease:job.lease_id}))
+  else if(['gmail.sync','gmail.draft'].includes(job.kind)){
    const gmail=require('./shared/gmail.cjs')
    const result=job.kind==='gmail.sync'?await gmail.sync(ctx):await gmail.draft(ctx,job.payload)
    await checked(ctx.sb.from('automation_jobs').update({status:'done',result,lease_id:null,lease_until:null,updated_at:new Date().toISOString()}).eq('id',job.id).eq('lease_id',job.lease_id))
   }
+  else throw new Error('Unknown automation job kind')
  }catch(e){
   // External writes are ambiguous after a timeout; never blindly recreate a draft.
   await checked(ctx.sb.from('automation_jobs').update({status:job.kind==='gmail.draft'?'unknown':job.kind==='gmail.sync'&&job.attempts<5?'queued':'failed',last_error:e.message||'Job failed',lease_id:null,lease_until:null,updated_at:new Date().toISOString()}).eq('id',job.id).eq('lease_id',job.lease_id))

@@ -33,7 +33,8 @@
     "mobile:android": "npm run mobile:build && npx cap open android",
     "mobile:ios": "npm run mobile:build && npx cap open ios",
     "test:private": "node tests/unit/private-db.integration.mjs",
-    "test:mcp": "node --test tests/unit/mcp-chat.test.mjs"
+    "test:mcp": "node --test tests/unit/mcp-chat.test.mjs",
+    "test:mcp:crm": "node tests/unit/mcp-crm.integration.mjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.0.1",

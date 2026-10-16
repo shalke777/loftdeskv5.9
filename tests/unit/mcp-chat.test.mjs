@@ -93,7 +93,7 @@ test('official MCP SDK connects over HTTP, reads scoped records and tracks queue
   try{
     await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${server.address().port}/mcp`),{requestInit:{headers:{Authorization:`Bearer ${jwt}`}}}))
     const listed=await client.listTools()
-    assert.equal(listed.tools.length,8)
+    assert.equal(listed.tools.length,11)
     await client.callTool({name:'list_records',arguments:{entity:'clients'}})
     assert.ok(f.queries.some(q=>q.table==='clients'&&q.filters.company_id===company))
     await client.callTool({name:'search_records',arguments:{entity:'clients',query:'50%_discount'}})
@@ -109,6 +109,25 @@ test('official MCP SDK connects over HTTP, reads scoped records and tracks queue
     assert.equal(result.structuredContent.record.id,jobId)
   }finally{await client.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve))}
   assert.ok(requests.includes('POST'))
+})
+test('CRM tools validate inputs and respect read-only grants',async()=>{
+  for (const [name,args,kind] of [
+    ['create_client',{name:'Client',email:'client@example.com'},'client.create'],
+    ['create_project',{name:'Bathroom',client_id:jobId},'project.create'],
+    ['assign_estimate',{estimate_id:jobId,project_id:jobId},'estimate.assign'],
+  ]) {
+    const f=fixture(),jwt=await token()
+    const request={jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:{idempotency_key:'crm-test-key',...args}}}
+    let result=JSON.parse((await f.handler(event(jwt,request))).body)
+    assert.equal(result.result.structuredContent.kind,kind)
+    f.readOnly()
+    result=JSON.parse((await f.handler(event(jwt,request))).body)
+    assert.equal(result.result.isError,true)
+  }
+  const f=fixture(),jwt=await token()
+  const invalid=JSON.parse((await f.handler(event(jwt,{jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'create_client',arguments:{idempotency_key:'crm-test-key',name:'Client',email:'bad email'}}}))).body)
+  assert.equal(invalid.error.code,-32602)
+  assert.equal(f.jobs.size,0)
 })
 test('consent callback requires an exact registered HTTPS destination',()=>{
   const {allowedCallback}=load('netlify/functions/mcp-consent.js',{'./shared/private-runtime.cjs':{},'./shared/mcp-auth.cjs':{}})
