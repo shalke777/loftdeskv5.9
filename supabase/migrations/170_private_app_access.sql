@@ -43,5 +43,6 @@ END $$;
 DROP TRIGGER IF EXISTS reject_private_app_signup ON auth.users;
 CREATE TRIGGER reject_private_app_signup BEFORE INSERT ON auth.users
 FOR EACH ROW EXECUTE FUNCTION public.reject_private_app_signup();
+REVOKE ALL ON FUNCTION public.reject_private_app_signup() FROM PUBLIC, anon, authenticated;
 
 GRANT ALL ON public.private_app_settings TO service_role;

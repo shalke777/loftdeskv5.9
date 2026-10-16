@@ -99,7 +99,7 @@ BEGIN
  UPDATE public.automation_jobs SET status='done',result=jsonb_build_object('document_id',doc_id,'number',doc_number),lease_id=NULL,lease_until=NULL,updated_at=now() WHERE id=p_id;
  RETURN jsonb_build_object('document_id',doc_id,'number',doc_number);
 END $$;
-REVOKE ALL ON FUNCTION public.private_enqueue_job(UUID,TEXT,TEXT,JSONB),public.private_claim_job(UUID),public.private_execute_db_job(UUID,UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.private_enqueue_job(UUID,TEXT,TEXT,JSONB),public.private_claim_job(UUID),public.private_execute_db_job(UUID,UUID) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.private_enqueue_job(UUID,TEXT,TEXT,JSONB),public.private_claim_job(UUID),public.private_execute_db_job(UUID,UUID) TO service_role;
 ALTER TABLE public.private_integrations ADD COLUMN sync_page_token TEXT,
  ADD COLUMN sync_window_start TIMESTAMPTZ, ADD COLUMN sync_window_end TIMESTAMPTZ;

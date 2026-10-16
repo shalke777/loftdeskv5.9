@@ -1,9 +1,16 @@
 # Reviewed MCP foundation deployment
 
-Status: production application and database have not been changed. The automatic
-approval reviewer rejected the production foundation migration on 2026-10-16
-because a production backup and staging verification were not established.
-Do not retry the same operation through another tool or split it to avoid review.
+Status as of 2026-10-16: the production database foundation was installed after
+explicit user approval and an isolated PostgreSQL rehearsal using metadata from
+63 production tables. Owner/company are provisioned, but enabled remains false;
+there are no registered OAuth clients or persistent test jobs. Production app
+deployment, Auth provider setup and actual ChatGPT connection remain outstanding.
+
+The first production attempt was rejected. A retry was approved after user
+confirmation and the rehearsal. A schema-only snapshot was retained; this was
+not a full user-data backup or a complete Supabase staging environment. The
+rehearsal restored columns, generated columns, CHECK, PK and UNIQUE constraints;
+it did not reproduce all foreign keys, triggers, RLS policies or provider services.
 
 ## Concrete package
 
@@ -37,10 +44,15 @@ if that tool provides its own transaction.
 - Verified LOFTBAU owner membership and existing document counts by read-only SQL.
 - Local official MCP SDK tests and PostgreSQL integration pass. The fixture now
   requires the actual estimate author, cost_estimate_id FK and item description.
-- Required before production: verify a restorable backup; test the package on an
-  isolated schema/environment; obtain approval for this exact production package.
-- After production install: run `mcp-database-preflight.sql`; inspect grants and
-  advisors; test a draft/note inside BEGIN/ROLLBACK and confirm no records remain.
+- Completed: approved foundation installation, followed by a real draft/note
+  smoke test inside BEGIN/ROLLBACK. Verified author, item link/description, totals,
+  notification, job replay and note. After rollback: 0 jobs, 0 notes, 0 clients;
+  existing owner invoice and estimate counts remain 9 each.
+- Default grants in the live schema differed from the original local fixture:
+  explicit anon/authenticated function EXECUTE survived REVOKE FROM PUBLIC.
+  Applied a corrective grant migration and verified all five internal functions
+  deny anon/authenticated while service_role retains access. Fixtures now model
+  those default grants, and the original migration sources also remove them.
 - Native Auth provider configuration and Netlify env/deploy configuration are
   separate steps. The installed Supabase tools expose database operations but
   do not expose management of Auth server configuration or Netlify environments.
@@ -53,3 +65,14 @@ if that tool provides its own transaction.
 before activation; it preserves all new tables. It refuses after owner mode,
 OAuth clients or jobs have been enabled/used. After activation, first revoke
 OAuth grants and use a separately reviewed rollback that preserves private access.
+
+Reproduce the isolated rehearsal without contacting a service:
+
+```sh
+node scripts/prepare-mcp-rollout.mjs /tmp/loftdesk-mcp-foundation.sql
+node scripts/test-mcp-schema-snapshot.mjs tests/fixtures/mcp-production-schema.json /tmp/loftdesk-mcp-foundation.sql
+```
+
+The fixture is catalog metadata only and contains no user records or credentials.
+Before any later broad private cutover, establish a full restorable backup and
+test the complete production schema and real provider behavior on staging.

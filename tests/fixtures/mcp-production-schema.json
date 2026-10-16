@@ -1,0 +1,6124 @@
+{
+  "tables": [
+    {
+      "rls": true,
+      "name": "company_members",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "default": "'worker'::text",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "UNIQUE (company_id, user_id)",
+          "name": "company_members_company_id_user_id_key",
+          "type": "u"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "company_members_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((role = ANY (ARRAY['owner'::text, 'admin'::text, 'manager'::text, 'worker'::text, 'accountant'::text])))",
+          "name": "company_members_role_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "client_decisions",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "client_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "related_estimate_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "decision_type",
+          "type": "text",
+          "default": "'change'::text",
+          "not_null": true
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'pending_client'::text",
+          "not_null": true
+        },
+        {
+          "name": "requested_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "client_comment",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "client_decisions_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "handover_protocols",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "client_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'draft'::text",
+          "not_null": true
+        },
+        {
+          "name": "protocol_date",
+          "type": "date",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "summary",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "checklist",
+          "type": "jsonb",
+          "default": "'[]'::jsonb",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "handover_protocols_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "invoice_reminders",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "invoice_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "reminder_number",
+          "type": "integer",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "recipient_email",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'sent'::text",
+          "not_null": true
+        },
+        {
+          "name": "error_message",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "invoice_reminders_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((reminder_number = ANY (ARRAY[1, 2, 3])))",
+          "name": "invoice_reminders_reminder_number_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text])))",
+          "name": "invoice_reminders_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "company_price_list",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "catalog_item_id",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "unit_price",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "custom_label",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "UNIQUE (company_id, catalog_item_id)",
+          "name": "company_price_list_company_id_catalog_item_id_key",
+          "type": "u"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "company_price_list_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK (((catalog_item_id IS NOT NULL) OR ((custom_label IS NOT NULL) AND (TRIM(BOTH FROM custom_label) <> ''::text))))",
+          "name": "price_list_identity_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "invoice_counters",
+      "columns": [
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "year",
+          "type": "integer",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "last_seq",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (company_id, year)",
+          "name": "invoice_counters_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "clients",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "not_null": true
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "nip",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "city",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "postal_code",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "contact_person",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "pesel",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "clients_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "project_photo_docs",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "client_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "default": "'progress'::text",
+          "not_null": true
+        },
+        {
+          "name": "taken_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "image_url",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "project_photo_docs_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "cost_estimate_items",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "not_null": true
+        },
+        {
+          "name": "cost_estimate_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "unit",
+          "type": "text",
+          "default": "'m²'::text",
+          "not_null": true
+        },
+        {
+          "name": "quantity",
+          "type": "numeric(10,2)",
+          "default": "1",
+          "not_null": true
+        },
+        {
+          "name": "unit_price",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "default": "0",
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "vat_rate",
+          "type": "integer",
+          "default": "23",
+          "not_null": true
+        },
+        {
+          "name": "catalog_item_id",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "cost_estimate_items_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "technical_standards",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "client_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "default": "'technical_standard'::text",
+          "not_null": true
+        },
+        {
+          "name": "source_label",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "requires_client_acceptance",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "accepted_by_client",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "technical_standards_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "ai_risks",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "severity",
+          "type": "text",
+          "default": "'medium'::text",
+          "not_null": true
+        },
+        {
+          "name": "risk_type",
+          "type": "text",
+          "default": "'scope'::text",
+          "not_null": true
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'open'::text",
+          "not_null": true
+        },
+        {
+          "name": "operator_notes",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "ai_risks_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((risk_type = ANY (ARRAY['scope'::text, 'technical'::text, 'timeline'::text, 'compliance'::text])))",
+          "name": "ai_risks_risk_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((severity = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])))",
+          "name": "ai_risks_severity_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['open'::text, 'acknowledged'::text, 'resolved'::text])))",
+          "name": "ai_risks_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "signature_requests",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "document_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "document_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "document_hash",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "mode",
+          "type": "text",
+          "default": "'approval_only'::text",
+          "not_null": true
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'pending'::text",
+          "not_null": true
+        },
+        {
+          "name": "provider_name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "provider_transaction_id",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_by_user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "document_label",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((document_type = ANY (ARRAY['estimate'::text, 'contract'::text, 'annex'::text, 'invoice'::text, 'other'::text])))",
+          "name": "signature_requests_document_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((mode = ANY (ARRAY['approval_only'::text, 'qualified_signature_required'::text])))",
+          "name": "signature_requests_mode_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "signature_requests_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((provider_name = ANY (ARRAY['autenti'::text, 'mszafir'::text, 'certum'::text])))",
+          "name": "signature_requests_provider_name_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['pending'::text, 'in_progress'::text, 'completed'::text, 'rejected'::text, 'cancelled'::text, 'expired'::text])))",
+          "name": "signature_requests_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "signature_participants",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "signature_request_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "client_account_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'pending'::text",
+          "not_null": true
+        },
+        {
+          "name": "action_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "otp_code_hash",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "otp_expires_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "signature_participants_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((role = ANY (ARRAY['signer'::text, 'approver'::text, 'observer'::text])))",
+          "name": "signature_participants_role_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['pending'::text, 'notified'::text, 'viewed'::text, 'approved'::text, 'signed'::text, 'rejected'::text])))",
+          "name": "signature_participants_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "signature_events",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "signature_request_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "participant_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "event_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "actor_type",
+          "type": "text",
+          "default": "'system'::text",
+          "not_null": true
+        },
+        {
+          "name": "actor_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "actor_ip",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "actor_user_agent",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "document_hash",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "provider_payload",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((actor_type = ANY (ARRAY['operator'::text, 'client'::text, 'system'::text, 'provider'::text])))",
+          "name": "signature_events_actor_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "signature_events_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "signature_artifacts",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "signature_request_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "artifact_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "storage_path",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "file_hash",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "file_size_bytes",
+          "type": "integer",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "provider_artifact_id",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((artifact_type = ANY (ARRAY['original_pdf'::text, 'signed_pdf'::text, 'evidence_card'::text, 'provider_receipt'::text])))",
+          "name": "signature_artifacts_artifact_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "signature_artifacts_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "projects",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "not_null": true
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "number",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "client_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'offer'::text",
+          "not_null": true
+        },
+        {
+          "name": "start_date",
+          "type": "date",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "end_date",
+          "type": "date",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "budget",
+          "type": "numeric(14,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "investment_address",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "completeness_score",
+          "type": "smallint",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "completeness_flags",
+          "type": "jsonb",
+          "default": "'{}'::jsonb",
+          "not_null": true
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "ai_context_summary",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "ai_context_updated_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "projects_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['offer'::text, 'active'::text, 'done'::text, 'cancelled'::text])))",
+          "name": "projects_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "client_tokens",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "cost_estimate_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "client_name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "token",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "default": "true",
+          "not_null": true
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "client_account_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "client_tokens_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "UNIQUE (token)",
+          "name": "client_tokens_token_key",
+          "type": "u"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "portal_messages",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "token_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "sender",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "read",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "portal_messages_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((sender = ANY (ARRAY['client'::text, 'company'::text])))",
+          "name": "portal_messages_sender_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "approval_events",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "signature_request_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "document_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "document_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "document_hash",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "actor_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "actor_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "actor_name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "actor_email",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "actor_ip",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "actor_user_agent",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "consent_text",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "consent_checked_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "otp_verified_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "decision",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "comment",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((actor_type = ANY (ARRAY['operator'::text, 'client'::text])))",
+          "name": "approval_events_actor_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((decision = ANY (ARRAY['approved'::text, 'rejected'::text, 'questioned'::text])))",
+          "name": "approval_events_decision_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "approval_events_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "invoices",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "not_null": true
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "number",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "client_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'unpaid'::text",
+          "not_null": true
+        },
+        {
+          "name": "issue_date",
+          "type": "date",
+          "default": "CURRENT_DATE",
+          "not_null": true
+        },
+        {
+          "name": "due_date",
+          "type": "date",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "ksef_status",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "ksef_ref",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "contract_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "invoice_type",
+          "type": "text",
+          "default": "'standard'::text",
+          "not_null": true
+        },
+        {
+          "name": "sale_date",
+          "type": "date",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "issue_place",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "payment_method",
+          "type": "text",
+          "default": "'transfer'::text",
+          "not_null": true
+        },
+        {
+          "name": "bank_account",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "tranche_id",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "advance_total",
+          "type": "numeric(14,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "reminder_count",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "last_reminder_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "corrected_invoice_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "correction_reason",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "original_items",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "original_data",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "total_net",
+          "type": "numeric(14,2)",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "total_gross",
+          "type": "numeric(14,2)",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "ksef_last_error",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "ksef_number",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((invoice_type = ANY (ARRAY['standard'::text, 'advance'::text, 'final'::text, 'partial'::text, 'correction'::text])))",
+          "name": "invoices_invoice_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((ksef_status = ANY (ARRAY['ksef_sent'::text, 'ksef_pending'::text, 'ksef_error'::text])))",
+          "name": "invoices_ksef_status_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK (((status = 'draft'::text) OR (number IS NOT NULL)))",
+          "name": "invoices_number_required_when_issued",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "invoices_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['unpaid'::text, 'paid'::text, 'overdue'::text, 'draft'::text])))",
+          "name": "invoices_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "invoice_items",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "not_null": true
+        },
+        {
+          "name": "invoice_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "unit",
+          "type": "text",
+          "default": "'kpl'::text",
+          "not_null": true
+        },
+        {
+          "name": "quantity",
+          "type": "numeric(10,2)",
+          "default": "1",
+          "not_null": true
+        },
+        {
+          "name": "unit_price",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "vat_rate",
+          "type": "integer",
+          "default": "23",
+          "not_null": true
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "default": "0",
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "tranche_label",
+          "type": "text",
+          "default": "''::text",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "invoice_items_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "companies",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "nip",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "plan",
+          "type": "text",
+          "default": "'free'::text",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "ksef_env",
+          "type": "text",
+          "default": "'test'::text",
+          "not_null": false
+        },
+        {
+          "name": "ksef_nip",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "ksef_token",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "postal_code",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "city",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "iban",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "website",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "owner_user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "logo_url",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "stripe_customer_id",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "stripe_subscription_id",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "subscription_status",
+          "type": "text",
+          "default": "'none'::text",
+          "not_null": true
+        },
+        {
+          "name": "subscription_current_period_end",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "trial_ends_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "billing_email",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "plan_source",
+          "type": "text",
+          "default": "'manual'::text",
+          "not_null": true
+        },
+        {
+          "name": "doc_number_config",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((ksef_env = ANY (ARRAY['test'::text, 'prod'::text])))",
+          "name": "companies_ksef_env_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "companies_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((plan = ANY (ARRAY['free'::text, 'pro'::text, 'business'::text, 'admin'::text])))",
+          "name": "companies_plan_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((plan_source = ANY (ARRAY['manual'::text, 'stripe'::text, 'admin'::text])))",
+          "name": "companies_plan_source_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((subscription_status = ANY (ARRAY['none'::text, 'trialing'::text, 'active'::text, 'past_due'::text, 'canceled'::text, 'unpaid'::text, 'incomplete'::text])))",
+          "name": "companies_subscription_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "profiles",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "full_name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "company",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "nip",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "plan",
+          "type": "text",
+          "default": "'free'::text",
+          "not_null": true
+        },
+        {
+          "name": "ksef_token",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "ksef_nip",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "ksef_env",
+          "type": "text",
+          "default": "'test'::text",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "postal_code",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "city",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "iban",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "website",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "logo_url",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((ksef_env = ANY (ARRAY['test'::text, 'prod'::text])))",
+          "name": "profiles_ksef_env_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "profiles_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((plan = ANY (ARRAY['free'::text, 'pro'::text, 'business'::text])))",
+          "name": "profiles_plan_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "company_memory_feedback",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "feedback_type",
+          "type": "text",
+          "default": "'scope_override'::text",
+          "not_null": true
+        },
+        {
+          "name": "feedback_payload",
+          "type": "jsonb",
+          "default": "'{}'::jsonb",
+          "not_null": true
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((feedback_type = ANY (ARRAY['scope_override'::text, 'price_added'::text, 'item_rejected'::text, 'item_added'::text, 'question_answered'::text, 'risk_acknowledged'::text])))",
+          "name": "company_memory_feedback_feedback_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "company_memory_feedback_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "client_portal_tokens",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "cost_estimate_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "client_name",
+          "type": "text",
+          "default": "'Klient'::text",
+          "not_null": true
+        },
+        {
+          "name": "token",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "default": "true",
+          "not_null": true
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "client_portal_tokens_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "UNIQUE (token)",
+          "name": "client_portal_tokens_token_key",
+          "type": "u"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "contracts",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "not_null": true
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "number",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "client_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'unsigned'::text",
+          "not_null": true
+        },
+        {
+          "name": "sign_date",
+          "type": "date",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "value",
+          "type": "numeric(14,2)",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "estimate_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "start_date",
+          "type": "date",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "end_date",
+          "type": "date",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "location",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "value_net",
+          "type": "numeric(14,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "vat_rate",
+          "type": "integer",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "template_name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "template_content",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "custom_paragraphs",
+          "type": "jsonb",
+          "default": "'[]'::jsonb",
+          "not_null": true
+        },
+        {
+          "name": "tranches",
+          "type": "jsonb",
+          "default": "'[]'::jsonb",
+          "not_null": true
+        },
+        {
+          "name": "penalty_per_day_pct",
+          "type": "numeric(5,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "max_penalty_pct",
+          "type": "numeric(5,2)",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "contracts_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['unsigned'::text, 'signed'::text])))",
+          "name": "contracts_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "ai_review_actions",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "scope_item_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "question_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "risk_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "action_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "original_payload",
+          "type": "jsonb",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "review_payload",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "review_reason",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "reviewed_by",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((action_type = ANY (ARRAY['accepted'::text, 'modified'::text, 'rejected'::text, 'answered'::text, 'acknowledged'::text, 'resolved'::text])))",
+          "name": "ai_review_actions_action_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "ai_review_actions_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "invite_accept_events",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "token_hash",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "event_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "error_reason",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((event_type = ANY (ARRAY['ACCEPT_START'::text, 'ACCEPT_SUCCESS'::text, 'ACCEPT_FAIL'::text, 'MEMBERSHIP_VERIFIED'::text, 'MEMBERSHIP_MISSING'::text])))",
+          "name": "invite_accept_events_event_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "invite_accept_events_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "cost_estimates",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "not_null": true
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "number",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "client_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'draft'::text",
+          "not_null": true
+        },
+        {
+          "name": "total_net",
+          "type": "numeric(14,2)",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "total_gross",
+          "type": "numeric(14,2)",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "valid_until",
+          "type": "date",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "ai_source_run_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "estimate_type",
+          "type": "character varying(20)",
+          "default": "'preliminary'::character varying",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK (((estimate_type)::text = ANY ((ARRAY['preliminary'::character varying, 'final'::character varying])::text[])))",
+          "name": "cost_estimates_estimate_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "cost_estimates_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['draft'::text, 'sent'::text, 'accepted'::text, 'rejected'::text])))",
+          "name": "cost_estimates_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "ai_input_assets",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "storage_path",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "original_filename",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "mime_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "file_size",
+          "type": "bigint",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'uploaded'::text",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "ai_input_assets_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['uploaded'::text, 'failed'::text])))",
+          "name": "ai_input_assets_status_check",
+          "type": "c"
+        },
+        {
+          "ddl": "UNIQUE (storage_path)",
+          "name": "ai_input_assets_storage_path_key",
+          "type": "u"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "ai_fusion_snapshots",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "bundle_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "result_json",
+          "type": "jsonb",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "evidence_count",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "fusion_ms",
+          "type": "integer",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "ai_fusion_snapshots_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "service_catalog",
+      "columns": [
+        {
+          "name": "id",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "unit",
+          "type": "text",
+          "default": "'m2'::text",
+          "not_null": true
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "tags",
+          "type": "text[]",
+          "default": "'{}'::text[]",
+          "not_null": false
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "default": "true",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "service_catalog_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "ai_assistant_queries",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "question",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "answer_source",
+          "type": "text",
+          "default": "'local'::text",
+          "not_null": true
+        },
+        {
+          "name": "answer_length",
+          "type": "integer",
+          "default": "0",
+          "not_null": false
+        },
+        {
+          "name": "model_name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "duration_ms",
+          "type": "integer",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "ai_assistant_queries_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "legal_acceptances",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "document_key",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "document_version",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "accepted_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "accepted_b2b_statement",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "user_agent",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "legal_acceptances_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((source = ANY (ARRAY['signup'::text, 'login'::text, 'checkout'::text, 'settings'::text, 'gate'::text])))",
+          "name": "legal_acceptances_source_check",
+          "type": "c"
+        },
+        {
+          "ddl": "UNIQUE (user_id, document_key, document_version)",
+          "name": "legal_acceptances_user_id_document_key_document_version_key",
+          "type": "u"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "conversations",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "client_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "subject",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "last_message_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "unread_count",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "archived",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "conversations_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "conversation_messages",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "conversation_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "sender",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "attachment_url",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "attachment_name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "read",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "conversation_messages_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((sender = ANY (ARRAY['operator'::text, 'client'::text, 'note'::text])))",
+          "name": "conversation_messages_sender_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "ai_rate_limits",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "endpoint",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "request_count",
+          "type": "integer",
+          "default": "1",
+          "not_null": true
+        },
+        {
+          "name": "window_start",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "ai_rate_limits_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "UNIQUE (user_id, endpoint)",
+          "name": "ai_rate_limits_user_id_endpoint_key",
+          "type": "u"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "project_messages",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "thread_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "sender_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "sender_user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "sender_name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "body",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "visibility",
+          "type": "text",
+          "default": "'internal'::text",
+          "not_null": true
+        },
+        {
+          "name": "has_attachments",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "attachment_url",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "attachment_name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "attachment_mime",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "read_by_operator",
+          "type": "boolean",
+          "default": "true",
+          "not_null": true
+        },
+        {
+          "name": "read_by_client",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((NOT ((sender_type = 'client'::text) AND (visibility = 'internal'::text))))",
+          "name": "chk_message_client_visibility",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "project_messages_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((sender_type = ANY (ARRAY['operator'::text, 'client'::text, 'system'::text])))",
+          "name": "project_messages_sender_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((visibility = ANY (ARRAY['internal'::text, 'client_shared'::text])))",
+          "name": "project_messages_visibility_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "project_threads",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "client_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "type",
+          "type": "text",
+          "default": "'general'::text",
+          "not_null": true
+        },
+        {
+          "name": "visibility",
+          "type": "text",
+          "default": "'internal'::text",
+          "not_null": true
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "last_message_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "last_message_preview",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "last_message_sender",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "unread_count_operator",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "unread_count_client",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "archived",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((NOT ((type = 'internal'::text) AND (visibility <> 'internal'::text))))",
+          "name": "chk_thread_internal_visibility",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "project_threads_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((type = ANY (ARRAY['general'::text, 'approvals'::text, 'documents'::text, 'payments'::text, 'technical'::text, 'internal'::text])))",
+          "name": "project_threads_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((visibility = ANY (ARRAY['internal'::text, 'client_shared'::text, 'approval'::text])))",
+          "name": "project_threads_visibility_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "project_timeline_events",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "event_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "visibility",
+          "type": "text",
+          "default": "'internal'::text",
+          "not_null": true
+        },
+        {
+          "name": "actor_type",
+          "type": "text",
+          "default": "'operator'::text",
+          "not_null": true
+        },
+        {
+          "name": "actor_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "actor_name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "reference_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "reference_type",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "payload",
+          "type": "jsonb",
+          "default": "'{}'::jsonb",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((actor_type = ANY (ARRAY['operator'::text, 'client'::text, 'system'::text])))",
+          "name": "project_timeline_events_actor_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "project_timeline_events_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((reference_type = ANY (ARRAY['expense'::text, 'thread'::text, 'message'::text, 'document'::text, 'approval'::text, 'portal_token'::text, 'project'::text, NULL::text])))",
+          "name": "project_timeline_events_reference_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((visibility = ANY (ARRAY['internal'::text, 'client_shared'::text])))",
+          "name": "project_timeline_events_visibility_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "cost_approvals",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "expense_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "thread_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'pending_client'::text",
+          "not_null": true
+        },
+        {
+          "name": "snapshot_amount_gross",
+          "type": "numeric(14,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "snapshot_description",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "snapshot_vendor",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "snapshot_invoice_number",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "message_to_client",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "client_comment",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "response_idempotency_key",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "responded_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "cost_approvals_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "UNIQUE (response_idempotency_key)",
+          "name": "cost_approvals_response_idempotency_key_key",
+          "type": "u"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['pending_client'::text, 'accepted'::text, 'rejected'::text, 'questioned'::text, 'cancelled'::text])))",
+          "name": "cost_approvals_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "expense_invoices",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "file_url",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "file_name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "invoice_number",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "vendor",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "vendor_nip",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "issue_date",
+          "type": "date",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "amount_net",
+          "type": "numeric(14,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "amount_vat",
+          "type": "numeric(14,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "amount_gross",
+          "type": "numeric(14,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'new'::text",
+          "not_null": true
+        },
+        {
+          "name": "parse_raw",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "duplicate_of",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "source_type",
+          "type": "text",
+          "default": "'manual'::text",
+          "not_null": true
+        },
+        {
+          "name": "cost_type",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "approval_status",
+          "type": "text",
+          "default": "'not_sent'::text",
+          "not_null": false
+        },
+        {
+          "name": "approval_sent_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "extraction_confidence",
+          "type": "numeric(3,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "extraction_warnings",
+          "type": "jsonb",
+          "default": "'[]'::jsonb",
+          "not_null": true
+        },
+        {
+          "name": "requires_user_confirmation",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "parser_source",
+          "type": "text",
+          "default": "'manual'::text",
+          "not_null": false
+        },
+        {
+          "name": "possible_duplicate",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "duplicate_of_expense_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "currency",
+          "type": "text",
+          "default": "'PLN'::text",
+          "not_null": true
+        },
+        {
+          "name": "sale_date",
+          "type": "date",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "payment_due_date",
+          "type": "date",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "billing_type",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((approval_status = ANY (ARRAY['not_sent'::text, 'pending_client'::text, 'accepted'::text, 'rejected'::text, 'questioned'::text])))",
+          "name": "expense_invoices_approval_status_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((billing_type = ANY (ARRAY['included'::text, 'additional'::text])))",
+          "name": "expense_invoices_billing_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK (((extraction_confidence IS NULL) OR ((extraction_confidence >= (0)::numeric) AND (extraction_confidence <= (1)::numeric))))",
+          "name": "expense_invoices_extraction_confidence_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((parser_source = ANY (ARRAY['ai'::text, 'regex'::text, 'manual'::text])))",
+          "name": "expense_invoices_parser_source_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "expense_invoices_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((source_type = ANY (ARRAY['camera'::text, 'gallery'::text, 'pdf'::text, 'manual'::text, 'room_photo'::text])))",
+          "name": "expense_invoices_source_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['new'::text, 'parsed'::text, 'review'::text, 'assigned'::text, 'error'::text])))",
+          "name": "expense_invoices_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "ai_analysis_bundles",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "label",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'pending'::text",
+          "not_null": true
+        },
+        {
+          "name": "asset_count",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "extracted_count",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "failed_count",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "confidence_summary",
+          "type": "numeric(4,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "missing_data",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "error_message",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "document_type",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK (((document_type IS NULL) OR (document_type = ANY (ARRAY['projekt_wykonawczy'::text, 'visualization_pack'::text, 'unknown'::text]))))",
+          "name": "ai_analysis_bundles_document_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "ai_analysis_bundles_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'partial'::text, 'ready'::text, 'failed'::text])))",
+          "name": "ai_analysis_bundles_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "ai_extraction_results",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "bundle_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "asset_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "extractor_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "evidence_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "content",
+          "type": "jsonb",
+          "default": "'{}'::jsonb",
+          "not_null": true
+        },
+        {
+          "name": "room_label",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "confidence_score",
+          "type": "numeric(4,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "confidence_reason",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "source_anchor",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "conflict_ids",
+          "type": "uuid[]",
+          "default": "'{}'::uuid[]",
+          "not_null": true
+        },
+        {
+          "name": "fused",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "fused_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK (((confidence_score IS NULL) OR ((confidence_score >= (0)::numeric) AND (confidence_score <= (1)::numeric))))",
+          "name": "ai_extraction_results_confidence_score_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((evidence_type = ANY (ARRAY['dimension'::text, 'fixture'::text, 'material'::text, 'installation'::text, 'tile_spec'::text, 'scope_hint'::text, 'missing_data'::text, 'conflict'::text, 'hypothesis'::text])))",
+          "name": "ai_extraction_results_evidence_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((extractor_type = ANY (ARRAY['document_ai'::text, 'room_vision'::text, 'project_vision'::text, 'text_nlp'::text, 'manual'::text])))",
+          "name": "ai_extraction_results_extractor_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "ai_extraction_results_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "ai_bundle_assets",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "bundle_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "storage_path",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "original_filename",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "mime_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "file_size_bytes",
+          "type": "bigint",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "source_type",
+          "type": "text",
+          "default": "'unknown'::text",
+          "not_null": true
+        },
+        {
+          "name": "source_role",
+          "type": "text",
+          "default": "'unknown'::text",
+          "not_null": true
+        },
+        {
+          "name": "room_hint",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "source_priority",
+          "type": "integer",
+          "default": "50",
+          "not_null": true
+        },
+        {
+          "name": "extraction_status",
+          "type": "text",
+          "default": "'pending'::text",
+          "not_null": true
+        },
+        {
+          "name": "processing_error",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "input_asset_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "layer_type",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((extraction_status = ANY (ARRAY['pending'::text, 'processing'::text, 'extracted'::text, 'failed'::text, 'skipped'::text])))",
+          "name": "ai_bundle_assets_extraction_status_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK (((layer_type IS NULL) OR (layer_type = ANY (ARRAY['title_page'::text, 'visualization_3d'::text, 'survey_existing'::text, 'functional_layout'::text, 'structural_guidelines'::text, 'electrical_legend'::text, 'electrical_lighting'::text, 'electrical_sockets'::text, 'plumbing_wod_kan'::text, 'floor_coverings'::text, 'wall_coverings'::text, 'wall_elevations'::text, 'tile_layout'::text, 'ceiling_plan'::text, 'furniture_drawing'::text, 'staircase_design'::text, 'glazing_door_detail'::text, 'construction_detail'::text, 'unknown'::text]))))",
+          "name": "ai_bundle_assets_layer_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "ai_bundle_assets_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK (((source_priority >= 1) AND (source_priority <= 99)))",
+          "name": "ai_bundle_assets_source_priority_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((source_role = ANY (ARRAY['architectural_drawing'::text, 'design_visualization'::text, 'technical_spec'::text, 'installation_drawing'::text, 'site_photo'::text, 'progress_photo'::text, 'text_note'::text, 'unknown'::text])))",
+          "name": "ai_bundle_assets_source_role_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((source_type = ANY (ARRAY['pdf'::text, 'photo'::text, 'render'::text, 'text_note'::text, 'unknown'::text])))",
+          "name": "ai_bundle_assets_source_type_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "company_invitations",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "token",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "invited_by",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'pending'::text",
+          "not_null": true
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "default": "(now() + '7 days'::interval)",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "accepted_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "company_invitations_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((role = ANY (ARRAY['owner'::text, 'admin'::text, 'manager'::text, 'worker'::text, 'accountant'::text])))",
+          "name": "company_invitations_role_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'expired'::text, 'revoked'::text])))",
+          "name": "company_invitations_status_check",
+          "type": "c"
+        },
+        {
+          "ddl": "UNIQUE (token)",
+          "name": "company_invitations_token_key",
+          "type": "u"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "audit_logs",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "table_name",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "record_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "old_data",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "new_data",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((action = ANY (ARRAY['insert'::text, 'update'::text, 'delete'::text])))",
+          "name": "audit_logs_action_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "audit_logs_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "project_documents",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "doc_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "doc_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "assignment_status",
+          "type": "text",
+          "default": "'confirmed'::text",
+          "not_null": true
+        },
+        {
+          "name": "linked_automatically",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "linked_manually",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "source_doc_type",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "source_doc_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((assignment_status = ANY (ARRAY['confirmed'::text, 'pending'::text, 'rejected'::text])))",
+          "name": "project_documents_assignment_status_check",
+          "type": "c"
+        },
+        {
+          "ddl": "UNIQUE (company_id, project_id, doc_type, doc_id)",
+          "name": "project_documents_company_id_project_id_doc_type_doc_id_key",
+          "type": "u"
+        },
+        {
+          "ddl": "CHECK ((doc_type = ANY (ARRAY['estimate'::text, 'contract'::text, 'invoice'::text, 'attachment'::text, 'note'::text, 'protocol'::text, 'other'::text])))",
+          "name": "project_documents_doc_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "project_documents_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "project_timeline",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "details",
+          "type": "jsonb",
+          "default": "'{}'::jsonb",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "project_timeline_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "assignment_queue",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "doc_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "doc_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "suggested_project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "confidence",
+          "type": "smallint",
+          "default": "0",
+          "not_null": false
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "resolved_by",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "resolution",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "UNIQUE (company_id, doc_type, doc_id)",
+          "name": "assignment_queue_company_id_doc_type_doc_id_key",
+          "type": "u"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "assignment_queue_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((resolution = ANY (ARRAY['accepted'::text, 'rejected'::text, 'reassigned'::text, 'skipped'::text])))",
+          "name": "assignment_queue_resolution_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "export_jobs",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'pending'::text",
+          "not_null": true
+        },
+        {
+          "name": "doc_ids",
+          "type": "uuid[]",
+          "default": "'{}'::uuid[]",
+          "not_null": true
+        },
+        {
+          "name": "file_url",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "manifest",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "error",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "export_jobs_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'done'::text, 'error'::text])))",
+          "name": "export_jobs_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "voice_notes",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "default": "''::text",
+          "not_null": true
+        },
+        {
+          "name": "transcript",
+          "type": "text",
+          "default": "''::text",
+          "not_null": true
+        },
+        {
+          "name": "audio_url",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'raw'::text",
+          "not_null": true
+        },
+        {
+          "name": "extracted_result",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "duration_seconds",
+          "type": "integer",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "char_count",
+          "type": "integer",
+          "default": "char_length(transcript)",
+          "not_null": false
+        },
+        {
+          "name": "transcript_storage_url",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "voice_notes_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['raw'::text, 'processing'::text, 'processed'::text, 'error'::text])))",
+          "name": "voice_notes_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "project_memory_entries",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "memory_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "topic",
+          "type": "text",
+          "default": "''::text",
+          "not_null": true
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "source_type",
+          "type": "text",
+          "default": "'manual'::text",
+          "not_null": true
+        },
+        {
+          "name": "source_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "contradiction_of",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((memory_type = ANY (ARRAY['decision'::text, 'preference'::text, 'event'::text, 'issue'::text, 'amount'::text])))",
+          "name": "project_memory_entries_memory_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "project_memory_entries_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((source_type = ANY (ARRAY['manual'::text, 'voice_note'::text, 'client_decision'::text, 'chat'::text])))",
+          "name": "project_memory_entries_source_type_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "client_accounts",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "full_name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "client_record_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "UNIQUE (company_id, email)",
+          "name": "client_accounts_company_id_email_key",
+          "type": "u"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "client_accounts_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "doc_counters",
+      "columns": [
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "doc_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "year",
+          "type": "integer",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "month",
+          "type": "integer",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "last_seq",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (company_id, doc_type, year, month)",
+          "name": "doc_counters_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "project_client_access",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "client_account_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "granted_by",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "granted_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "project_client_access_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "UNIQUE (project_id, client_account_id)",
+          "name": "project_client_access_project_id_client_account_id_key",
+          "type": "u"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "operator_notifications",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "body",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "reference_type",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "reference_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "read_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "operator_notifications_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((reference_type = ANY (ARRAY['message'::text, 'approval'::text, 'thread'::text, 'project'::text])))",
+          "name": "operator_notifications_reference_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((type = ANY (ARRAY['client_message'::text, 'client_approval_response'::text, 'missing_costs'::text, 'payment_reminder'::text])))",
+          "name": "operator_notifications_type_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "project_analysis_jobs",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'queued'::text",
+          "not_null": true
+        },
+        {
+          "name": "storage_path",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "file_type",
+          "type": "text",
+          "default": "'application/pdf'::text",
+          "not_null": true
+        },
+        {
+          "name": "file_name",
+          "type": "text",
+          "default": "'project'::text",
+          "not_null": true
+        },
+        {
+          "name": "context",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "result_json",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "error_code",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "error_message",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "retry_count",
+          "type": "integer",
+          "default": "0",
+          "not_null": false
+        },
+        {
+          "name": "timeout_occurred",
+          "type": "boolean",
+          "default": "false",
+          "not_null": false
+        },
+        {
+          "name": "request_duration_ms",
+          "type": "integer",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "parse_path",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "input_file_size_bytes",
+          "type": "integer",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "input_token_count",
+          "type": "integer",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "output_token_count",
+          "type": "integer",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "project_analysis_jobs_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['queued'::text, 'processing'::text, 'done'::text, 'failed'::text])))",
+          "name": "project_analysis_jobs_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "client_notifications",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "client_account_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "body",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "reference_type",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "reference_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "read_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "client_notifications_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((reference_type = ANY (ARRAY['approval'::text, 'thread'::text, 'message'::text, 'document'::text, 'project'::text])))",
+          "name": "client_notifications_reference_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((type = ANY (ARRAY['approval_requested'::text, 'approval_status_changed'::text, 'new_message'::text, 'document_shared'::text])))",
+          "name": "client_notifications_type_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "ksef_events",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "invoice_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "attempt",
+          "type": "smallint",
+          "default": "1",
+          "not_null": true
+        },
+        {
+          "name": "ksef_ref",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "env",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "message",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "meta",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((action = ANY (ARRAY['guard_block'::text, 'send_attempt'::text, 'send_success'::text, 'send_error'::text, 'skip_idempotent'::text, 'retry'::text])))",
+          "name": "ksef_events_action_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((env = ANY (ARRAY['demo'::text, 'test'::text, 'prod'::text])))",
+          "name": "ksef_events_env_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "ksef_events_pkey",
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "ai_scope_items",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "library_id",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "unit",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "quantity_suggested",
+          "type": "numeric(10,3)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "price_suggested_by_ai",
+          "type": "numeric(12,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "confidence",
+          "type": "numeric(5,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "source_kind",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "scope_layer",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "review_status",
+          "type": "text",
+          "default": "'pending'::text",
+          "not_null": true
+        },
+        {
+          "name": "quantity_final",
+          "type": "numeric(10,3)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "price_confirmed_by_operator",
+          "type": "numeric(12,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "missing_price",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "ai_scope_items_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((review_status = ANY (ARRAY['pending'::text, 'accepted'::text, 'modified'::text, 'rejected'::text])))",
+          "name": "ai_scope_items_review_status_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((scope_layer = ANY (ARRAY['EXECUTION_SCOPE'::text, 'HIDDEN_PROBABLE_SCOPE'::text])))",
+          "name": "ai_scope_items_scope_layer_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((source_kind = ANY (ARRAY['direct_detected'::text, 'dependency_inferred'::text, 'confirmation_needed'::text])))",
+          "name": "ai_scope_items_source_kind_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "ai_analysis_runs",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'draft'::text",
+          "not_null": true
+        },
+        {
+          "name": "room_type",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "text_description",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "clarification",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "dimensions_json",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "input_summary",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "missing_data",
+          "type": "boolean",
+          "default": "false",
+          "not_null": true
+        },
+        {
+          "name": "confidence_summary",
+          "type": "numeric(5,2)",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "model_name",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "error_code",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "error_message",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        },
+        {
+          "name": "retry_count",
+          "type": "integer",
+          "default": "0",
+          "not_null": false
+        },
+        {
+          "name": "timeout_occurred",
+          "type": "boolean",
+          "default": "false",
+          "not_null": false
+        },
+        {
+          "name": "request_duration_ms",
+          "type": "integer",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "parse_path",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "input_token_count",
+          "type": "integer",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "output_token_count",
+          "type": "integer",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "draft_created",
+          "type": "boolean",
+          "default": "false",
+          "not_null": false
+        },
+        {
+          "name": "input_file_size_bytes",
+          "type": "integer",
+          "default": null,
+          "not_null": false
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "ai_analysis_runs_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((room_type = ANY (ARRAY['bathroom'::text, 'wc'::text])))",
+          "name": "ai_analysis_runs_room_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['draft'::text, 'processing'::text, 'completed'::text, 'failed'::text])))",
+          "name": "ai_analysis_runs_status_check",
+          "type": "c"
+        }
+      ]
+    },
+    {
+      "rls": true,
+      "name": "ai_questions",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "not_null": true
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "text",
+          "type": "text",
+          "default": null,
+          "not_null": true
+        },
+        {
+          "name": "severity",
+          "type": "text",
+          "default": "'important_for_accuracy'::text",
+          "not_null": true
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "answer_type",
+          "type": "text",
+          "default": "'text'::text",
+          "not_null": true
+        },
+        {
+          "name": "options",
+          "type": "jsonb",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'unanswered'::text",
+          "not_null": true
+        },
+        {
+          "name": "operator_answer",
+          "type": "text",
+          "default": null,
+          "not_null": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "default": "0",
+          "not_null": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "not_null": true
+        }
+      ],
+      "constraints": [
+        {
+          "ddl": "CHECK ((answer_type = ANY (ARRAY['text'::text, 'yesno'::text, 'choice'::text, 'number'::text])))",
+          "name": "ai_questions_answer_type_check",
+          "type": "c"
+        },
+        {
+          "ddl": "PRIMARY KEY (id)",
+          "name": "ai_questions_pkey",
+          "type": "p"
+        },
+        {
+          "ddl": "CHECK ((severity = ANY (ARRAY['critical_for_scope'::text, 'important_for_accuracy'::text, 'optional_detail'::text])))",
+          "name": "ai_questions_severity_check",
+          "type": "c"
+        },
+        {
+          "ddl": "CHECK ((status = ANY (ARRAY['unanswered'::text, 'answered'::text, 'skipped'::text])))",
+          "name": "ai_questions_status_check",
+          "type": "c"
+        }
+      ]
+    }
+  ],
+  "custom_types": null,
+  "signup_trigger": null,
+  "private_policies": null
+}

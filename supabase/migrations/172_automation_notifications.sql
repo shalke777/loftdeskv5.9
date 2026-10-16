@@ -19,3 +19,4 @@ BEGIN
 END $$;
 CREATE TRIGGER notify_private_automation AFTER UPDATE OF status ON public.automation_jobs
  FOR EACH ROW EXECUTE FUNCTION public.notify_private_automation();
+REVOKE ALL ON FUNCTION public.notify_private_automation() FROM PUBLIC, anon, authenticated;
