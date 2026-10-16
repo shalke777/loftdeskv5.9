@@ -1,3 +1,4 @@
+import { isPrivateApp } from '@/shared/lib/privateMode'
 import type { SessionUser } from '@/app/providers'
 import { isDemoMode } from '@/shared/lib/supabase'
 
@@ -115,6 +116,7 @@ function hasRole(role: AppRole | null | undefined, allowed: AppRole[]) {
 // ── Feature access (plan-gated sections) ─────────────────────────────────────
 export function canAccessFeature(user: SessionUser | null | undefined, feature: AppFeature) {
   if (!user) return false
+  if (isPrivateApp) return user.role === 'owner' && !['billing', 'team', 'portal'].includes(feature)
   if (user.isOwnerOverride) return true
   switch (feature) {
     case 'billing':

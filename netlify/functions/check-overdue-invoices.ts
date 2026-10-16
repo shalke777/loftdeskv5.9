@@ -108,6 +108,7 @@ function reminderHtml(params: {
 }
 
 export const handler: Handler = async () => {
+  if (process.env.LOFTDESK_PRIVATE_MODE === 'true') return { statusCode: 200, body: 'Legacy multi-company automation disabled in private mode' }
   const supabaseUrl    = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const resendKey      = process.env.RESEND_API_KEY

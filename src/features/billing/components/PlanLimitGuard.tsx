@@ -1,3 +1,4 @@
+import { isPrivateApp } from '@/shared/lib/privateMode'
 // =============================================================================
 // PlanLimitGuard — inline upgrade prompt when near/at a resource limit
 // =============================================================================
@@ -53,6 +54,8 @@ export function PlanLimitGuard({ resource, children, mode = 'block' }: Props) {
       `used=${used} limit=${limit} exceeded=${exceeded} nearLimit=${nearLimit} canCreate=${canCreate}`
     )
   })
+
+  if (isPrivateApp) return <>{children}</>
 
   if (!data || !status) {
     console.log(`[PLAN GUARD] resource=${resource} — no data yet, rendering children (pass-through)`)
