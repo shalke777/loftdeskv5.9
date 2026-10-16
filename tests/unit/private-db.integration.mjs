@@ -116,6 +116,36 @@ let inventory=await db.exec(preflight)
 let report=JSON.parse(inventory.find(result=>result.fields?.some(field=>field.name==='mcp_preflight')).rows[0].mcp_preflight)
 assert.equal(report.mcp_database_role_must_be_absent,true)
 assert.ok(report.missing_columns.some(column=>column.table_name==='clients' && column.column_name==='email'))
+// Contract creation populates the existing native form, atomically and once.
+await db.exec(`
+ ALTER TABLE clients ADD COLUMN address TEXT, ADD COLUMN postal_code TEXT, ADD COLUMN city TEXT, ADD COLUMN email TEXT, ADD COLUMN phone TEXT, ADD COLUMN pesel TEXT;
+ ALTER TABLE projects ADD COLUMN client_id UUID;
+ CREATE TABLE contracts(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),company_id UUID,user_id UUID,number TEXT,client_id UUID,project_id UUID,estimate_id UUID,status TEXT,sign_date DATE,start_date DATE,end_date DATE,location TEXT,value NUMERIC,value_net NUMERIC,vat_rate NUMERIC,notes TEXT,template_name TEXT,template_content TEXT,tranches JSONB,custom_paragraphs JSONB);
+`)
+await db.exec(readFileSync(new URL('../../supabase/migrations/20261016120155_mcp_contract_drafts.sql',import.meta.url),'utf8'))
+for (const role of ['anon','authenticated']) assert.equal((await db.query("SELECT has_function_privilege($1,'private_prepare_contract_draft(uuid,text,jsonb)','EXECUTE') AS allowed",[role])).rows[0].allowed,false)
+const draftEstimate = docs[0].id
+await db.query('UPDATE cost_estimates SET total_net=25862,total_gross=27930.96,client_id=$1 WHERE id=$2',['00000000-0000-0000-0000-000000000003',draftEstimate])
+const contractPayload={estimate_id:draftEstimate,location:'Work address',vat_rate:8,tranches:[],custom_paragraphs:[{id:'scope',title:'Scope',content:'Verified scope',sort_order:0}],client_details:{phone:'123456789',address:'Home address'}}
+const createContract=async(key,p=contractPayload,c=company)=>(await db.query('SELECT private_prepare_contract_draft($1,$2,$3) AS result',[c,key,p])).rows[0].result
+await assert.rejects(createContract('contract/bad-vat',{...contractPayload,vat_rate:23}),/totals/)
+await assert.rejects(createContract('contract/bad-tranches',{...contractPayload,tranches:[{id:'one',label:'Advance',amount:1,status:'planned'}]}),/sum/)
+await assert.rejects(createContract('contract/foreign',contractPayload,otherCompany),/owner\/company/)
+const nativeDraft=await createContract('contract/test/1')
+assert.equal(nativeDraft.status,'done')
+assert.equal((await createContract('contract/test/1')).result.document_id,nativeDraft.result.document_id)
+await assert.rejects(createContract('contract/test/1',{...contractPayload,location:'Changed'}),/Idempotency/)
+await assert.rejects(createContract('contract/duplicate'),/already has a contract/)
+const native=(await db.query('SELECT * FROM contracts')).rows
+assert.equal(native.length,1)
+assert.equal(native[0].status,'unsigned')
+assert.equal(native[0].sign_date,null)
+assert.equal(Number(native[0].value),27930.96)
+assert.equal(Number(native[0].value_net),25862)
+assert.deepEqual(native[0].custom_paragraphs,contractPayload.custom_paragraphs)
+assert.deepEqual(native[0].tranches,[])
+assert.equal((await db.query('SELECT phone FROM clients')).rows[0].phone,'123456789')
+assert.equal((await db.query("SELECT count(*)::int AS n FROM automation_jobs WHERE kind='contract.draft'")).rows[0].n,1)
 await db.exec('DROP TABLE private_mcp_clients CASCADE')
 inventory=await db.exec(preflight)
 report=JSON.parse(inventory.find(result=>result.fields?.some(field=>field.name==='mcp_preflight')).rows[0].mcp_preflight)
