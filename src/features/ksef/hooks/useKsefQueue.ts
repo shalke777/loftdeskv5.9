@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useInvoices } from '@/features/invoices/hooks/useInvoices'
 import { useClients } from '@/features/clients/hooks/useClients'
@@ -38,6 +38,8 @@ export function useKsefQueue() {
   const qc = useQueryClient()
 
   const [processing, setProcessing] = useState(false)
+  // React state updates are asynchronous; lock before the first await.
+  const processingRef = useRef(false)
   const [lastResult, setLastResult] = useState<ProcessResult | null>(null)
 
   const pending = invoices.filter(
@@ -46,6 +48,8 @@ export function useKsefQueue() {
 
   const processQueue = useCallback(
     async (session: KsefSession, isDemo = false): Promise<ProcessResult> => {
+      if (processingRef.current) throw new Error('Kolejka KSeF jest już przetwarzana.')
+      processingRef.current = true
       setProcessing(true)
       const result: ProcessResult = { total: pending.length, sent: 0, errors: 0, skipped: 0, items: [] }
 
@@ -63,14 +67,6 @@ export function useKsefQueue() {
           if (invoice.ksef_ref) {
             console.info('[useKsefQueue] Skipping send, already has ksef_ref:', { invoiceId: invoice.id, ksefRef: invoice.ksef_ref })
             void logKsefEvent({ companyId, invoiceId: invoice.id, action: 'skip_idempotent', ksefRef: invoice.ksef_ref, env: session.env as 'demo' | 'test' | 'prod', message: 'Invoice already has ksef_ref — skipped' })
-            // Self-heal: if ksef_status drifted out of ksef_sent despite having a ref
-            if (invoice.ksef_status !== 'ksef_sent') {
-              try {
-                await invoicesApi.update(invoice.id, { ksef_status: 'ksef_sent', ksef_last_error: null } as Partial<Invoice>, companyId)
-              } catch (e) {
-                console.warn('[useKsefQueue] self-heal status failed:', e)
-              }
-            }
             result.skipped++
             result.items.push({ invoice, status: 'skipped', ksefRef: invoice.ksef_ref })
             continue
@@ -280,14 +276,15 @@ export function useKsefQueue() {
                   }
                 }
                 void logKsefEvent({ companyId, invoiceId: item.invoice.id, action: 'validation_ok', env, ksefRef: item.ksefRef, message: 'MF validated', meta: { ksefNumber } })
-              } else if (statusCode != null && statusCode !== 200) {
+              } else if (typeof statusCode === 'number' && statusCode >= 400) {
                 // MF rejected this invoice at validation. Flip status back so the
-                // operator sees it red and knows to fix + resend.
+                // operator sees the error. Preserve the reference for reconciliation;
+                // retrying must not silently submit a second document.
                 const reason = `KSeF odrzucił fakturę przy walidacji schematu (status ${statusCode}). ${statusDesc ?? ''}`.trim()
                 try {
                   await invoicesApi.update(
                     item.invoice.id,
-                    { ksef_status: 'ksef_error', ksef_last_error: reason, ksef_ref: null } as Partial<Invoice>,
+                    { ksef_status: 'ksef_error', ksef_last_error: reason } as Partial<Invoice>,
                     companyId,
                   )
                 } catch (e) {
@@ -300,7 +297,7 @@ export function useKsefQueue() {
                 result.sent = Math.max(0, result.sent - 1)
                 result.errors += 1
               }
-              // statusCode == null → MF still processing; UI keeps "sent" (yellow)
+              // Missing or intermediate status is not a rejection; retain the reference.
             } catch (verifyErr: unknown) {
               const msg = verifyErr instanceof Error ? verifyErr.message : String(verifyErr)
               console.warn('[useKsefQueue] post-close verify failed for', item.invoice.id, msg)
@@ -321,6 +318,7 @@ export function useKsefQueue() {
         }
         setLastResult(result)
       } finally {
+        processingRef.current = false
         setProcessing(false)
       }
       return result
