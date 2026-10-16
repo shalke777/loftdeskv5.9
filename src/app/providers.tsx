@@ -157,7 +157,11 @@ function AuthProvider({ children }: { children: ReactNode }) {
         setStoredUser(next)
       },
       signOut: async () => {
-        if (!isDemoMode && supabase) await supabase.auth.signOut()
+        // A normal logout must not revoke other devices or the ChatGPT OAuth grant.
+        if (!isDemoMode && supabase) {
+          const { error } = await supabase.auth.signOut({ scope: 'local' })
+          if (error) throw error
+        }
         setUser(null)
         setStoredUser(null)
       },
