@@ -852,7 +852,7 @@ function buildFullContractHtml(
         <li>Wynagrodzenie płatne będzie w następujących transzach:
           ${contractTranchesTable(contract.tranches ?? [], gross)}
         </li>
-        <li>${(contract.tranches ?? []).some(t => t.label === 'Opłata rezerwacyjna') ? 'Wpłaty dokonywane przez Inwestora stanowią płatności na poczet wynagrodzenia, zgodnie z nazwami transz, kwotami i warunkami określonymi w harmonogramie płatności.' : 'Wpłaty dokonywane przez Inwestora mają charakter zaliczek na poczet realizacji umowy.'}</li>
+        <li>Wpłaty dokonywane przez Inwestora mają charakter zaliczek na poczet realizacji umowy.</li>
         <li>Każda transza płatna jest z góry.</li>
         <li>Wynagrodzenie płatne jest przelewem na rachunek bankowy Wykonawcy:
           <div style="text-align:center;margin:10px 0 4px;font-size:19px;font-weight:700;letter-spacing:.06em;font-family:monospace;">${company.bankAccount ? escapeHtml(company.bankAccount) : '<em style="font-size:13px;font-weight:400;font-family:sans-serif;color:var(--muted);">numer konta – uzupełnij w ustawieniach firmy</em>'}</div>
