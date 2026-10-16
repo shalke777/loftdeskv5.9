@@ -34,11 +34,16 @@ function fixture(){
         maybeSingle:async()=>({data:filters.client_id==='chatgpt-client'?grant:null}),single:async()=>({data:table==='automation_jobs'?jobs.get(filters.id):{id:jobId}}),then:resolve=>{queries.push({table,filters});resolve({data:[]})}}
       return q
     },
-    rpc:async(name,args)=>{assert.equal(name,'private_enqueue_job');assert.equal(args.p_company_id,company);if(!jobs.has(jobId))jobs.set(jobId,{id:jobId,status:'queued',kind:args.p_kind});return{data:jobs.get(jobId)}}
+    rpc:async(name,args)=>{
+      assert.equal(args.p_company_id,company)
+      if(name==='private_prepare_contract_draft')return{data:{id:jobId,status:'done',result:{document_id:jobId,number:'UM/2026/10/1'}}}
+      assert.equal(name,'private_enqueue_job');if(!jobs.has(jobId))jobs.set(jobId,{id:jobId,status:'queued',kind:args.p_kind});return{data:jobs.get(jobId)}
+    }
   }}
   const runtime={privateContext:async()=>ctx,mcpContext:async()=>ctx,checked:async p=>{const r=await p;if(r.error)throw r.error;return r.data},json:(statusCode,body)=>({statusCode,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(body)})}
   const auth=load('netlify/functions/shared/mcp-auth.cjs',{'jose':{...jose,createRemoteJWKSet:()=>publicKey},'./private-runtime.cjs':runtime,'./private-owner.cjs':{secretMatches:()=>false}})
-  const {handler}=load('netlify/functions/assistant-mcp.js',{'./shared/private-runtime.cjs':runtime,'./shared/mcp-auth.cjs':auth})
+  const editor=load('netlify/functions/shared/contract-editor.cjs',{'./private-runtime.cjs':runtime})
+  const {handler}=load('netlify/functions/assistant-mcp.js',{'./shared/private-runtime.cjs':runtime,'./shared/mcp-auth.cjs':auth,'./shared/contract-editor.cjs':editor})
   return{auth,handler,jobs,queries,revoke:()=>{grant={...grant,enabled:false,token_version:2}},readOnly:()=>{grant={...grant,allow_write:false}}}
 }
 const event=(jwt,request,headers={})=>({httpMethod:'POST',headers:{authorization:`Bearer ${jwt}`,...headers},body:JSON.stringify(request)})
@@ -93,7 +98,7 @@ test('official MCP SDK connects over HTTP, reads scoped records and tracks queue
   try{
     await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${server.address().port}/mcp`),{requestInit:{headers:{Authorization:`Bearer ${jwt}`}}}))
     const listed=await client.listTools()
-    assert.equal(listed.tools.length,8)
+    assert.equal(listed.tools.length,10)
     await client.callTool({name:'list_records',arguments:{entity:'clients'}})
     assert.ok(f.queries.some(q=>q.table==='clients'&&q.filters.company_id===company))
     await client.callTool({name:'search_records',arguments:{entity:'clients',query:'50%_discount'}})
@@ -107,6 +112,14 @@ test('official MCP SDK connects over HTTP, reads scoped records and tracks queue
     assert.equal(f.jobs.size,1)
     const result=await client.callTool({name:'get_record',arguments:{entity:'jobs',id:jobId}})
     assert.equal(result.structuredContent.record.id,jobId)
+    const contractArgs={idempotency_key:'contract-test-20261016',estimate_id:jobId,location:'Work address',vat_rate:8,tranches:[],custom_paragraphs:[]}
+    const contract=await client.callTool({name:'prepare_contract',arguments:contractArgs})
+    assert.equal(contract.structuredContent.status,'done')
+    assert.equal(contract.structuredContent.result.number,'UM/2026/10/1')
+    await client.callTool({name:'get_record',arguments:{entity:'contracts',id:jobId}})
+    f.readOnly()
+    const denied=await client.callTool({name:'prepare_contract',arguments:contractArgs})
+    assert.equal(denied.isError,true)
   }finally{await client.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve))}
   assert.ok(requests.includes('POST'))
 })
@@ -167,4 +180,17 @@ test('static token authentication is disabled unless explicitly enabled',async()
     if(enabled==='true')assert.equal((await auth.authenticate(event('admin-token'))).clientId,'static-admin')
     else await assert.rejects(auth.authenticate(event('admin-token')))
   }
+})
+
+
+test('contract editor rejects invalid dates, percentages and unknown financial fields before writing',async()=>{
+  const f=fixture(),jwt=await token()
+  for (const patch of [{start_date:'2026-02-30'},{penalty_per_day_pct:101},{company_id:company},{value:1}]) {
+    const result=JSON.parse((await f.handler(event(jwt,{jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'update_contract',arguments:{id:jobId,patch}}}))).body)
+    assert.equal(result.error.code,-32602)
+  }
+  f.readOnly()
+  const result=JSON.parse((await f.handler(event(jwt,{jsonrpc:'2.0',id:2,method:'tools/call',params:{name:'update_contract',arguments:{id:jobId,patch:{notes:'Owner edit'}}}}))).body)
+  assert.equal(result.result.isError,true)
+  assert.equal(f.jobs.size,0)
 })

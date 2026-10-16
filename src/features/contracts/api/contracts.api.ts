@@ -73,7 +73,10 @@ export const contractsApi = {
       ],
     })
   },
-  async sign(id: string, companyId?: string) { if (isDemoMode || !supabase) { demoDb.contracts.sign(id); return Promise.resolve() } const scope = await getDataScope(companyId); const query = applyScope(supabase.from('contracts').update({ status: 'signed', sign_date: new Date().toISOString().slice(0, 10) }).eq('id', id), scope); const { error } = await query; if (error) throw error },
+  async sign(id: string, companyId?: string) {
+    // Reuse the checked update: zero matching rows must fail, never show success.
+    return contractsApi.update(id, { status: 'signed', sign_date: new Date().toISOString().slice(0, 10) }, companyId)
+  },
   async delete(id: string, companyId?: string) {
     if (isDemoMode || !supabase) { demoDb.contracts.delete(id); return Promise.resolve() }
     const scope = await getDataScope(companyId)
