@@ -16,6 +16,7 @@ import {
 } from '@/shared/lib/inviteIntent'
 import { settingsApi } from '@/features/settings/api/settings.api'
 import { isDemoMode } from '@/shared/lib/supabase'
+import { mcpLoginReturn } from '@/features/auth/lib/mcpLoginReturn'
 
 export function LoginForm() {
   const { signInDemo } = useAuth()
@@ -93,15 +94,18 @@ export function LoginForm() {
             if (!email || !password) { toast.error('Uzupełnij dane', 'Podaj e-mail i hasło.'); return }
             try {
               setLoading(true)
+              const consentTarget = mcpLoginReturn(window.location.pathname, window.location.search)
               await authApi.signIn(email, password)
               if (isDemoMode) signInDemo(email)
               // Isolate invite finalization — a failed/expired invite must not
               // surface as a login failure since sign-in already succeeded.
-              let target = '/dashboard'
-              try {
-                target = await finalizeInviteIfNeeded()
-              } catch {
-                // invite accept failed (expired/not found) — proceed to dashboard
+              let target = consentTarget || '/dashboard'
+              if (!consentTarget) {
+                try {
+                  target = await finalizeInviteIfNeeded()
+                } catch {
+                  // invite accept failed (expired/not found) — proceed to dashboard
+                }
               }
               toast.success('Zalogowano', 'Możesz od razu przejść do pracy w aplikacji.')
               window.location.assign(target)
