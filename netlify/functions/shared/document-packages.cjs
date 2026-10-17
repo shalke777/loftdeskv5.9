@@ -3,6 +3,8 @@ const { checked } = require('./private-runtime.cjs')
 const BUCKET = 'assistant-document-packages'
 const TABLES = { estimate: 'cost_estimates', contract: 'contracts', invoice: 'invoices' }
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex')
+// Layout changes must invalidate immutable PDFs as well as source edits.
+const sourceFingerprint = sources => hash({renderer:'editorial-20261017-1',sources})
 const uuid = value => /^[a-f\d]{8}-(?:[a-f\d]{4}-){3}[a-f\d]{12}$/i.test(value || '')
 const safeName = value => String(value).replace(/[\\/:*?"<>|\r\n]/g, '-').slice(0, 100)
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
@@ -68,7 +70,7 @@ function summary(p) { return {id:p.id,project_id:p.project_id,name:p.name,create
 async function preparePackage(ctx,args,render) {
   requireWrite(ctx)
   const sources=await loadSources(ctx,args.project_id,args.documents)
-  const fingerprint=hash(sources)
+  const fingerprint=sourceFingerprint(sources)
   const id=fingerprint
   const store=await bucket(ctx)
   const path=`${prefix(ctx,args.project_id)}/packages/${id}.json`
@@ -116,7 +118,7 @@ async function sendPackage(ctx,args,fetcher=fetch) {
   if (typeof args.idempotency_key!=='string'||args.idempotency_key.length<8||args.idempotency_key.length>160) throw new Error('Wymagany stały identyfikator wysyłki.')
   const p=await getPackage(ctx,args)
   const current=await loadSources(ctx,args.project_id,p.refs)
-  if(hash(current)!==p.fingerprint) throw new Error('Dokumenty zmieniły się. Przygotuj nowy pakiet przed wysyłką.')
+  if(sourceFingerprint(current)!==p.fingerprint) throw new Error('Dokumenty zmieniły się. Przygotuj nowy pakiet przed wysyłką.')
   if(!process.env.RESEND_API_KEY) throw new Error('Wysyłka email nie jest skonfigurowana.')
   const store=await bucket(ctx)
   const path=`${ctx.companyId}/sends/${hash(args.idempotency_key)}.json`
