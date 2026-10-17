@@ -80,11 +80,17 @@ function collectBlocks(target: HTMLElement): Block[] {
  *   3c. If the earliest straddling block starts right at curY (block too tall) →
  *       cut after the block's bottom (accept the oversized page)
  */
-function buildPageStartsPx(totalHPx: number, blocks: Block[], pxPerPage: number): number[] {
+function buildPageStartsPx(totalHPx: number, blocks: Block[], pxPerPage: number, forcedCuts: number[] = []): number[] {
   const starts = [0]
   let curY = 0
   while (curY < totalHPx) {
     const idealCut = curY + pxPerPage
+    const forcedCut = forcedCuts.find(y => y > curY + 1 && y <= idealCut)
+    if (forcedCut !== undefined) {
+      starts.push(forcedCut)
+      curY = forcedCut
+      continue
+    }
     if (idealCut >= totalHPx) break
 
     const straddling = blocks.filter(b => b.topPx < idealCut && b.bottomPx > idealCut)
@@ -119,7 +125,8 @@ function extractStylesAndBody(html: string): { styles: string; body: string } {
 function extractCompanyName(root: HTMLElement): string {
   const partyBoxes = root.querySelectorAll('.party-box strong')
   if (partyBoxes.length >= 2) {
-    const name = (partyBoxes[partyBoxes.length - 1] as HTMLElement).textContent?.trim()
+    const companyIndex = root.getAttribute('aria-label') === 'Wycena' ? 0 : partyBoxes.length - 1
+    const name = (partyBoxes[companyIndex] as HTMLElement).textContent?.trim()
     if (name) return latinizeForPdf(name)
   }
   const topbar = root.querySelector('.topbar__title') as HTMLElement | null
@@ -223,7 +230,11 @@ export async function generatePdfBlob(html: string): Promise<Blob> {
     const PX_PER_MM = RENDER_WIDTH_PX / A4_W_MM   // ≈ 4.286 px/mm
     const pxPerPage = Math.round((A4_H_MM-footerHeight-PAGE_TOP_MARGIN_MM-footerGap) * PX_PER_MM)
 
-    const pageStartsPx = buildPageStartsPx(totalHPx, blocks, pxPerPage)
+    const targetTop = absoluteOffsetTopPx(target)
+    const forcedCuts = Array.from(target.querySelectorAll('.estimate-details'))
+      .map(el => absoluteOffsetTopPx(el as HTMLElement) - targetTop)
+      .filter(y => y > 0 && y < totalHPx).sort((a,b) => a-b)
+    const pageStartsPx = buildPageStartsPx(totalHPx, blocks, pxPerPage, forcedCuts)
 
     const canvas = await html2canvas(target, {
       scale: 2,
