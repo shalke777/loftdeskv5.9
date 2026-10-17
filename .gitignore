@@ -29,3 +29,6 @@ android/app/google-services.json
 android/*.keystore
 GoogleService-Info.plist
 
+
+# Built from the canonical browser PDF generator
+netlify/functions/shared/native-pdf-browser.cjs

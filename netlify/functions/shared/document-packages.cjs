@@ -1,10 +1,11 @@
+const { sendDocumentMail } = require('./document-mail.cjs')
 const { createHash } = require('node:crypto')
 const { checked } = require('./private-runtime.cjs')
 const BUCKET = 'assistant-document-packages'
 const TABLES = { estimate: 'cost_estimates', contract: 'contracts', invoice: 'invoices' }
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 // Layout changes must invalidate immutable PDFs as well as source edits.
-const sourceFingerprint = sources => hash({renderer:'editorial-20261017-1',sources})
+const sourceFingerprint = sources => hash({renderer:'native-app-generator-20261017-1',sources})
 const uuid = value => /^[a-f\d]{8}-(?:[a-f\d]{4}-){3}[a-f\d]{12}$/i.test(value || '')
 const safeName = value => String(value).replace(/[\\/:*?"<>|\r\n]/g, '-').slice(0, 100)
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
@@ -66,7 +67,7 @@ async function read(store,path) {
 async function write(store,path,value,upsert=false) {
   return store.upload(path,Buffer.from(JSON.stringify(value)),{contentType:'application/json',upsert})
 }
-function summary(p) { return {id:p.id,project_id:p.project_id,name:p.name,created_at:p.created_at,documents:p.documents.map(({type,id,number,filename,sha256,size})=>({type,id,number,filename,sha256,size})),status:'ready'} }
+function summary(p) { return {id:p.id,project_id:p.project_id,name:p.name,created_at:p.created_at,renderer:p.renderer || 'legacy-export',documents:p.documents.map(({type,id,number,filename,sha256,size})=>({type,id,number,filename,sha256,size})),status:'ready'} }
 async function preparePackage(ctx,args,render) {
   requireWrite(ctx)
   const sources=await loadSources(ctx,args.project_id,args.documents)
@@ -85,7 +86,7 @@ async function preparePackage(ctx,args,render) {
     return {type:sources.documents[i].type,id:sources.documents[i].row.id,number:sources.documents[i].row.number,filename:safeName(`${sources.documents[i].type}_${sources.documents[i].row.number}`)+'.pdf',sha256:createHash('sha256').update(pdf).digest('hex'),size:pdf.length,base64:pdf.toString('base64')}
   })
   if (total>12000000) throw new Error('Pakiet przekracza limit 12 MB.')
-  const snapshot={id,project_id:args.project_id,name:sources.project.name,created_at:new Date().toISOString(),fingerprint,refs:sources.refs,documents}
+  const snapshot={id,project_id:args.project_id,name:sources.project.name,created_at:new Date().toISOString(),renderer:'loftdesk-native-v1',fingerprint,refs:sources.refs,documents}
   const result=await write(store,path,snapshot)
   if (result.error) {
     if (!/already exists|duplicate/i.test(result.error.message)) throw result.error
@@ -133,8 +134,12 @@ async function sendPackage(ctx,args,fetcher=fetch) {
   }
   let result
   try {
-    const from=process.env.RESEND_FROM_EMAIL||'noreply@mail.loftdesk.pl'
-    const resp=await fetcher('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json','Idempotency-Key':hash(`${ctx.companyId}/${args.idempotency_key}`)},body:JSON.stringify({from:`LoftDesk <${from}>`,to:[receipt.to],reply_to:current.company.email||undefined,subject:args.subject||`Dokumenty projektu — ${p.name}`,html:`<p>${escape(args.message||'W załączeniu przesyłam dokumenty projektu do wglądu.').replace(/\n/g,'<br>')}</p><ul>${p.documents.map(d=>`<li>${escape(d.number)}</li>`).join('')}</ul>`,attachments:p.documents.map(d=>({filename:d.filename,content:d.base64}))})})
+    const resp=await sendDocumentMail({toEmail:receipt.to,documentType:'package',documentName:p.name,
+      companyName:current.company.name,operatorEmail:current.company.email,
+      subject:args.subject,userMessage:args.message || 'W załączeniu przesyłam dokumenty projektu do wglądu.',
+      attachments:p.documents.map(d=>({filename:d.filename,content:d.base64})),
+      idempotencyKey:hash(`${ctx.companyId}/${args.idempotency_key}`)},fetcher)
+
     const body=await resp.json()
     result=resp.ok&&body.id?{...receipt,status:'sent',provider_id:body.id,sent_at:new Date().toISOString()}:{...receipt,status:'failed',error:`Dostawca poczty odrzucił wysyłkę (${resp.status}).`}
   }catch { result={...receipt,status:'unknown',error:'Nie udało się potwierdzić wyniku. Nie ponawiaj z nowym identyfikatorem bez sprawdzenia poczty.'} }

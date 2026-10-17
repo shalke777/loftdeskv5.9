@@ -115,7 +115,7 @@ export function SendToClientModal({ open, onClose, documentType, documentName, d
           body.pdf_base64 = btoa(binary)
           body.pdf_filename = `${documentName.replace(/[/\\:*?"<>|]/g, '_')}.pdf`
         } catch (pdfErr) {
-          console.warn('[SendToClientModal] PDF generation failed, sending without attachment:', pdfErr)
+          throw new Error('Nie udało się wygenerować PDF. Wiadomość nie została wysłana.')
         }
       }
 
