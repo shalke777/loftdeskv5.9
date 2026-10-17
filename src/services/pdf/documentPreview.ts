@@ -41,7 +41,6 @@ function cssString(value: string): string {
 }
 
 function pageShell(title: string, subtitle: string, content: string, company?: CompanyMeta) {
-  const editorial = subtitle === "Umowa" || subtitle === "Wycena"
   // -------------------------------------------------------------------------
   // Print footer architecture (CSS Paged Media — W3C standard, no hacks):
   //
@@ -250,45 +249,7 @@ function pageShell(title: string, subtitle: string, content: string, company?: C
     li { break-inside: avoid; page-break-inside: avoid; }
     p { break-inside: avoid; page-break-inside: avoid; }
   }
-${editorial ? `
- body {font-family:Arial,sans-serif;color:#20252b;}
- .topbar {background:white;color:#20252b;border-bottom:2px solid #315d4d;height:auto;padding:24px 0 16px;gap:24px;}
- .topbar__title {font-size:17px;letter-spacing:.025em;}
- .topbar .logo-mark {display:none;}
- .party-box {background:white;border:0;border-radius:0;padding:8px 0;}
- .party-box h3 {color:#5f6963;font-size:11px;letter-spacing:.08em;}
- .party-box strong {font-size:14px;}
- .section h2 {color:#20252b;border-bottom:1px solid #ccd5d0;font-size:12px;}
- .section p,.section li {text-align:left;hyphens:none;}
- .totals-box {width:100%;border:0;border-top:1px solid #ccd5d0;border-bottom:1px solid #ccd5d0;border-radius:0;padding:8px 0;}
- .totals-line {padding:3px 0;}
- .totals-line strong {font-size:15px;color:#20252b;}
- table {border-radius:0;box-shadow:none;table-layout:fixed;}
- th,td {padding:7px 8px;overflow-wrap:normal;word-break:normal;}
- thead th {border-radius:0;background:#f1f4f2;}
- tbody tr:nth-child(even) td {background:white;}
- @page {margin:16mm 18mm 15mm;
-  @bottom-center {content:${cssString(footerLine)};background:white;color:#68736d;font:8pt Arial,sans-serif;vertical-align:middle;}
-  @bottom-right {content:counter(page) " / " counter(pages);color:#68736d;font:8pt Arial,sans-serif;}
- }
- @media print {
- .topbar {height:auto;padding:0 0 12px;}.topbar__title {font-size:13px;}
- .content {padding-top:12px !important;}
- .section {break-inside:auto;page-break-inside:auto;margin-top:14px;}
- .section h2 {font-size:10pt;break-after:avoid;page-break-after:avoid;}
- .section p,.section li {font-size:9.5pt;line-height:1.42;orphans:3;widows:3;}
- .section > ol {break-inside:auto;page-break-inside:auto;}
- .section ol {padding-left:25px;}
- .section > ol > li {break-inside:avoid;page-break-inside:avoid;}
- .section > ol > li:has(table) {break-inside:auto;page-break-inside:auto;}
- .section ul {margin:4px 0;}
- .party-grid,.compensation-opening,.signature-grid {break-inside:avoid;page-break-inside:avoid;}
- .party-grid {margin:8px 0 12px;gap:25px;}.party-box {padding:6px 0;}.party-box p {font-size:9.5pt;}
- .totals-box {padding:7px 0;}.totals-line strong {font-size:12pt;}
- th,td {font-size:9pt;}.signature-grid {margin-top:28px !important;}
- .estimate-details {break-before:page;page-break-before:always;}
- }
-` : ''}
+
 </style>
 </head>
 <body>

@@ -5,7 +5,7 @@ const BUCKET = 'assistant-document-packages'
 const TABLES = { estimate: 'cost_estimates', contract: 'contracts', invoice: 'invoices' }
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 // Layout changes must invalidate immutable PDFs as well as source edits.
-const sourceFingerprint = sources => hash({renderer:'native-app-generator-20261017-3',sources})
+const sourceFingerprint = sources => hash({renderer:'native-app-generator-restored-20261017',sources})
 const uuid = value => /^[a-f\d]{8}-(?:[a-f\d]{4}-){3}[a-f\d]{12}$/i.test(value || '')
 const safeName = value => String(value).replace(/[\\/:*?"<>|\r\n]/g, '-').slice(0, 100)
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
