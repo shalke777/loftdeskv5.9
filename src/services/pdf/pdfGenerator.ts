@@ -15,8 +15,6 @@ const FOOTER_H_MM = 10
 const PAGE_TOP_MARGIN_MM = 8   // breathing room at the top of pages 2+
 const FOOTER_MARGIN_MM = 6     // white gap between last content line and footer bar
 const FOOTER_RGB = { r: 22, g: 163, b: 74 }
-/** Usable content height per page (A4 minus footer bar minus top margin minus footer gap) */
-const USABLE_H_MM = A4_H_MM - FOOTER_H_MM - PAGE_TOP_MARGIN_MM - FOOTER_MARGIN_MM
 
 /**
  * Get an element's top offset relative to a given ancestor,
@@ -41,7 +39,7 @@ const AVOID_BREAK_SELECTORS =
   //   • li  — a single bullet point stays whole (no mid-bullet cut)
   //   • p   — a single paragraph stays whole (no mid-sentence cut)
   // The algorithm will break BETWEEN paragraphs/bullets, never inside them.
-  '.party-grid, .totals-box, .signature-grid, table, .checklist, .check, li, p'
+  '.party-grid, .totals-box, .compensation-opening, .signature-grid, table, .checklist, .check, li, p'
 
 /**
  * Collect "avoid-break" blocks as {topPx, bottomPx} relative to target element.
@@ -56,6 +54,16 @@ function collectBlocks(target: HTMLElement): Block[] {
     if (bottomPx > 0 && topPx < target.offsetHeight) {
       blocks.push({ topPx, bottomPx })
     }
+  }
+  // Keep each paragraph heading with its opening item, including remuneration
+  // with the complete amount block. Applies to downloads and integration alike.
+  for (const heading of Array.from(target.querySelectorAll('.section h2')) as HTMLElement[]) {
+    const next=heading.nextElementSibling as HTMLElement | null
+    if (!next) continue
+    const opening=(next.matches('ol,ul') ? next.firstElementChild : next) as HTMLElement | null
+    if (!opening) continue
+    blocks.push({topPx:absoluteOffsetTopPx(heading)-targetTopAbs,
+      bottomPx:absoluteOffsetTopPx(opening)-targetTopAbs+opening.offsetHeight})
   }
   return blocks
 }
@@ -196,6 +204,9 @@ export async function generatePdfBlob(html: string): Promise<Blob> {
     await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
 
     const target = (wrapper.querySelector('.doc') as HTMLElement | null) ?? wrapper
+    const editorial=['Umowa','Wycena'].includes(target.getAttribute('aria-label') || '')
+    const footerHeight=editorial ? 4 : FOOTER_H_MM
+    const footerGap=editorial ? 4 : FOOTER_MARGIN_MM
 
     // Fix: inject explicit list number spans (html2canvas renders ::marker without period/space)
     preprocessListNumbers(target)
@@ -210,7 +221,7 @@ export async function generatePdfBlob(html: string): Promise<Blob> {
 
     // 1 px = A4_W_MM / RENDER_WIDTH_PX mm (rendering at exactly RENDER_WIDTH_PX wide)
     const PX_PER_MM = RENDER_WIDTH_PX / A4_W_MM   // ≈ 4.286 px/mm
-    const pxPerPage = Math.round(USABLE_H_MM * PX_PER_MM)
+    const pxPerPage = Math.round((A4_H_MM-footerHeight-PAGE_TOP_MARGIN_MM-footerGap) * PX_PER_MM)
 
     const pageStartsPx = buildPageStartsPx(totalHPx, blocks, pxPerPage)
 
@@ -253,21 +264,23 @@ export async function generatePdfBlob(html: string): Promise<Blob> {
 
       // White mask: cover the gap between content end and footer bar
       const contentBottom = topMarginMm + (endMm - startMm)
-      const gapMm = A4_H_MM - FOOTER_H_MM - contentBottom
+      const gapMm = A4_H_MM - footerHeight - contentBottom
       if (gapMm > 0.5) {
         pdf.setFillColor(255, 255, 255)
         pdf.rect(0, contentBottom, imgW, gapMm + 0.5, 'F')
       }
 
       // Green footer bar
-      const footerY = A4_H_MM - FOOTER_H_MM
-      pdf.setFillColor(FOOTER_RGB.r, FOOTER_RGB.g, FOOTER_RGB.b)
-      pdf.rect(0, footerY, imgW, FOOTER_H_MM, 'F')
+      const footerY = A4_H_MM - footerHeight
+      if(editorial) pdf.setFillColor(255,255,255)
+      else pdf.setFillColor(FOOTER_RGB.r, FOOTER_RGB.g, FOOTER_RGB.b)
+      pdf.rect(0, footerY, imgW, footerHeight, 'F')
 
       // Footer text: company name centred + page number right
-      const textY = footerY + FOOTER_H_MM / 2 + 1.5
-      pdf.setTextColor(255, 255, 255)
-      pdf.setFontSize(8)
+      const textY = footerY + footerHeight / 2 + 1
+      if(editorial) pdf.setTextColor(100,110,105)
+      else pdf.setTextColor(255,255,255)
+      pdf.setFontSize(editorial ? 7 : 8)
       pdf.setFont('helvetica', 'normal')
       pdf.text(companyName, imgW / 2, textY, { align: 'center' })
       pdf.text(`${page + 1} / ${totalPages}`, imgW - 8, textY, { align: 'right' })
