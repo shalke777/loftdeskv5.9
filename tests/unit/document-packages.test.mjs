@@ -12,6 +12,7 @@ function fixture(){
       if(files.has(path)&&!upsert)return {error:{message:'The resource already exists'}}
       files.set(path,Buffer.from(body));return{data:{path}}
     },
+    createSignedUrl:async(path,ttl)=>{assert.ok(files.has(path));assert.equal(ttl,300);return {data:{signedUrl:`https://storage.example.test/${path}?signed=test`}}},
     download:async path=>files.has(path)?{data:new Blob([files.get(path)])}:{error:{message:'not found'}},
     list:async dir=>({data:[...files.keys()].filter(k=>k.startsWith(dir+'/')).map(k=>({name:k.slice(dir.length+1)}))}),
   })}
@@ -24,7 +25,10 @@ test('saves a complete immutable package, lists metadata only, and prepares with
   const f=fixture(), p=await preparePackage(f.ctx,{project_id:pr},f.render)
   assert.equal(p.documents.length,2);assert.equal(p.status,'ready');assert.ok(p.documents.every(d=>!('base64'in d)))
   assert.equal((await preparePackage(f.ctx,{project_id:pr},f.render)).id,p.id)
-  assert.equal((await listPackages(f.ctx,{project_id:pr})).packages.length,1)
+  const listed=await listPackages(f.ctx,{project_id:pr})
+  assert.equal(listed.packages.length,1)
+  assert.ok(listed.packages[0].review_url.includes(`${co}/${pr}/packages/${p.id}.json`))
+  assert.equal(listed.packages[0].review_url_expires_in,300)
   assert.equal(f.rows.contracts[0].notes,'Zakończenie 27 listopada 2026')
 })
 test('tenant boundaries and read-only grants prevent creation and sending',async()=>{

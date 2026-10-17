@@ -111,6 +111,13 @@ async function listPackages(ctx,args) {
   if(error)throw error
   const packages=[]
   for(const file of data) if(/^[a-f\d]{64}\.json$/.test(file.name)) packages.push(await read(store,`${dir}/${file.name}`))
+  // Owner-scoped, short-lived links allow reviewing the exact archived attachments.
+  for (const entry of packages) {
+    const signed=await store.createSignedUrl(`${prefix(ctx,args.project_id)}/packages/${entry.id}.json`,300)
+    if(signed.error)throw signed.error
+    entry.review_url=signed.data.signedUrl
+    entry.review_url_expires_in=300
+  }
   return {packages}
 }
 async function sendPackage(ctx,args,fetcher=fetch) {
