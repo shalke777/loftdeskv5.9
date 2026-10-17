@@ -41,6 +41,7 @@ function cssString(value: string): string {
 }
 
 function pageShell(title: string, subtitle: string, content: string, company?: CompanyMeta) {
+  const editorial = subtitle === "Umowa" || subtitle === "Wycena"
   // -------------------------------------------------------------------------
   // Print footer architecture (CSS Paged Media — W3C standard, no hacks):
   //
@@ -249,6 +250,45 @@ function pageShell(title: string, subtitle: string, content: string, company?: C
     li { break-inside: avoid; page-break-inside: avoid; }
     p { break-inside: avoid; page-break-inside: avoid; }
   }
+${editorial ? `
+ body {font-family:Arial,sans-serif;color:#20252b;}
+ .topbar {background:white;color:#20252b;border-bottom:2px solid #315d4d;height:auto;padding:24px 0 16px;gap:24px;}
+ .topbar__title {font-size:17px;letter-spacing:.025em;}
+ .topbar .logo-mark {display:none;}
+ .party-box {background:white;border:0;border-radius:0;padding:8px 0;}
+ .party-box h3 {color:#5f6963;font-size:11px;letter-spacing:.08em;}
+ .party-box strong {font-size:14px;}
+ .section h2 {color:#20252b;border-bottom:1px solid #ccd5d0;font-size:12px;}
+ .section p,.section li {text-align:left;hyphens:none;}
+ .totals-box {width:100%;border:0;border-top:1px solid #ccd5d0;border-bottom:1px solid #ccd5d0;border-radius:0;padding:8px 0;}
+ .totals-line {padding:3px 0;}
+ .totals-line strong {font-size:15px;color:#20252b;}
+ table {border-radius:0;box-shadow:none;table-layout:fixed;}
+ th,td {padding:7px 8px;overflow-wrap:normal;word-break:normal;}
+ thead th {border-radius:0;background:#f1f4f2;}
+ tbody tr:nth-child(even) td {background:white;}
+ @page {margin:16mm 18mm 15mm;
+  @bottom-center {content:${cssString(footerLine)};background:white;color:#68736d;font:8pt Arial,sans-serif;vertical-align:middle;}
+  @bottom-right {content:counter(page) " / " counter(pages);color:#68736d;font:8pt Arial,sans-serif;}
+ }
+ @media print {
+ .topbar {height:auto;padding:0 0 12px;}.topbar__title {font-size:13px;}
+ .content {padding-top:12px !important;}
+ .section {break-inside:auto;page-break-inside:auto;margin-top:14px;}
+ .section h2 {font-size:10pt;break-after:avoid;page-break-after:avoid;}
+ .section p,.section li {font-size:9.5pt;line-height:1.42;orphans:3;widows:3;}
+ .section > ol {break-inside:auto;page-break-inside:auto;}
+ .section ol {padding-left:25px;}
+ .section > ol > li {break-inside:avoid;page-break-inside:avoid;}
+ .section > ol > li:has(table) {break-inside:auto;page-break-inside:auto;}
+ .section ul {margin:4px 0;}
+ .party-grid,.compensation-opening,.signature-grid {break-inside:avoid;page-break-inside:avoid;}
+ .party-grid {margin:8px 0 12px;gap:25px;}.party-box {padding:6px 0;}.party-box p {font-size:9.5pt;}
+ .totals-box {padding:7px 0;}.totals-line strong {font-size:12pt;}
+ th,td {font-size:9pt;}.signature-grid {margin-top:28px !important;}
+ .estimate-details {break-before:page;page-break-before:always;}
+ }
+` : ''}
 </style>
 </head>
 <body>
@@ -303,7 +343,7 @@ export function buildEstimatePreview(estimate: Estimate, client?: Party, company
       const net = item.quantity * item.unit_price
       const gross = net * (1 + item.vat_rate / 100)
       return `<tr>
-        <td>${escapeHtml(item.name)}${item.description ? `<div class="small">${escapeHtml(item.description)}</div>` : ''}</td>
+        <td>${escapeHtml(item.name)}${item.description && item.description !== item.name ? `<div class="small">${escapeHtml(item.description)}</div>` : ''}</td>
         <td class="num">${item.quantity.toFixed(2)}</td>
         <td class="center">${escapeHtml(item.unit)}</td>
         <td class="num">${formatCurrency(item.unit_price)}</td>
@@ -350,11 +390,12 @@ export function buildEstimatePreview(estimate: Estimate, client?: Party, company
         <div class="totals-line"><span>Razem VAT (${vatRate}%):</span><span>${formatCurrency(totalVat)}</span></div>
         <div class="totals-line"><strong>RAZEM BRUTTO:</strong><strong>${formatCurrency(estimate.total_gross)}</strong></div>
       </div>
-      ${estimate.estimate_type !== 'final' ? '<div class="notice"><strong>Uwaga:</strong> Wycena ma charakter informacyjny. Ostateczna cena może ulec zmianie po wizji lokalnej.</div>' : ''}
+      ${estimate.notes ? `<div class="estimate-details">${estimate.notes.split(/\n\s*\n/).filter(Boolean).map(block => `<div class="section"><p>${escapeHtml(block).replace(/\n/g, '<br/>')}</p></div>`).join('')}</div>` : ''}
+      ${estimate.estimate_type !== 'final' && estimate.status !== 'accepted' && !estimate.notes ? '<div class="notice"><strong>Uwaga:</strong> Wycena ma charakter informacyjny. Ostateczna cena może ulec zmianie po wizji lokalnej.</div>' : ''}
     </div>
     ${footer(company)}
   </section>`
-  return pageShell(estimate.number, estimate.name, page, company)
+  return pageShell(estimate.number, 'Wycena', page, company)
 }
 
 type InvoiceContractMeta = { contractNumber?: string; contractLocation?: string }
@@ -729,6 +770,7 @@ function contractPartiesHtml(clientMeta: ContractClientMeta, company: CompanyMet
       <h3>Wykonawca</h3>
       <strong>${escapeHtml(company.name || '—')}</strong>
       ${company.address ? `<p>${escapeHtml(company.address)}</p>` : ''}
+      ${company.postalCity ? `<p>${escapeHtml(company.postalCity)}</p>` : ''}
       ${company.nip ? `<p>NIP: ${escapeHtml(company.nip)}</p>` : ''}
       ${company.email ? `<p>${escapeHtml(company.email)}</p>` : ''}
     </div>
@@ -745,12 +787,12 @@ function contractTranchesTable(tranches: import('@/entities/contract/model').Con
       <td>${escapeHtml(t.label)}</td>
       <td class="center">${pct}%</td>
       <td class="num">${formatCurrency(t.amount)}</td>
-      <td>${escapeHtml(t.due_date || 'Do ustalenia')}</td>
-      <td>${escapeHtml(condition)}</td>
+      <td>${t.due_date ? `${escapeHtml(t.due_date)}<br/>` : ''}${escapeHtml(condition)}</td>
     </tr>`
   }).join('')
   return `<table>
-    <thead><tr><th class="center">Nr</th><th>Nazwa transzy</th><th class="center">Udział</th><th class="num">Kwota brutto</th><th>Termin</th><th>Warunek / etap</th></tr></thead>
+    <colgroup><col style="width:5%"/><col style="width:23%"/><col style="width:9%"/><col style="width:19%"/><col style="width:44%"/></colgroup>
+    <thead><tr><th class="center">Nr</th><th>Nazwa transzy</th><th class="center">Udział</th><th class="num">Kwota brutto</th><th>Termin / etap płatności</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`
 }
@@ -833,13 +875,14 @@ function buildFullContractHtml(
           </ul>
         </li>
         <li>Wykonawca poinformuje Inwestora o wpływie powyższych okoliczności na termin realizacji.</li>
-        <li>W przypadku opóźnienia realizacji robót wyłącznie z winy Wykonawcy, Inwestor może naliczyć karę umowną w wysokości <strong>${penaltyPerDay}%</strong> wynagrodzenia brutto za każdy dzień zwłoki, nie więcej jednak niż <strong>${maxPenalty}%</strong> całkowitego wynagrodzenia brutto.</li>
+        <li>W przypadku opóźnienia realizacji robót wyłącznie z winy Wykonawcy, Inwestor może naliczyć karę umowną w wysokości <strong>${penaltyPerDay.toLocaleString('pl-PL')}%</strong> wynagrodzenia brutto za każdy dzień zwłoki, nie więcej jednak niż <strong>${maxPenalty}%</strong> całkowitego wynagrodzenia brutto.</li>
         <li>Zapłata kar umownych wyczerpuje wszelkie roszczenia Inwestora związane z opóźnieniem realizacji robót.</li>
       </ol>
     </div>
 
     <div class="section">
       <h2>§4 Wynagrodzenie i płatności</h2>
+      <div class="compensation-opening">
       <ol>
         <li>Strony ustalają wynagrodzenie ryczałtowe za wykonanie przedmiotu umowy w wysokości:</li>
       </ol>
@@ -848,12 +891,13 @@ function buildFullContractHtml(
         <div class="totals-line"><span>Podatek VAT (${vatRate}%):</span><span>${formatCurrency(vatAmt)}</span></div>
         <div class="totals-line"><strong>RAZEM BRUTTO:</strong><strong>${formatCurrency(gross)}</strong></div>
       </div>
+      </div>
       <ol start="2">
         <li>Wynagrodzenie płatne będzie w następujących transzach:
           ${contractTranchesTable(contract.tranches ?? [], gross)}
         </li>
-        <li>Wpłaty dokonywane przez Inwestora mają charakter zaliczek na poczet realizacji umowy.</li>
-        <li>Każda transza płatna jest z góry.</li>
+        <li>Wpłaty dokonywane przez Inwestora zaliczane są na poczet wynagrodzenia za realizację umowy.</li>
+        <li>Transze płatne są w terminach i po spełnieniu warunków wskazanych w powyższym harmonogramie.</li>
         <li>Wynagrodzenie płatne jest przelewem na rachunek bankowy Wykonawcy:
           <div style="text-align:center;margin:10px 0 4px;font-size:19px;font-weight:700;letter-spacing:.06em;font-family:monospace;">${company.bankAccount ? escapeHtml(company.bankAccount) : '<em style="font-size:13px;font-weight:400;font-family:sans-serif;color:var(--muted);">numer konta – uzupełnij w ustawieniach firmy</em>'}</div>
         </li>
@@ -869,7 +913,7 @@ function buildFullContractHtml(
         <li>W przypadku opóźnienia płatności Wykonawca ma prawo naliczać odsetki ustawowe za opóźnienie.</li>
         <li>Drobne usterki lub wady nieistotne nie stanowią podstawy do odmowy zapłaty wynagrodzenia.</li>
         <li>Wykonawca może uzależnić podpisanie protokołu odbioru końcowego oraz wydanie frontu robót od uprzedniego uregulowania całości wynagrodzenia.</li>
-        <li>Materiały, transport, wniesienie, logistyka oraz koszty dostaw nie są wliczone w wynagrodzenie, chyba że Strony postanowią inaczej w formie pisemnej.</li>
+        <li>Zakres materiałów, transportu, wniesienia, logistyki oraz dostaw objętych wynagrodzeniem, a także wyłączenia z ceny, określa kosztorys stanowiący Załącznik nr 1.</li>
         <li>W przypadku wzrostu cen materiałów, energii, paliw lub kosztów realizacji przekraczających 10% względem dnia zawarcia umowy, Strony dopuszczają odpowiednią waloryzację wynagrodzenia.</li>
       </ol>
     </div>
@@ -887,7 +931,7 @@ function buildFullContractHtml(
           </ul>
         </li>
         <li>Inwestor zobowiązuje się nie utrudniać realizacji prac poprzez równoległe prowadzenie robót przez osoby trzecie bez uzgodnienia z Wykonawcą.</li>
-        <li>Koszty mediów oraz utylizacji odpadów budowlanych ponosi Inwestor.</li>
+        <li>Koszty mediów ponosi Inwestor. Wywóz i utylizacja odpadów budowlanych rozliczane są zgodnie z kosztorysem stanowiącym Załącznik nr 1.</li>
         <li>Inwestor odpowiada za zabezpieczenie rzeczy ruchomych pozostawionych w lokalu.</li>
         <li>Wykonawca ma prawo wykonywać dokumentację fotograficzną realizacji robót do celów dowodowych, reklamacyjnych oraz prezentacji portfolio, z wyłączeniem danych osobowych oraz elementów naruszających prywatność Inwestora.</li>
       </ol>
@@ -1020,10 +1064,10 @@ export function buildContractPreview(contract: import('@/entities/contract/model
     </div>
     <div class="content">
       <div class="meta">
-        zawarta dnia <strong>${escapeHtml(contract.sign_date || '— do ustalenia —')}</strong> w <strong>${escapeHtml(locationOrCity)}</strong>
+        zawarta dnia <strong>${escapeHtml(contract.sign_date || '— do ustalenia —')}</strong>
       </div>
       ${buildFullContractHtml(contract, clientMeta, estimateName || contract.notes || 'roboty wykończeniowe', company, estimateNumber)}
-      ${contract.notes ? `<div class="section small" style="margin-top:24px;"><strong>Notatki:</strong> ${escapeHtml(contract.notes)}</div>` : ''}
+
     </div>
     ${footer(company)}
   </section>`
